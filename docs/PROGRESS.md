@@ -26,6 +26,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started · `[!]` blocked on
 - [x] Admin CMS: dashboard, question editor (live KaTeX), CSV import validation, tabs manager, plans & limits
 - [x] Checked in the browser: splash Lottie, onboarding, setup, home, CBT (passage, maths, palette), results, AI streaming, paywall, dark mode, phone width, admin pages
 - [x] Exam-body logos added by owner (brand/exam-bodies/jamb.png, waec.png, neco.png) and shown on all exam cards, headers and results
+- [x] Feedback round 1: exam-body logos added (D-013)
+- [x] Feedback round 2: bare JAMB logo on Test hero (D-014), official Google G (D-015)
+- [x] Feedback round 3: student images: AI photo questions + profile photo (D-016)
 - [ ] Owner tests on laptop + phone and sends feedback
 - [ ] `DESIGN APPROVED` → write `docs/design-spec.md`, commit
 

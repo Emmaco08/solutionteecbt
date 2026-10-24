@@ -128,6 +128,11 @@
       '**Exam trap:** many students forget that ', '$\\int 1\\,dx = x$', ' and get $8$. Always integrate every term.', '\n\n',
       '**Quick check:** what is ', '$\\int_0^1 2x\\,dx$', '? Reply with your answer.'],
     log: ['Let us break $4.5$ into numbers we know.', '\n\n', '$$4.5 = \\frac{9}{2} = \\frac{3^2}{2}$$', '\n\n', 'So $\\log 4.5 = 2\\log 3 - \\log 2 = 0.9542 - 0.3010 = 0.6532$.', '\n\n', '**Tip:** whenever JAMB gives you $\\log 2$ and $\\log 3$, try to write the number using only $2$s and $3$s.'],
+    photo: ['I can read your photo. The question says a trader bought a phone for ', '₦24,000', ' and sold it for ', '₦30,000', '.', '\n\n',
+      '**Step 1.** Find the profit: ', '$30{,}000 - 24{,}000 = 6{,}000$', '.', '\n\n',
+      '**Step 2.** Percentage profit is always on the **cost price**:', '\n\n',
+      '$$\\frac{6{,}000}{24{,}000} \\times 100\\% = 25\\%$$', '\n\n',
+      'So the answer is **(B) 25%**.', '\n\n', '**Exam trap:** if you divide by the selling price you get $20\\%$, which is option A. JAMB puts that option there on purpose.'],
     default: ['Sure! A quadratic equation looks like ', '$ax^2+bx+c=0$', '. To solve ', '$x^2 - 5x + 6 = 0$', ', find two numbers that multiply to $6$ and add up to $-5$.', '\n\n', 'Those numbers are $-2$ and $-3$, so', '\n\n', '$$(x-2)(x-3) = 0 \\;\\Rightarrow\\; x = 2 \\text{ or } x = 3$$', '\n\n', '**Your turn:** solve $x^2 - 7x + 12 = 0$.']
   };
   const mdLite = s => s.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
@@ -167,22 +172,62 @@
           <div class="state" style="padding:0"><div class="art gold" style="width:76px;height:76px;font-size:36px;border-radius:24px;margin:0">${I('sparkle', 1)}</div></div>
           <h2 class="t-h3">Hi ${S.first}, what are we solving today?</h2><p class="t-sm muted" style="max-width:30ch">I explain step by step, like a patient teacher. Turn on hint mode if you want clues, not answers.</p></div>
         <div class="suggest enter" id="sugg">
+          <button id="snapSugg">${I('camera')}<span><b>Snap a question.</b> Take a photo of your textbook or past question and I will solve it.</span></button>
           ${['Explain how to solve $x^2 - 5x + 6 = 0$', 'What is the difference between speed and velocity?', 'Give me 3 tips for JAMB Use of English'].map(s => `<button data-s="${s.replace(/"/g, '&quot;')}">${I('arrow-up-right')}<span>${s}</span></button>`).join('')}
         </div>`}
       </div>
       <div class="row between px4 t-cap" style="padding-block:4px"><label class="row g2 bold" style="cursor:pointer;white-space:nowrap"><span class="switch" style="transform:scale(.75);transform-origin:left;margin-right:-12px"><input type="checkbox" id="hint"><span></span></span>Hint mode</label><span class="muted">AI can make mistakes.</span></div>
+      <div class="attach-preview hidden" id="attPrev"></div>
       <div class="composer">
+        <button class="icon-btn attach-btn" id="attach" aria-label="Add a photo">${I('camera-plus')}</button>
         <div class="input"><textarea rows="1" id="msg" placeholder="Ask any question..." aria-label="Message"></textarea></div>
         <button class="send" id="send" aria-label="Send">${I('paper-plane-right', 1)}</button>
       </div>`,
     mount(el, p) {
       const chat = el.querySelector('#chat'), msg = el.querySelector('#msg'), send = el.querySelector('#send'), quota = el.querySelector('#quota');
       el.querySelectorAll('[data-subj]').forEach(b => b.onclick = () => el.querySelectorAll('[data-subj]').forEach(x => x.classList.toggle('on', x === b)));
-      const ask = (text, kind) => {
+      // ---- Photo attachment (one image per message) ----
+      let att = null;
+      const prev = el.querySelector('#attPrev');
+      const setAtt = a => {
+        att = a;
+        prev.classList.toggle('hidden', !a);
+        prev.innerHTML = a ? `<button class="att-thumb" id="attView" aria-label="View photo"><img src="${a.url}" alt="Your photo"></button>
+          <div class="grow"><b class="t-sm">Question photo</b><div class="t-cap muted">${a.kb} KB${a.origKb > a.kb ? ` · shrunk from ${a.origKb >= 1024 ? (a.origKb / 1024).toFixed(1) + ' MB' : a.origKb + ' KB'} to save data` : ''}</div></div>
+          <button class="icon-btn" id="attX" aria-label="Remove photo">${I('x-circle', 1)}</button>` : '';
+        if (a) {
+          prev.querySelector('#attX').onclick = () => setAtt(null);
+          prev.querySelector('#attView').onclick = () => ST.viewImage(a.url, 'Your question photo');
+          msg.placeholder = 'Add a note (optional)'; msg.focus();
+        } else msg.placeholder = 'Ask any question...';
+      };
+      const openAttach = () => ST.sheet(`
+        <h2 class="t-h3">Add a photo</h2>
+        <p class="t-sm muted mt2">Snap your question so the whole of it is clear, well lit and not blurry. One photo uses 1 AI prompt.</p>
+        <div class="card list mt4">
+          <button class="list-item" data-src="camera"><span class="lead">${I('camera', 1)}</span><span class="grow"><b class="t-sm">Take a photo</b><div class="t-cap muted">Opens your camera</div></span></button>
+          <button class="list-item" data-src="gallery"><span class="lead">${I('images', 1)}</span><span class="grow"><b class="t-sm">Choose from gallery</b><div class="t-cap muted">Screenshots and saved photos</div></span></button>
+          <button class="list-item" data-src="sample"><span class="lead" style="background:var(--c-warning-soft);color:var(--c-on-warning-soft)">${I('flask', 1)}</span><span class="grow"><b class="t-sm">Use a sample photo</b><div class="t-cap muted">Prototype only, for testing on a laptop</div></span></button>
+        </div>
+        <p class="t-cap subtle mt4">Photos are shrunk on your phone before upload and are only used to answer your question.</p>`, {
+        mount: w => w.querySelectorAll('[data-src]').forEach(b => b.onclick = async () => {
+          ST.closeOverlay();
+          const a = b.dataset.src === 'sample' ? await ST.samplePhoto() : await ST.pickImage({ camera: b.dataset.src === 'camera' });
+          if (a) setAtt(a);
+        })
+      });
+      el.querySelector('#attach').onclick = openAttach;
+      el.querySelector('#snapSugg')?.addEventListener('click', openAttach);
+
+      const ask = (text, kind, image) => {
         if (S.aiLeft <= 0) return ST.go('ai-out', null, { mode: 'fade', replace: true });
         el.querySelector('#sugg')?.remove();
         chat.querySelector('.stack.center')?.remove();
-        if (text) { chat.insertAdjacentHTML('beforeend', `<div class="msg me">${ST.esc(text).replace(/\$(.+?)\$/g, (m, t) => ST.tex(t))}</div>`); }
+        if (text || image) {
+          const body = text ? `<div>${ST.esc(text).replace(/\$(.+?)\$/g, (m, t) => ST.tex(t))}</div>` : '';
+          chat.insertAdjacentHTML('beforeend', `<div class="msg me ${image ? 'has-img' : ''}">${image ? `<button class="msg-img" aria-label="View photo"><img src="${image.url}" alt="Question photo"></button>` : ''}${body}</div>`);
+          if (image) chat.lastElementChild.querySelector('.msg-img').onclick = () => ST.viewImage(image.url, 'Question photo');
+        }
         S.aiLeft--; quota.innerHTML = `${I('sparkle', 1)} <span class="tnum">${S.aiLeft} of ${S.aiMax}</span> left today`; quota.classList.toggle('out', !S.aiLeft);
         quota.classList.remove('pop'); void quota.offsetWidth; quota.classList.add('pop');
         chat.insertAdjacentHTML('beforeend', `<div class="msg ai"><div class="txt"><span class="typing"><i></i><i></i><i></i></span></div></div>`);
@@ -194,7 +239,12 @@
         }), ST.reduceMotion() ? 50 : 700);
       };
       el.querySelectorAll('#sugg button').forEach(b => b.onclick = () => ask(b.dataset.s, 'default'));
-      send.onclick = () => { const v = msg.value.trim(); if (!v) return msg.focus(); msg.value = ''; ask(v, /integr/i.test(v) ? 'integral' : 'default'); };
+      send.onclick = () => {
+        const v = msg.value.trim();
+        if (!v && !att) return msg.focus();
+        const a = att; msg.value = ''; setAtt(null);
+        ask(v, a ? 'photo' : /integr/i.test(v) ? 'integral' : 'default', a);
+      };
       msg.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send.click(); } });
       if (p.q) setTimeout(() => ask(null, p.q === 'log' ? 'log' : 'integral'), 300);
     }
@@ -238,7 +288,7 @@
     render: () => `
       <div class="appbar"><span class="title" style="padding-left:12px;font-size:var(--t-h2-size)">Me</span><button class="icon-btn" aria-label="Settings" data-go="settings">${I('gear-six')}</button></div>
       <div class="scr-body">
-        <div class="prof-head"><div class="avatar lg">${S.initials}</div><div class="grow"><h1 class="t-h2">${S.name}</h1><p class="t-sm muted">Oyo · JAMB target 290</p>
+        <div class="prof-head"><button class="avatar-edit" id="avEdit" aria-label="Change profile photo">${ST.avatar('lg')}<span class="cam">${I('camera', 1)}</span></button><div class="grow"><h1 class="t-h2">${S.name}</h1><p class="t-sm muted">Oyo · JAMB target 290</p>
           <span class="badge badge-neutral mt2">Free plan</span></div></div>
         <div class="px5 stack g5" style="padding-bottom:var(--s-8)">
           <div class="upgrade-banner"><div class="crown">${I('crown-simple', 1)}</div><div class="grow" style="position:relative;z-index:1"><b>Upgrade to Premium</b><p class="t-sm" style="color:#AFC0DD">From ${ST.naira(1500)} (sample price)</p></div><button class="btn btn-accent btn-sm" data-sheet="paywall" style="position:relative;z-index:1">Upgrade</button></div>
@@ -260,7 +310,37 @@
           </section>
           <button class="btn btn-outline btn-block" data-go="welcome" data-mode="fade">${I('sign-out')} Log out</button>
         </div></div>`,
-    mount: el => ST.animateBars(el)
+    mount(el) {
+      ST.animateBars(el);
+      const btn = el.querySelector('#avEdit');
+      const refresh = () => { btn.querySelector('.avatar').outerHTML = ST.avatar('lg'); };
+      const confirmPhoto = a => ST.sheet(`
+        <h2 class="t-h3">Use this photo?</h2>
+        <div class="stack center g3 mt4"><div class="avatar xl"><img src="${a.url}" alt="New profile photo preview"></div>
+          <p class="t-cap muted">Shown in a circle on your profile, results and class chats. ${a.kb} KB</p></div>
+        <div class="grid2 mt4"><button class="btn btn-outline" id="again">Choose another</button><button class="btn btn-primary" id="use">Use photo</button></div>`, {
+        mount: w => {
+          w.querySelector('#use').onclick = () => { S.avatar = a.url; ST.closeOverlay(); refresh(); ST.toast('Profile photo updated', 'user-circle'); };
+          w.querySelector('#again').onclick = () => { ST.closeOverlay(true); openPicker(); };
+        }
+      });
+      const openPicker = () => ST.sheet(`
+        <h2 class="t-h3">Profile photo</h2>
+        <div class="card list mt4">
+          <button class="list-item" data-src="camera"><span class="lead">${I('camera', 1)}</span><span class="grow t-sm bold">Take a photo</span></button>
+          <button class="list-item" data-src="gallery"><span class="lead">${I('images', 1)}</span><span class="grow t-sm bold">Choose from gallery</span></button>
+          ${S.avatar ? `<button class="list-item" data-src="remove"><span class="lead" style="background:var(--c-error-soft);color:var(--c-on-error-soft)">${I('trash', 1)}</span><span class="grow t-sm bold" style="color:var(--c-error)">Remove photo</span></button>` : ''}
+        </div>
+        <p class="t-cap subtle mt4">Use a clear photo of your face. No photos of other people, please.</p>`, {
+        mount: w => w.querySelectorAll('[data-src]').forEach(b => b.onclick = async () => {
+          ST.closeOverlay(true);
+          if (b.dataset.src === 'remove') { S.avatar = null; refresh(); ST.toast('Profile photo removed', 'trash'); return; }
+          const a = await ST.pickImage({ camera: b.dataset.src === 'camera' });
+          if (a) confirmPhoto(a);
+        })
+      });
+      btn.onclick = openPicker;
+    }
   });
 
   def('settings', {

@@ -18,7 +18,7 @@
     render: () => `
       <div class="scr-body">
         <div class="home-head">
-          <div class="avatar" data-go="profile">${S.initials}</div>
+          <button data-go="profile" aria-label="Open my profile" style="border-radius:50%">${ST.avatar()}</button>
           <div class="grow"><div class="t-cap muted">Good afternoon,</div><div class="t-h3">${S.first}</div></div>
           <span class="streak" title="${S.streak}-day streak">${I('fire', 1)} ${S.streak}</span>
           <button class="icon-btn" aria-label="Notifications" data-toast="2 new announcements">${I('bell')}</button>

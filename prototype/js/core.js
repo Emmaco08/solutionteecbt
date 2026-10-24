@@ -29,6 +29,61 @@
   ST.naira = n => '₦' + Number(n).toLocaleString('en-NG');
   ST.esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+  // ---------- Student images (AI question photos, profile photo) ----------
+  /** Avatar: the student's photo if they added one, otherwise initials. */
+  ST.avatar = (cls = '') => ST.state.avatar
+    ? `<div class="avatar ${cls}"><img src="${ST.state.avatar}" alt="Your profile photo"></div>`
+    : `<div class="avatar ${cls}">${ST.state.initials}</div>`;
+
+  /** Downscale + re-encode on the phone before upload (data-light). Max 1280 px long side, WebP/JPEG ~0.72. */
+  ST.compressImage = (file, maxSide = 1280, quality = 0.72) => new Promise((resolve, reject) => {
+    if (!file || !/^image\//.test(file.type)) return reject(new Error('not-image'));
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const k = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      const done = blob => resolve({ url: URL.createObjectURL(blob), kb: Math.round(blob.size / 1024), origKb: Math.round(file.size / 1024), w: c.width, h: c.height });
+      c.toBlob(b => b && b.type === 'image/webp' ? done(b) : c.toBlob(done, 'image/jpeg', quality), 'image/webp', quality);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('unreadable')); };
+    img.src = url;
+  });
+
+  /** Open the phone camera or gallery. Resolves with a compressed image, or null if cancelled. */
+  ST.pickImage = ({ camera = false } = {}) => new Promise(resolve => {
+    const inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = 'image/*';
+    if (camera) inp.setAttribute('capture', 'environment');
+    inp.onchange = () => {
+      const f = inp.files && inp.files[0];
+      if (!f) return resolve(null);
+      if (f.size > 15 * 1024 * 1024) { ST.toast('That photo is too large. Pick one under 15 MB.', 'warning-circle'); return resolve(null); }
+      ST.compressImage(f).then(resolve).catch(() => { ST.toast('That file is not a photo. Try a JPG or PNG.', 'warning-circle'); resolve(null); });
+    };
+    inp.click();
+  });
+
+  /** Prototype only: a sample "phone photo" of a handwritten exam question, for testing without a camera. */
+  ST.samplePhoto = () => new Promise(resolve => {
+    const c = document.createElement('canvas'), W = 960, H = 720; c.width = W; c.height = H;
+    const g = c.getContext('2d');
+    const grd = g.createLinearGradient(0, 0, W, H); grd.addColorStop(0, '#F7F3E8'); grd.addColorStop(1, '#E9E2D0');
+    g.fillStyle = grd; g.fillRect(0, 0, W, H);
+    g.strokeStyle = 'rgba(70,110,170,.35)'; g.lineWidth = 2;
+    for (let y = 120; y < H; y += 56) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
+    g.strokeStyle = 'rgba(200,60,60,.45)'; g.beginPath(); g.moveTo(96, 0); g.lineTo(96, H); g.stroke();
+    g.fillStyle = '#1F2A44'; g.font = 'italic 38px Georgia, serif';
+    ['Q14. A trader bought a phone for N24,000', 'and sold it for N30,000.', 'Find his percentage profit.', '(A) 20%   (B) 25%   (C) 30%   (D) 6%'].forEach((t, i) => g.fillText(t, 120, 162 + i * 112));
+    g.fillStyle = 'rgba(0,0,0,.18)'; g.fillRect(0, 0, W, 18);
+    c.toBlob(b => resolve({ url: URL.createObjectURL(b), kb: Math.round(b.size / 1024), origKb: 2870, w: W, h: H, sample: true }), 'image/jpeg', 0.72);
+  });
+
+  /** Full-screen image viewer. */
+  ST.viewImage = (src, alt = 'Image') => ST.dialog(`<img src="${src}" alt="${ST.esc(alt)}" style="width:100%;border-radius:12px"><button class="btn btn-outline btn-block mt4" data-close>Close</button>`, { cls: 'img-dialog' });
+
   /** Render $...$ and $$...$$ inside el with a safe fallback (mirrors the planned Flutter MathText widget). */
   ST.math = el => {
     if (!window.renderMathInElement) return;

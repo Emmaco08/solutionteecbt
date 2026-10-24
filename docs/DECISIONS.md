@@ -50,3 +50,12 @@ Owner feedback: the white tile looked wrong on the navy "Full JAMB simulation" c
 
 **D-015 · 2026-10-24 · Official Google "G" on sign-in buttons (replaces the icon-font glyph from D-011)**
 Owner asked for the real Google logo. Downloaded Google's own multi-colour "G" SVG, unmodified, from gstatic.com (the asset Google's FirebaseUI sign-in buttons use) into `prototype/vendor/google/` with a SOURCE.md. It is not stored in /brand because it is a third-party mark. Flutter will use the official asset from Google's sign-in branding guidelines.
+
+**D-016 · 2026-10-24 · Students can add images (owner request, beyond SPEC v1)**
+Two places:
+1. **SolutionTee AI: photo questions.** Camera button in the chat composer and a "Snap a question" suggestion. Source: camera, gallery or (prototype only) a sample photo. One photo per message, an optional note, preview with remove, tap to view full screen. One photo message uses 1 AI prompt.
+2. **Profile photo.** Camera badge on the avatar: take a photo, choose from gallery, or remove; confirm before use. Falls back to initials.
+Data-light: photos are shrunk on the phone before upload (max 1280 px long side, WebP or JPEG at ~0.72 quality; the sample goes from ~2.8 MB to ~48 KB).
+Admin AI settings gain: allow photo questions, vision model ID, max photo size (300 KB), and auto-delete after N days (30).
+**Backend impact (Phases 2 and 4):** private Supabase Storage buckets (`ai-uploads`, `avatars`) with RLS so only the owner can read; signed URLs; size and type checks server-side; the AI Edge Function needs a vision-capable NVIDIA model (configured, not hardcoded) and its own rate limit. Privacy Policy and Play Data safety must declare photos (collected, sent to the AI provider, deleted after the retention period). Avatars are visible to classmates only once community features exist (Phase 5), so they need a moderation/report path then.
+**Should go into SPEC.md** (§2 profile, §9 AI tutor, §12 admin): owner to confirm.
