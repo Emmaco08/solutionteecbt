@@ -1,0 +1,10 @@
+# Remotion
+node_modules/
+out/
+build/
+.remotion/
+# Raw phone recordings can be large; keep them out of git
+recordings/raw/
+*.mp4
+*.mov
+!public/**/*.mp4

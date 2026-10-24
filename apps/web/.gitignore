@@ -1,0 +1,18 @@
+# Next.js
+node_modules/
+.next/
+out/
+build/
+next-env.d.ts
+*.tsbuildinfo
+.vercel/
+
+# Testing
+coverage/
+playwright-report/
+test-results/
+
+# Env
+.env
+.env.*
+!.env.example
