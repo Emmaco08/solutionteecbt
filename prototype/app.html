@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0B1F44">
+<title>SolutionTee CBT prototype</title>
+<link rel="icon" href="/brand/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="vendor/phosphor/regular/style.css">
+<link rel="stylesheet" href="vendor/phosphor/fill/style.css">
+<link rel="stylesheet" href="vendor/katex/katex.min.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/app.css">
+<script src="js/tokens.js"></script>
+</head>
+<body class="proto">
+  <aside class="proto-panel" aria-label="Prototype controls">
+    <a class="proto-brand" href="index.html"><img src="/brand/favicon.svg" alt=""><span><h1>SolutionTee CBT</h1><span class="t-cap muted">Phase 1 prototype</span></span></a>
+    <div class="stack g3">
+      <div class="ctl"><span>Theme</span><div class="seg" id="pTheme" style="flex:1;max-width:170px"><button data-t="system">Auto</button><button data-t="light">Light</button><button data-t="dark">Dark</button></div></div>
+      <label class="ctl"><span>Reduce motion</span><span class="switch"><input type="checkbox" id="pRm"><span></span></span></label>
+      <div><div class="grp" style="margin-top:0">CBT demo</div>
+        <div class="demo"><button class="btn btn-outline btn-sm" data-demo="600">Timer 10:00</button><button class="btn btn-outline btn-sm" data-demo="300">Timer 5:00</button><button class="btn btn-outline btn-sm" data-demo="4">Time up</button><button class="btn btn-outline btn-sm" data-demo="submit">Submit</button></div></div>
+    </div>
+    <hr class="divider">
+    <nav id="pList" aria-label="All screens"></nav>
+    <a class="btn btn-tonal btn-sm" href="admin.html">Open admin CMS screens</a>
+  </aside>
+
+  <div class="stage">
+    <div class="phone"><div class="island"></div><div id="host"></div><div id="overlay"></div></div>
+  </div>
+  <a class="proto-fab" href="index.html" aria-label="All screens"><i class="ph ph-list"></i></a>
+
+<script src="vendor/katex/katex.min.js"></script>
+<script src="vendor/katex/auto-render.min.js"></script>
+<script src="vendor/lottie/lottie_light.min.js"></script>
+<script src="js/core.js"></script>
+<script src="js/screens-onboard.js"></script>
+<script src="js/screens-main.js"></script>
+<script src="js/screens-cbt.js"></script>
+<script src="js/screens-more.js"></script>
+<script>
+  ST.tokensReady.then(() => {
+    // panel: screen list grouped
+    const groups = {};
+    ST.order.forEach(id => { const g = ST.screens[id].group || 'Other'; (groups[g] = groups[g] || []).push(id); });
+    document.getElementById('pList').innerHTML = Object.entries(groups).map(([g, ids]) =>
+      `<div class="grp">${g}</div>` + ids.map(id => `<button class="jump" data-go="${id}">${ST.screens[id].title}</button>`).join('')).join('');
+    ST.syncPanel = () => {
+      document.querySelectorAll('#pTheme button').forEach(b => b.classList.toggle('on', b.dataset.t === ST.getTheme()));
+      document.getElementById('pRm').checked = ST.reduceMotion();
+    };
+    document.querySelectorAll('#pTheme button').forEach(b => b.onclick = () => { ST.setTheme(b.dataset.t); ST.syncPanel(); });
+    document.getElementById('pRm').onchange = e => ST.setReduceMotion(e.target.checked);
+    document.querySelectorAll('[data-demo]').forEach(b => b.onclick = () => {
+      if (ST.current()?.dataset.screen !== 'cbt') ST.go('cbt');
+      setTimeout(() => b.dataset.demo === 'submit' ? ST.cbtSubmit() : ST.cbtSetTime(+b.dataset.demo), 350);
+    });
+    ST.syncPanel();
+    ST.boot();
+  });
+</script>
+</body>
+</html>

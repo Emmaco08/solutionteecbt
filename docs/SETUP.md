@@ -143,3 +143,14 @@ All secrets go into Supabase Edge Function secrets or server env — never the a
 - One heavy process at a time (Next dev server **or** Gradle **or** browser tests).
 - `android/gradle.properties`: `org.gradle.jvmargs=-Xmx1536m -XX:MaxMetaspaceSize=512m`, `org.gradle.parallel=false`, `org.gradle.daemon=true`, `kotlin.daemon.jvmargs=-Xmx512m`.
 - Stop the Gradle daemon when done: `cd apps\mobile\android; .\gradlew --stop`.
+
+---
+
+## 5. Phase 1 prototype (design review)
+```powershell
+node prototype/serve.mjs
+```
+- Laptop: http://localhost:5173/
+- Phone on the same Wi-Fi: `http://<your-LAN-IP>:5173/` (printed by the server; on 2026-10-24 it was `10.64.76.207`)
+- **Windows Firewall:** your Wi-Fi is set to *Public*, so Windows blocks incoming connections by default. Either allow Node.js when Windows asks (tick *Public networks* only while testing at home), or set your home Wi-Fi to *Private* in *Settings → Network & internet → Wi-Fi → (your network) → Network profile type*. Do not allow it on public Wi-Fi such as cafés or campus networks.
+- Stop the server with `Ctrl+C` when you are done.

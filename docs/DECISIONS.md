@@ -20,3 +20,24 @@ winget is present on the machine (no choco/scoop), so install commands use winge
 
 **D-005 · 2026-10-24 · Node 24 LTS**
 Node v24.19.0 is installed and is an LTS line. Keep it; no upgrade needed.
+
+**D-006 · 2026-10-24 · Prototype stack: plain HTML/CSS/JS, vendored libraries, tiny Node server**
+No build step and no node_modules (low RAM, 98% full disk). KaTeX, Phosphor Icons, lottie-web (light build) and Plus Jakarta Sans are copied into `prototype/vendor/` so the prototype works on the LAN with no internet. `prototype/serve.mjs` serves only `prototype/`, `design/` and `brand/`.
+
+**D-007 · 2026-10-24 · Tokens are generated and runtime-loaded**
+`design/scripts/gen-tokens.mjs` builds `design/tokens.json` (tonal scales anchored exactly on #0B1F44 at navy-900, #2563B3 at blue-600 and #F2B233 at gold-400) and prints a contrast report. The prototype fetches the JSON and writes CSS variables at runtime, proving one file can feed Flutter and Next.js. Light-mode warning text uses amber-700 (amber-600 failed AA at 4.38:1).
+
+**D-008 · 2026-10-24 · Exam-body logos: labelled empty slots until the files arrive**
+Owner chose this. Cards always point to `/brand/exam-bodies/*.png`; if the file 404s, a grey slot reading "jamb.png missing" is shown. No logo is ever redrawn.
+
+**D-009 · 2026-10-24 · Font: Plus Jakarta Sans 500 + 700 only**
+Owner chose Plus Jakarta Sans. Only two weights are bundled, which matches the "max two weights per screen" rule and keeps size down. The latin-ext subset is included because the latin subset has no ₦ glyph.
+
+**D-010 · 2026-10-24 · Icons: Phosphor (regular + fill)**
+A single open-source (MIT) icon family, used as a web font in the prototype. Flutter has a `phosphor_flutter` package with the same names, so screens map 1:1 later.
+
+**D-011 · 2026-10-24 · Sample content is clearly marked**
+Plan prices are tagged SAMPLE. The featured JAMB novel is a placeholder (TBC). The comprehension passage and all questions are original text written for the prototype. Onboarding art is built from UI pieces as a placeholder for final Lottie illustrations. The Google sign-in button uses the Phosphor Google glyph in the prototype; the real app must use Google's official sign-in button assets.
+
+**D-012 · 2026-10-24 · Wordmark**
+No full SolutionTee lockup or wordmark file exists in /brand. Screens show the real mark (favicon.svg / mark PNGs) and the app name as plain UI text, not a designed wordmark.

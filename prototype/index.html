@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SolutionTee CBT · Phase 1 prototype</title>
+<link rel="icon" href="/brand/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="vendor/phosphor/regular/style.css">
+<link rel="stylesheet" href="vendor/phosphor/fill/style.css">
+<link rel="stylesheet" href="css/base.css">
+<style>
+  body { background: var(--c-bg); }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 40px 24px 80px; }
+  header { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  header img { width: 56px; height: 56px; border-radius: 14px; }
+  .hero { display: grid; grid-template-columns: 1.3fr 1fr; gap: 24px; margin-top: 32px; align-items: stretch; }
+  .start { padding: 24px; background: var(--navy-900); color: #F4F7FC; border: 0; display: flex; flex-direction: column; gap: 14px; justify-content: space-between; }
+  .start .muted { color: #AFC0DD; }
+  .group { margin-top: 40px; }
+  .group h2 { margin-bottom: 14px; }
+  .scr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+  .scr-link { display: flex; align-items: center; gap: 12px; padding: 14px 16px; color: var(--c-text); min-height: 56px; }
+  .scr-link .n { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; background: var(--c-primary-soft); color: var(--c-on-primary-soft); font-size: 12px; font-weight: 700; flex: none; }
+  .swatches { display: grid; grid-template-columns: repeat(11, 1fr); gap: 4px; }
+  .sw { aspect-ratio: 1; border-radius: 8px; position: relative; }
+  .sw span { position: absolute; bottom: 3px; left: 4px; font-size: 9px; font-weight: 700; }
+  @media (max-width: 760px) { .hero { grid-template-columns: 1fr; } .swatches { grid-template-columns: repeat(6, 1fr); } }
+</style>
+<script src="js/tokens.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="/brand/favicon.svg" alt="SolutionTee app icon">
+    <div class="grow"><h1 class="t-h1">SolutionTee CBT</h1><p class="muted">Phase 1 design prototype · Learn. Think. Solve.</p></div>
+    <div class="seg" id="theme" style="width:240px"><button data-t="system">Auto</button><button data-t="light">Light</button><button data-t="dark">Dark</button></div>
+  </header>
+
+  <div class="hero">
+    <div class="card start">
+      <div><h2 class="t-h2">Walk the full student journey</h2>
+        <p class="muted mt2">Starts at the splash screen and runs through onboarding, sign-up, OTP, profile setup, the guided tour and the app. Everything is clickable.</p></div>
+      <div class="row g3 wrap"><a class="btn btn-accent" href="app.html#/splash">Start from splash</a><a class="btn btn-outline" style="background:transparent;color:#fff;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35)" href="admin.html">Admin CMS screens</a></div>
+    </div>
+    <div class="card card-pad stack g3">
+      <b>Brand tonal scales from design/tokens.json</b>
+      <div class="stack g2" id="sw"></div>
+      <p class="t-cap muted">Gold is used for highlights, badges and buttons with navy text. Never for text on white.</p>
+    </div>
+  </div>
+
+  <div id="groups"></div>
+
+  <div class="group card card-pad stack g2">
+    <b>Notes for review</b>
+    <p class="t-sm muted">JAMB, WAEC and NECO logos load from <code>brand/exam-bodies/</code>. Those files are not in the repo yet, so a grey slot labelled with the file name shows instead. Drop the PNGs in and refresh. Plan prices are <b>SAMPLE</b>. Onboarding art uses simple UI compositions as placeholders for final Lottie illustrations.</p>
+  </div>
+</div>
+
+<script src="vendor/katex/katex.min.js"></script>
+<script src="js/core.js"></script>
+<script src="js/screens-onboard.js"></script>
+<script src="js/screens-main.js"></script>
+<script src="js/screens-cbt.js"></script>
+<script src="js/screens-more.js"></script>
+<script>
+  ST.tokensReady.then(t => {
+    const groups = {};
+    ST.order.forEach(id => { const g = ST.screens[id].group || 'Other'; (groups[g] = groups[g] || []).push(id); });
+    groups['Admin CMS (desktop)'] = [['dashboard', 'Dashboard'], ['editor', 'Question editor (live KaTeX)'], ['csv', 'CSV import + validation'], ['tabs', 'Tabs manager'], ['plans', 'Plans & limits']];
+    let n = 0;
+    document.getElementById('groups').innerHTML = Object.entries(groups).map(([g, ids]) => `
+      <section class="group"><h2 class="t-h3">${g}</h2><div class="scr-grid">${ids.map(id => {
+        n++;
+        const [href, label] = Array.isArray(id) ? [`admin.html#${id[0]}`, id[1]] : [`app.html#/${id}`, ST.screens[id].title];
+        return `<a class="card card-tap scr-link" href="${href}"><span class="n">${n}</span><span class="grow t-sm bold">${label}</span><i class="ph ph-arrow-right subtle"></i></a>`;
+      }).join('')}</div></section>`).join('');
+    const pal = t.color.palette;
+    document.getElementById('sw').innerHTML = ['navy', 'blue', 'gold', 'neutral'].map(k => `<div class="swatches">${Object.entries(pal[k]).filter(([s]) => +s >= 50).slice(0, 11).map(([s, hex]) =>
+      `<div class="sw" style="background:${hex}" title="${k}-${s} ${hex}"><span style="color:${+s >= 500 ? '#fff' : '#06132B'}">${s}</span></div>`).join('')}</div>`).join('');
+    const sync = () => document.querySelectorAll('#theme button').forEach(b => b.classList.toggle('on', b.dataset.t === ST.getTheme()));
+    document.querySelectorAll('#theme button').forEach(b => b.onclick = () => { ST.setTheme(b.dataset.t); sync(); });
+    sync();
+  });
+</script>
+</body>
+</html>
