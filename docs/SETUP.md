@@ -154,3 +154,16 @@ node prototype/serve.mjs
 - Phone on the same Wi-Fi: `http://<your-LAN-IP>:5173/` (printed by the server; on 2026-10-24 it was `10.64.76.207`)
 - **Windows Firewall:** your Wi-Fi is set to *Public*, so Windows blocks incoming connections by default. Either allow Node.js when Windows asks (tick *Public networks* only while testing at home), or set your home Wi-Fi to *Private* in *Settings → Network & internet → Wi-Fi → (your network) → Network profile type*. Do not allow it on public Wi-Fi such as cafés or campus networks.
 - Stop the server with `Ctrl+C` when you are done.
+
+---
+
+## 6. Sharing the design with the client (GitHub + Vercel)
+- Design repo (public, design files only): https://github.com/Emmaco08/solutiontee-cbt-design, local copy `C:\solutiontee-cbt-design`.
+- Refresh it after design changes:
+```powershell
+node prototype/publish/sync.mjs
+cd ..\solutiontee-cbt-design; git add -A; git commit -m "Design update"; git push
+```
+- **Vercel (one-time, free Hobby plan):** vercel.com → sign in with GitHub → *Add New… → Project* → import `solutiontee-cbt-design` → Framework preset **Other**, no build command, output directory `.` (already set in `vercel.json`) → **Deploy**. Every push to `main` redeploys automatically. Production URLs are public; preview URLs are protected by Vercel login by default.
+- **Vercel MCP (optional, lets Claude check deployments):** Claude desktop → Connectors → Vercel (https://mcp.vercel.com) → Connect and sign in. In the terminal version of Claude Code instead: `claude mcp add --transport http vercel https://mcp.vercel.com`, then run `/mcp` and authenticate.
+- **Client feedback:** the client taps *Give feedback* in the prototype (needs a free GitHub account). Feedback lands in the repo's Issues tab.

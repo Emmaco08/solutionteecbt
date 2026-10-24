@@ -1,0 +1,14 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "buildCommand": "",
+  "outputDirectory": ".",
+  "redirects": [
+    { "source": "/", "destination": "/prototype/", "permanent": false },
+    { "source": "/admin", "destination": "/prototype/admin.html", "permanent": false },
+    { "source": "/app", "destination": "/prototype/app.html", "permanent": false }
+  ],
+  "headers": [
+    { "source": "/prototype/vendor/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=604800" }] }
+  ]
+}

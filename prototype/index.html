@@ -51,6 +51,13 @@
 
   <div id="groups"></div>
 
+  <div class="group card card-pad row g4 wrap" style="justify-content:space-between">
+    <div class="stack g2" style="max-width:640px"><b>Reviewing this design?</b>
+      <p class="t-sm muted">Open any screen, then tap <b>Give feedback</b> (side panel on a computer, the menu button on a phone). It opens a short form with the screen already filled in. Write what to change, add a screenshot if it helps, and choose <b>Needs changes</b> or <b>Approved</b>. You need a free GitHub account.</p></div>
+    <div class="row g2 wrap"><button class="btn btn-accent" onclick="ST.openFeedback('Whole design')"><i class="ph-fill ph-chat-circle-text"></i> Give general feedback</button>
+      <a class="btn btn-outline" href="https://github.com/Emmaco08/solutiontee-cbt-design/issues" target="_blank" rel="noopener">See all feedback</a></div>
+  </div>
+
   <div class="group card card-pad stack g2">
     <b>Notes for review</b>
     <p class="t-sm muted">JAMB, WAEC and NECO logos load from <code>brand/exam-bodies/</code>. Those files are not in the repo yet, so a grey slot labelled with the file name shows instead. Drop the PNGs in and refresh. Plan prices are <b>SAMPLE</b>. Onboarding art uses simple UI compositions as placeholders for final Lottie illustrations.</p>
@@ -59,6 +66,7 @@
 
 <script src="vendor/katex/katex.min.js"></script>
 <script src="js/core.js"></script>
+<script src="js/feedback.js"></script>
 <script src="js/screens-onboard.js"></script>
 <script src="js/screens-main.js"></script>
 <script src="js/screens-cbt.js"></script>

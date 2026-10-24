@@ -1,0 +1,40 @@
+name: Design feedback
+description: Comment on a screen of the SolutionTee CBT prototype, or approve it.
+title: "[Feedback] "
+labels: ["feedback"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reviewing SolutionTee CBT. One screen per form works best.
+  - type: input
+    id: screen
+    attributes:
+      label: Which screen?
+      description: Filled in for you when you use the "Give feedback" button.
+      placeholder: e.g. Home, CBT exam screen, Paywall
+    validations:
+      required: true
+  - type: dropdown
+    id: verdict
+    attributes:
+      label: Your decision for this screen
+      options:
+        - Needs changes
+        - Approved
+        - Just a question
+    validations:
+      required: true
+  - type: textarea
+    id: feedback
+    attributes:
+      label: What should change?
+      description: Be as specific as you like (text, colours, layout, wording). You can drag screenshots into this box.
+      placeholder: e.g. Make the Start exam button bigger. Change "Me" to "Profile".
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device (optional)
+      placeholder: e.g. Tecno Spark 10, Chrome on laptop

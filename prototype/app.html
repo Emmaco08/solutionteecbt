@@ -16,6 +16,7 @@
 <body class="proto">
   <aside class="proto-panel" aria-label="Prototype controls">
     <a class="proto-brand" href="index.html"><img src="/brand/favicon.svg" alt=""><span><h1>SolutionTee CBT</h1><span class="t-cap muted">Phase 1 prototype</span></span></a>
+    <button class="btn btn-accent btn-sm" id="pFeedback"><i class="ph-fill ph-chat-circle-text"></i> Give feedback on this screen</button>
     <div class="stack g3">
       <div class="ctl"><span>Theme</span><div class="seg" id="pTheme" style="flex:1;max-width:170px"><button data-t="system">Auto</button><button data-t="light">Light</button><button data-t="dark">Dark</button></div></div>
       <label class="ctl"><span>Reduce motion</span><span class="switch"><input type="checkbox" id="pRm"><span></span></span></label>
@@ -30,12 +31,13 @@
   <div class="stage">
     <div class="phone"><div class="island"></div><div id="host"></div><div id="overlay"></div></div>
   </div>
-  <a class="proto-fab" href="index.html" aria-label="All screens"><i class="ph ph-list"></i></a>
+  <button class="proto-fab" id="fab" aria-label="Prototype menu"><i class="ph ph-list"></i></button>
 
 <script src="vendor/katex/katex.min.js"></script>
 <script src="vendor/katex/auto-render.min.js"></script>
 <script src="vendor/lottie/lottie_light.min.js"></script>
 <script src="js/core.js"></script>
+<script src="js/feedback.js"></script>
 <script src="js/screens-onboard.js"></script>
 <script src="js/screens-main.js"></script>
 <script src="js/screens-cbt.js"></script>
@@ -57,6 +59,14 @@
       if (ST.current()?.dataset.screen !== 'cbt') ST.go('cbt');
       setTimeout(() => b.dataset.demo === 'submit' ? ST.cbtSubmit() : ST.cbtSetTime(+b.dataset.demo), 350);
     });
+    const curTitle = () => (ST.screens[ST.current()?.dataset.screen] || {}).title;
+    document.getElementById('pFeedback').onclick = () => ST.openFeedback(curTitle());
+    document.getElementById('fab').onclick = () => ST.sheet(`
+      <h2 class="t-h3">Prototype menu</h2>
+      <div class="card list mt4">
+        <button class="list-item" id="fbGo"><span class="lead" style="background:var(--c-accent-soft);color:var(--c-on-accent-soft)"><i class="ph-fill ph-chat-circle-text"></i></span><span class="grow"><b class="t-sm">Give feedback on this screen</b><div class="t-cap muted">${curTitle() || ''}</div></span></button>
+        <a class="list-item" href="index.html"><span class="lead"><i class="ph-fill ph-list"></i></span><span class="grow t-sm bold">All screens</span></a>
+      </div>`, { mount: w => w.querySelector('#fbGo').onclick = () => { ST.closeOverlay(true); ST.openFeedback(curTitle()); } });
     ST.syncPanel();
     ST.boot();
   });

@@ -38,6 +38,7 @@
       <div class="input search"><i class="ph ph-magnifying-glass lead-ic"></i><input placeholder="Search questions, users, payments"></div>
       <span class="grow"></span>
       <div class="seg" id="theme" style="width:210px"><button data-t="system">Auto</button><button data-t="light">Light</button><button data-t="dark">Dark</button></div>
+      <button class="btn btn-accent btn-sm" onclick="ST.openFeedback(document.title.replace(/ · .*$/, '') + ' (admin)')"><i class="ph-fill ph-chat-circle-text"></i> Give feedback</button>
       <a class="btn btn-outline btn-sm" href="index.html"><i class="ph ph-arrow-left"></i> All screens</a>
     </div>
     <div id="page"></div>
@@ -46,6 +47,7 @@
 <div id="overlay" style="position:fixed;inset:0;pointer-events:none;z-index:50"></div>
 <script src="vendor/katex/katex.min.js"></script>
 <script src="vendor/katex/auto-render.min.js"></script>
+<script src="js/feedback.js"></script>
 <script src="js/admin.js"></script>
 </body>
 </html>
