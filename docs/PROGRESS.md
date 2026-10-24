@@ -12,7 +12,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started · `[!]` blocked on
 - [x] git initialised, `.gitignore` files added
 - [x] PHASES.md, PROGRESS.md, DECISIONS.md, SETUP.md created
 - [x] Brand check done
-- [!] Missing: `brand/exam-bodies/jamb.png`, `waec.png`, `neco.png`
+- [x] Exam-body logos provided (2026-10-24)
 - [!] Missing: full logo / wordmark ("SolutionTee CBT" lockup), high-res mark
 - [!] Owner answers to pre-design questions
 - [ ] Owner confirms phase split in PHASES.md
@@ -25,7 +25,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started · `[!]` blocked on
 - [x] App prototype: 39 routed phone screens (plus 5 onboarding slides, 3 setup steps and sheets/dialogs for palette, calculator, submit, time-up, share, paywall), clickable flows, light/dark, reduce motion
 - [x] Admin CMS: dashboard, question editor (live KaTeX), CSV import validation, tabs manager, plans & limits
 - [x] Checked in the browser: splash Lottie, onboarding, setup, home, CBT (passage, maths, palette), results, AI streaming, paywall, dark mode, phone width, admin pages
-- [!] Exam-body logos still missing (placeholder slots shown)
+- [x] Exam-body logos added by owner (brand/exam-bodies/jamb.png, waec.png, neco.png) and shown on all exam cards, headers and results
 - [ ] Owner tests on laptop + phone and sends feedback
 - [ ] `DESIGN APPROVED` → write `docs/design-spec.md`, commit
 

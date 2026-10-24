@@ -179,7 +179,9 @@ p { margin: 0; }
 
 /* ---------- Exam-body logo slot (real file or labelled placeholder; never redrawn) ---------- */
 .exam-logo { width: 44px; height: 44px; border-radius: var(--r-sm); background: #fff; display: grid; place-items: center; overflow: hidden; flex: none; box-shadow: inset 0 0 0 1px var(--c-border); }
-.exam-logo img { width: 86%; height: 86%; object-fit: contain; }
+.exam-logo { position: relative; }
+.exam-logo .crop { position: absolute; inset: 9%; overflow: hidden; }
+.exam-logo .crop img { position: absolute; max-width: none; height: auto; }
 .exam-logo.missing { background: repeating-linear-gradient(45deg, var(--c-surface-sunken) 0 6px, var(--c-surface-alt) 6px 12px); }
 .exam-logo.missing::after { content: attr(data-file) ' missing'; font-size: 8px; line-height: 1.1; font-weight: var(--w-bold); color: var(--c-text-muted); text-align: center; padding: 2px; }
 .exam-logo.sm { width: 28px; height: 28px; border-radius: 7px; }

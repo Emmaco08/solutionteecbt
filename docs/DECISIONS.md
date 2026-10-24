@@ -41,3 +41,6 @@ Plan prices are tagged SAMPLE. The featured JAMB novel is a placeholder (TBC). T
 
 **D-012 · 2026-10-24 · Wordmark**
 No full SolutionTee lockup or wordmark file exists in /brand. Screens show the real mark (favicon.svg / mark PNGs) and the app name as plain UI text, not a designed wordmark.
+
+**D-013 · 2026-10-24 · Exam-body logos: crop transparent margins on screen, never edit the files**
+The owner's `jamb.png`, `waec.png` and `neco.png` carry wide transparent margins (JAMB's visible mark is only 115×112 px of a 246×144 canvas), so a plain `object-fit: contain` made them tiny. `ST.examLogo` stores each file's measured visible-content box and positions the image inside the slot with CSS so the mark fills it. The PNGs in `/brand` stay byte-for-byte as supplied. Slots keep a white tile in dark mode so the logos' own colours read correctly. The missing-file fallback (D-008) stays as a safety net. Flutter/Next will use the same crop boxes (or owner-supplied trimmed files).

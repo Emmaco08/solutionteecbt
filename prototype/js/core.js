@@ -12,9 +12,16 @@
   ST.def = (id, cfg) => { ST.screens[id] = Object.assign({ id }, cfg); ST.order.push(id); };
 
   const BODIES = { JAMB: 'jamb.png', WAEC: 'waec.png', NECO: 'neco.png' };
+  // Visible-content box of each owner-supplied PNG [x, y, w, h, imageW, imageH], measured from the alpha channel.
+  // The files keep transparent margins; we crop on screen with CSS so the logo fills its slot. Files are never edited.
+  const CROP = { JAMB: [69, 16, 115, 112, 246, 144], WAEC: [95, 18, 339, 329, 554, 361], NECO: [90, 41, 314, 314, 494, 404] };
+  const cropStyle = body => {
+    const [x, y, w, h, W] = CROP[body], m = Math.max(w, h);
+    return `width:${(W / m * 100).toFixed(2)}%;left:${((-x + (m - w) / 2) / m * 100).toFixed(2)}%;top:${((-y + (m - h) / 2) / m * 100).toFixed(2)}%`;
+  };
   /** Exam-body logo: always the real file from /brand/exam-bodies; a labelled empty slot if the file is missing. */
   ST.examLogo = (body, size = '') =>
-    `<span class="exam-logo ${size}" data-file="${BODIES[body]}" data-short="${body}" title="${body}"><img src="/brand/exam-bodies/${BODIES[body]}" alt="${body} logo" onerror="this.parentNode.classList.add('missing');this.remove()"></span>`;
+    `<span class="exam-logo ${size}" data-file="${BODIES[body]}" data-short="${body}" title="${body}"><span class="crop"><img src="/brand/exam-bodies/${BODIES[body]}" alt="${body} logo" style="${cropStyle(body)}" onerror="this.closest('.exam-logo').classList.add('missing');this.parentNode.remove()"></span></span>`;
   /** SolutionTee mark (real files from /brand). mark-light = for light surfaces, mark-dark = for dark surfaces. */
   ST.mark = (h = 28) =>
     `<img class="mark-l" src="/brand/mark-light.png" alt="SolutionTee" style="height:${h}px;width:auto"><img class="mark-d" src="/brand/mark-dark.png" alt="SolutionTee" style="height:${h}px;width:auto">`;
