@@ -301,7 +301,7 @@
       <div class="appbar"><span class="title" style="padding-left:12px;font-size:var(--t-h2-size)">Test</span><button class="icon-btn" aria-label="History" data-go="profile">${I('clock-counter-clockwise')}</button></div>
       <div class="scr-body"><div class="pad stack g6" style="padding-top:var(--s-2)">
         <div class="card surface-navy card-pad stack g3" style="position:relative;overflow:hidden">
-          <div class="row g3">${examLogo('JAMB')}<div class="grow"><b>Full JAMB simulation</b><div class="t-cap muted">English + 3 subjects · 180 questions · 2 hours</div></div></div>
+          <div class="row g3">${examLogo('JAMB', 'bare')}<div class="grow"><b>Full JAMB simulation</b><div class="t-cap muted">English + 3 subjects · 180 questions · 2 hours</div></div></div>
           <button class="btn btn-accent btn-block" data-go="test-setup" data-params="body=JAMB">Start full exam</button>
         </div>
         <section><div class="sect-title"><h2 class="t-h3">Practice modes</h2></div>

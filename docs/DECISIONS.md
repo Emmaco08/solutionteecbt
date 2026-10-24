@@ -44,3 +44,9 @@ No full SolutionTee lockup or wordmark file exists in /brand. Screens show the r
 
 **D-013 · 2026-10-24 · Exam-body logos: crop transparent margins on screen, never edit the files**
 The owner's `jamb.png`, `waec.png` and `neco.png` carry wide transparent margins (JAMB's visible mark is only 115×112 px of a 246×144 canvas), so a plain `object-fit: contain` made them tiny. `ST.examLogo` stores each file's measured visible-content box and positions the image inside the slot with CSS so the mark fills it. The PNGs in `/brand` stay byte-for-byte as supplied. Slots keep a white tile in dark mode so the logos' own colours read correctly. The missing-file fallback (D-008) stays as a safety net. Flutter/Next will use the same crop boxes (or owner-supplied trimmed files).
+
+**D-014 · 2026-10-24 · Test tab hero: exam logo without a tile**
+Owner feedback: the white tile looked wrong on the navy "Full JAMB simulation" card. Added a `bare` logo variant (transparent, no border, 60 px instead of 44 px) and used it only there. Every other placement keeps the white tile.
+
+**D-015 · 2026-10-24 · Official Google "G" on sign-in buttons (replaces the icon-font glyph from D-011)**
+Owner asked for the real Google logo. Downloaded Google's own multi-colour "G" SVG, unmodified, from gstatic.com (the asset Google's FirebaseUI sign-in buttons use) into `prototype/vendor/google/` with a SOURCE.md. It is not stored in /brand because it is a third-party mark. Flutter will use the official asset from Google's sign-in branding guidelines.

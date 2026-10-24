@@ -130,7 +130,7 @@
     const inp = b.parentNode.querySelector('input'); const show = inp.type === 'password';
     inp.type = show ? 'text' : 'password'; b.innerHTML = I(show ? 'eye-slash' : 'eye'); b.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
   });
-  const googleBtn = label => `<button class="btn btn-block google-btn" data-toast="Google sign-in opens the native Google account picker">${I('google-logo', 1).replace('class="', 'style="color:#4285F4" class="')} ${label}</button>`;
+  const googleBtn = label => `<button class="btn btn-block google-btn" data-toast="Google sign-in opens the native Google account picker"><img src="vendor/google/google-g.svg" alt="" width="20" height="20"> ${label}</button>`;
 
   def('signup', {
     title: 'Sign up', group: G,

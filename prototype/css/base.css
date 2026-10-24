@@ -187,6 +187,9 @@ p { margin: 0; }
 .exam-logo.sm { width: 28px; height: 28px; border-radius: 7px; }
 .exam-logo.sm.missing::after { content: attr(data-short); font-size: 7px; }
 .exam-logo.lg { width: 64px; height: 64px; border-radius: var(--r-md); }
+/* Bare: no tile, used where the logo sits directly on a coloured card (Test tab hero) */
+.exam-logo.bare { width: 60px; height: 60px; background: transparent; box-shadow: none; border-radius: 0; }
+.exam-logo.bare .crop { inset: 0; }
 
 /* ---------- State blocks ---------- */
 .state { display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--s-3); padding: var(--s-8) var(--s-6); }
