@@ -142,7 +142,8 @@
     const inp = b.parentNode.querySelector('input'); const show = inp.type === 'password';
     inp.type = show ? 'text' : 'password'; b.innerHTML = I(show ? 'eye-slash' : 'eye'); b.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
   });
-  const googleBtn = label => `<button class="btn btn-block google-btn" data-toast="Google sign-in opens the native Google account picker"><img src="vendor/google/google-g.svg" alt="" width="20" height="20"> ${label}</button>`;
+  // gated = sign-up screen: Google sign-up also needs the Terms/Privacy box ticked first
+  const googleBtn = (label, gated) => `<button class="btn btn-block google-btn" ${gated ? 'id="gSignup"' : 'data-toast="Google sign-in opens the native Google account picker"'}><img src="vendor/google/google-g.svg" alt="" width="20" height="20"> ${label}</button>`;
 
   def('signup', {
     title: 'Sign up', group: G,
@@ -152,14 +153,32 @@
         <form class="px5 stack g4 enter" onsubmit="return false" novalidate>
           ${field('Email address', 'email', 'you@example.com', { ic: 'envelope-simple', attrs: 'id="em" autocomplete="email"' })}
           ${field('Password', 'password', 'At least 8 characters', { ic: 'lock-simple', help: 'Use 8+ characters with a number.', attrs: 'id="pw" autocomplete="new-password"' })}
-          <label class="check"><input type="checkbox" id="agree"> <span>I agree to the <a href="#" data-go="help">Terms</a> and <a href="#" data-go="help">Privacy Policy</a>. If I am under 18, my parent or guardian agrees too.</span></label>
+          <div class="consent" id="consent">
+            <label class="check"><input type="checkbox" id="agree" aria-describedby="agreeErr" required> <span>I agree to the <a href="#" data-go="help">Terms</a> and <a href="#" data-go="help">Privacy Policy</a>. If I am under 18, my parent or guardian agrees too.</span></label>
+            <span class="err hidden" id="agreeErr" role="alert">${I('warning-circle', 1)} Please tick the box to agree to the Terms and Privacy Policy.</span>
+          </div>
           <button class="btn btn-primary btn-block" id="go">Create account</button>
           <div class="or">OR</div>
-          ${googleBtn('Continue with Google')}
+          ${googleBtn('Continue with Google', true)}
           <p class="t-sm muted" style="text-align:center;padding-bottom:24px">Already have an account? <a href="#" data-go="login" class="bold">Log in</a></p>
         </form></div>`,
     mount(el) {
       pwToggle(el);
+      const agree = el.querySelector('#agree'), consent = el.querySelector('#consent'), agreeErr = el.querySelector('#agreeErr');
+      const shake = () => { const f = el.querySelector('form'); f.classList.add('shake'); setTimeout(() => f.classList.remove('shake'), 400); };
+      // Terms + Privacy consent is required for every way of creating an account
+      const checkConsent = () => {
+        const ok = agree.checked;
+        consent.classList.toggle('has-error', !ok);
+        agreeErr.classList.toggle('hidden', ok);
+        agree.setAttribute('aria-invalid', String(!ok));
+        return ok;
+      };
+      agree.addEventListener('change', () => { if (agree.checked) checkConsent(); });
+      el.querySelector('#gSignup').onclick = () => {
+        if (!checkConsent()) { shake(); agree.focus(); return; }
+        ST.toast('Google sign-in opens the native Google account picker');
+      };
       el.querySelector('#go').onclick = () => {
         const em = el.querySelector('#em'), pw = el.querySelector('#pw');
         el.querySelectorAll('.field').forEach(f => { f.classList.remove('has-error'); f.querySelector('.err')?.remove(); });
@@ -167,7 +186,8 @@
         const fail = (inp, msg) => { const f = inp.closest('.field'); f.classList.add('has-error'); f.querySelector('.help')?.classList.add('hidden'); f.insertAdjacentHTML('beforeend', `<span class="err">${I('warning-circle', 1)} ${msg}</span>`); bad = true; };
         if (!/^\S+@\S+\.\S+$/.test(em.value)) fail(em, 'Enter a valid email, like tolu@gmail.com');
         if (pw.value.length < 8) fail(pw, 'Password needs at least 8 characters');
-        if (bad) { el.querySelector('form').classList.add('shake'); setTimeout(() => el.querySelector('form').classList.remove('shake'), 400); return; }
+        if (!checkConsent()) bad = true;
+        if (bad) { shake(); (el.querySelector('.field.has-error input') || agree).focus(); return; }
         const b = el.querySelector('#go'); b.classList.add('is-loading'); b.textContent = 'Sending code';
         setTimeout(() => ST.go('otp', { email: em.value }), 900);
       };
@@ -186,6 +206,7 @@
           <button class="btn btn-primary btn-block" data-go="home" data-mode="fade">Log in</button>
           <div class="or">OR</div>
           ${googleBtn('Continue with Google')}
+          <p class="t-cap muted" style="text-align:center">If you are new, continuing with Google creates an account and means you agree to the <a href="#" data-go="help">Terms</a> and <a href="#" data-go="help">Privacy Policy</a>.</p>
           <p class="t-sm muted" style="text-align:center">New here? <a href="#" data-go="signup" class="bold">Create an account</a></p>
         </form></div>`,
     mount: pwToggle

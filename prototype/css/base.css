@@ -230,3 +230,9 @@ p { margin: 0; }
   *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; animation-delay: 0ms !important; transition-duration: 1ms !important; scroll-behavior: auto !important; }
 }
 html.rm *, html.rm *::before, html.rm *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; animation-delay: 0ms !important; transition-duration: 1ms !important; }
+
+/* Required consent checkbox */
+.consent { display: flex; flex-direction: column; gap: var(--s-2); padding: var(--s-3); margin: calc(var(--s-3) * -1); border-radius: var(--r-md); transition: background-color var(--dur-fast); }
+.consent.has-error { background: var(--c-error-soft); }
+.consent.has-error .check input { outline: 2px solid var(--c-error); outline-offset: 2px; border-radius: 4px; }
+.consent.has-error .check { color: var(--c-on-error-soft); }
