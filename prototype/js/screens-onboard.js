@@ -203,7 +203,7 @@
           ${field('Email address', 'email', 'you@example.com', { ic: 'envelope-simple', val: 'tolu.adeyemi@gmail.com' })}
           ${field('Password', 'password', 'Your password', { ic: 'lock-simple', err: 'That password is not correct. Try again or reset it.', val: 'wrongpass' })}
           <a href="#" data-go="forgot" class="t-sm bold" style="align-self:flex-end">Forgot password?</a>
-          <button class="btn btn-primary btn-block" data-go="home" data-mode="fade">Log in</button>
+          <button class="btn btn-primary btn-block" data-go="welcome-back" data-mode="fade">Log in</button>
           <div class="or">OR</div>
           ${googleBtn('Continue with Google')}
           <p class="t-cap muted" style="text-align:center">If you are new, continuing with Google creates an account and means you agree to the <a href="#" data-go="help">Terms</a> and <a href="#" data-go="help">Privacy Policy</a>.</p>
@@ -222,33 +222,68 @@
           <h1 class="t-h1">Check your email</h1>
           <p class="muted">Enter the 6-digit code we sent to <b style="color:var(--c-text)">${ST.esc(p.email || 'tolu.adeyemi@gmail.com')}</b>. It expires in 10 minutes.</p></div>
         <div class="px5 stack g4">
-          <div class="otp" id="otp">${'<input inputmode="numeric" maxlength="1" autocomplete="one-time-code" aria-label="Digit">'.repeat(6)}</div>
-          <p class="err hidden" id="otpErr">${I('warning-circle', 1)} That code is not right. Check and try again.</p>
+          <div class="otp" id="otp">${[0, 1, 2, 3, 4, 5].map(k => `<input inputmode="numeric" pattern="[0-9]*" maxlength="6" ${k ? 'autocomplete="off"' : 'autocomplete="one-time-code"'} aria-label="Digit ${k + 1} of 6">`).join('')}</div>
+          <p class="err hidden" id="otpErr" role="alert">${I('warning-circle', 1)} <span>That code is not right. Check and try again.</span></p>
+          <button class="btn btn-tonal btn-block" id="pasteCode">${I('clipboard-text', 1)} Paste code</button>
           <div class="row between t-sm"><span class="muted" id="cool">Resend code in <b class="tnum">0:60</b></span>
             <button class="btn btn-ghost btn-sm" id="resend" disabled>Resend</button></div>
-          <div class="banner info">${I('info', 1)}<span>Tip: you can paste the code. Try <b>482913</b> (correct) or any other 6 digits (wrong).</span></div>
+          <div class="banner info">${I('info', 1)}<span>Copied the code from your email? Tap <b>Paste code</b>, or long-press a box and paste. <span class="t-cap">Prototype test code: <b>482913</b> works, any other 6 digits show the error.</span> <button class="btn btn-ghost btn-sm" id="copyTest" style="min-height:32px;padding:0 6px">Copy test code</button></span></div>
           <button class="btn btn-ghost" data-back="signup">Change email address</button>
         </div></div>`,
     mount(el) {
-      const boxes = [...el.querySelectorAll('#otp input')], wrap = el.querySelector('#otp');
+      const boxes = [...el.querySelectorAll('#otp input')], wrap = el.querySelector('#otp'), err = el.querySelector('#otpErr');
+      const showErr = msg => { err.querySelector('span').textContent = msg; err.classList.remove('hidden'); };
+      const clearErr = () => { wrap.classList.remove('bad'); err.classList.add('hidden'); };
+      /** Put digits into the boxes starting at box `from` (paste, SMS/email autofill, keyboard suggestion). */
+      const fill = (digits, from = 0) => {
+        clearErr();
+        if (digits.length >= 6) from = 0;                       // a full code always starts at the first box
+        digits.slice(0, 6 - from).split('').forEach((c, k) => { const b = boxes[from + k]; b.value = c; b.classList.remove('filled'); void b.offsetWidth; b.classList.add('filled'); });
+        const next = boxes.find(b => !b.value);
+        (next || boxes[5]).focus();
+        check();
+      };
       const check = () => {
         const code = boxes.map(b => b.value).join('');
         if (code.length < 6) return;
         boxes.forEach(b => b.blur());
         if (code === '482913') { wrap.classList.add('ok'); setTimeout(() => ST.go('setup', { step: 1 }), 600); }
-        else { wrap.classList.add('bad', 'shake'); el.querySelector('#otpErr').classList.remove('hidden');
+        else { wrap.classList.add('bad', 'shake'); showErr('That code is not right. Check and try again.');
           setTimeout(() => { wrap.classList.remove('shake'); }, 400); }
       };
       boxes.forEach((b, i) => {
         b.addEventListener('input', () => {
-          wrap.classList.remove('bad'); el.querySelector('#otpErr').classList.add('hidden');
-          b.value = b.value.replace(/\D/g, '').slice(-1); b.classList.toggle('filled', !!b.value);
-          if (b.value && boxes[i + 1]) boxes[i + 1].focus(); check();
+          clearErr();
+          const d = b.value.replace(/\D/g, '');
+          if (d.length > 1) { b.value = ''; return fill(d, i); }  // several digits at once = pasted or autofilled
+          b.value = d; b.classList.toggle('filled', !!d);
+          if (d && boxes[i + 1]) boxes[i + 1].focus(); check();
         });
         b.addEventListener('keydown', e => { if (e.key === 'Backspace' && !b.value && boxes[i - 1]) { boxes[i - 1].focus(); boxes[i - 1].value = ''; boxes[i - 1].classList.remove('filled'); } });
-        b.addEventListener('paste', e => { e.preventDefault(); const d = (e.clipboardData.getData('text') || '').replace(/\D/g, '').slice(0, 6);
-          d.split('').forEach((c, k) => { boxes[k].value = c; boxes[k].classList.add('filled'); }); (boxes[d.length] || boxes[5]).focus(); check(); });
+        b.addEventListener('paste', e => {
+          e.preventDefault();
+          const d = (e.clipboardData.getData('text') || '').replace(/\D/g, '');
+          if (!d) return showErr('There is no code in what you copied. Copy the 6 digits from the email.');
+          fill(d, i);
+        });
+        b.addEventListener('focus', () => b.select());
       });
+      // Paste button: reads the clipboard (needs https or localhost; falls back to long-press paste)
+      el.querySelector('#pasteCode').onclick = async () => {
+        try {
+          const t = await navigator.clipboard.readText();
+          const d = (t || '').replace(/\D/g, '');
+          if (d.length < 6) return showErr('Copy the 6-digit code from the email first, then tap Paste code.');
+          fill(d.slice(0, 6), 0);
+        } catch (e) {
+          boxes[0].focus();
+          ST.toast('Long-press the first box and tap Paste.', 'clipboard-text');
+        }
+      };
+      el.querySelector('#copyTest').onclick = async () => {
+        try { await navigator.clipboard.writeText('Your SolutionTee code is 482913'); ST.toast('Test code copied. Now tap Paste code.', 'copy'); }
+        catch (e) { ST.toast('Copy is blocked here. Type 482913 instead.', 'info'); }
+      };
       setTimeout(() => boxes[0].focus(), 350);
       let s = 60; const cool = el.querySelector('#cool b'), rb = el.querySelector('#resend');
       const iv = setInterval(() => { if (!el.isConnected) return clearInterval(iv); s--; cool.textContent = `0:${String(s).padStart(2, '0')}`;
@@ -332,8 +367,96 @@
         });
         upd();
       }
-      cont.onclick = () => step < 3 ? ST.go('setup', { step: step + 1 }) : ST.go('tour', null, { mode: 'fade' });
+      cont.onclick = () => {
+        const S = ST.state;
+        if (step === 2) {
+          const ex = [...el.querySelectorAll('[data-multi].on b')].map(b => b.textContent.split(' ')[0]);
+          if (!ex.length) { ST.toast('Pick at least one exam.', 'info'); return; }
+          S.exams = ex; S.target = +el.querySelector('#tgt').value;
+        }
+        if (step === 3) S.subjects = ['Use of English', ...[...el.querySelectorAll('[data-pick].on span:not(.tick)')].map(x => x.textContent)];
+        step < 3 ? ST.go('setup', { step: step + 1 }) : ST.go('welcome-new', null, { mode: 'fade' });
+      };
     }
+  });
+
+
+  // ---------- Welcome (new account): after profile setup, before the tour ----------
+  const SUBJ_IC = Object.fromEntries([['Use of English', 'book-open-text'], ...SUBJECTS]);
+  def('welcome-new', {
+    title: 'Welcome (new account)', group: G, navy: true,
+    render: () => {
+      const S = ST.state, exams = S.exams || ['JAMB', 'WAEC'], subjects = S.subjects || ['Use of English', 'Mathematics', 'Physics', 'Chemistry'], target = S.target || 290;
+      return `
+      <canvas id="confetti"></canvas>
+      <div class="scr-body" style="display:flex;flex-direction:column">
+        <div class="stack center g3" style="padding:var(--s-6) var(--s-6) var(--s-5);text-align:center">
+          <div class="wn-badge">
+            <svg viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="54" class="wn-track"/><circle cx="60" cy="60" r="54" class="wn-ring" pathLength="1"/></svg>
+            ${ST.avatar('xl wn-avatar')}
+            <span class="wn-check">${I('check-fat', 1)}</span>
+          </div>
+          <h1 class="t-h1 wn-in" style="--i:1;color:#F4F7FC">Welcome to SolutionTee, ${S.first}!</h1>
+          <p class="wn-in" style="--i:2;color:#AFC0DD;max-width:30ch">Your account is ready. Here is the plan we made for you.</p>
+        </div>
+        <div class="px5 stack g3 enter" style="padding-bottom:var(--s-4)">
+          <div class="wn-row"><span class="wn-ic">${I('exam', 1)}</span><div class="grow"><span class="wn-label">Your exams</span>
+            <div class="row g2 mt2">${exams.map(b => `<span class="row g2 wn-chip">${examLogo(b, 'sm')}${b}</span>`).join('')}</div></div></div>
+          <div class="wn-row"><span class="wn-ic">${I('books', 1)}</span><div class="grow"><span class="wn-label">JAMB subjects</span>
+            <div class="row wrap g2 mt2">${subjects.map(x => `<span class="wn-chip">${I(SUBJ_IC[x] || 'book-open')} ${x}</span>`).join('')}</div></div></div>
+          <div class="wn-row"><span class="wn-ic">${I('target', 1)}</span><div class="grow"><div class="row between"><span class="wn-label">Target score</span><b class="tnum" style="color:#fff">${target}<span style="color:#AFC0DD;font-weight:500"> / 400</span></b></div>
+            <div class="bar mt2" style="background:rgba(255,255,255,.14)"><i class="wn-fill" style="width:${Math.round(target / 4)}%;background:var(--gold-400)"></i></div></div></div>
+          <div class="wn-row"><span class="wn-ic">${I('gift', 1)}</span><div class="grow"><span class="wn-label">Free plan</span>
+            <p class="t-sm" style="color:#DCE4F2">JAMB 2000 to 2002 and 3 AI prompts a day. <a href="#" data-sheet="paywall" style="color:var(--gold-400)" class="bold">See Premium</a></p></div></div>
+        </div>
+        <div class="footer-cta clean stack g2" style="background:transparent;margin-top:auto">
+          <button class="btn btn-accent btn-block" data-go="tour" data-mode="fade">${I('map-trifold', 1)} Take a 30-second tour</button>
+          <button class="btn btn-ghost" id="skipTour" style="color:#DCE4F2">Skip, go to Home</button>
+        </div>
+      </div>`;
+    },
+    mount(el) {
+      if (!ST.reduceMotion()) setTimeout(() => el.isConnected && ST.confetti(el.querySelector('#confetti')), 650);
+      el.querySelector('#skipTour').onclick = () => { ST.go('home', null, { mode: 'fade' }); setTimeout(() => ST.toast('You can replay the tour any time from Me, then Help.', 'map-trifold'), 400); };
+    }
+  });
+
+  // ---------- Welcome back: after log in ----------
+  def('welcome-back', {
+    title: 'Welcome back (after log in)', group: G,
+    render: () => {
+      const S = ST.state, h = new Date().getHours();
+      const hello = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+      const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'], today = (new Date().getDay() + 6) % 7, done = S.streak || 6;
+      return `
+      <div class="scr-body" style="display:flex;flex-direction:column">
+        <div class="stack center g3" style="padding:var(--s-7) var(--s-6) var(--s-5);text-align:center">
+          <div class="wb-avatar">${ST.avatar('xl')}<span class="wb-wave">${I('hand-waving', 1)}</span></div>
+          <p class="muted t-lg wn-in" style="--i:1">${hello},</p>
+          <h1 class="t-display wn-in" style="--i:2">Welcome back, ${S.first}</h1>
+        </div>
+        <div class="px5 stack g4 enter">
+          <section class="card card-pad stack g3">
+            <div class="row g3"><span class="wb-flame">${I('fire', 1)}</span><div class="grow"><b>${done}-day streak</b><p class="t-sm muted">Answer one question today to make it ${done + 1}.</p></div></div>
+            <div class="week">${days.map((d, k) => `<span class="${k < today ? 'done' : k === today ? 'today' : ''}" style="--i:${k}"><i>${k < today ? I('check', 1) : ''}</i>${d}</span>`).join('')}</div>
+          </section>
+          <button class="card card-tap continue-card" data-go="cbt" data-params="resume=1">
+            <div class="ic blue" style="width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:22px">${I('clock-counter-clockwise', 1)}</div>
+            <div class="grow"><b class="t-sm">Pick up where you stopped</b><div class="t-cap muted">JAMB Mock · 64 of 180 answered · 1:12:40 left</div><div class="bar mt2"><i data-v="36%"></i></div></div>
+            ${I('caret-right')}
+          </button>
+          <section class="card list">
+            <div class="list-item"><span class="lead" style="background:var(--c-accent-soft);color:var(--c-on-accent-soft)">${I('sparkle', 1)}</span><span class="grow"><b class="t-sm">New since your last visit</b><div class="t-cap muted">JAMB 2026 Physics is now available</div></span></div>
+            <div class="list-item"><span class="lead">${I('video-camera', 1)}</span><span class="grow"><b class="t-sm">Free Maths revision class</b><div class="t-cap muted">Saturday · 10:00 AM</div></span></div>
+          </section>
+        </div>
+        <div class="footer-cta clean stack g2" style="margin-top:auto">
+          <button class="btn btn-primary btn-block" data-go="cbt" data-params="resume=1">Continue my test</button>
+          <button class="btn btn-ghost" data-go="home" data-mode="fade">Go to Home</button>
+        </div>
+      </div>`;
+    },
+    mount: el => ST.animateBars(el)
   });
 
   // ---------- Guided tour (spotlight on Home) ----------
