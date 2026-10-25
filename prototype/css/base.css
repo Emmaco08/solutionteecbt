@@ -236,3 +236,11 @@ html.rm *, html.rm *::before, html.rm *::after { animation-duration: 1ms !import
 .consent.has-error { background: var(--c-error-soft); }
 .consent.has-error .check input { outline: 2px solid var(--c-error); outline-offset: 2px; border-radius: 4px; }
 .consent.has-error .check { color: var(--c-on-error-soft); }
+
+/* Redeem / discount codes */
+.code-input { font-family: var(--font-mono); letter-spacing: 1.5px; text-transform: uppercase; }
+.code-input::placeholder { letter-spacing: .5px; text-transform: none; font-family: var(--font-sans); }
+.code-ok { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-3) var(--s-2) var(--s-3) var(--s-4); border-radius: var(--r-md);
+  background: var(--c-success-soft); color: var(--c-on-success-soft); border: 1.5px dashed var(--c-success); }
+.code-ok > .ph-fill { font-size: 26px; flex: none; }
+.code-ok .icon-btn { color: var(--c-on-success-soft); }

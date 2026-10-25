@@ -129,29 +129,83 @@
         });
       };
 
-      // Calculator
+      // Calculator: a clear display panel (sum on top, answer below, auto-shrinks to fit),
+      // thousands separators, correct operator chaining and keyboard support on laptops.
       el.querySelector('#calcBtn').onclick = () => {
         const keys = ['C', '⌫', '%', '÷', '7', '8', '9', '×', '4', '5', '6', '−', '1', '2', '3', '+', '±', '0', '.', '='];
         ST.sheet(`<div class="row between"><h2 class="t-h3">Calculator</h2><button class="icon-btn" data-close aria-label="Close">${I('x')}</button></div>
-          <div class="calc-screen"><div class="expr" id="cx"></div><div class="val" id="cv">0</div></div>
-          <div class="calc">${keys.map(k => `<button class="${'÷×−+%'.includes(k) ? 'op' : k === '=' ? 'eq' : ''}" data-k="${k}">${k}</button>`).join('')}</div>`, {
+          <div class="calc-screen"><div class="expr" id="cx" aria-label="Sum"></div><div class="val" id="cv" role="status" aria-live="polite">0</div></div>
+          <div class="calc">${keys.map(k => `<button class="${'÷×−+%'.includes(k) ? 'op' : k === '=' ? 'eq' : ''}" data-k="${k}" aria-label="${{ '⌫': 'Delete', '±': 'Plus or minus', '÷': 'Divide', '×': 'Times', '−': 'Minus', '%': 'Percent', 'C': 'Clear' }[k] || k}">${k}</button>`).join('')}</div>`, {
           mount: w => {
-            let expr = '', cur = '0';
+            let expr = [], cur = '0', done = false, err = '';
             const cx = w.querySelector('#cx'), cv = w.querySelector('#cv');
-            const show = () => { cx.textContent = expr; cv.textContent = cur; };
-            const evaluate = s => { const js = s.replace(/×/g, '*').replace(/÷/g, '/').replace(/−/g, '-'); if (!/^[\d.+\-*/() ]+$/.test(js)) return 'Error';
-              try { const v = Function('"use strict";return (' + js + ')')(); return Number.isFinite(v) ? String(+v.toFixed(10)) : 'Error'; } catch (e) { return 'Error'; } };
-            w.querySelectorAll('[data-k]').forEach(b => b.onclick = () => {
-              const k = b.dataset.k;
-              if (k === 'C') { expr = ''; cur = '0'; }
-              else if (k === '⌫') cur = cur.length > 1 ? cur.slice(0, -1) : '0';
-              else if (k === '±') cur = cur.startsWith('-') ? cur.slice(1) : (cur === '0' ? '0' : '-' + cur);
-              else if (k === '%') cur = String(parseFloat(cur) / 100);
-              else if ('÷×−+'.includes(k)) { expr += cur + ' ' + k + ' '; cur = '0'; }
-              else if (k === '=') { const r = evaluate(expr + cur); expr = expr + cur + ' ='; cur = r; }
-              else { if (expr.endsWith('=')) expr = ''; cur = cur === '0' && k !== '.' ? k : (k === '.' && cur.includes('.') ? cur : cur + k); }
+            // 12193209765585 -> 12,193,209,765,585 ; very large/small -> 1.2193210e+13
+            const fmt = t => {
+              if (t === '' || t === '-') return t || '0';
+              const n = Number(t);
+              if (Math.abs(n) >= 1e15 || (n !== 0 && Math.abs(n) < 1e-9)) {        // scientific, as taught: 9.99999 × 10²⁰
+                const [m, e] = n.toExponential(8).split('e');
+                const sup = String(+e).replace(/-/g, '⁻').replace(/\d/g, d => '⁰¹²³⁴⁵⁶⁷⁸⁹'[d]);
+                return m.replace(/\.?0+$/, '').replace('-', '−') + ' × 10' + sup;
+              }
+              const [i, d] = t.split('.');
+              const neg = i.startsWith('-'), digits = neg ? i.slice(1) : i;
+              return (neg ? '−' : '') + digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (d !== undefined ? '.' + d : '');
+            };
+            const fit = () => {                    // shrink the answer until it fits on one line
+              let size = 40; cv.style.fontSize = size + 'px';
+              while (cv.scrollWidth > cv.clientWidth && size > 20) { size -= 2; cv.style.fontSize = size + 'px'; }
+            };
+            const show = () => {
+              cx.textContent = expr.map(t => '÷×−+'.includes(t) ? ` ${t} ` : fmt(t)).join('') + (done ? ' =' : '');
+              cx.scrollLeft = cx.scrollWidth;
+              cv.classList.toggle('err', !!err);
+              cv.textContent = err || fmt(cur);
+              fit();
+            };
+            const calc = toks => {
+              const js = toks.map(t => ({ '÷': '/', '×': '*', '−': '-', '+': '+' }[t] || `(${t})`)).join('');
+              if (!/^[\d.()+\-*/e]+$/.test(js)) return { e: 'Error' };
+              if (/\/\(-?0(\.0*)?\)/.test(js)) return { e: "Can't divide by 0" };
+              try { const v = Function('"use strict";return (' + js + ')')(); return Number.isFinite(v) ? { v: String(+v.toPrecision(15)) } : { e: 'Error' }; }
+              catch (e) { return { e: 'Error' }; }
+            };
+            const press = k => {
+              if (k === 'C') { expr = []; cur = '0'; done = false; err = ''; }
+              else if (err) { expr = []; cur = '0'; done = false; err = ''; if (/[\d.]/.test(k)) press(k); return; }
+              else if (/^\d$/.test(k) || k === '.') {
+                if (done) { expr = []; cur = '0'; done = false; }
+                if (k === '.') { if (!cur.includes('.')) cur = (cur === '' ? '0' : cur) + '.'; }
+                else if (cur.replace(/[-.]/g, '').length < 15) cur = (cur === '0' ? '' : cur === '-0' ? '-' : cur) + k;
+              }
+              else if ('÷×−+'.includes(k)) {
+                if (done) { expr = [cur]; done = false; cur = ''; expr.push(k); }
+                else if (cur === '' && expr.length) expr[expr.length - 1] = k;      // change operator
+                else { expr.push(cur.replace(/\.$/, ''), k); cur = ''; }
+              }
+              else if (k === '=') {
+                if (done) return;
+                const toks = cur === '' ? expr.slice(0, -1) : [...expr, cur.replace(/\.$/, '')];
+                if (toks.length < 3) { if (cur === '') cur = toks[0] || '0'; expr = []; show(); return; }
+                const r = calc(toks); expr = toks; done = true;
+                if (r.e) err = r.e; else cur = r.v;
+              }
+              else if (k === '⌫') { if (done) { expr = []; done = false; } else cur = cur.length > 1 && cur !== '-0' ? cur.slice(0, -1).replace(/^-$/, '0') : (cur === '' && expr.length ? (expr.pop(), expr.pop() || '0') : '0'); }
+              else if (k === '±') { if (cur && cur !== '0') cur = cur.startsWith('-') ? cur.slice(1) : '-' + cur; }
+              else if (k === '%') { if (cur) cur = String(+(Number(cur) / 100).toPrecision(15)); }
               show();
-            });
+            };
+            w.querySelectorAll('[data-k]').forEach(b => b.onclick = () => press(b.dataset.k));
+            const keyMap = { '/': '÷', '*': '×', 'x': '×', '-': '−', '+': '+', 'Enter': '=', '=': '=', 'Backspace': '⌫', 'Escape': 'C', 'Delete': 'C', '%': '%', '.': '.', ',': '.' };
+            const onKey = e => {
+              if (!w.isConnected) return document.removeEventListener('keydown', onKey);
+              const k = /^\d$/.test(e.key) ? e.key : keyMap[e.key];
+              if (!k) return;
+              e.preventDefault(); press(k);
+              const btn = w.querySelector(`[data-k="${k}"]`); if (btn) { btn.classList.add('pressed'); setTimeout(() => btn.classList.remove('pressed'), 120); }
+            };
+            document.addEventListener('keydown', onKey);
+            show();
           }
         });
       };

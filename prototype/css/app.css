@@ -280,9 +280,13 @@ body.proto { background: var(--c-canvas); min-height: 100dvh; overflow: hidden; 
 .calc button:active { transform: scale(.94); }
 .calc button.op { background: var(--c-secondary-soft); color: var(--c-on-secondary-soft); }
 .calc button.eq { background: var(--c-primary); color: var(--c-on-primary); }
-.calc-screen { text-align: right; padding: var(--s-3) var(--s-2); }
-.calc-screen .expr { font-size: 14px; color: var(--c-text-muted); min-height: 20px; font-variant-numeric: tabular-nums; }
-.calc-screen .val { font-size: 34px; font-weight: var(--w-bold); font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; }
+.calc-screen { display: flex; flex-direction: column; justify-content: flex-end; gap: 4px; height: 108px; margin: var(--s-3) 0 var(--s-4); padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-lg); background: var(--c-surface-sunken); box-shadow: inset 0 1px 2px rgba(var(--c-shadow-tint), .08); text-align: right; overflow: hidden; }
+.calc-screen .expr { font-size: 15px; line-height: 22px; min-height: 22px; color: var(--c-text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; overflow-x: auto; scrollbar-width: none; }
+.calc-screen .expr::-webkit-scrollbar { display: none; }
+.calc-screen .val { font-size: 40px; line-height: 1.15; font-weight: var(--w-bold); color: var(--c-text); font-variant-numeric: tabular-nums; letter-spacing: -.5px; white-space: nowrap; overflow: hidden; }
+.calc-screen .val.err { font-size: 22px !important; color: var(--c-error); letter-spacing: 0; }
+.calc button.pressed { transform: scale(.94); }
 .sum-row { display: grid; grid-template-columns: 1fr repeat(3, 56px); gap: 6px; align-items: center; font-size: 13px; padding: 8px 0; }
 .sum-row + .sum-row { border-top: 1px solid var(--c-border); }
 .sum-row span:not(:first-child) { text-align: center; font-weight: var(--w-bold); font-variant-numeric: tabular-nums; }
@@ -525,3 +529,4 @@ html.rm [class*="fx-"], html.rm [class*="fx-"]::after { animation: none !importa
 .week span.done i { background: var(--c-accent); color: var(--c-on-accent); animation: st-pop var(--dur-base) var(--ease-emphasized) both; animation-delay: calc(500ms + var(--i) * 70ms); }
 .week span.today { color: var(--c-text); }
 .week span.today i { box-shadow: inset 0 0 0 2px var(--c-accent); animation: st-pulse 1.6s ease-in-out infinite; }
+body:has(#overlay > *) .proto-fab { display: none !important; }

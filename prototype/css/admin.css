@@ -73,3 +73,4 @@ body.admin { background: var(--c-bg); min-height: 100dvh; }
 @media (max-width: 1100px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } .two, .editor-grid { grid-template-columns: 1fr; } .preview { position: static; } }
 @media (max-width: 760px) { .adm { grid-template-columns: 1fr; } .side { position: static; height: auto; } .topbar .search { display: none; } .page { padding: var(--s-4); } }
 .tab-row .input { min-width: 0; } .tab-row .input input { width: 100%; padding: 0 10px; }
+.gen-code { padding: 4px 0 4px 12px; border-radius: 8px; background: var(--c-surface-alt); margin-bottom: 4px; }

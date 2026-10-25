@@ -223,6 +223,194 @@
     el.querySelector('#savePl').onclick = () => toast('Saved. Limits apply immediately. Logged in audit log.');
   };
 
+  // ---------- Redeem codes ----------
+  const PLAN_NAMES = { m: 'Monthly', q: '3 Months', e: 'Exam Season' };
+  const PLAN_PRICES = { m: 1500, q: 3500, e: 6000 };
+  const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';   // no 0/O, 1/I/L: easy to read out and type
+  const randBlock = n => { const a = new Uint32Array(n); crypto.getRandomValues(a); return [...a].map(x => CODE_ALPHABET[x % CODE_ALPHABET.length]).join(''); };
+  const CODE_ROWS = [
+    { code: 'LOYOLA20', type: 'pct', value: 20, plans: ['m', 'q', 'e'], used: 128, max: 300, ends: '2026-12-31', status: 'active', note: 'Loyola College partnership', by: 'Ada Okoye' },
+    { code: 'WELCOME500', type: 'amt', value: 500, plans: ['q', 'e'], used: 412, max: null, ends: '2027-03-31', status: 'active', note: 'New-student offer', by: 'Ada Okoye', newOnly: true },
+    { code: 'EXAM25', type: 'pct', value: 25, plans: ['e'], used: 57, max: 500, ends: '2027-07-31', status: 'active', note: 'Exam season push', by: 'Musa Bello' },
+    { code: 'FREEWEEK', type: 'days', value: 7, plans: [], used: 89, max: 200, ends: '2026-11-30', status: 'active', note: 'Teacher giveaway', by: 'Ngozi Eze' },
+    { code: 'STEE-····-····', batch: 50, type: 'pct', value: 30, plans: ['m', 'q', 'e'], used: 31, max: 50, ends: '2026-12-15', status: 'active', note: 'Unique codes for class reps', by: 'Ada Okoye' },
+    { code: 'EXPIRED10', type: 'pct', value: 10, plans: ['m', 'q', 'e'], used: 240, max: 250, ends: '2026-09-30', status: 'expired', note: 'Back-to-school', by: 'Musa Bello' }
+  ];
+  const valueText = r => r.type === 'pct' ? `${r.value}% off` : r.type === 'amt' ? `${naira(r.value)} off` : `${r.value} free Premium days`;
+  const fmtDate = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'No end date';
+  const statusBadge = s => ({ active: '<span class="badge badge-success">Active</span>', paused: '<span class="badge badge-warning">Paused</span>', expired: '<span class="badge badge-neutral">Expired</span>' }[s]);
+
+  P.codes = () => `
+    <div class="page-head"><div><span class="t-sm muted">People & money</span><h1 class="t-h1 mt2">Redeem codes</h1><p class="muted mt2">Give students a discount or free Premium days. Every code is checked on the server when it is used.</p></div>
+      <span class="badge badge-sample">SAMPLE DATA</span></div>
+    <div class="kpi-grid">
+      ${[['Active codes', '5', 'ticket'], ['Used this month', '438', 'check-circle'], ['Discount given', naira(184500), 'currency-ngn'], ['Paid by code users', naira(1262000), 'trend-up']].map(([l, v, ic]) => `
+        <div class="card kpi-tile"><div class="row between"><span class="t-sm muted bold">${l}</span><span class="ic navy" style="width:32px;height:32px;border-radius:9px;display:grid;place-items:center;font-size:16px">${I(ic, 1)}</span></div><b>${v}</b></div>`).join('')}
+    </div>
+    <div class="banner info" style="margin-top:16px">${I('google-play-logo', 1)}<span><b>Where codes work:</b> discount codes apply to Paystack payments (website and direct APK). In the Play Store app, Google only allows Google Play promo codes for discounts; create those in Play Console. Free-day codes are redeemed in the app under Me, then Redeem a code.</span></div>
+
+    <div class="two" style="grid-template-columns:1.25fr 1fr">
+      <section class="card card-pad stack g4" id="gen">
+        <h2 class="t-h3">Create codes</h2>
+        <div class="field"><label>The code gives</label><div class="seg" id="gType"><button class="on" data-t="pct">% off</button><button data-t="amt">₦ off</button><button data-t="days">Free Premium days</button></div></div>
+        <div class="grid2">
+          <div class="field" id="fVal"><label for="gVal" id="gValLabel">Percentage off</label><div class="input"><span class="lead-ic bold" id="gPre" style="display:none">₦</span><input id="gVal" type="number" min="1" value="20"><span class="t-sm muted" id="gSuf" style="padding-right:12px">%</span></div></div>
+          <div class="field" id="fPlans"><label>Works on plans</label><div class="row g2 wrap" id="gPlans">${Object.entries(PLAN_NAMES).map(([id, n]) => `<button class="chip on" data-plan="${id}">${n}</button>`).join('')}</div></div>
+        </div>
+        <div class="field"><label>Code style</label><div class="seg" id="gStyle"><button class="on" data-s="shared">One shared code</button><button data-s="unique">Unique codes (one per student)</button></div>
+          <span class="help" id="gStyleHelp">One code many students can use, e.g. for a school or a WhatsApp group.</span></div>
+        <div class="grid2" id="sharedBox">
+          <div class="field" id="fCode"><label for="gCode">Code</label><div class="row g2"><div class="input grow"><input id="gCode" class="code-input" value="ADEOLA15" maxlength="20" autocomplete="off"></div><button class="btn btn-outline" id="gRand" title="Random code">${I('shuffle')}</button></div>
+            <span class="help">Letters and numbers only, 4 to 20 characters. Not case sensitive.</span></div>
+          <div class="field"><label for="gMax">Total uses allowed</label><div class="input"><input id="gMax" type="number" min="1" placeholder="No limit" value="200"></div><span class="help">Leave empty for no limit.</span></div>
+        </div>
+        <div class="grid2 hidden" id="uniqueBox">
+          <div class="field"><label for="gPrefix">Prefix</label><div class="input"><input id="gPrefix" class="code-input" value="STEE" maxlength="8"></div><span class="help">Codes look like <span class="code-input" id="gSample">STEE-7K3P-Q9XD</span></span></div>
+          <div class="field" id="fCount"><label for="gCount">How many codes</label><div class="input"><input id="gCount" type="number" min="1" max="1000" value="50"></div><span class="help">Up to 1,000 at a time. Each works once.</span></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label for="gFrom">Starts</label><div class="input"><input id="gFrom" type="date" value="2026-10-25"></div></div>
+          <div class="field" id="fEnd"><label for="gEnd">Ends</label><div class="input"><input id="gEnd" type="date" value="2026-12-31"></div></div>
+        </div>
+        <div class="stack g3">
+          <label class="row between t-sm bold"><span>One use per student</span><span class="switch"><input type="checkbox" id="gOnce" checked><span></span></span></label>
+          <label class="row between t-sm bold"><span>New students only (first payment)</span><span class="switch"><input type="checkbox" id="gNew"><span></span></span></label>
+        </div>
+        <div class="field"><label for="gNote">Internal note (students do not see this)</label><div class="input"><input id="gNote" placeholder="e.g. Adeola High School, SS3 class" value=""></div></div>
+        <div class="row g3"><button class="btn btn-primary" id="gGo">${I('ticket', 1)} Create code</button><span class="t-cap muted">Logged in the audit log.</span></div>
+      </section>
+
+      <aside class="stack g4">
+        <section class="card card-pad stack g3"><div class="row between"><b>Student sees at checkout</b><span class="badge badge-soft">Preview</span></div>
+          <div id="gPreview"></div></section>
+        <section class="card card-pad stack g3 hidden" id="gResult"></section>
+      </aside>
+    </div>
+
+    <section class="card" style="margin-top:16px;overflow:hidden">
+      <div class="row between card-pad wrap g3"><h2 class="t-h3">All codes</h2>
+        <div class="row g3 wrap"><div class="input" style="min-height:40px;width:220px"><i class="ph ph-magnifying-glass lead-ic"></i><input id="cSearch" placeholder="Search code or note" style="min-height:40px"></div>
+          <div class="seg" id="cFilter" style="width:300px"><button class="on" data-f="all">All</button><button data-f="active">Active</button><button data-f="paused">Paused</button><button data-f="expired">Expired</button></div>
+          <button class="btn btn-outline btn-sm" id="cCsv">${I('download-simple')} Export CSV</button></div></div>
+      <div style="overflow:auto"><table class="tbl"><thead><tr><th>Code</th><th>Gives</th><th>Plans</th><th style="width:170px">Used</th><th>Ends</th><th>Status</th><th>Note</th><th></th></tr></thead><tbody id="cRows"></tbody></table></div>
+    </section>`;
+
+  P.codes.mount = el => {
+    const $ = s => el.querySelector(s);
+    let type = 'pct', style = 'shared', filter = 'all';
+    const plans = () => [...el.querySelectorAll('#gPlans .chip.on')].map(c => c.dataset.plan);
+    const err = (fieldId, msg) => { const f = $(fieldId); f.classList.add('has-error'); f.insertAdjacentHTML('beforeend', `<span class="err">${I('warning-circle', 1)} ${msg}</span>`); };
+    const clearErrs = () => el.querySelectorAll('#gen .field').forEach(f => { f.classList.remove('has-error'); f.querySelector('.err')?.remove(); });
+
+    const preview = () => {
+      const v = +$('#gVal').value || 0, ps = plans(), code = style === 'shared' ? ($('#gCode').value || 'CODE') : `${$('#gPrefix').value || 'STEE'}-7K3P-Q9XD`;
+      if (type === 'days') {
+        $('#gPreview').innerHTML = `<div class="code-ok" style="border-style:solid">${I('gift', 1)}<span class="grow"><b class="t-sm">${v} days of Premium added!</b><br><span class="t-cap">Redeemed with <span class="code-input">${code}</span> in Me, then Redeem a code</span></span></div>`;
+        return;
+      }
+      const pid = ps.includes('q') ? 'q' : ps[0] || 'q', price = PLAN_PRICES[pid];
+      const off = type === 'pct' ? Math.round(price * Math.min(v, 100) / 100) : Math.min(v, price);
+      $('#gPreview').innerHTML = `<div class="stack g2 t-sm">
+        <div class="row between"><span class="muted">SolutionTee Premium · ${PLAN_NAMES[pid]}</span><span class="tnum">${naira(price)}</span></div>
+        <div class="row between" style="color:var(--c-success)"><span class="row g1">${I('ticket', 1)} <span class="code-input">${code}</span> · ${type === 'pct' ? v + '% off' : naira(v) + ' off'}</span><b class="tnum">−${naira(off)}</b></div>
+        <hr class="divider"><div class="row between"><b>Total</b><b class="t-h3 tnum">${naira(price - off)}</b></div>
+        ${ps.length < 3 ? `<p class="t-cap muted">Only works on: ${ps.map(id => PLAN_NAMES[id]).join(', ') || 'no plan selected'}.</p>` : ''}</div>`;
+    };
+
+    $('#gType').querySelectorAll('button').forEach(b => b.onclick = () => {
+      type = b.dataset.t; $('#gType').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+      $('#gValLabel').textContent = { pct: 'Percentage off', amt: 'Amount off', days: 'Number of free days' }[type];
+      $('#gPre').style.display = type === 'amt' ? '' : 'none';
+      $('#gSuf').textContent = type === 'pct' ? '%' : type === 'days' ? 'days' : '';
+      $('#gVal').value = { pct: 20, amt: 500, days: 7 }[type];
+      $('#fPlans').classList.toggle('hidden', type === 'days');
+      clearErrs(); preview();
+    });
+    $('#gStyle').querySelectorAll('button').forEach(b => b.onclick = () => {
+      style = b.dataset.s; $('#gStyle').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+      $('#sharedBox').classList.toggle('hidden', style !== 'shared'); $('#uniqueBox').classList.toggle('hidden', style === 'shared');
+      $('#gStyleHelp').textContent = style === 'shared' ? 'One code many students can use, e.g. for a school or a WhatsApp group.' : 'A list of different codes, each usable once. Good for giving one code to each student.';
+      clearErrs(); preview();
+    });
+    el.querySelectorAll('#gPlans .chip').forEach(c => c.onclick = () => { c.classList.toggle('on'); preview(); });
+    $('#gRand').onclick = () => { $('#gCode').value = randBlock(8); clearErrs(); preview(); };
+    $('#gCode').oninput = () => { $('#gCode').value = $('#gCode').value.toUpperCase().replace(/[^A-Z0-9]/g, ''); clearErrs(); preview(); };
+    $('#gPrefix').oninput = () => { $('#gPrefix').value = $('#gPrefix').value.toUpperCase().replace(/[^A-Z0-9]/g, ''); $('#gSample').textContent = `${$('#gPrefix').value || 'STEE'}-7K3P-Q9XD`; preview(); };
+    $('#gVal').oninput = () => { clearErrs(); preview(); };
+
+    const drawRows = () => {
+      const q = $('#cSearch').value.trim().toUpperCase();
+      const rows = CODE_ROWS.filter(r => (filter === 'all' || r.status === filter) && (!q || r.code.includes(q) || (r.note || '').toUpperCase().includes(q)));
+      $('#cRows').innerHTML = rows.map(r => {
+        const pct = r.max ? Math.min(100, Math.round(r.used / r.max * 100)) : 0;
+        return `<tr><td><b class="code-input">${r.code}</b>${r.batch ? `<div class="t-cap muted">${r.batch} unique codes</div>` : ''}${r.newOnly ? '<div class="t-cap muted">New students only</div>' : ''}</td>
+          <td>${valueText(r)}</td><td class="t-cap">${r.type === 'days' ? '<span class="muted">Not for checkout</span>' : r.plans.map(id => PLAN_NAMES[id]).join(', ')}</td>
+          <td><div class="row between t-cap"><b class="tnum">${r.used.toLocaleString()}</b><span class="muted">${r.max ? 'of ' + r.max.toLocaleString() : 'no limit'}</span></div>${r.max ? `<div class="bar mt2" style="height:6px"><i style="width:${pct}%"></i></div>` : ''}</td>
+          <td class="t-cap">${fmtDate(r.ends)}</td><td>${statusBadge(r.status)}</td><td class="t-cap muted" style="max-width:180px">${r.note || ''}</td>
+          <td><div class="row g1"><button class="icon-btn" data-copy="${r.code}" aria-label="Copy code" ${r.batch ? 'disabled' : ''}>${I('copy')}</button>
+            ${r.status === 'expired' ? '' : `<button class="icon-btn" data-toggle="${r.code}" aria-label="${r.status === 'active' ? 'Pause' : 'Resume'} code" title="${r.status === 'active' ? 'Pause' : 'Resume'}">${I(r.status === 'active' ? 'pause-circle' : 'play-circle')}</button>`}</div></td></tr>`;
+      }).join('') || `<tr><td colspan="8" class="muted" style="text-align:center;padding:24px">No codes match.</td></tr>`;
+      el.querySelectorAll('[data-copy]').forEach(b => b.onclick = () => { navigator.clipboard?.writeText(b.dataset.copy).catch(() => {}); toast(`Copied ${b.dataset.copy}`); });
+      el.querySelectorAll('[data-toggle]').forEach(b => b.onclick = () => { const r = CODE_ROWS.find(x => x.code === b.dataset.toggle); r.status = r.status === 'active' ? 'paused' : 'active'; drawRows(); toast(`${r.code} ${r.status === 'paused' ? 'paused. Students cannot use it until you resume it.' : 'is active again.'}`); });
+    };
+    $('#cSearch').oninput = drawRows;
+    $('#cFilter').querySelectorAll('button').forEach(b => b.onclick = () => { filter = b.dataset.f; $('#cFilter').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); drawRows(); });
+
+    const csv = (rows, name) => {
+      const head = 'code,gives,plans,used,max_uses,ends,status,note';
+      const body = rows.map(r => [r.code, valueText(r), r.type === 'days' ? '' : r.plans.map(id => PLAN_NAMES[id]).join(' / '), r.used ?? 0, r.max ?? '', r.ends || '', r.status || 'active', (r.note || '').replace(/"/g, "'")].map(x => `"${x}"`).join(','));
+      const url = URL.createObjectURL(new Blob([[head, ...body].join('\n')], { type: 'text/csv' }));
+      const a = document.createElement('a'); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+    };
+    $('#cCsv').onclick = () => csv(CODE_ROWS, 'solutiontee-redeem-codes.csv');
+
+    $('#gGo').onclick = () => {
+      clearErrs();
+      const v = +$('#gVal').value, ps = plans(), ends = $('#gEnd').value, from = $('#gFrom').value;
+      let bad = false;
+      if (type === 'pct' && !(v >= 1 && v <= 100)) { err('#fVal', 'Enter a percentage from 1 to 100.'); bad = true; }
+      if (type === 'amt' && !(v >= 50)) { err('#fVal', 'Enter at least ₦50.'); bad = true; }
+      if (type === 'amt' && ps.some(id => v >= PLAN_PRICES[id])) { err('#fVal', 'That is more than a selected plan costs. Use Free Premium days instead.'); bad = true; }
+      if (type === 'days' && !(v >= 1 && v <= 365)) { err('#fVal', 'Enter 1 to 365 days.'); bad = true; }
+      if (type !== 'days' && !ps.length) { err('#fPlans', 'Pick at least one plan.'); bad = true; }
+      if (ends && from && ends < from) { err('#fEnd', 'The end date is before the start date.'); bad = true; }
+      let codes = [];
+      if (style === 'shared') {
+        const c = $('#gCode').value;
+        if (c.length < 4) { err('#fCode', 'Use at least 4 letters or numbers.'); bad = true; }
+        else if (CODE_ROWS.some(r => r.code === c)) { err('#fCode', 'That code already exists. Try another.'); bad = true; }
+        codes = [c];
+      } else {
+        const n = +$('#gCount').value;
+        if (!(n >= 1 && n <= 1000)) { err('#fCount', 'Choose 1 to 1,000 codes.'); bad = true; }
+        const set = new Set(); while (!bad && set.size < n) set.add(`${$('#gPrefix').value || 'STEE'}-${randBlock(4)}-${randBlock(4)}`);
+        codes = [...set];
+      }
+      if (bad) return;
+      const b = $('#gGo'); b.classList.add('is-loading'); b.textContent = '';
+      setTimeout(() => {
+        b.classList.remove('is-loading'); b.innerHTML = `${I('ticket', 1)} Create code`;
+        const base = { type, value: v, plans: type === 'days' ? [] : ps, used: 0, ends, status: 'active', note: $('#gNote').value, by: 'Ada Okoye', newOnly: $('#gNew').checked };
+        const row = style === 'shared' ? { ...base, code: codes[0], max: +$('#gMax').value || null } : { ...base, code: `${$('#gPrefix').value || 'STEE'}-····-····`, batch: codes.length, max: codes.length };
+        CODE_ROWS.unshift(row); drawRows();
+        const list = codes.slice(0, 8).map(c => `<div class="row between gen-code"><span class="code-input bold">${c}</span><button class="icon-btn" data-c="${c}" aria-label="Copy">${I('copy')}</button></div>`).join('');
+        $('#gResult').classList.remove('hidden');
+        $('#gResult').innerHTML = `<div class="row between"><b>${codes.length === 1 ? 'Code created' : codes.length + ' codes created'}</b><span class="badge badge-success">${I('check', 1)} Active</span></div>
+          <p class="t-sm muted">${valueText(row)}${type === 'days' ? '' : ' on ' + ps.map(id => PLAN_NAMES[id]).join(', ')} · ends ${fmtDate(ends)}</p>
+          <div class="stack">${list}</div>${codes.length > 8 ? `<p class="t-cap muted">and ${codes.length - 8} more in the CSV.</p>` : ''}
+          <div class="row g2"><button class="btn btn-outline btn-sm" id="gCopyAll">${I('copy')} Copy all</button><button class="btn btn-outline btn-sm" id="gDl">${I('download-simple')} Download CSV</button></div>`;
+        $('#gResult').querySelectorAll('[data-c]').forEach(x => x.onclick = () => { navigator.clipboard?.writeText(x.dataset.c).catch(() => {}); toast(`Copied ${x.dataset.c}`); });
+        $('#gCopyAll').onclick = () => { navigator.clipboard?.writeText(codes.join('\n')).catch(() => {}); toast(`Copied ${codes.length} code${codes.length > 1 ? 's' : ''}`); };
+        $('#gDl').onclick = () => csv(codes.map(c => ({ ...row, code: c, used: 0, max: 1 })), `codes-${codes[0].split('-')[0].toLowerCase()}.csv`);
+        $('#gResult').classList.remove('pop'); void $('#gResult').offsetWidth; $('#gResult').classList.add('pop');
+        toast(`${codes.length === 1 ? codes[0] + ' is' : codes.length + ' codes are'} ready. Logged in audit log.`);
+        if (style === 'shared') $('#gCode').value = randBlock(8);
+        preview();
+      }, 700);
+    };
+    preview(); drawRows();
+  };
+
   // ---------- Router ----------
   const go = () => {
     const id = (location.hash.slice(1) || 'dashboard');

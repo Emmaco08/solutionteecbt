@@ -8,6 +8,33 @@
     { id: 'e', name: 'Exam Season', price: 6000, per: 'Until 31 Jul 2027', note: 'Covers JAMB, WAEC and NECO 2027' }
   ];
   ST.PLANS = PLANS;
+
+  // Sample redeem codes (SAMPLE). In the real app the server validates the code and computes the price.
+  ST.CODES = {
+    LOYOLA20: { type: 'pct', value: 20, plans: ['m', 'q', 'e'], note: 'Loyola College partnership' },
+    WELCOME500: { type: 'amt', value: 500, plans: ['q', 'e'] },
+    EXAM25: { type: 'pct', value: 25, plans: ['e'] },
+    FREEWEEK: { type: 'days', value: 7 },
+    EXPIRED10: { type: 'pct', value: 10, plans: ['m', 'q', 'e'], status: 'expired' },
+    'STEE-7K3P-Q9XD': { type: 'pct', value: 30, plans: ['m', 'q', 'e'], status: 'used' }
+  };
+  /** Check a code for a plan. Returns { ok, code, off, label } or { err }. */
+  ST.checkCode = (raw, planId) => {
+    const code = String(raw || '').trim().toUpperCase().replace(/\s+/g, '');
+    if (!code) return { err: 'Type your code first.' };
+    const c = ST.CODES[code];
+    if (!c) return { err: 'We could not find that code. Check the spelling and try again.' };
+    if (c.status === 'expired') return { err: 'This code has expired.' };
+    if (c.status === 'used') return { err: 'This code has already been used.' };
+    if (c.type === 'days') return { err: 'This code gives free Premium days. Redeem it in Me, then Redeem a code.', days: true };
+    if (planId && !c.plans.includes(planId)) {
+      const names = c.plans.map(id => PLANS.find(x => x.id === id).name).join(' or ');
+      return { err: `This code only works on the ${names} plan.` };
+    }
+    const plan = PLANS.find(x => x.id === planId) || PLANS[1];
+    const off = c.type === 'pct' ? Math.round(plan.price * c.value / 100) : Math.min(c.value, plan.price);
+    return { ok: true, code, off, label: c.type === 'pct' ? `${c.value}% off` : `${ST.naira(c.value)} off` };
+  };
   const planRow = (p, on) => `<button class="plan ${on ? 'on' : ''}" data-plan="${p.id}">${p.best ? '<span class="best badge badge-gold">Best value</span>' : ''}<span class="radio"></span>
     <span class="grow"><b>${p.name}</b><br><span class="t-cap muted">${p.note}</span></span><span class="price"><b>${ST.naira(p.price)}</b><span class="t-cap muted">${p.per}</span></span></button>`;
   const bindPlans = (root, cb) => root.querySelectorAll('[data-plan]').forEach(b => b.onclick = () => { root.querySelectorAll('[data-plan]').forEach(x => x.classList.toggle('on', x === b)); cb && cb(b.dataset.plan); });
@@ -27,7 +54,7 @@
         <div class="row between"><span class="t-label">Choose a plan</span><span class="badge badge-sample">SAMPLE PRICES</span></div>
         <div class="stack g3" style="padding-top:6px">${PLANS.map(p => planRow(p, p.id === pick)).join('')}</div>
         <button class="btn btn-primary btn-block" id="pwGo">Continue with 3 Months · ${ST.naira(3500)}</button>
-        <p class="t-cap muted" style="text-align:center">Secure payment. Premium starts as soon as payment is confirmed.</p>
+        <p class="t-cap muted" style="text-align:center">Secure payment. Premium starts as soon as payment is confirmed.${S.payFlavor === 'direct' ? ' Have a discount code? Add it at checkout.' : ''}</p>
       </div>`, {
       mount: w => {
         const go = w.querySelector('#pwGo');
@@ -57,15 +84,66 @@
           <div class="row between"><span class="t-sm muted">Plan</span><span class="badge badge-sample">SAMPLE</span></div>
           <div class="row between"><b class="t-h3">SolutionTee Premium · ${plan.name}</b></div>
           <div class="row between t-sm"><span class="muted">Access</span><span class="bold">${plan.per}</span></div>
-          <hr class="divider"><div class="row between"><span class="bold">Total</span><b class="t-h2 tnum">${ST.naira(plan.price)}</b></div>
+          <div class="row between t-sm"><span class="muted">Price</span><span class="bold tnum">${ST.naira(plan.price)}</span></div>
+          <div class="row between t-sm hidden" id="discRow"><span class="row g1" style="color:var(--c-success)">${I('ticket', 1)} <span id="discLabel"></span></span><span class="bold tnum" style="color:var(--c-success)" id="discAmt"></span></div>
+          <hr class="divider"><div class="row between"><span class="bold">Total</span><span class="stack" style="align-items:flex-end"><s class="t-cap muted tnum hidden" id="oldTotal">${ST.naira(plan.price)}</s><b class="t-h2 tnum" id="total">${ST.naira(plan.price)}</b></span></div>
         </div>
+        <div id="codeBox"></div>
         <div id="flvBody"></div>
       </div></div>
       <div class="footer-cta"><button class="btn btn-primary btn-block" id="pay">Pay ${ST.naira(plan.price)}</button></div>`;
     },
     mount(el, p) {
       const plan = PLANS.find(x => x.id === (p.plan || 'q'));
-      const body = el.querySelector('#flvBody');
+      const body = el.querySelector('#flvBody'), codeBox = el.querySelector('#codeBox');
+      let applied = null;
+      const price = () => plan.price - (applied ? applied.off : 0);
+      const updateTotals = () => {
+        el.querySelector('#discRow').classList.toggle('hidden', !applied);
+        el.querySelector('#oldTotal').classList.toggle('hidden', !applied);
+        if (applied) { el.querySelector('#discLabel').textContent = `${applied.code} · ${applied.label}`; el.querySelector('#discAmt').textContent = '−' + ST.naira(applied.off); }
+        el.querySelector('#total').textContent = ST.naira(price());
+        const pay = el.querySelector('#pay'); if (!pay.classList.contains('is-loading')) pay.textContent = `Pay ${ST.naira(price())}`;
+      };
+      // Discount codes apply to Paystack payments. The Play build cannot change Play Billing prices,
+      // so it only points to Google Play's own promo-code box (no steering to the website).
+      const drawCode = (open) => {
+        if (S.payFlavor === 'play') {
+          applied = null; updateTotals();
+          codeBox.innerHTML = `<p class="t-cap muted row g2">${I('ticket')} Have a Google Play promo code? Enter it on the Google Play payment screen.</p>`;
+          return;
+        }
+        if (applied) {
+          codeBox.innerHTML = `<div class="code-ok pop">${I('seal-check', 1)}<span class="grow"><b class="t-sm">${applied.code} applied</b><br><span class="t-cap">You save ${ST.naira(applied.off)} (${applied.label})</span></span><button class="icon-btn" id="codeX" aria-label="Remove code">${I('x')}</button></div>`;
+          codeBox.querySelector('#codeX').onclick = () => { applied = null; updateTotals(); drawCode(true); };
+          return;
+        }
+        if (!open) {
+          codeBox.innerHTML = `<button class="btn btn-ghost btn-sm" id="codeOpen" style="padding:0">${I('ticket')} Have a discount code?</button>`;
+          codeBox.querySelector('#codeOpen').onclick = () => drawCode(true);
+          return;
+        }
+        codeBox.innerHTML = `<div class="field" id="codeField"><label for="codeIn">Discount code</label>
+          <div class="row g2"><div class="input grow"><i class="ph ph-ticket lead-ic"></i><input id="codeIn" class="code-input" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="e.g. LOYOLA20" maxlength="24"></div>
+          <button class="btn btn-tonal" id="codeApply" style="min-width:92px">Apply</button></div>
+          <span class="help" id="codeHelp">Prototype codes to try: LOYOLA20, WELCOME500, EXAM25, EXPIRED10</span></div>`;
+        const inp = codeBox.querySelector('#codeIn'), btn = codeBox.querySelector('#codeApply'), f = codeBox.querySelector('#codeField');
+        inp.oninput = () => { inp.value = inp.value.toUpperCase(); f.classList.remove('has-error'); f.querySelector('.err')?.remove(); codeBox.querySelector('#codeHelp')?.classList.remove('hidden'); };
+        inp.onkeydown = e => { if (e.key === 'Enter') btn.click(); };
+        btn.onclick = () => {
+          btn.classList.add('is-loading'); btn.textContent = '';
+          setTimeout(() => {
+            if (!btn.isConnected) return;
+            btn.classList.remove('is-loading'); btn.textContent = 'Apply';
+            const r = ST.checkCode(inp.value, plan.id);
+            if (r.ok) { applied = r; updateTotals(); drawCode(); return; }
+            f.classList.add('has-error'); f.querySelector('.err')?.remove(); codeBox.querySelector('#codeHelp')?.classList.add('hidden');
+            f.insertAdjacentHTML('beforeend', `<span class="err" role="alert">${I('warning-circle', 1)} ${r.err}</span>`);
+            f.classList.add('shake'); setTimeout(() => f.classList.remove('shake'), 400);
+          }, 650);
+        };
+        setTimeout(() => inp.focus(), 50);
+      };
       const draw = () => {
         body.innerHTML = S.payFlavor === 'play'
           ? `<div class="stack g3"><span class="t-label">Payment</span>
@@ -76,6 +154,7 @@
               <button class="plan ${k ? '' : 'on'}" data-plan="${ic}"><span class="radio"></span><span class="ic navy" style="width:40px;height:40px;border-radius:10px;display:grid;place-items:center;font-size:20px">${I(ic, 1)}</span><span class="grow"><b class="t-sm">${t}</b><br><span class="t-cap muted">${d}</span></span></button>`).join('')}
               <p class="t-cap muted">Paystack opens securely in the app. Premium turns on after we confirm the payment.</p></div>`;
         bindPlans(body);
+        drawCode(false);
       };
       el.querySelectorAll('#flv button').forEach(b => b.onclick = () => { S.payFlavor = b.dataset.f; el.querySelectorAll('#flv button').forEach(x => x.classList.toggle('on', x === b)); draw(); });
       draw();
@@ -90,7 +169,8 @@
           });
         } else {
           const b = el.querySelector('#pay'); b.classList.add('is-loading'); b.textContent = 'Opening Paystack';
-          setTimeout(() => { b.classList.remove('is-loading'); b.textContent = 'Checking payment'; b.classList.add('is-loading'); setTimeout(() => ST.go('pay-success', { plan: plan.id }, { mode: 'fade' }), 1000); }, 900);
+          const extra = applied ? { code: applied.code, saved: applied.off } : {};
+          setTimeout(() => { b.classList.remove('is-loading'); b.textContent = 'Checking payment'; b.classList.add('is-loading'); setTimeout(() => ST.go('pay-success', { plan: plan.id, ...extra }, { mode: 'fade' }), 1000); }, 900);
         }
       };
     }
@@ -108,6 +188,7 @@
         <div class="card card-pad stack g2" style="width:100%;text-align:left">
           <div class="row between t-sm"><span class="muted">Plan</span><b>${plan.name}</b></div>
           <div class="row between t-sm"><span class="muted">Active until</span><b>24 Jan 2027</b></div>
+          ${p.code ? `<div class="row between t-sm"><span class="muted">Code ${ST.esc(p.code)}</span><b style="color:var(--c-success)">You saved ${ST.naira(p.saved)}</b></div>` : ''}
           <div class="row between t-sm"><span class="muted">Receipt</span><b>Sent to your email</b></div>
         </div>
         <div class="row g2">${examLogo('JAMB', 'sm')}${examLogo('WAEC', 'sm')}${examLogo('NECO', 'sm')}<span class="badge badge-success">${I('lock-simple-open', 1)} Unlocked</span></div>
@@ -305,8 +386,8 @@
             <div class="grid3" style="grid-template-columns:repeat(4,1fr)">
               ${[['fire', 'gold', '7-day streak'], ['target', 'blue', 'First 250+'], ['lightning', 'navy', 'Speedster'], ['star', 'gold', '100 correct'], ['trophy', '', 'Score 300'], ['moon-stars', '', 'Night owl'], ['books', '', 'Bookworm'], ['medal', '', 'Full mock']].map(([ic, c, t], k) => `<div class="badge-tile ${c ? '' : 'off'}"><span class="medal ic ${c}">${I(ic, 1)}</span>${t}</div>`).join('')}</div></section>
           <section class="card list">
-            ${[['clock-counter-clockwise', 'Test history', 'test'], ['bookmark-simple', 'Bookmarks', 'empty'], ['download-simple', 'Downloads', 'offline'], ['sparkle', `AI prompts left today: ${S.aiLeft}`, 'ai'], ['video-camera', 'My classes', 'empty'], ['gear-six', 'Settings', 'settings'], ['question', 'Help & support', 'help']].map(([ic, t, go]) => `
-              <button class="list-item" data-go="${go}"><span class="lead">${I(ic, 1)}</span><span class="grow t-sm bold">${t}</span>${I('caret-right').replace('class="', 'class="trail ')}</button>`).join('')}
+            ${[['clock-counter-clockwise', 'Test history', 'test'], ['bookmark-simple', 'Bookmarks', 'empty'], ['download-simple', 'Downloads', 'offline'], ['sparkle', `AI prompts left today: ${S.aiLeft}`, 'ai'], ['video-camera', 'My classes', 'empty'], ['ticket', 'Redeem a code', '#redeem'], ['gear-six', 'Settings', 'settings'], ['question', 'Help & support', 'help']].map(([ic, t, go]) => `
+              <button class="list-item" ${go[0] === '#' ? `id="${go.slice(1)}"` : `data-go="${go}"`}><span class="lead">${I(ic, 1)}</span><span class="grow t-sm bold">${t}</span>${I('caret-right').replace('class="', 'class="trail ')}</button>`).join('')}
           </section>
           <button class="btn btn-outline btn-block" data-go="welcome" data-mode="fade">${I('sign-out')} Log out</button>
         </div></div>`,
@@ -340,6 +421,42 @@
         })
       });
       btn.onclick = openPicker;
+      // Redeem a code: free Premium days (e.g. FREEWEEK); discount codes are pointed to checkout
+      el.querySelector('#redeem').onclick = () => ST.sheet(`
+        <h2 class="t-h3">Redeem a code</h2>
+        <p class="t-sm muted mt2">Got a code from your school, a teacher or SolutionTee? Enter it here.</p>
+        <div class="field mt4" id="rf"><label for="rIn">Code</label><div class="input"><i class="ph ph-ticket lead-ic"></i><input id="rIn" class="code-input" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="e.g. FREEWEEK" maxlength="24"></div>
+          <span class="help" id="rHelp">Prototype codes to try: FREEWEEK, LOYOLA20, EXPIRED10</span></div>
+        <button class="btn btn-primary btn-block mt4" id="rGo">Redeem</button>`, {
+        mount: w => {
+          const inp = w.querySelector('#rIn'), f = w.querySelector('#rf'), go = w.querySelector('#rGo');
+          inp.oninput = () => { inp.value = inp.value.toUpperCase(); f.classList.remove('has-error'); f.querySelector('.err')?.remove(); w.querySelector('#rHelp').classList.remove('hidden'); };
+          inp.onkeydown = e => { if (e.key === 'Enter') go.click(); };
+          setTimeout(() => inp.focus(), 60);
+          go.onclick = () => {
+            go.classList.add('is-loading'); go.textContent = '';
+            setTimeout(() => {
+              go.classList.remove('is-loading'); go.textContent = 'Redeem';
+              const code = inp.value.trim().toUpperCase(), c = ST.CODES[code];
+              if (c && c.type === 'days' && !c.status) {
+                const until = new Date(Date.now() + c.value * 864e5).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+                w.querySelector('.sheet-body').innerHTML = `<div class="stack center g3" style="text-align:center;padding:var(--s-4) 0">
+                  <div class="success-burst pop" style="width:96px;height:96px;font-size:44px">${I('gift', 1)}</div>
+                  <h2 class="t-h2">${c.value} days of Premium added!</h2><p class="muted">Everything is unlocked until <b style="color:var(--c-text)">${until}</b>.</p>
+                  <button class="btn btn-primary btn-block mt2" data-close>Start practising</button></div>`;
+                return;
+              }
+              let msg;
+              if (c && c.type !== 'days' && !c.status) msg = `This is a discount code (${c.type === 'pct' ? c.value + '% off' : ST.naira(c.value) + ' off'}). Use it at checkout when you upgrade.`;
+              else msg = ST.checkCode(code).err;
+              f.classList.add('has-error'); f.querySelector('.err')?.remove(); w.querySelector('#rHelp').classList.add('hidden');
+              f.insertAdjacentHTML('beforeend', `<span class="err" role="alert">${I('warning-circle', 1)} ${msg}</span>`);
+              if (c && c.type !== 'days' && !c.status) { const b = document.createElement('button'); b.className = 'btn btn-tonal btn-block mt3'; b.textContent = 'Upgrade with this code'; b.onclick = () => { ST.closeOverlay(true); ST.openSheet('paywall', {}); }; f.after(b); }
+              f.classList.add('shake'); setTimeout(() => f.classList.remove('shake'), 400);
+            }, 650);
+          };
+        }
+      });
     }
   });
 
