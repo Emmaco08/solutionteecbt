@@ -384,7 +384,7 @@
   // ---------- Welcome (new account): after profile setup, before the tour ----------
   const SUBJ_IC = Object.fromEntries([['Use of English', 'book-open-text'], ...SUBJECTS]);
   def('welcome-new', {
-    title: 'Welcome (new account)', group: G, navy: true,
+    title: 'Welcome (new account)', group: G, cls: 'wn', // colours follow light/dark theme via --wn-* vars (app.css)
     render: () => {
       const S = ST.state, exams = S.exams || ['JAMB', 'WAEC'], subjects = S.subjects || ['Use of English', 'Mathematics', 'Physics', 'Chemistry'], target = S.target || 290;
       return `
@@ -396,27 +396,28 @@
             ${ST.avatar('xl wn-avatar')}
             <span class="wn-check">${I('check-fat', 1)}</span>
           </div>
-          <h1 class="t-h1 wn-in" style="--i:1;color:#F4F7FC">Welcome to SolutionTee, ${S.first}!</h1>
-          <p class="wn-in" style="--i:2;color:#AFC0DD;max-width:30ch">Your account is ready. Here is the plan we made for you.</p>
+          <h1 class="t-h1 wn-in wn-title" style="--i:1">Welcome to SolutionTee, ${S.first}!</h1>
+          <p class="wn-in wn-muted" style="--i:2;max-width:30ch">Your account is ready. Here is the plan we made for you.</p>
         </div>
         <div class="px5 stack g3 enter" style="padding-bottom:var(--s-4)">
           <div class="wn-row"><span class="wn-ic">${I('exam', 1)}</span><div class="grow"><span class="wn-label">Your exams</span>
             <div class="row g2 mt2">${exams.map(b => `<span class="row g2 wn-chip">${examLogo(b, 'sm')}${b}</span>`).join('')}</div></div></div>
           <div class="wn-row"><span class="wn-ic">${I('books', 1)}</span><div class="grow"><span class="wn-label">JAMB subjects</span>
             <div class="row wrap g2 mt2">${subjects.map(x => `<span class="wn-chip">${I(SUBJ_IC[x] || 'book-open')} ${x}</span>`).join('')}</div></div></div>
-          <div class="wn-row"><span class="wn-ic">${I('target', 1)}</span><div class="grow"><div class="row between"><span class="wn-label">Target score</span><b class="tnum" style="color:#fff">${target}<span style="color:#AFC0DD;font-weight:500"> / 400</span></b></div>
-            <div class="bar mt2" style="background:rgba(255,255,255,.14)"><i class="wn-fill" style="width:${Math.round(target / 4)}%;background:var(--gold-400)"></i></div></div></div>
+          <div class="wn-row"><span class="wn-ic">${I('target', 1)}</span><div class="grow"><div class="row between"><span class="wn-label">Target score</span><b class="tnum wn-title">${target}<span class="wn-muted" style="font-weight:500"> / 400</span></b></div>
+            <div class="bar mt2 wn-bar"><i class="wn-fill" style="width:${Math.round(target / 4)}%"></i></div></div></div>
           <div class="wn-row"><span class="wn-ic">${I('gift', 1)}</span><div class="grow"><span class="wn-label">Free plan</span>
-            <p class="t-sm" style="color:#DCE4F2">JAMB 2000 to 2002 and 3 AI prompts a day. <a href="#" data-sheet="paywall" style="color:var(--gold-400)" class="bold">See Premium</a></p></div></div>
+            <p class="t-sm wn-body">JAMB 2000 to 2002 and 3 AI prompts a day. <a href="#" data-sheet="paywall" class="bold wn-link">See Premium</a></p></div></div>
         </div>
         <div class="footer-cta clean stack g2" style="background:transparent;margin-top:auto">
           <button class="btn btn-accent btn-block" data-go="tour" data-mode="fade">${I('map-trifold', 1)} Take a 30-second tour</button>
-          <button class="btn btn-ghost" id="skipTour" style="color:#DCE4F2">Skip, go to Home</button>
+          <button class="btn btn-ghost wn-ghost" id="skipTour">Skip, go to Home</button>
         </div>
       </div>`;
     },
     mount(el) {
-      if (!ST.reduceMotion()) setTimeout(() => el.isConnected && ST.confetti(el.querySelector('#confetti')), 650);
+      // confetti colours read from the current theme (no white pieces on the light background)
+      if (!ST.reduceMotion()) setTimeout(() => el.isConnected && ST.confetti(el.querySelector('#confetti'), ST.isDark() ? null : ['#F2B233', '#2563B3', '#0B1F44', '#7AA0D1', '#D99A1E']), 650);
       el.querySelector('#skipTour').onclick = () => { ST.go('home', null, { mode: 'fade' }); setTimeout(() => ST.toast('You can replay the tour any time from Me, then Help.', 'map-trifold'), 400); };
     }
   });

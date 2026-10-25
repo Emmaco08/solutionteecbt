@@ -243,9 +243,9 @@
   const origResults = ST.screens.results.mount;
   ST.screens.results.mount = (el, p) => { origResults(el, p); ST.cbt = fresh(); };
 
-  function confetti(cv) {
+  function confetti(cv, palette) {
     const ctx = cv.getContext('2d'), W = cv.width = cv.offsetWidth * 2, H = cv.height = cv.offsetHeight * 2;
-    const cols = ['#F2B233', '#2563B3', '#FFFFFF', '#7AA0D1', '#F6C970'];
+    const cols = palette || ['#F2B233', '#2563B3', '#FFFFFF', '#7AA0D1', '#F6C970'];
     const ps = Array.from({ length: 90 }, () => ({ x: W / 2 + (Math.random() - .5) * 120, y: H * .32, vx: (Math.random() - .5) * 26, vy: -Math.random() * 30 - 10, s: 6 + Math.random() * 10, r: Math.random() * 6, vr: (Math.random() - .5) * .3, c: cols[Math.random() * cols.length | 0] }));
     const t0 = performance.now();
     (function f(t) {
