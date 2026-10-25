@@ -441,19 +441,16 @@
             <div class="row g3"><span class="wb-flame">${I('fire', 1)}</span><div class="grow"><b>${done}-day streak</b><p class="t-sm muted">Answer one question today to make it ${done + 1}.</p></div></div>
             <div class="week">${days.map((d, k) => `<span class="${k < today ? 'done' : k === today ? 'today' : ''}" style="--i:${k}"><i>${k < today ? I('check', 1) : ''}</i>${d}</span>`).join('')}</div>
           </section>
-          <button class="card card-tap continue-card" data-go="cbt" data-params="resume=1">
-            <div class="ic blue" style="width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:22px">${I('clock-counter-clockwise', 1)}</div>
-            <div class="grow"><b class="t-sm">Pick up where you stopped</b><div class="t-cap muted">JAMB Mock · 64 of 180 answered · 1:12:40 left</div><div class="bar mt2"><i data-v="36%"></i></div></div>
-            ${I('caret-right')}
-          </button>
+          ${ST.unfinishedCard ? ST.unfinishedCard() : ''}
           <section class="card list">
             <div class="list-item"><span class="lead" style="background:var(--c-accent-soft);color:var(--c-on-accent-soft)">${I('sparkle', 1)}</span><span class="grow"><b class="t-sm">New since your last visit</b><div class="t-cap muted">JAMB 2026 Physics is now available</div></span></div>
             <div class="list-item"><span class="lead">${I('video-camera', 1)}</span><span class="grow"><b class="t-sm">Free Maths revision class</b><div class="t-cap muted">Saturday · 10:00 AM</div></span></div>
           </section>
         </div>
         <div class="footer-cta clean stack g2" style="margin-top:auto">
-          <button class="btn btn-primary btn-block" data-go="cbt" data-params="resume=1">Continue my test</button>
-          <button class="btn btn-ghost" data-go="home" data-mode="fade">Go to Home</button>
+          ${ST.cbtSaved && ST.attemptAnswered(ST.cbtSaved)
+            ? `<button class="btn btn-primary btn-block" data-go="cbt" data-params="resume=1">Continue my test</button><button class="btn btn-ghost" data-go="home" data-mode="fade">Go to Home</button>`
+            : `<button class="btn btn-primary btn-block" data-go="home" data-mode="fade">Start practising</button>`}
         </div>
       </div>`;
     },
@@ -479,10 +476,14 @@
       ovl.innerHTML = `<div class="tour-catch"></div><div class="tour-hole"></div><div class="tour-tip" role="dialog" aria-live="polite"></div>`;
       el.appendChild(ovl);
       const hole = ovl.querySelector('.tour-hole'), tip = ovl.querySelector('.tour-tip');
-      const end = () => { ovl.remove(); ST.toast('Tour finished. Replay it any time from Me → Help.', 'flag-checkered'); };
+      const end = () => {
+        ovl.remove();
+        ST.go('home', null, { mode: 'fade', replace: true });
+        setTimeout(() => ST.toast('Tour finished. Replay it any time from Me → Help.', 'flag-checkered'), 300);
+      };
       const show = () => {
         const s = TOUR[k], t = el.querySelector(s.sel);
-        if (!t) return end();
+        if (!t) { k++; return k < TOUR.length ? show() : end(); }   // skip steps hidden for this student (e.g. Upgrade on Premium)
         t.scrollIntoView?.({ block: 'nearest' });
         const r = t.getBoundingClientRect(), base = el.getBoundingClientRect(), sc = base.width / el.offsetWidth;
         const x = (r.left - base.left) / sc, y = (r.top - base.top) / sc, w = r.width / sc, h = r.height / sc;

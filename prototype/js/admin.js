@@ -411,8 +411,143 @@
     preview(); drawRows();
   };
 
+  // ---------- News (post with cover image) ----------
+  const NEWS_CATS = ['JAMB registration', 'New questions', 'Classes', 'Exam tips', 'WAEC', 'NECO', 'Scholarships'];
+  const storeGet = (k, d) => { try { return JSON.parse(localStorage.getItem(k) || JSON.stringify(d)); } catch (e) { return d; } };
+  const storeSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } };
+  /** Shrink an uploaded cover to max 1200 px wide, JPEG/WebP ~0.75, before "upload" (data-light for students). */
+  const shrink = file => new Promise((res, rej) => {
+    if (!/^image\//.test(file.type)) return rej(new Error('not-image'));
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => { const k = Math.min(1, 1200 / img.naturalWidth), c = document.createElement('canvas'); c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url); const d = c.toDataURL('image/jpeg', 0.75); res({ data: d, kb: Math.round(d.length * 0.75 / 1024), w: c.width, h: c.height }); };
+    img.onerror = () => rej(new Error('bad'));
+    img.src = url;
+  });
+
+  P.news = () => {
+    const posted = storeGet('st-news', []);
+    return `
+    <div class="page-head"><div><span class="t-sm muted">Content</span><h1 class="t-h1 mt2">News</h1><p class="muted mt2">Post updates students see on Home and in the News tab: JAMB registration, new questions, classes, tips.</p></div>
+      <span class="badge badge-sample">PROTOTYPE: posts save in this browser only</span></div>
+    <div class="editor-grid">
+      <section class="card card-pad stack g4" id="nForm">
+        <div class="field" id="nfTitle"><label for="nTitle">Headline</label><div class="input"><input id="nTitle" maxlength="90" placeholder="e.g. JAMB 2027 registration opens on 6 January" value="JAMB 2027 mock exam: date and centres announced"></div><span class="help"><span id="nCount">0</span>/90 characters. Keep it short and clear.</span></div>
+        <div class="grid2">
+          <div class="field"><label for="nCat">Category</label><div class="input"><select id="nCat">${NEWS_CATS.map(c => `<option>${c}</option>`).join('')}</select><i class="ph ph-caret-down sel-caret"></i></div></div>
+          <div class="field"><label for="nWhen">Publish</label><div class="input"><select id="nWhen"><option value="now">Now</option><option value="later">Schedule for later</option></select><i class="ph ph-caret-down sel-caret"></i></div></div>
+        </div>
+        <div class="field" id="nfImg"><label>Cover image</label>
+          <label class="drop" style="cursor:pointer" id="nDrop">${I('image', 1).replace('class="', 'style="font-size:32px;color:var(--c-secondary)" class="')}<span class="grow"><b class="t-sm">Upload a cover image</b><br><span class="t-cap muted">JPG, PNG or WebP. Wide images (16:9) look best. We shrink it to save students' data.</span></span><span class="btn btn-outline btn-sm">Choose image</span><input type="file" id="nImg" accept="image/*" class="sr"></label>
+          <div id="nImgInfo" class="hidden row g3"></div></div>
+        <div class="field" id="nfSum"><label for="nSum">Short summary</label><div class="input"><textarea id="nSum" rows="2" maxlength="160" style="min-height:64px">Mock exam holds in March 2027. Check your centre and what to bring.</textarea></div><span class="help">Shown under the headline on cards (160 characters).</span></div>
+        <div class="field"><label for="nBody">Full story</label><div class="rich"><div class="toolbar">${['text-b', 'text-italic', 'list-bullets', 'list-numbers', 'link', 'image'].map(i => `<button aria-label="${i}">${I(i)}</button>`).join('')}</div>
+          <textarea id="nBody" style="font-family:var(--font-sans);font-size:14px;min-height:140px">JAMB will hold the optional mock examination in March 2027 for candidates who chose it during registration.
+
+Print your mock exam slip 7 days before the date. Bring the slip and arrive 1 hour early.</textarea></div><span class="help">Leave a blank line between paragraphs.</span></div>
+        <div class="grid2"><div class="field"><label for="nBtn">Button text (optional)</label><div class="input"><input id="nBtn" value="Practise a full JAMB mock"></div></div>
+          <div class="field"><label for="nLink">Button opens</label><div class="input"><select id="nLink"><option value="test-setup">JAMB practice in the app</option><option value="doc">JAMB brochure in Study</option><option value="url">A website link</option></select><i class="ph ph-caret-down sel-caret"></i></div></div></div>
+        <div class="stack g3">
+          <label class="row between t-sm bold"><span>Pin to the top of News</span><span class="switch"><input type="checkbox" id="nPin"><span></span></span></label>
+          <label class="row between t-sm bold"><span>Send a push notification to students</span><span class="switch"><input type="checkbox" id="nPush" checked><span></span></span></label>
+        </div>
+        <div class="row g3"><button class="btn btn-primary" id="nGo">${I('paper-plane-tilt', 1)} Publish</button><button class="btn btn-outline" id="nDraft">Save draft</button><span class="t-cap muted">Logged in the audit log.</span></div>
+      </section>
+      <aside class="preview stack g3">
+        <div class="row between"><b>Student preview</b><div class="seg" id="pvSeg" style="width:190px"><button class="on" data-v="card">Card</button><button data-v="story">Story</button></div></div>
+        <div class="mini-phone" style="width:100%;max-width:340px"><div id="nPv" style="height:520px;overflow:auto;background:var(--c-bg)"></div></div>
+      </aside>
+    </div>
+    <section class="card" style="margin-top:16px;overflow:hidden">
+      <div class="row between card-pad"><h2 class="t-h3">Published posts</h2><span class="t-cap muted">${posted.length + 4} posts</span></div>
+      <table class="tbl"><thead><tr><th>Headline</th><th>Category</th><th>Published</th><th>Views</th><th></th></tr></thead><tbody id="nRows">
+        ${[...posted.map(n => [n.title, n.cat, n.date, 0, n.id]), ['JAMB 2027 UTME registration: dates, fees and what to bring', 'JAMB registration', '24 Oct 2026', 12408], ['JAMB 2026 Physics is now available', 'New questions', '22 Oct 2026', 8311], ['Free Maths revision class this Saturday', 'Classes', '21 Oct 2026', 5120], ['7 habits of students who score 300+ in JAMB', 'Exam tips', '18 Oct 2026', 9876]]
+          .map(([t, c, d, v, id]) => `<tr><td class="bold">${esc(t)}</td><td>${c}</td><td>${d}</td><td class="tnum">${Number(v).toLocaleString()}</td><td>${id ? `<button class="btn btn-ghost btn-sm" data-del="${id}">Delete</button>` : ''}</td></tr>`).join('')}
+      </tbody></table></section>`;
+  };
+  P.news.mount = el => {
+    const $ = s => el.querySelector(s);
+    let cover = null, view = 'card';
+    const paras = t => esc(t).split(/\n\s*\n/).map(x => `<p>${x.replace(/\n/g, '<br>')}</p>`).join('');
+    const coverHtml = (ratio) => cover
+      ? `<div style="aspect-ratio:${ratio};overflow:hidden"><img src="${cover.data}" alt="" style="width:100%;height:100%;object-fit:cover"></div>`
+      : `<div style="aspect-ratio:${ratio};display:grid;place-items:center;background:linear-gradient(135deg,var(--navy-900),var(--blue-700));color:#fff;font-size:48px">${I('image', 1)}</div>`;
+    const preview = () => {
+      $('#nCount').textContent = $('#nTitle').value.length;
+      const t = esc($('#nTitle').value || 'Your headline'), cat = $('#nCat').value, sum = esc($('#nSum').value);
+      $('#nPv').innerHTML = view === 'card'
+        ? `<div style="padding:16px"><b class="t-sm muted">Home · News</b><div class="news-tile mt3">${coverHtml('16/8')}<span class="nt-body"><span class="row g2"><span class="badge badge-soft">${cat}</span>${$('#nPin').checked ? `<span class="badge badge-gold">${I('push-pin', 1)} Pinned</span>` : ''}</span><b class="nt-title">${t}</b><span class="t-cap muted">Today · 1 min read</span></span></div></div>`
+        : `${coverHtml('16/10')}<div class="note-body" style="padding:16px"><span class="badge badge-soft">${cat}</span><h1 class="t-h2 mt2">${t}</h1><p class="muted">${sum}</p>${paras($('#nBody').value)}${$('#nBtn').value ? `<button class="btn btn-primary btn-block">${esc($('#nBtn').value)}</button>` : ''}</div>`;
+    };
+    el.querySelectorAll('#nForm input, #nForm textarea, #nForm select').forEach(x => x.addEventListener('input', preview));
+    $('#pvSeg').querySelectorAll('button').forEach(b => b.onclick = () => { view = b.dataset.v; $('#pvSeg').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); preview(); });
+    $('#nImg').onchange = async () => {
+      const f = $('#nImg').files[0]; if (!f) return;
+      $('#nfImg').classList.remove('has-error'); $('#nfImg').querySelector('.err')?.remove();
+      try {
+        cover = await shrink(f);
+        $('#nImgInfo').classList.remove('hidden');
+        $('#nImgInfo').innerHTML = `<img src="${cover.data}" alt="" style="width:96px;height:54px;object-fit:cover;border-radius:8px"><span class="grow t-cap"><b>${esc(f.name)}</b><br>${cover.w}×${cover.h} · ${cover.kb} KB (was ${Math.round(f.size / 1024)} KB)</span><button class="btn btn-ghost btn-sm" id="nImgX">Remove</button>`;
+        $('#nImgX').onclick = () => { cover = null; $('#nImg').value = ''; $('#nImgInfo').classList.add('hidden'); preview(); };
+      } catch (e) { $('#nfImg').classList.add('has-error'); $('#nfImg').insertAdjacentHTML('beforeend', `<span class="err">${I('warning-circle', 1)} That file is not an image. Choose a JPG, PNG or WebP.</span>`); }
+      preview();
+    };
+    const go = { 'test-setup': ['test-setup', 'body=JAMB&mode=full'], doc: ['doc', ''], url: [null, ''] };
+    $('#nGo').onclick = () => {
+      el.querySelectorAll('#nForm .field').forEach(f => { if (f.id !== 'nfImg') { f.classList.remove('has-error'); f.querySelector('.err')?.remove(); } });
+      let bad = false;
+      if ($('#nTitle').value.trim().length < 10) { $('#nfTitle').classList.add('has-error'); $('#nfTitle').insertAdjacentHTML('beforeend', `<span class="err">${I('warning-circle', 1)} Write a headline of at least 10 characters.</span>`); bad = true; }
+      if ($('#nSum').value.trim().length < 10) { $('#nfSum').classList.add('has-error'); $('#nfSum').insertAdjacentHTML('beforeend', `<span class="err">${I('warning-circle', 1)} Add a short summary.</span>`); bad = true; }
+      if (bad) return;
+      const [gTo, gParams] = go[$('#nLink').value];
+      const post = {
+        id: 'p' + Date.now(), cat: $('#nCat').value, pinned: $('#nPin').checked, date: 'Today', read: Math.max(1, Math.round($('#nBody').value.split(/\s+/).length / 200)),
+        cover: cover ? { img: cover.data } : { g: 'c-navy', icon: 'megaphone', logo: /JAMB/.test($('#nCat').value + $('#nTitle').value) ? 'JAMB' : null },
+        title: $('#nTitle').value.trim(), summary: $('#nSum').value.trim(), body: paras($('#nBody').value),
+        cta: $('#nBtn').value ? (gTo ? { label: $('#nBtn').value, go: gTo, params: gParams } : { label: $('#nBtn').value, url: 'jamb.gov.ng' }) : null
+      };
+      const list = storeGet('st-news', []); list.unshift(post);
+      if (!storeSet('st-news', list.slice(0, 5))) { toast('Could not save: the image is too large for this browser demo. Try a smaller image.'); return; }
+      toast(`Published${$('#nPush').checked ? ' and push notification sent' : ''}. Students see it now on Home and in News.`);
+      setTimeout(() => { location.hash = '#news'; go_(); }, 600);
+    };
+    $('#nDraft').onclick = () => toast('Draft saved.');
+    el.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { storeSet('st-news', storeGet('st-news', []).filter(n => n.id !== b.dataset.del)); toast('Post deleted.'); go_(); });
+    preview();
+  };
+
+  // ---------- Leaderboard settings ----------
+  P.leaderboard = () => {
+    const set = Object.assign({ on: true, years: { 2027: true, 2026: true, 2025: false }, names: 'first-initial', minTests: 3 }, storeGet('st-lb', {}));
+    return `
+    <div class="page-head"><div><span class="t-sm muted">App control</span><h1 class="t-h1 mt2">Leaderboard</h1><p class="muted mt2">Decide if students can see leaderboards, for which JAMB years, and how names are shown.</p></div>
+      <button class="btn btn-primary" id="lbSave">Save changes</button></div>
+    <div class="two" style="grid-template-columns:1fr 1fr;margin-top:0">
+      <section class="card card-pad stack g4">
+        <label class="row between"><span><b>Show leaderboards to students</b><br><span class="t-cap muted">When off, students do not see the leaderboard anywhere in the app.</span></span><span class="switch"><input type="checkbox" id="lbOn" ${set.on ? 'checked' : ''}><span></span></span></label>
+        <hr class="divider">
+        <div class="field"><label>JAMB years students can see</label>
+          <div class="stack g2">${Object.keys(set.years).sort((a, b) => b - a).map(y => `<label class="row between t-sm"><span class="row g2"><b>JAMB ${y}</b>${y === '2027' ? '<span class="badge badge-success">Current season</span>' : '<span class="badge badge-neutral">Past year: shows the best student</span>'}</span><span class="switch"><input type="checkbox" data-year="${y}" ${set.years[y] ? 'checked' : ''}><span></span></span></label>`).join('')}</div></div>
+      </section>
+      <section class="card card-pad stack g4">
+        <div class="field"><label for="lbNames">How names appear</label><div class="input"><select id="lbNames"><option value="first-initial" ${set.names === 'first-initial' ? 'selected' : ''}>First name + initial (Chiamaka O.)</option><option value="first" ${set.names === 'first' ? 'selected' : ''}>First name only</option></select><i class="ph ph-caret-down sel-caret"></i></div><span class="help">Many students are under 18, so full names are never shown.</span></div>
+        <div class="field"><label for="lbMin">Full mocks needed to appear</label><div class="input num-input"><input id="lbMin" type="number" min="1" max="20" value="${set.minTests}"></div></div>
+        <div class="field"><label>Ranked by</label><div class="seg"><button class="on">Best full mock score</button><button>Average score</button></div></div>
+        <div class="banner info">${I('shield-check', 1)}<span>Students can hide themselves in Settings. Suspicious scores (too fast, too perfect) are held for review before they appear.</span></div>
+      </section>
+    </div>`;
+  };
+  P.leaderboard.mount = el => {
+    el.querySelector('#lbSave').onclick = () => {
+      const years = {}; el.querySelectorAll('[data-year]').forEach(c => years[c.dataset.year] = c.checked);
+      const ok = storeSet('st-lb', { on: el.querySelector('#lbOn').checked, years, names: el.querySelector('#lbNames').value, minTests: +el.querySelector('#lbMin').value || 3 });
+      toast(ok ? (el.querySelector('#lbOn').checked ? 'Saved. Students can see the leaderboard.' : 'Saved. Leaderboards are hidden from students.') : 'Could not save in this browser.');
+    };
+  };
+
   // ---------- Router ----------
-  const go = () => {
+  const go = () => go_();
+  const go_ = () => {
     const id = (location.hash.slice(1) || 'dashboard');
     const fn = P[id] || P.dashboard;
     const page = document.getElementById('page');

@@ -20,6 +20,7 @@
     <div class="stack g3">
       <div class="ctl"><span>Theme</span><div class="seg" id="pTheme" style="flex:1;max-width:170px"><button data-t="system">Auto</button><button data-t="light">Light</button><button data-t="dark">Dark</button></div></div>
       <label class="ctl"><span>Reduce motion</span><span class="switch"><input type="checkbox" id="pRm"><span></span></span></label>
+      <div class="ctl"><span>Student plan</span><div class="seg" id="pPlan" style="flex:1;max-width:170px"><button data-p="free">Free</button><button data-p="premium">Premium</button></div></div>
       <div><div class="grp" style="margin-top:0">CBT demo</div>
         <div class="demo"><button class="btn btn-outline btn-sm" data-demo="600">Timer 10:00</button><button class="btn btn-outline btn-sm" data-demo="300">Timer 5:00</button><button class="btn btn-outline btn-sm" data-demo="4">Time up</button><button class="btn btn-outline btn-sm" data-demo="submit">Submit</button></div></div>
     </div>
@@ -42,6 +43,7 @@
 <script src="js/screens-main.js"></script>
 <script src="js/screens-cbt.js"></script>
 <script src="js/screens-more.js"></script>
+<script src="js/screens-extra.js"></script>
 <script>
   ST.tokensReady.then(() => {
     // panel: screen list grouped
@@ -52,7 +54,10 @@
     ST.syncPanel = () => {
       document.querySelectorAll('#pTheme button').forEach(b => b.classList.toggle('on', b.dataset.t === ST.getTheme()));
       document.getElementById('pRm').checked = ST.reduceMotion();
+      document.querySelectorAll('#pPlan button').forEach(b => b.classList.toggle('on', b.dataset.p === ST.state.plan));
     };
+    const setPlan = pl => { ST.setPlan(pl); ST.syncPanel(); ST.closeOverlay(true); ST.refresh(); ST.toast(pl === 'premium' ? 'Viewing as a Premium student' : 'Viewing as a Free student', 'crown-simple'); };
+    document.querySelectorAll('#pPlan button').forEach(b => b.onclick = () => setPlan(b.dataset.p));
     document.querySelectorAll('#pTheme button').forEach(b => b.onclick = () => { ST.setTheme(b.dataset.t); ST.syncPanel(); });
     document.getElementById('pRm').onchange = e => ST.setReduceMotion(e.target.checked);
     document.querySelectorAll('[data-demo]').forEach(b => b.onclick = () => {
@@ -66,7 +71,11 @@
       <div class="card list mt4">
         <button class="list-item" id="fbGo"><span class="lead" style="background:var(--c-accent-soft);color:var(--c-on-accent-soft)"><i class="ph-fill ph-chat-circle-text"></i></span><span class="grow"><b class="t-sm">Give feedback on this screen</b><div class="t-cap muted">${curTitle() || ''}</div></span></button>
         <a class="list-item" href="index.html"><span class="lead"><i class="ph-fill ph-list"></i></span><span class="grow t-sm bold">All screens</span></a>
-      </div>`, { mount: w => w.querySelector('#fbGo').onclick = () => { ST.closeOverlay(true); ST.openFeedback(curTitle()); } });
+      </div>
+      <div class="field mt4"><span class="field-label">View as</span><div class="seg" id="fPlan"><button data-p="free" class="${ST.state.plan === 'free' ? 'on' : ''}">Free student</button><button data-p="premium" class="${ST.state.plan === 'premium' ? 'on' : ''}">Premium student</button></div></div>`, { mount: w => {
+        w.querySelector('#fbGo').onclick = () => { ST.closeOverlay(true); ST.openFeedback(curTitle()); };
+        w.querySelectorAll('#fPlan button').forEach(b => b.onclick = () => setPlan(b.dataset.p));
+      } });
     ST.syncPanel();
     ST.boot();
   });

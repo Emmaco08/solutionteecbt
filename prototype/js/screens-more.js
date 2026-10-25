@@ -195,7 +195,7 @@
       </div>
       <div class="footer-cta clean"><button class="btn btn-primary btn-block" data-go="home" data-mode="fade" id="startP">Start practising</button></div></div>`;
     },
-    mount(el) { S.plan = 'premium'; S.aiLeft = 100; S.aiMax = 100; if (!ST.reduceMotion()) ST.confetti(el.querySelector('#confetti')); el.querySelector('#startP').addEventListener('click', () => { S.plan = 'free'; S.aiLeft = 2; S.aiMax = 3; }); }
+    mount(el) { ST.setPlan('premium'); S.aiLeft = 100; if (!ST.reduceMotion()) ST.confetti(el.querySelector('#confetti')); }
   });
 
   // ---------- AI tutor ----------
@@ -370,9 +370,11 @@
       <div class="appbar"><span class="title" style="padding-left:12px;font-size:var(--t-h2-size)">Me</span><button class="icon-btn" aria-label="Settings" data-go="settings">${I('gear-six')}</button></div>
       <div class="scr-body">
         <div class="prof-head"><button class="avatar-edit" id="avEdit" aria-label="Change profile photo">${ST.avatar('lg')}<span class="cam">${I('camera', 1)}</span></button><div class="grow"><h1 class="t-h2">${S.name}</h1><p class="t-sm muted">Oyo · JAMB target 290</p>
-          <span class="badge badge-neutral mt2">Free plan</span></div></div>
+          ${ST.isPremium() ? `<span class="badge badge-gold mt2">${I('crown-simple', 1)} Premium · until 24 Jan 2027</span>` : '<span class="badge badge-neutral mt2">Free plan</span>'}</div></div>
         <div class="px5 stack g5" style="padding-bottom:var(--s-8)">
-          <div class="upgrade-banner"><div class="crown">${I('crown-simple', 1)}</div><div class="grow" style="position:relative;z-index:1"><b>Upgrade to Premium</b><p class="t-sm" style="color:#AFC0DD">From ${ST.naira(1500)} (sample price)</p></div><button class="btn btn-accent btn-sm" data-sheet="paywall" style="position:relative;z-index:1">Upgrade</button></div>
+          ${ST.isPremium()
+            ? `<div class="card card-pad row g3"><span class="ic gold" style="width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:22px">${I('crown-simple', 1)}</span><div class="grow"><b>Premium is active</b><div class="t-cap muted">3 Months plan · renews never, ends 24 Jan 2027</div></div><button class="btn btn-tonal btn-sm" data-sheet="paywall">Extend</button></div>`
+            : `<div class="upgrade-banner"><div class="crown">${I('crown-simple', 1)}</div><div class="grow" style="position:relative;z-index:1"><b>Upgrade to Premium</b><p class="t-sm" style="color:#AFC0DD">From ${ST.naira(1500)} (sample price)</p></div><button class="btn btn-accent btn-sm" data-sheet="paywall" style="position:relative;z-index:1">Upgrade</button></div>`}
           <div class="grid2 enter">
             <div class="card stat"><b>24</b><span>Tests taken</span></div>
             <div class="card stat"><b>287</b><span>Best JAMB score</span></div>
@@ -472,6 +474,7 @@
             <label class="list-item" style="cursor:pointer"><span class="lead">${I(ic, 1)}</span><span class="grow"><b class="t-sm">${t}</b><div class="t-cap muted">${d}</div></span><span class="switch"><input type="checkbox" id="${id}" ${on ? 'checked' : ''}><span></span></span></label>`).join('')}
         </section>
         <section class="stack g2"><span class="t-label">Notifications</span><div class="card list">
+          <label class="list-item" style="cursor:pointer"><span class="grow"><b class="t-sm">Show me on leaderboards</b><div class="t-cap muted">Only your first name and an initial are shown.</div></span><span class="switch"><input type="checkbox" checked><span></span></span></label>
           ${['Announcements', 'New questions added', 'Streak reminders', 'Class reminders'].map((t, k) => `<label class="list-item" style="cursor:pointer"><span class="grow t-sm bold">${t}</span><span class="switch"><input type="checkbox" ${k !== 2 ? 'checked' : ''}><span></span></span></label>`).join('')}
         </div></section>
         <section class="card list">

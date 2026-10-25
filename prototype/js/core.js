@@ -166,6 +166,8 @@
     else if (fallback) ST.go(fallback, null, { mode: 'back', replace: true });
   };
   ST.current = () => current;
+  /** Re-render the current screen in place (after a plan or setting change). */
+  ST.refresh = () => { const { id, params } = parseHash(); stack[stack.length - 1] = { id, params }; render(id, params, 'fade'); };
 
   window.addEventListener('hashchange', () => { const { id, params } = parseHash(); stack.push({ id, params }); render(id, params, 'fade'); });
 

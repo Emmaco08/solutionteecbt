@@ -11,6 +11,12 @@
   ST.animateRings = el => requestAnimationFrame(() => setTimeout(() => el.querySelectorAll('.ring .val[data-off]').forEach(v => v.style.strokeDashoffset = v.dataset.off), 80));
   ST.animateBars = el => requestAnimationFrame(() => setTimeout(() => el.querySelectorAll('.bar > i[data-v]').forEach(b => b.style.width = b.dataset.v), 80));
   const lockBadge = `<span class="badge badge-neutral">${I('lock-simple', 1)} Premium</span>`;
+  /** Exam card: open for JAMB on Free, and for every exam on Premium; otherwise opens the paywall. */
+  const examCard = (body, title, meta) => {
+    const open = body === 'JAMB' || ST.isPremium();
+    return `<button class="card card-tap exam-card ${open ? '' : 'locked'}" ${open ? `data-go="test-setup" data-params="body=${body}"` : `data-sheet="paywall" data-reason="${body}"`}>${examLogo(body)}<div class="meta"><b>${title}</b><div class="t-cap muted">${meta}</div></div>${open ? `<span class="go">${I('play', 1)}</span>` : lockBadge}</button>`;
+  };
+  ST.examCard = examCard;
 
   // ---------- Home ----------
   def('home', {
@@ -30,42 +36,32 @@
           </div>
 
           <section data-tour="start">
-            <div class="sect-title"><h2 class="t-h3">Start a CBT practice</h2></div>
+            <div class="sect-title"><h2 class="t-h3">Start a CBT practice</h2>${ST.isPremium() ? `<span class="badge badge-gold">${I('crown-simple', 1)} Premium</span>` : ''}</div>
             <div class="stack g2 enter">
-              <button class="card card-tap exam-card" data-go="test-setup" data-params="body=JAMB">${examLogo('JAMB')}<div class="meta"><b>JAMB UTME</b><div class="t-cap muted">4 subjects · 180 questions · 2 hrs</div></div><span class="go">${I('play', 1)}</span></button>
-              <button class="card card-tap exam-card locked" data-sheet="paywall" data-reason="WAEC">${examLogo('WAEC')}<div class="meta"><b>WAEC WASSCE</b><div class="t-cap muted">Objective papers by subject</div></div>${lockBadge}</button>
-              <button class="card card-tap exam-card locked" data-sheet="paywall" data-reason="NECO">${examLogo('NECO')}<div class="meta"><b>NECO SSCE</b><div class="t-cap muted">Objective papers by subject</div></div>${lockBadge}</button>
+              ${examCard('JAMB', 'JAMB UTME', '4 subjects · 180 questions · 2 hrs')}
+              ${examCard('WAEC', 'WAEC WASSCE', 'Objective papers by subject')}
+              ${examCard('NECO', 'NECO SSCE', 'Objective papers by subject')}
             </div>
           </section>
 
-          <button class="card card-tap continue-card" data-go="cbt">
-            <div class="ic blue" style="width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:22px">${I('clock-counter-clockwise', 1)}</div>
-            <div class="grow"><b class="t-sm">Continue your test</b><div class="t-cap muted">JAMB Mock · 64 of 180 answered · 1:12:40 left</div><div class="bar mt2"><i data-v="36%"></i></div></div>
-            ${I('caret-right')}
-          </button>
+          ${ST.unfinishedCard ? ST.unfinishedCard() : ''}
 
           <section>
-            <div class="sect-title"><h2 class="t-h3">News</h2><button class="btn btn-ghost">See all</button></div>
-            <div class="news">
-              <div class="news-card n1"><i class="ph-fill ph-megaphone bg-ic"></i><span class="badge badge-gold" style="align-self:flex-start">New</span><div><b>JAMB 2026 Physics is now available</b><p class="t-sm" style="opacity:.8">40 questions with full solutions.</p></div></div>
-              <div class="news-card n2"><i class="ph-fill ph-calendar-check bg-ic"></i><span class="badge" style="background:rgba(255,255,255,.18);color:#fff;align-self:flex-start">Reminder</span><div><b>UTME registration closes soon</b><p class="t-sm" style="opacity:.85">Check the JAMB brochure in Study.</p></div></div>
-              <div class="news-card n3"><i class="ph-fill ph-video-camera bg-ic"></i><span class="badge" style="background:var(--navy-900);color:#fff;align-self:flex-start">Live class</span><div><b>Free Maths revision class</b><p class="t-sm">Saturday · 10:00 AM</p></div></div>
-            </div>
+            <div class="sect-title"><h2 class="t-h3">News</h2><button class="btn btn-ghost" data-go="news">See all</button></div>
+            <div class="news">${ST.allNews ? ST.allNews().slice(0, 4).map(ST.newsCard).join('') : ''}</div>
           </section>
 
-          <section class="card card-pad qotd">
-            <div class="row between"><span class="badge badge-soft">${I('lightbulb', 1)} Question of the day</span><span class="t-cap muted">Mathematics</span></div>
-            <p class="mt3" style="font-size:16px;line-height:25px">Evaluate $\\log_{2} 32 - \\log_{3} 27$.</p>
-            <div class="grid2 mt3" id="qotd">
-              ${['1', '2', '3', '5'].map((o, k) => `<button class="opt opt-mini" data-ok="${o === '2'}"><span class="key" style="width:30px;height:30px">${'ABCD'[k]}</span>${o}</button>`).join('')}
-            </div>
-          </section>
+          ${ST.qotdCard ? ST.qotdCard() : ''}
 
-          <div class="upgrade-banner" data-tour="upgrade">
+          ${ST.lbSettings && ST.lbSettings().on ? `<button class="card card-tap row g3" style="padding:var(--s-4)" data-go="leaderboard">
+            <span class="ic gold" style="width:48px;height:48px;border-radius:12px;display:grid;place-items:center;font-size:24px;flex:none">${I('ranking', 1)}</span>
+            <span class="grow"><span class="t-cap muted bold">JAMB 2027 leaderboard</span><b style="display:block">You are #128 in Nigeria</b><span class="t-cap muted">38 points to reach the top 100</span></span>${I('caret-right')}</button>` : ''}
+
+          ${ST.isPremium() ? '' : `<div class="upgrade-banner" data-tour="upgrade">
             <div class="crown">${I('crown-simple', 1)}</div>
             <div class="grow" style="position:relative;z-index:1"><b>Unlock all years and exams</b><p class="t-sm" style="color:#AFC0DD">WAEC, NECO, every year, 100 AI prompts a day.</p></div>
             <button class="btn btn-accent btn-sm" data-sheet="paywall" style="position:relative;z-index:1">Upgrade</button>
-          </div>
+          </div>`}
 
           <section class="card card-pad row g3">
             <div class="ic gold" style="width:48px;height:48px;border-radius:12px;display:grid;place-items:center;font-size:24px">${I('video-camera', 1)}</div>
@@ -76,10 +72,7 @@
       </div>`,
     mount(el) {
       ST.animateRings(el); ST.animateBars(el);
-      el.querySelectorAll('#qotd .opt').forEach(b => b.onclick = () => {
-        el.querySelectorAll('#qotd .opt').forEach(o => { o.disabled = true; if (o.dataset.ok === 'true') o.classList.add('right'); });
-        if (b.dataset.ok !== 'true') b.classList.add('wrong'); else ST.toast('Correct! +10 XP', 'confetti');
-      });
+      ST.mountQotd && ST.mountQotd(el);
     }
   });
 
@@ -121,20 +114,22 @@
     render: () => `
       <div class="appbar"><button class="icon-btn" data-back="study" aria-label="Back">${I('arrow-left')}</button><span class="title">Past questions</span></div>
       <div class="scr-body"><div class="pad stack g5" style="padding-top:var(--s-2)">
-        <div class="seg" id="bodySeg"><button class="on">JAMB</button><button>WAEC</button><button>NECO</button></div>
+        <div class="seg" id="bodySeg">${['JAMB', 'WAEC', 'NECO'].map(b => `<button class="${b === (ST.pqBody || 'JAMB') ? 'on' : ''}" data-b="${b}">${b}${b !== 'JAMB' && !ST.isPremium() ? ' ' + I('lock-simple', 1) : ''}</button>`).join('')}</div>
         <div class="field"><span class="field-label">Subject</span><div class="input"><i class="ph ph-function lead-ic"></i><select><option>Mathematics</option><option>Use of English</option><option>Physics</option><option>Chemistry</option><option>Biology</option></select><i class="ph ph-caret-down sel-caret"></i></div></div>
         <div>
-          <div class="sect-title"><h2 class="t-h3">Choose a year</h2><span class="t-cap muted">${I('lock-simple', 1)} = Premium</span></div>
+          <div class="sect-title"><h2 class="t-h3">Choose a year</h2>${ST.isPremium() ? `<span class="badge badge-gold">${I('crown-simple', 1)} All years open</span>` : `<span class="t-cap muted">${I('lock-simple', 1)} = Premium</span>`}</div>
           <div class="year-grid enter">
-            ${[2000, 2001, 2002].map((y, k) => `<button class="year ${k === 0 ? 'done' : ''}" data-go="pq-study" data-params="year=${y}">${y}</button>`).join('')}
-            ${Array.from({ length: 23 }, (_, k) => 2003 + k).map(y => `<button class="year locked" data-sheet="paywall" data-reason="${y}">${y}<i class="ph-fill ph-lock-simple lk"></i></button>`).join('')}
+            ${Array.from({ length: 26 }, (_, k) => 2000 + k).map((y, k) => (ST.isPremium() || y <= 2002)
+              ? `<button class="year ${k === 0 ? 'done' : ''}" data-go="pq-study" data-params="year=${y}">${y}</button>`
+              : `<button class="year locked" data-sheet="paywall" data-reason="${y}">${y}<i class="ph-fill ph-lock-simple lk"></i></button>`).join('')}
           </div>
         </div>
-        <div class="banner info">${I('info', 1)}<span>Free plan: JAMB 2000, 2001 and 2002. Upgrade to open every year.</span></div>
+        ${ST.isPremium() ? '' : `<div class="banner info">${I('info', 1)}<span>Free plan: JAMB 2000, 2001 and 2002. Upgrade to open every year.</span></div>`}
       </div></div>`,
     mount(el) {
-      el.querySelectorAll('#bodySeg button').forEach((b, i) => b.onclick = () => {
-        if (i) { ST.openSheet('paywall', { reason: b.textContent }); return; }
+      el.querySelectorAll('#bodySeg button').forEach(b => b.onclick = () => {
+        if (b.dataset.b !== 'JAMB' && !ST.isPremium()) { ST.openSheet('paywall', { reason: b.dataset.b }); return; }
+        ST.pqBody = b.dataset.b; ST.go('pq', null, { mode: 'fade', replace: true });
       });
     }
   });
@@ -178,11 +173,11 @@
       <div class="scr-body"><div class="pad stack g4" style="padding-top:var(--s-2)">
         <div class="chips">${['All subjects', 'Mathematics', 'Physics', 'Chemistry', 'Biology'].map((c, i) => `<button class="chip ${i ? '' : 'on'}">${c}</button>`).join('')}</div>
         <div class="banner warn">${I('cell-signal-low', 1)}<span><b>Data saver is on.</b> Videos play in low quality. Download on Wi-Fi to watch offline.</span></div>
-        <div class="stack g4 enter">${vids.map(([th, t, topic, d, lock, ic]) => `
+        <div class="stack g4 enter">${vids.map(([th, t, topic, d, lk, ic]) => { const lock = lk && !ST.isPremium(); return `
           <button class="card card-tap" style="padding:10px" ${lock ? `data-sheet="paywall" data-reason="video"` : 'data-go="video"'}>
             <div class="thumb ${th}"><i class="ph-fill ph-${ic} sub-ic"></i><span class="play">${I(lock ? 'lock-simple' : 'play', 1)}</span><span class="dur">${d}</span>${lock ? `<span class="lock-chip badge badge-gold">${I('crown-simple', 1)} Premium</span>` : ''}</div>
             <div class="row between" style="padding:10px 4px 2px"><div><b class="t-sm">${t}</b><div class="t-cap muted">${topic}</div></div>${lock ? '' : `<span class="icon-btn" aria-label="Download">${I('download-simple')}</span>`}</div>
-          </button>`).join('')}</div>
+          </button>`; }).join('')}</div>
       </div></div>`
   });
 
@@ -229,7 +224,7 @@
         <p>A bad formula shows a safe fallback instead of breaking the page: $\\frac{1}{$</p>
         <div class="card card-pad stack g3 mt6" style="font-size:15px;line-height:22px">
           <b>Check yourself</b><p class="muted t-sm">Try 5 quick questions on this note.</p>
-          <button class="btn btn-primary btn-block" data-go="cbt" data-params="mode=topic">Start topic drill</button>
+          <button class="btn btn-primary btn-block" data-go="test-setup" data-params="body=JAMB&mode=topic&subj=mth&topic=Quadratic%20equations">Start topic drill</button>
         </div>
       </article></div>`,
     mount(el) {
@@ -308,37 +303,106 @@
           <div class="stack g2 enter">
             ${[['book-open-text', 'navy', 'Single subject', 'One subject, timed like the real paper', 'test-setup', 'body=JAMB&mode=subject'],
                ['target', 'blue', 'Topic drill', 'Practise your weak topics only', 'test-setup', 'body=JAMB&mode=topic'],
-               ['lightning', 'gold', 'Quick test', '20 questions · 15 minutes', 'cbt', 'mode=quick'],
+               ['lightning', 'gold', 'Quick test', '20 questions · 15 minutes', 'test-setup', 'body=JAMB&mode=quick'],
                ['calendar-blank', 'green', 'Practice by year', 'Pick an exam year and go', 'pq', '']].map(([ic, c, t, d, go, pr]) => `
               <button class="card card-tap mode-card" data-go="${go}" ${pr ? `data-params="${pr}"` : ''}><span class="ic ${c}" style="width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:22px;flex:none">${I(ic, 1)}</span>
                 <span class="grow"><b>${t}</b><br><span class="t-cap muted">${d}</span></span>${I('caret-right').replace('class="', 'class="trail ')}</button>`).join('')}
           </div></section>
         <section><div class="sect-title"><h2 class="t-h3">Other exams</h2></div>
-          <div class="grid2">
-            <button class="card card-tap exam-card locked" data-sheet="paywall" data-reason="WAEC" style="flex-direction:column;align-items:flex-start">${examLogo('WAEC')}<b class="t-sm">WAEC</b>${'<span class="badge badge-neutral">' + I('lock-simple', 1) + ' Premium</span>'}</button>
-            <button class="card card-tap exam-card locked" data-sheet="paywall" data-reason="NECO" style="flex-direction:column;align-items:flex-start">${examLogo('NECO')}<b class="t-sm">NECO</b>${'<span class="badge badge-neutral">' + I('lock-simple', 1) + ' Premium</span>'}</button>
+          <div class="grid2">${['WAEC', 'NECO'].map(b => ST.isPremium()
+            ? `<button class="card card-tap exam-card" data-go="test-setup" data-params="body=${b}" style="flex-direction:column;align-items:flex-start">${examLogo(b)}<b class="t-sm">${b}</b><span class="badge badge-success">${I('lock-simple-open', 1)} Open</span></button>`
+            : `<button class="card card-tap exam-card locked" data-sheet="paywall" data-reason="${b}" style="flex-direction:column;align-items:flex-start">${examLogo(b)}<b class="t-sm">${b}</b><span class="badge badge-neutral">${I('lock-simple', 1)} Premium</span></button>`).join('')}
           </div></section>
+        ${ST.lbSettings && ST.lbSettings().on ? `<button class="card card-tap mode-card" data-go="leaderboard"><span class="ic gold" style="width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:22px;flex:none">${I('ranking', 1)}</span><span class="grow"><b>Leaderboard</b><br><span class="t-cap muted">See the best JAMB students this season</span></span>${I('caret-right').replace('class="', 'class="trail ')}</button>` : ''}
         <section><div class="sect-title"><h2 class="t-h3">Downloaded packs</h2><button class="btn btn-ghost" data-go="offline">Manage</button></div>
           <div class="card list"><div class="list-item"><span class="lead">${I('cloud-check', 1)}</span><span class="grow"><b class="t-sm">JAMB 2000 to 2002 · all subjects</b><div class="t-cap muted">Works offline · 6.4 MB</div></span><span class="badge badge-success">Ready</span></div></div></section>
       </div></div>`
   });
 
+  // ---------- Test setup: every mode works; always starts a FRESH test ----------
+  const SUBJ_KEY = { 'Use of English': 'eng', 'English Language': 'eng', Mathematics: 'mth', Physics: 'phy', Chemistry: 'chm', Biology: 'bio' };
+  const SUBJ_ICON = { eng: 'book-open-text', mth: 'function', phy: 'atom', chm: 'flask', bio: 'dna', gen: 'book-open' };
+  const TOPICS = { eng: ['Comprehension', 'Lexis and structure', 'Concord', 'Oral English'], mth: ['Indices and logarithms', 'Quadratic equations', 'Integration', 'Probability', 'Trigonometry'],
+    phy: ['Motion', 'Waves', 'Electricity', 'Heat'], chm: ['Mole concept', 'Acids and bases', 'Organic chemistry', 'Redox'], bio: ['Genetics', 'Ecology', 'Cell biology'], gen: ['General'] };
+  const MODES = {
+    JAMB: [['full', 'Full exam'], ['subject', 'Subject'], ['topic', 'Topic'], ['quick', 'Quick']],
+    WAEC: [['subject', 'One subject'], ['topic', 'Topic']], NECO: [['subject', 'One subject'], ['topic', 'Topic']]
+  };
+  const mySubjects = body => {
+    const list = body === 'JAMB' ? (S.subjects || ['Use of English', 'Mathematics', 'Physics', 'Chemistry']) : ['English Language', 'Mathematics', 'Physics', 'Chemistry', 'Biology'];
+    return list.map(n => ({ n: n === 'Use of English' ? 'English' : n, full: n, k: SUBJ_KEY[n] || 'gen' }));
+  };
+  const plan = st => {          // questions, minutes, score label for the summary card
+    const subs = mySubjects(st.body);
+    if (st.body === 'JAMB' && st.mode === 'full') return { subjects: subs.map(x => ({ k: x.k, n: x.n, total: x.k === 'eng' ? 60 : 40 })), mins: 120, max: '400', maxLabel: 'max score', title: 'JAMB UTME Mock' };
+    if (st.mode === 'quick') return { subjects: [{ k: 'mth', n: 'Mixed', total: 20 }], mins: 15, max: '%', maxLabel: 'score shown', title: 'Quick test' };
+    const sub = subs.find(x => x.k === st.subj) || subs[0];
+    if (st.mode === 'topic') return { subjects: [{ k: sub.k, n: sub.n, total: st.count }], mins: st.count, max: '%', maxLabel: 'score shown', title: `Topic drill · ${[...st.topics].join(', ') || 'All topics'}` };
+    const total = st.body === 'JAMB' ? (sub.k === 'eng' ? 60 : 40) : 50;
+    return { subjects: [{ k: sub.k, n: sub.n, total }], mins: st.body === 'JAMB' ? 30 : 60, max: st.body === 'JAMB' ? '100' : '%', maxLabel: st.body === 'JAMB' ? 'max score' : 'score shown', title: `${st.body} ${sub.n}` };
+  };
+
   def('test-setup', {
-    title: 'Test setup', group: 'Test & CBT',
-    render: p => `
-      <div class="appbar"><button class="icon-btn" data-back="test" aria-label="Back">${I('arrow-left')}</button><span class="title">JAMB UTME practice</span></div>
-      <div class="scr-body"><div class="pad stack g5" style="padding-top:var(--s-2)">
-        <div class="row g3">${examLogo('JAMB', 'lg')}<div><h1 class="t-h2">Set up your exam</h1><p class="t-sm muted">Rules come from the JAMB exam config.</p></div></div>
-        <div class="field"><span class="field-label">Mode</span><div class="seg"><button class="${p.mode ? '' : 'on'}">Full exam</button><button class="${p.mode === 'subject' ? 'on' : ''}">Subject</button><button class="${p.mode === 'topic' ? 'on' : ''}">Topic</button></div></div>
-        <div class="field"><span class="field-label">Your subjects</span>
-          <div class="card list">${[['Use of English', 60, 'book-open-text'], ['Mathematics', 40, 'function'], ['Physics', 40, 'atom'], ['Chemistry', 40, 'flask']].map(([s, n, ic]) => `
-            <div class="list-item"><span class="lead">${I(ic, 1)}</span><span class="grow t-sm bold">${s}</span><span class="t-cap muted tnum">${n} questions</span></div>`).join('')}</div>
-          <button class="btn btn-ghost btn-sm" style="align-self:flex-start">Change subjects</button></div>
-        <div class="field"><span class="field-label">Year</span><div class="chips">${['Mixed (free years)', '2000', '2001', '2002'].map((y, i) => `<button class="chip ${i ? '' : 'on'}">${y}</button>`).join('')}<button class="chip" data-sheet="paywall" data-reason="years">${I('lock-simple', 1)} 2003 to 2025</button></div></div>
-        <div class="card card-pad row g4" style="justify-content:space-around;text-align:center">
-          <div><b class="t-h2 tnum">180</b><div class="t-cap muted">questions</div></div><div><b class="t-h2 tnum">2:00</b><div class="t-cap muted">hours</div></div><div><b class="t-h2 tnum">400</b><div class="t-cap muted">max score</div></div></div>
-        <div class="banner info">${I('wifi-slash', 1)}<span>This pack is downloaded. You can take this exam offline.</span></div>
-      </div></div>
-      <div class="footer-cta"><button class="btn btn-primary btn-block" data-go="cbt">Start exam</button></div>`
+    title: 'Test setup (all modes)', group: 'Test & CBT',
+    render: p => {
+      const body = ['JAMB', 'WAEC', 'NECO'].includes(p.body) ? p.body : 'JAMB';
+      return `
+      <div class="appbar"><button class="icon-btn" data-back="test" aria-label="Back">${I('arrow-left')}</button><span class="title">${body} ${body === 'JAMB' ? 'UTME' : body === 'WAEC' ? 'WASSCE' : 'SSCE'} practice</span></div>
+      <div class="scr-body"><div class="pad stack g5" style="padding-top:var(--s-2)" id="setupBody"></div></div>
+      <div class="footer-cta"><button class="btn btn-primary btn-block" id="startBtn">Start exam</button></div>`;
+    },
+    mount(el, p) {
+      const body = ['JAMB', 'WAEC', 'NECO'].includes(p.body) ? p.body : 'JAMB';
+      if (body !== 'JAMB' && !ST.isPremium()) { ST.go('test', null, { mode: 'back', replace: true }); ST.openSheet('paywall', { reason: body }); return; }
+      const modes = MODES[body];
+      const st = { body, mode: modes.some(m => m[0] === p.mode) ? p.mode : modes[0][0], subj: p.subj || mySubjects(body)[body === 'JAMB' ? 1 : 0].k, topics: new Set(p.topic ? [p.topic] : []), count: 20, year: 'mixed' };
+      const box = el.querySelector('#setupBody'), start = el.querySelector('#startBtn');
+      const years = ST.isPremium() ? [2025, 2024, 2023, 2022, 2021, 2020] : [2000, 2001, 2002];
+      const draw = () => {
+        const subs = mySubjects(body), pl = plan(st), q = pl.subjects.reduce((t, x) => t + x.total, 0);
+        box.innerHTML = `
+          <div class="row g3">${examLogo(body, 'lg')}<div><h1 class="t-h2">Set up your practice</h1><p class="t-sm muted">${body === 'JAMB' ? 'Rules come from the JAMB exam config.' : 'Objective paper, like the real exam.'}</p></div></div>
+          <div class="field"><span class="field-label">Mode</span><div class="seg" id="modeSeg">${modes.map(([k, l]) => `<button class="${st.mode === k ? 'on' : ''}" data-m="${k}">${l}</button>`).join('')}</div>
+            <span class="help">${{ full: 'All your subjects, timed like the real UTME.', subject: 'One subject at a time, timed.', topic: 'Only the topics you pick. Great for weak areas.', quick: '20 mixed questions in 15 minutes.' }[st.mode]}</span></div>
+          ${st.mode === 'full' ? `<div class="field"><span class="field-label">Your subjects</span>
+            <div class="card list">${pl.subjects.map(x => `<div class="list-item"><span class="lead">${I(SUBJ_ICON[x.k], 1)}</span><span class="grow t-sm bold">${x.n === 'English' ? 'Use of English' : x.n}</span><span class="t-cap muted tnum">${x.total} questions</span></div>`).join('')}</div>
+            <button class="btn btn-ghost btn-sm" style="align-self:flex-start" data-go="setup" data-params="step=3">Change subjects</button></div>` : ''}
+          ${st.mode === 'subject' || st.mode === 'topic' ? `<div class="field"><span class="field-label">Subject</span>
+            <div class="stack g2">${subs.map(x => `<button class="subj ${st.subj === x.k ? 'on' : ''}" data-sub="${x.k}">${I(SUBJ_ICON[x.k])} ${x.n === 'English' ? 'Use of English' : x.n}<span class="tick">${I('check', 1)}</span></button>`).join('')}</div></div>` : ''}
+          ${st.mode === 'topic' ? `<div class="field"><span class="field-label">Topics <span class="muted" style="font-weight:500">(pick one or more)</span></span>
+            <div class="row wrap g2">${(TOPICS[st.subj] || TOPICS.gen).map(t => `<button class="chip ${st.topics.has(t) ? 'on' : ''}" data-topic="${t}">${t}</button>`).join('')}</div></div>
+            <div class="field"><span class="field-label">Number of questions</span><div class="seg">${[10, 20, 30].map(n => `<button class="${st.count === n ? 'on' : ''}" data-count="${n}">${n}</button>`).join('')}</div></div>` : ''}
+          ${st.mode !== 'quick' ? `<div class="field"><span class="field-label">Year</span><div class="chips">${['mixed', ...years].map(y => `<button class="chip ${String(st.year) === String(y) ? 'on' : ''}" data-year="${y}">${y === 'mixed' ? (ST.isPremium() ? 'Mixed (all years)' : 'Mixed (free years)') : y}</button>`).join('')}${ST.isPremium() ? '' : `<button class="chip" data-sheet="paywall" data-reason="years">${I('lock-simple', 1)} 2003 to 2025</button>`}</div></div>` : ''}
+          <div class="card card-pad row g4" style="justify-content:space-around;text-align:center">
+            <div><b class="t-h2 tnum">${q}</b><div class="t-cap muted">questions</div></div><div><b class="t-h2 tnum">${pl.mins >= 60 ? Math.floor(pl.mins / 60) + ':' + String(pl.mins % 60).padStart(2, '0') : pl.mins}</b><div class="t-cap muted">${pl.mins >= 60 ? 'hours' : 'minutes'}</div></div><div><b class="t-h2 tnum">${pl.max}</b><div class="t-cap muted">${pl.maxLabel}</div></div></div>
+          <div class="banner info">${I('arrow-counter-clockwise', 1)}<span>This starts a <b>new</b> test. To finish an old one, use <b>Continue your test</b> on Home.</span></div>`;
+        box.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { st.mode = b.dataset.m; draw(); });
+        box.querySelectorAll('[data-sub]').forEach(b => b.onclick = () => { st.subj = b.dataset.sub; st.topics.clear(); draw(); });
+        box.querySelectorAll('[data-topic]').forEach(b => b.onclick = () => { st.topics.has(b.dataset.topic) ? st.topics.delete(b.dataset.topic) : st.topics.add(b.dataset.topic); draw(); });
+        box.querySelectorAll('[data-count]').forEach(b => b.onclick = () => { st.count = +b.dataset.count; draw(); });
+        box.querySelectorAll('[data-year]').forEach(b => b.onclick = () => { st.year = b.dataset.year; draw(); });
+        const needTopic = st.mode === 'topic' && !st.topics.size;
+        start.disabled = needTopic; start.classList.toggle('is-disabled', needTopic);
+        start.textContent = needTopic ? 'Pick at least one topic' : { full: 'Start full exam', subject: 'Start subject practice', topic: 'Start topic drill', quick: 'Start quick test' }[st.mode];
+      };
+      draw();
+      const begin = () => { const pl = plan(st); ST.startAttempt({ title: pl.title, subjects: pl.subjects, mins: pl.mins, body }); };
+      start.onclick = () => {
+        const saved = ST.cbtSaved;
+        if (!saved || !ST.attemptAnswered(saved)) return begin();
+        ST.dialog(`<div class="stack g3"><div class="ic blue" style="width:52px;height:52px;border-radius:14px;display:grid;place-items:center;font-size:26px">${I('clock-counter-clockwise', 1)}</div>
+          <h2 class="t-h2">You have an unfinished test</h2>
+          <p class="t-sm muted"><b style="color:var(--c-text)">${saved.title}</b>: ${ST.attemptAnswered(saved)} of ${ST.attemptTotal(saved)} answered, ${ST.fmtTime(saved.left)} left.</p>
+          <p class="t-sm muted">Starting a new test submits the unfinished one as it is, so its score still counts.</p>
+          <button class="btn btn-primary btn-block" id="dNew">Start new test</button>
+          <button class="btn btn-outline btn-block" id="dOld">Continue unfinished test</button>
+          <button class="btn btn-ghost" data-close>Cancel</button></div>`, {
+          mount: w => {
+            w.querySelector('#dNew').onclick = () => { ST.closeOverlay(true); ST.toast('Your unfinished test was submitted. Starting a new one.', 'check-circle'); begin(); };
+            w.querySelector('#dOld').onclick = () => { ST.closeOverlay(true); ST.go('cbt', { resume: 1 }); };
+          }
+        });
+      };
+    }
   });
 })();

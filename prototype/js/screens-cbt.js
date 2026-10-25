@@ -33,32 +33,57 @@
       { q: 'The pH of a neutral solution at $25^\\circ\\text{C}$ is', o: ['$0$', '$1$', '$7$', '$14$'], a: 2 }
     ]
   };
+  BANK.bio = [
+    { q: 'The basic unit of life is the', o: ['tissue', 'organ', 'cell', 'nucleus'], a: 2 },
+    { q: 'Which of these carries genetic information?', o: ['Ribosome', 'DNA', 'Cell wall', 'Vacuole'], a: 1 }
+  ];
+  BANK.gen = BANK.chm;
   const SUBJ = [{ k: 'eng', n: 'English', total: 60 }, { k: 'mth', n: 'Mathematics', total: 40 }, { k: 'phy', n: 'Physics', total: 40 }, { k: 'chm', n: 'Chemistry', total: 40 }];
 
-  // Shared exam state (would live in drift + autosave every answer in the real app)
-  const fresh = () => {
+  // Attempts. In the real app every answer autosaves to drift (offline) and syncs.
+  // ST.cbtSaved = the student's unfinished attempt (shown as "Continue your test").
+  // A new test always starts EMPTY; the old one is only resumed when the student chooses to.
+  const demoSaved = () => {
     const ans = {}, flags = new Set();
     for (let i = 1; i <= 34; i++) ans['eng:' + i] = i % 4;
     for (let i = 1; i <= 11; i++) if (i !== 6) ans['mth:' + i] = i % 4;
     for (let i = 1; i <= 12; i++) ans['phy:' + i] = (i + 1) % 4;
     for (let i = 1; i <= 7; i++) ans['chm:' + i] = i % 4;
     ['mth:4', 'mth:9', 'eng:12', 'phy:3'].forEach(f => flags.add(f));
-    return { subj: 'mth', n: 12, ans, flags, left: 72 * 60 + 40 };
+    return { title: 'JAMB UTME Mock', body: 'JAMB', subjects: SUBJ.map(x => ({ ...x })), subj: 'mth', n: 12, ans, flags, left: 72 * 60 + 40 };
   };
-  ST.cbt = ST.cbt || fresh();
+  if (ST.cbtSaved === undefined) ST.cbtSaved = demoSaved();
+  ST.cbt = ST.cbtSaved;
+  ST.attemptTotal = a => a.subjects.reduce((t, x) => t + x.total, 0);
+  ST.attemptAnswered = a => Object.keys(a.ans).length;
+  ST.startAttempt = ({ title, subjects, mins, body }) => {
+    ST.cbtSaved = { title, body: body || 'JAMB', subjects, subj: subjects[0].k, n: 1, ans: {}, flags: new Set(), left: mins * 60 };
+    ST.go('cbt', { fresh: 1 });
+  };
+  ST.unfinishedCard = () => {
+    const a = ST.cbtSaved; if (!a || !ST.attemptAnswered(a)) return '';
+    const done = ST.attemptAnswered(a), total = ST.attemptTotal(a);
+    return `<button class="card card-tap continue-card" data-go="cbt" data-params="resume=1">
+      <div class="ic blue" style="width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:22px">${I('clock-counter-clockwise', 1)}</div>
+      <div class="grow"><b class="t-sm">Continue your test</b><div class="t-cap muted">${a.title} · ${done} of ${total} answered · ${ST.fmtTime(a.left)} left</div><div class="bar mt2"><i data-v="${Math.round(done / total * 100)}%"></i></div></div>
+      ${I('caret-right')}</button>`;
+  };
   ST.cbtSetTime = s => { ST.cbt.left = s; ST.cbt._tick?.(); };
 
   const fmt = s => { s = Math.max(0, s); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return `${h}:${String(m).padStart(2, '0')}:${String(x).padStart(2, '0')}`; };
-  const counts = k => { const s = SUBJ.find(x => x.k === k); let a = 0, f = 0; for (let i = 1; i <= s.total; i++) { if ((k + ':' + i) in ST.cbt.ans) a++; if (ST.cbt.flags.has(k + ':' + i)) f++; } return { a, f, u: s.total - a, total: s.total }; };
-  const qFor = (k, n) => { const b = BANK[k]; if (k === 'eng') return n <= 5 ? b[n - 1] : b[5 + (n % 2)]; return b[(n - 1) % b.length]; };
+  ST.fmtTime = fmt;
+  const SUBS = () => ST.cbt.subjects;
+  const counts = k => { const s = SUBS().find(x => x.k === k); let a = 0, f = 0; for (let i = 1; i <= s.total; i++) { if ((k + ':' + i) in ST.cbt.ans) a++; if (ST.cbt.flags.has(k + ':' + i)) f++; } return { a, f, u: s.total - a, total: s.total }; };
+  const qFor = (k, n) => { const b = BANK[k] || BANK.gen; if (k === 'eng') return n <= 5 ? b[n - 1] : b[5 + (n % 2)]; return b[(n - 1) % b.length]; };
 
   def('cbt', {
     title: 'CBT exam screen', group: 'Test & CBT', cls: 'cbt',
     render: () => `
       <div class="cbt-top">
         ${examLogo('JAMB', 'sm')}
-        <div class="who"><b>${S.name}</b><span class="tnum">Reg. ${S.reg} · UTME Mock</span></div>
+        <div class="who"><b>${S.name}</b><span class="tnum" id="attTitle">Reg. ${S.reg}</span></div>
         <button class="timer" id="timer" aria-live="off" aria-label="Time left">${I('timer', 1)}<span class="tnum" id="tm">--</span></button>
+        <button class="btn btn-sm cbt-submit" id="submitTop">${I('paper-plane-tilt', 1)} Submit</button>
       </div>
       <div class="subj-tabs" id="tabs" role="tablist"></div>
       <div class="passage hidden" id="passage">
@@ -76,15 +101,17 @@
         <div class="row g1" style="justify-content:flex-end"><button class="btn btn-primary btn-sm" id="next">Next ${I('caret-right')}</button></div>
       </div>`,
     mount(el, p) {
-      const st = ST.cbt;
-      if (p.mode === 'quick' || p.mode === 'topic') { st.subj = 'mth'; st.n = 1; }
+      // Fresh attempts come from Test setup (ST.startAttempt). Opening without "fresh" resumes the saved one.
+      if (!ST.cbtSaved) ST.cbtSaved = demoSaved();
+      const st = ST.cbt = ST.cbtSaved;
+      const SUBJ = st.subjects;
+      el.querySelector('#attTitle').textContent = st.title;
+      el.querySelector('#submitTop').onclick = () => openSubmit();
       const tabs = el.querySelector('#tabs'), qa = el.querySelector('#qa'), pas = el.querySelector('#passage');
 
       const drawTabs = () => {
-        tabs.innerHTML = SUBJ.map(s => { const c = counts(s.k); return `<button class="subj-tab ${st.subj === s.k ? 'on' : ''}" role="tab" data-s="${s.k}">${s.n}<span class="cnt">${c.a}/${c.total}</span></button>`; }).join('') +
-          `<button class="subj-tab" id="submitTab" style="color:var(--c-error)">${I('paper-plane-tilt', 1)} Submit</button>`;
+        tabs.innerHTML = SUBJ.map(s => { const c = counts(s.k); return `<button class="subj-tab ${st.subj === s.k ? 'on' : ''}" role="tab" data-s="${s.k}">${s.n}<span class="cnt">${c.a}/${c.total}</span></button>`; }).join('');
         tabs.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { st.subj = b.dataset.s; st.n = 1; draw(true); });
-        tabs.querySelector('#submitTab').onclick = openSubmit;
       };
       const draw = (anim) => {
         const s = SUBJ.find(x => x.k === st.subj), q = qFor(st.subj, st.n), key = st.subj + ':' + st.n, sel = st.ans[key];
@@ -103,6 +130,10 @@
         });
         const fl = el.querySelector('#flag'); fl.classList.toggle('on', st.flags.has(key)); fl.innerHTML = I('flag', st.flags.has(key));
         el.querySelector('#prev').disabled = st.n === 1;
+        // On the very last question, Next becomes Submit
+        const last = SUBJ[SUBJ.length - 1], atEnd = st.subj === last.k && st.n === last.total, nx = el.querySelector('#next');
+        nx.classList.toggle('btn-danger', atEnd); nx.classList.toggle('btn-primary', !atEnd);
+        nx.innerHTML = atEnd ? `${I('paper-plane-tilt', 1)} Submit` : `Next ${I('caret-right')}`;
         drawTabs();
       };
       el.querySelector('#prev').onclick = () => { if (st.n > 1) { st.n--; draw(true); } };
@@ -247,6 +278,7 @@
         { mount: w => w.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { ST.closeOverlay(); ST.cbtSetTime(+b.dataset.t); }) });
       tick(); draw(false);
       if (p.resume) ST.toast('Welcome back. We saved your answers.', 'cloud-check');
+      if (p.fresh) ST.toast('New test started. Good luck!', 'play-circle');
     }
   });
 
@@ -295,7 +327,7 @@
   });
   // reset exam state for next run, but keep it until results first renders
   const origResults = ST.screens.results.mount;
-  ST.screens.results.mount = (el, p) => { origResults(el, p); ST.cbt = fresh(); };
+  ST.screens.results.mount = (el, p) => { origResults(el, p); ST.cbtSaved = null; };
 
   function confetti(cv, palette) {
     const ctx = cv.getContext('2d'), W = cv.width = cv.offsetWidth * 2, H = cv.height = cv.offsetHeight * 2;
