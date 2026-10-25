@@ -399,3 +399,53 @@ body.proto { background: var(--c-canvas); min-height: 100dvh; overflow: hidden; 
   background: var(--c-primary); color: var(--c-on-primary); font-size: 15px; box-shadow: 0 0 0 3px var(--c-bg); transition: transform var(--dur-fast) var(--ease-out); }
 .avatar-edit:active .cam { transform: scale(.9); }
 .img-dialog { padding: var(--s-3); }
+
+/* ---------- Onboarding art motion ----------
+   Looping "ambient" animations that show what each feature does. They run only on the visible
+   slide (and the Welcome icon), use transform/opacity only, and switch off under reduce motion. */
+.fx-float { transform: rotate(var(--rot, 0deg)); }
+.fx-seq-typing { opacity: 0; }
+.fx-live { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: currentColor; margin-right: 4px; }
+.fx-ripple { position: relative; }
+.fx-ripple::after { content: ''; position: absolute; inset: 0; border-radius: 50%; border: 2px solid rgba(255,255,255,.9); opacity: 0; }
+.fx-fill { transform-origin: left center; }
+.fx-draw { stroke-dasharray: 1; stroke-dashoffset: 0; }
+.fx-dot { transform-box: fill-box; transform-origin: center; }
+
+:is(.ob-slide.cur, [data-screen="welcome"]) .fx-float { animation: fx-float 4.5s ease-in-out var(--d, 0s) infinite; }
+[data-screen="welcome"] .pop.fx-float { animation: st-pop var(--dur-slow) var(--ease-emphasized) both, fx-float 4.5s ease-in-out .5s infinite; }
+:is(.ob-slide.cur, [data-screen="welcome"]) .fx-breathe { animation: fx-breathe 6s ease-in-out infinite; }
+.ob-slide.cur .fx-tick { display: inline-block; animation: fx-tick 1s ease-out infinite; }
+.ob-slide.cur .fx-ripple::after { animation: fx-ripple 1.8s var(--ease-out) infinite; }
+.ob-slide.cur .fx-fill { animation: fx-fill 3.6s var(--ease-out) infinite; }
+.ob-slide.cur .fx-check { animation: fx-check 3.6s var(--ease-out) infinite; }
+.ob-slide.cur .fx-seq-me { animation: fx-seq-me 7s var(--ease-out) infinite; }
+.ob-slide.cur .fx-seq-typing { animation: fx-seq-typing 7s linear infinite; }
+.ob-slide.cur .fx-seq-ai { animation: fx-seq-ai 7s var(--ease-out) infinite; }
+.ob-slide.cur .fx-seq-chip { animation: fx-seq-chip 7s var(--ease-out) infinite; }
+.ob-slide.cur .fx-draw { animation: fx-draw 4.5s var(--ease-out) infinite; }
+.ob-slide.cur .fx-dot { animation: fx-dot 4.5s var(--ease-out) infinite; }
+.ob-slide.cur .fx-ring { animation: fx-ring 4.5s var(--ease-out) infinite; }
+.ob-slide.cur .fx-badge { animation: fx-badge 4.5s var(--ease-out) infinite; }
+.ob-slide.cur .fx-live { animation: st-blink 1.2s steps(1) infinite; }
+.ob-slide.cur .fx-pulse { animation: fx-pulse 2.4s ease-in-out infinite; }
+
+@keyframes fx-float { 0%, 100% { transform: rotate(var(--rot, 0deg)) translateY(0); } 50% { transform: rotate(var(--rot, 0deg)) translateY(-8px); } }
+@keyframes fx-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+@keyframes fx-tick { 0% { transform: rotate(0); } 12% { transform: rotate(-14deg); } 24% { transform: rotate(10deg); } 36%, 100% { transform: rotate(0); } }
+@keyframes fx-ripple { 0% { opacity: .8; transform: scale(1); } 100% { opacity: 0; transform: scale(1.9); } }
+@keyframes fx-fill { 0% { transform: scaleX(0); } 55%, 100% { transform: scaleX(1); } }
+@keyframes fx-check { 0%, 55% { opacity: 0; transform: scale(.4); } 64% { opacity: 1; transform: scale(1.15); } 70%, 90% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(.8); } }
+@keyframes fx-seq-me { 0% { opacity: 0; transform: translateY(10px); } 6%, 88% { opacity: 1; transform: none; } 96%, 100% { opacity: 0; transform: none; } }
+@keyframes fx-seq-typing { 0%, 12% { opacity: 0; } 15%, 30% { opacity: 1; } 33%, 100% { opacity: 0; } }
+@keyframes fx-seq-ai { 0%, 32% { opacity: 0; transform: translateY(12px); } 38%, 88% { opacity: 1; transform: none; } 96%, 100% { opacity: 0; transform: none; } }
+@keyframes fx-seq-chip { 0%, 42% { opacity: 0; transform: scale(.8); } 47% { opacity: 1; transform: scale(1.08); } 50%, 88% { opacity: 1; transform: none; } 96%, 100% { opacity: 0; } }
+@keyframes fx-draw { 0% { stroke-dashoffset: 1; } 40%, 100% { stroke-dashoffset: 0; } }
+@keyframes fx-dot { 0%, 38% { transform: scale(0); } 46% { transform: scale(1.5); } 52%, 70% { transform: scale(1); } 78% { transform: scale(1.3); } 86%, 100% { transform: scale(1); } }
+@keyframes fx-ring { 0% { stroke-dashoffset: 1; } 45%, 100% { stroke-dashoffset: .3; } }
+@keyframes fx-badge { 0%, 40% { opacity: 0; transform: scale(.5); } 50% { opacity: 1; transform: scale(1.15); } 56%, 100% { opacity: 1; transform: none; } }
+@keyframes fx-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+
+/* Reduce motion: show the finished picture, no loops */
+@media (prefers-reduced-motion: reduce) { [class*="fx-"], [class*="fx-"]::after { animation: none !important; } }
+html.rm [class*="fx-"], html.rm [class*="fx-"]::after { animation: none !important; }

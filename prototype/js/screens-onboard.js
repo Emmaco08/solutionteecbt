@@ -35,9 +35,9 @@
     render: () => `
       <div class="scr-body" style="display:flex;flex-direction:column">
         <div style="flex:1;display:grid;place-items:center;position:relative;overflow:hidden">
-          <div class="art-disc" style="width:300px;height:300px"></div>
+          <div class="art-disc fx-breathe" style="width:300px;height:300px"></div>
           <div class="art-disc gold" style="width:180px;height:180px;transform:translate(90px,-90px)"></div>
-          <div class="stack center g3 pop" style="position:relative">
+          <div class="stack center g3 pop fx-float" style="position:relative;--rot:0deg;--d:0s">
             <img src="/brand/favicon.svg" alt="SolutionTee app icon" style="width:108px;height:108px;border-radius:26px;box-shadow:var(--shadow-3)">
           </div>
         </div>
@@ -53,36 +53,39 @@
   });
 
   // ---------- Onboarding slides ----------
+  // Each picture: outer .layer = position + slide-in parallax; inner .fx-* = looping "ambient" animation
+  // (runs only on the visible slide, off under reduce motion; see app.css "Onboarding art motion").
   const slides = [
     { t: 'A real CBT experience', d: 'Timed exams that look and feel like JAMB, WAEC and NECO CBT. Practise until the real day feels familiar.',
-      art: () => `<div class="art-disc"></div>
-        <div class="layer l1 mini" style="left:40px;top:70px;transform:rotate(-8deg)">${examLogo('WAEC', 'lg')}</div>
-        <div class="layer l2 mini" style="z-index:2">${examLogo('JAMB', 'lg')}</div>
-        <div class="layer l3 mini" style="right:40px;top:70px;transform:rotate(8deg)">${examLogo('NECO', 'lg')}</div>
-        <div class="layer l2 mini row g2" style="bottom:56px;left:70px;padding:8px 12px"><span class="timer" style="height:30px;font-size:14px">${I('timer', 1)} 01:58:34</span></div>` },
+      art: () => `<div class="art-disc fx-breathe"></div>
+        <div class="layer l1" style="position:absolute;left:40px;top:70px"><div class="mini fx-float" style="position:static;--rot:-8deg;--d:0s">${examLogo('WAEC', 'lg')}</div></div>
+        <div class="layer l2" style="position:absolute;z-index:2"><div class="mini fx-float" style="position:static;--rot:0deg;--d:-1.3s">${examLogo('JAMB', 'lg')}</div></div>
+        <div class="layer l3" style="position:absolute;right:40px;top:70px"><div class="mini fx-float" style="position:static;--rot:8deg;--d:-2.6s">${examLogo('NECO', 'lg')}</div></div>
+        <div class="layer l2" style="position:absolute;bottom:56px;left:70px"><div class="mini" style="position:static;padding:8px 12px"><span class="timer" style="height:30px;font-size:14px"><span class="fx-tick">${I('timer', 1)}</span> <span class="tnum" data-countdown>01:58:34</span></span></div></div>` },
     { t: 'Past questions, videos and notes', d: 'Every answer comes with a clear explanation. Watch video solutions and read simple lesson notes.',
-      art: () => `<div class="art-disc blue"></div>
-        <div class="layer l1 mini" style="width:220px;top:60px;padding:8px"><div class="thumb th-1"><span class="play">${I('play', 1)}</span><span class="dur">6:12</span></div></div>
-        <div class="layer l2 mini" style="width:200px;bottom:60px;left:30px"><b class="t-sm">Quadratic equations</b><div class="t-cap muted">Lesson note · 8 min read</div><div class="bar mt2" style="--v:64%"><i style="--v:64%"></i></div></div>
-        <div class="layer l3 mini" style="right:28px;bottom:120px;padding:10px">${I('check-circle', 1).replace('class="', 'style="font-size:28px;color:var(--c-success)" class="')}</div>` },
+      art: () => `<div class="art-disc blue fx-breathe"></div>
+        <div class="layer l1" style="position:absolute;top:60px"><div class="mini" style="position:static;width:220px;padding:8px"><div class="thumb th-1"><span class="play fx-ripple">${I('play', 1)}</span><span class="dur">6:12</span></div></div></div>
+        <div class="layer l2" style="position:absolute;bottom:60px;left:30px"><div class="mini" style="position:static;width:200px"><b class="t-sm">Quadratic equations</b><div class="t-cap muted">Lesson note · 8 min read</div><div class="bar mt2"><i class="fx-fill" style="width:64%"></i></div></div></div>
+        <div class="layer l3" style="position:absolute;right:28px;bottom:120px"><div class="mini fx-check" style="position:static;padding:10px">${I('check-circle', 1).replace('class="', 'style="font-size:28px;color:var(--c-success)" class="')}</div></div>` },
     { t: 'SolutionTee AI tutor', d: 'Stuck on a question? Ask our AI tutor. It explains step by step, like a patient teacher.',
-      art: () => `<div class="art-disc gold"></div>
-        <div class="layer l1 msg me" style="position:absolute;top:70px;right:36px;animation:none">Solve $x^2-5x+6=0$</div>
-        <div class="layer l2 msg ai" style="position:absolute;top:130px;left:30px;width:250px;animation:none"><p>Find two numbers that multiply to $6$ and add to $-5$: that is $-2$ and $-3$.</p><p>So $x=2$ or $x=3$.</p></div>
-        <div class="layer l3 quota" style="position:absolute;bottom:56px;right:50px">${I('sparkle', 1)} Step by step</div>` },
+      art: () => `<div class="art-disc gold fx-breathe"></div>
+        <div class="layer l1" style="position:absolute;top:66px;right:36px"><div class="msg me fx-seq-me" style="white-space:nowrap;max-width:none">Solve $x^2-5x+6=0$</div></div>
+        <div class="layer l2" style="position:absolute;top:126px;left:30px"><div class="msg ai fx-seq-typing" style="padding:10px 14px"><span class="typing"><i></i><i></i><i></i></span></div></div>
+        <div class="layer l2" style="position:absolute;top:126px;left:30px;width:250px"><div class="msg ai fx-seq-ai" style="max-width:none"><p>Find two numbers that multiply to $6$ and add to $-5$: that is $-2$ and $-3$.</p><p>So $x=2$ or $x=3$.</p></div></div>
+        <div class="layer l3" style="position:absolute;bottom:56px;right:50px"><span class="quota fx-seq-chip">${I('sparkle', 1)} Step by step</span></div>` },
     { t: 'See your progress', d: 'Track your scores, find your weak topics and practise them until they become strong.',
-      art: () => `<div class="art-disc"></div>
-        <div class="layer l1 mini" style="width:240px;top:70px"><div class="row between"><b class="t-sm">JAMB score trend</b><span class="badge badge-success">+38</span></div>
-          <svg viewBox="0 0 200 60" style="width:100%;margin-top:8px"><polyline points="0,50 40,44 80,46 120,30 160,24 200,12" fill="none" stroke="var(--c-secondary)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-        <div class="layer l2 mini row g3" style="bottom:60px;left:36px">
-          <div class="ring" style="--size:56px;--stroke:3.6"><svg viewBox="0 0 36 36"><circle class="track" cx="18" cy="18" r="15"/><circle class="val" cx="18" cy="18" r="15" stroke-dasharray="94.2" stroke-dashoffset="28"/></svg><span class="ring-label t-cap bold">70%</span></div>
-          <div><b class="t-sm">Weak topic</b><div class="t-cap muted">Organic chemistry</div></div></div>` },
+      art: () => `<div class="art-disc fx-breathe"></div>
+        <div class="layer l1" style="position:absolute;top:70px"><div class="mini" style="position:static;width:240px"><div class="row between"><b class="t-sm">JAMB score trend</b><span class="badge badge-success fx-badge">+38</span></div>
+          <svg viewBox="0 0 200 64" style="width:100%;margin-top:8px;overflow:visible"><polyline class="fx-draw" pathLength="1" points="0,52 40,46 80,48 120,32 160,26 200,12" fill="none" stroke="var(--c-secondary)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle class="fx-dot" cx="200" cy="12" r="5" fill="var(--c-accent)"/></svg></div></div>
+        <div class="layer l2" style="position:absolute;bottom:60px;left:36px"><div class="mini row g3" style="position:static">
+          <div class="ring" style="--size:56px;--stroke:3.6"><svg viewBox="0 0 36 36"><circle class="track" cx="18" cy="18" r="15"/><circle class="val fx-ring" cx="18" cy="18" r="15" pathLength="1" stroke-dasharray="1" stroke-dashoffset="0.3"/></svg><span class="ring-label t-cap bold">70%</span></div>
+          <div><b class="t-sm">Weak topic</b><div class="t-cap muted">Organic chemistry</div></div></div></div>` },
     { t: 'Join live JAMB classes', d: 'Learn with real teachers online. Join classes, ask questions and get study materials.',
-      art: () => `<div class="art-disc blue"></div>
-        <div class="layer l1 mini" style="width:250px;top:80px"><div class="row g3"><div class="ic blue" style="width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:22px">${I('video-camera', 1)}</div>
-          <div class="grow"><b class="t-sm">Physics: Waves</b><div class="t-cap muted">Today · 4:00 PM</div></div></div>
-          <button class="btn btn-accent btn-sm btn-block mt3">Join class</button></div>
-        <div class="layer l2 mini t-cap bold" style="bottom:70px;left:46px">${I('users-three', 1)} 214 students</div>` }
+      art: () => `<div class="art-disc blue fx-breathe"></div>
+        <div class="layer l1" style="position:absolute;top:80px"><div class="mini" style="position:static;width:250px"><div class="row g3"><div class="ic blue" style="width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:22px">${I('video-camera', 1)}</div>
+          <div class="grow"><b class="t-sm">Physics: Waves</b><div class="t-cap muted">Today · 4:00 PM</div></div><span class="badge badge-error"><span class="fx-live"></span>LIVE</span></div>
+          <button class="btn btn-accent btn-sm btn-block mt3 fx-pulse" tabindex="-1">Join class</button></div></div>
+        <div class="layer l2" style="position:absolute;bottom:70px;left:46px"><div class="mini t-cap bold fx-float" style="position:static;--rot:0deg;--d:-1s">${I('users-three', 1)} <span class="tnum" data-students>214</span> students</div></div>` }
   ];
   ST.onboardSlides = slides;
 
@@ -111,6 +114,15 @@
         ST.math(el);
       };
       next.onclick = () => i === slides.length - 1 ? ST.go('signup') : set(i + 1);
+      // Ambient counters (timer on slide 1, student count on slide 5); paused under reduce motion
+      let left = 1 * 3600 + 58 * 60 + 34, students = 214;
+      const tick = setInterval(() => {
+        if (!el.isConnected) return clearInterval(tick);
+        if (ST.reduceMotion()) return;
+        left--; const t = el.querySelector('[data-countdown]');
+        if (t) t.textContent = [Math.floor(left / 3600), Math.floor(left % 3600 / 60), left % 60].map(n => String(n).padStart(2, '0')).join(':');
+        if (Math.random() < 0.35) { const s = el.querySelector('[data-students]'); if (s) s.textContent = ++students; }
+      }, 1000);
       let x0 = null;
       track.addEventListener('pointerdown', e => { x0 = e.clientX; });
       track.addEventListener('pointerup', e => { if (x0 == null) return; const dx = e.clientX - x0; if (Math.abs(dx) > 40) set(i + (dx < 0 ? 1 : -1)); x0 = null; });
