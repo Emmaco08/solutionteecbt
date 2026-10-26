@@ -345,27 +345,40 @@
   ST.confetti = confetti;
 
   // ---------- Review ----------
+  const REV = [
+    { tag: 'wrong', subj: 'Mathematics', topic: 'Integration', time: '1m 12s', q: 'Evaluate $$\\int_0^2 (3x^2 + 1)\\,dx$$', o: ['$8$', '$10$', '$12$', '$14$'], a: 1, you: 2,
+      exp: '<p>Integrate each term, then put in the limits:</p>$$\\Big[x^3 + x\\Big]_0^2 = (8 + 2) - 0 = 10$$<p>A common trap is forgetting the $+x$ from integrating $1$, which gives $8$.</p>', ai: 'integral' },
+    { tag: 'wrong', subj: 'Physics', topic: 'Motion', time: '48s', q: 'A car accelerates uniformly from rest to $20\\,\\text{m s}^{-1}$ in $5\\,\\text{s}$. Find its acceleration.', o: ['$2\\,\\text{m s}^{-2}$', '$4\\,\\text{m s}^{-2}$', '$5\\,\\text{m s}^{-2}$', '$100\\,\\text{m s}^{-2}$'], a: 1, you: 0,
+      exp: '<p>$$a = \\frac{v - u}{t} = \\frac{20 - 0}{5} = 4\\,\\text{m s}^{-2}$$</p>', ai: 'default' },
+    { tag: 'flagged', subj: 'Chemistry', topic: 'Mole concept', time: '55s', q: 'How many moles are in $4.4\\,\\text{g}$ of $\\text{CO}_2$? $(\\text{C} = 12,\\ \\text{O} = 16)$', o: ['$0.01$', '$0.1$', '$1.0$', '$10$'], a: 1, you: 1,
+      exp: '<p>$$n = \\frac{m}{M} = \\frac{4.4}{44} = 0.1\\ \\text{mol}$$</p>', ai: 'default' },
+    { tag: 'skipped', subj: 'English', topic: 'Concord', time: 'Skipped', q: 'Neither the teacher nor the students ____ in the hall.', o: ['was', 'were', 'is', 'has been'], a: 1, you: null,
+      exp: '<p>With "neither ... nor", the verb agrees with the nearer subject, "students", so the answer is "were".</p>', ai: 'default' }
+  ];
+  const REV_TABS = [['all', 'All'], ['wrong', 'Wrong'], ['flagged', 'Flagged'], ['skipped', 'Skipped']];
   def('review', {
     title: 'Review answers', group: 'Test & CBT',
-    render: () => `
-      <div class="appbar lined"><button class="icon-btn" data-back="results" aria-label="Back">${I('arrow-left')}</button><span class="title">Review<small>Mathematics · Question 3 of 40</small></span></div>
-      <div class="px4" style="padding-block:10px;background:var(--c-bg)"><div class="chips">${[['All', 40], ['Wrong', 12], ['Flagged', 2], ['Skipped', 2]].map(([c, n], i) => `<button class="chip ${i === 1 ? 'on' : ''}">${c} <span class="tnum" style="opacity:.7">${n}</span></button>`).join('')}</div></div>
+    render: p => {
+      const f = p.f || 'wrong', list = REV.filter(x => f === 'all' || x.tag === f), i = Math.min(+(p.i || 0), Math.max(0, list.length - 1)), r = list[i];
+      const badge = { wrong: `<span class="badge badge-error">${I('x-circle', 1)} Wrong</span>`, flagged: `<span class="badge badge-warning">${I('flag', 1)} Flagged</span>`, skipped: `<span class="badge badge-neutral">${I('minus-circle', 1)} Skipped</span>` };
+      return `
+      <div class="appbar lined"><button class="icon-btn" data-back="results" aria-label="Back">${I('arrow-left')}</button><span class="title">Review answers<small>${r ? `${r.subj} · ${i + 1} of ${list.length}` : 'Nothing here'}</small></span></div>
+      <div class="px4" style="padding-block:10px;background:var(--c-bg)"><div class="chips">${REV_TABS.map(([k, l]) => `<button class="chip ${k === f ? 'on' : ''}" data-go="review" data-mode="fade" data-params="f=${k}">${l} <span class="tnum" style="opacity:.7">${REV.filter(x => k === 'all' || x.tag === k).length}</span></button>`).join('')}</div></div>
       <div class="scr-body"><div class="pad stack g4" style="padding-top:var(--s-2)">
-        <div class="row g2"><span class="badge badge-error">${I('x-circle', 1)} Wrong</span><span class="badge badge-soft">Integration</span><span class="t-cap muted" style="margin-left:auto">You took 1m 12s</span></div>
-        <p class="q-text" style="margin:0">Evaluate $$\\int_0^2 (3x^2 + 1)\\,dx$$</p>
-        <div class="opts">
-          <div class="opt"><span class="key">A</span>$8$</div>
-          <div class="opt right"><span class="key">B</span>$10$<span class="tag" style="color:var(--c-on-success-soft)">Correct answer</span></div>
-          <div class="opt wrong"><span class="key">C</span>$12$<span class="tag" style="color:var(--c-on-error-soft)">Your answer</span></div>
-          <div class="opt"><span class="key">D</span>$14$</div>
-        </div>
-        <div class="explain"><b>Explanation</b>
-          <p class="mt2">Integrate each term, then substitute the limits:</p>
-          $$\\int_0^2 (3x^2+1)\\,dx = \\Big[x^3 + x\\Big]_0^2 = (8 + 2) - 0 = 10$$
-          <p>A common trap is forgetting the $+x$ from integrating $1$, which gives $8$.</p></div>
-        <button class="btn btn-accent btn-block" data-go="ai" data-params="q=integral">${I('sparkle', 1)} Ask SolutionTee AI to explain</button>
-        <p class="t-cap muted" style="text-align:center">Uses 1 AI prompt · ${S.aiLeft} left today</p>
+        ${r ? `<div class="row g2 wrap">${badge[r.tag]}<span class="badge badge-soft">${r.topic}</span><span class="t-cap muted" style="margin-left:auto">${r.time === 'Skipped' ? 'Not answered' : 'You took ' + r.time}</span></div>
+        <div class="q-text" style="margin:0">${r.q}</div>
+        <div class="opts">${r.o.map((o, k) => `<div class="opt ${k === r.a ? 'right' : k === r.you ? 'wrong' : ''}"><span class="key">${'ABCD'[k]}</span><span>${o}</span>${k === r.a ? '<span class="tag" style="color:var(--c-on-success-soft)">Correct answer</span>' : k === r.you ? '<span class="tag" style="color:var(--c-on-error-soft)">Your answer</span>' : ''}</div>`).join('')}</div>
+        <div class="explain"><b>Explanation</b><div class="mt2">${r.exp}</div></div>
+        <button class="btn btn-accent btn-block" data-go="ai" data-params="q=${r.ai}">${I('sparkle', 1)} Ask SolutionTee AI to explain</button>
+        <p class="t-cap muted" style="text-align:center">Uses 1 AI prompt · ${S.aiLeft} left today</p>`
+        : `<div class="state"><div class="art blue">${I('check-circle', 1)}</div><h2 class="t-h3">Nothing to review here</h2><p class="muted">Pick another filter above.</p></div>`}
       </div></div>
-      <div class="cbt-bottom"><button class="btn btn-outline btn-sm">${I('caret-left')} Prev</button><span class="t-cap muted tnum">3 / 12 wrong</span><button class="btn btn-primary btn-sm">Next ${I('caret-right')}</button></div>`
+      ${r ? `<div class="cbt-bottom"><button class="btn btn-outline btn-sm" id="rvPrev" ${i === 0 ? 'disabled' : ''}>${I('caret-left')} Prev</button><span class="t-cap muted tnum">${i + 1} / ${list.length}</span><button class="btn btn-primary btn-sm" id="rvNext" ${i >= list.length - 1 ? 'disabled' : ''}>Next ${I('caret-right')}</button></div>` : ''}`;
+    },
+    mount(el, p) {
+      const i = +(p.i || 0), f = p.f || 'wrong';
+      el.querySelector('#rvPrev')?.addEventListener('click', () => ST.go('review', { f, i: i - 1 }, { replace: true, mode: 'fade' }));
+      el.querySelector('#rvNext')?.addEventListener('click', () => ST.go('review', { f, i: i + 1 }, { replace: true, mode: 'fade' }));
+    }
   });
 })();

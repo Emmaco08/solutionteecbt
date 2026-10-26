@@ -29,6 +29,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started · `[!]` blocked on
 - [x] Feedback round 1: exam-body logos added (D-013)
 - [x] Feedback round 2: bare JAMB logo on Test hero (D-014), official Google G (D-015)
 - [x] Feedback round 3: student images: AI photo questions + profile photo (D-016)
+- [x] Feedback rounds 4–9: tour/modes/premium fixes, news, leaderboard, QOTD, challenges, anti-cheat, Free vs Premium rules, referrals, anti multi-account, winners wall, security plan, skeletons, offline strip, QA pass
 - [ ] Owner tests on laptop + phone and sends feedback
 - [ ] `DESIGN APPROVED` → write `docs/design-spec.md`, commit
 

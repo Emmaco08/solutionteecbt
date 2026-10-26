@@ -47,6 +47,7 @@
     if (feats.length) out.push(feats.join(', '));
     if (p.syllabus !== f.syllabus) out.push(`Syllabuses and brochure: ${p.syllabus === 'all' ? 'all' : p.syllabus} (Free: ${f.syllabus})`);
     if (p.ai !== f.ai) out.push(`${p.ai} AI tutor prompts a day (Free: ${f.ai})`);
+    if (p.offline && !f.offline) out.push('Download tests and practise offline, without data');
     return out.slice(0, 7);
   };
   const bindPlans = (root, cb) => root.querySelectorAll('[data-plan]').forEach(b => b.onclick = () => { root.querySelectorAll('[data-plan]').forEach(x => x.classList.toggle('on', x === b)); cb && cb(b.dataset.plan); });
@@ -143,6 +144,7 @@
         inp.oninput = () => { inp.value = inp.value.toUpperCase(); f.classList.remove('has-error'); f.querySelector('.err')?.remove(); codeBox.querySelector('#codeHelp')?.classList.remove('hidden'); };
         inp.onkeydown = e => { if (e.key === 'Enter') btn.click(); };
         btn.onclick = () => {
+          if (ST.needsNet('Checking a code')) return;
           btn.classList.add('is-loading'); btn.textContent = '';
           setTimeout(() => {
             if (!btn.isConnected) return;
@@ -171,6 +173,7 @@
       el.querySelectorAll('#flv button').forEach(b => b.onclick = () => { S.payFlavor = b.dataset.f; el.querySelectorAll('#flv button').forEach(x => x.classList.toggle('on', x === b)); draw(); });
       draw();
       el.querySelector('#pay').onclick = () => {
+        if (ST.needsNet('Payment')) return;
         if (S.payFlavor === 'play') {
           ST.sheet(`<div class="stack g4"><div class="row g3">${I('google-play-logo', 1).replace('class="', 'style="font-size:26px;color:#01875F" class="')}<b>Google Play</b></div>
             <div class="row g3"><img src="/brand/favicon.svg" alt="" style="width:48px;height:48px;border-radius:12px"><div class="grow"><b class="t-sm">SolutionTee Premium · ${plan.name}</b><div class="t-cap muted">SolutionTee CBT</div></div><b class="tnum">${ST.naira(plan.price)}</b></div>
@@ -228,6 +231,11 @@
       'So the answer is **(B) 25%**.', '\n\n', '**Exam trap:** if you divide by the selling price you get $20\\%$, which is option A. JAMB puts that option there on purpose.'],
     default: ['Sure! A quadratic equation looks like ', '$ax^2+bx+c=0$', '. To solve ', '$x^2 - 5x + 6 = 0$', ', find two numbers that multiply to $6$ and add up to $-5$.', '\n\n', 'Those numbers are $-2$ and $-3$, so', '\n\n', '$$(x-2)(x-3) = 0 \\;\\Rightarrow\\; x = 2 \\text{ or } x = 3$$', '\n\n', '**Your turn:** solve $x^2 - 7x + 12 = 0$.']
   };
+  ST.sheets.aiBad = () => ST.sheet(`<h2 class="t-h3">What was wrong?</h2><p class="t-sm muted mt2">Your feedback helps us train SolutionTee AI.</p>
+    <div class="row wrap g2 mt4">${['Wrong answer', 'Too long', 'Hard to understand', 'Maths did not show well', 'Not about my question'].map(r => `<button class="chip" data-why>${r}</button>`).join('')}</div>
+    <button class="btn btn-primary btn-block mt4" id="aiBadGo">Send feedback</button>`, {
+    mount: w => { w.querySelectorAll('[data-why]').forEach(c => c.onclick = () => c.classList.toggle('on')); w.querySelector('#aiBadGo').onclick = () => { ST.closeOverlay(); ST.toast('Thanks. We will use this to improve the answers.', 'check-circle'); }; }
+  });
   const mdLite = s => s.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
 
   function stream(bubble, chunks, done) {
@@ -313,6 +321,7 @@
       el.querySelector('#snapSugg')?.addEventListener('click', openAttach);
 
       const ask = (text, kind, image) => {
+        if (ST.needsNet('SolutionTee AI')) return;
         if (S.aiLeft <= 0) return ST.go('ai-out', null, { mode: 'fade', replace: true });
         el.querySelector('#sugg')?.remove();
         chat.querySelector('.stack.center')?.remove();
@@ -326,7 +335,7 @@
         chat.insertAdjacentHTML('beforeend', `<div class="msg ai"><div class="txt"><span class="typing"><i></i><i></i><i></i></span></div></div>`);
         const bub = chat.lastElementChild; chat.scrollTop = 1e6;
         setTimeout(() => stream(bub, REPLY[kind] || REPLY.default, () => {
-          bub.insertAdjacentHTML('beforeend', `<div class="msg-tools"><button class="icon-btn" aria-label="Copy" data-toast="Copied">${I('copy')}</button><button class="icon-btn" aria-label="Helpful" data-toast="Thanks for the feedback">${I('thumbs-up')}</button><button class="icon-btn" aria-label="Not helpful">${I('thumbs-down')}</button></div>`);
+          bub.insertAdjacentHTML('beforeend', `<div class="msg-tools"><button class="icon-btn" aria-label="Copy" data-toast="Copied">${I('copy')}</button><button class="icon-btn" aria-label="Helpful" data-toast="Thanks for the feedback">${I('thumbs-up')}</button><button class="icon-btn" aria-label="Not helpful" data-sheet="aiBad">${I('thumbs-down')}</button></div>`);
           if (!S.aiLeft) chat.insertAdjacentHTML('beforeend', `<div class="banner err">${I('hourglass-low', 1)}<span>That was your last free prompt today. <a href="#" data-go="ai-out" class="bold">See options</a></span></div>`);
           chat.scrollTop = 1e6;
         }), ST.reduceMotion() ? 50 : 700);
@@ -519,9 +528,9 @@
             <details class="card acc"><summary>${q}${I('caret-down')}</summary><p>${a}</p></details>`).join('')}
         </section>
         <section class="card list">
-          <button class="list-item"><span class="lead">${I('file-text', 1)}</span><span class="grow t-sm bold">Terms of Service</span>${I('caret-right').replace('class="', 'class="trail ')}</button>
-          <button class="list-item"><span class="lead">${I('shield-check', 1)}</span><span class="grow t-sm bold">Privacy Policy</span>${I('caret-right').replace('class="', 'class="trail ')}</button>
-          <button class="list-item"><span class="lead">${I('info', 1)}</span><span class="grow t-sm bold">About SolutionTee CBT</span>${I('caret-right').replace('class="', 'class="trail ')}</button>
+          <button class="list-item" data-go="legal" data-params="doc=terms"><span class="lead">${I('file-text', 1)}</span><span class="grow t-sm bold">Terms of Service</span>${I('caret-right').replace('class="', 'class="trail ')}</button>
+          <button class="list-item" data-go="legal" data-params="doc=privacy"><span class="lead">${I('shield-check', 1)}</span><span class="grow t-sm bold">Privacy Policy</span>${I('caret-right').replace('class="', 'class="trail ')}</button>
+          <button class="list-item" data-go="legal" data-params="doc=about"><span class="lead">${I('info', 1)}</span><span class="grow t-sm bold">About SolutionTee CBT</span>${I('caret-right').replace('class="', 'class="trail ')}</button>
         </section>
         <p class="disclaimer">${ST.DISCLAIMER}</p>
       </div></div>`
@@ -583,7 +592,7 @@
         <div class="row between"><span class="t-label">On this phone</span><span class="t-cap muted">24.6 MB used</span></div>
         <div class="card list">
           ${[['JAMB 2000 to 2002 · all subjects', '6.4 MB', 'ok'], ['Lesson notes: Mathematics', '1.1 MB', 'ok'], ['JAMB 2002 Chemistry Q14 video', '17.1 MB', 'ok']].map(([t, s]) => `
-          <div class="list-item"><span class="lead" style="background:var(--c-success-soft);color:var(--c-on-success-soft)">${I('cloud-check', 1)}</span><span class="grow"><b class="t-sm">${t}</b><div class="t-cap muted">${s}</div></span><button class="icon-btn" aria-label="Remove download">${I('trash')}</button></div>`).join('')}
+          <div class="list-item"><span class="lead" style="background:var(--c-success-soft);color:var(--c-on-success-soft)">${I('cloud-check', 1)}</span><span class="grow"><b class="t-sm">${t}</b><div class="t-cap muted">${s}</div></span><button class="icon-btn" aria-label="Remove download" data-remove-row="${s}">${I('trash')}</button></div>`).join('')}
         </div>
         <div class="card card-pad row g3"><span class="ic gold" style="width:40px;height:40px;border-radius:10px;display:grid;place-items:center;font-size:20px">${I('arrows-clockwise', 1)}</span><div class="grow"><b class="t-sm">2 results waiting to sync</b><div class="t-cap muted">They will upload when you reconnect.</div></div></div>
         <button class="btn btn-primary btn-block" data-go="cbt" data-params="resume=1">Take an offline exam</button>
@@ -615,5 +624,25 @@
           <div class="sk" style="height:132px;border-radius:16px"></div>
         </div></div>`,
     mount(el) { setTimeout(() => { if (ST.current() === el) ST.go('home', null, { mode: 'fade', replace: true }); }, 2200); }
+  });
+
+  // ---------- Terms, Privacy, About (draft text, edited in the admin CMS) ----------
+  const LEGAL = {
+    terms: ['Terms of Service', [['Using SolutionTee CBT', 'You must give true details when you sign up. Under 18? A parent or guardian must agree to these terms.'], ['Your account', 'One account per person and per phone. Do not share your login. We can suspend accounts that cheat or break these terms.'], ['Premium and payments', 'Premium gives access for the time you paid for. Payments through Google Play follow Google\u2019s refund rules; website payments follow our refund policy.'], ['Challenges and prizes', 'Prizes are paid after a fair-play review and identity check. Leaving the challenge screen disqualifies an entry.']]],
+    privacy: ['Privacy Policy', [['What we collect', 'Your name, email, phone (optional), school, state, exam choices, answers, scores, AI chats and payment records.'], ['Why', 'To run your account, show your progress, give AI help, prevent cheating and pay prizes. We never sell your data.'], ['Who we share with', 'Our hosting and database provider, our AI provider (to answer your questions), Paystack and Google (for payments). Each only gets what it needs.'], ['Your rights', 'You can see, correct or delete your data at any time in Me, Settings. We follow the Nigeria Data Protection Act 2023.']]],
+    about: ['About SolutionTee CBT', [['Learn. Think. Solve.', 'SolutionTee CBT helps Nigerian students prepare for JAMB, WAEC and NECO with real CBT practice, clear solutions and an AI tutor.'], ['Independent', ST.DISCLAIMER], ['Version', 'Prototype 1.0 (design review)'], ['Contact', 'WhatsApp and email support from Me, Help.']]]
+  };
+  def('legal', {
+    title: 'Terms / Privacy / About', group: 'Profile',
+    render: p => {
+      const [title, parts] = LEGAL[p.doc] || LEGAL.terms;
+      return `
+      <div class="appbar lined"><button class="icon-btn" data-back="help" aria-label="Back">${I('arrow-left')}</button><span class="title">${title}</span></div>
+      <div class="scr-body"><article class="pad note-body stack g2">
+        ${p.doc === 'about' ? '' : '<div class="banner warn">' + I('scales', 1) + '<span><b>Draft.</b> To be reviewed by a lawyer before launch.</span></div>'}
+        ${parts.map(([h, t]) => `<h2>${h}</h2><p>${t}</p>`).join('')}
+        <p class="t-cap subtle">Last updated 26 Oct 2026</p>
+      </article></div>`;
+    }
   });
 })();

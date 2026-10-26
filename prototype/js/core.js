@@ -15,7 +15,7 @@
   // Years: a number = how many years are open, 'all' = every year, 0 = exam closed.
   // In the real app these come from the server (free_access_rules); here admin saves them in this browser.
   ST.ACCESS_DEFAULT = {
-    free:    { jamb: 3, waec: 3, neco: 3, pq: 2, which: 'oldest', videos: false, lessons: false, notes: false, novels: false, syllabus: 2, ai: 3, offline: true, compete: true },
+    free:    { jamb: 3, waec: 3, neco: 3, pq: 2, which: 'oldest', videos: false, lessons: false, notes: false, novels: false, syllabus: 2, ai: 3, offline: false, compete: true },
     premium: { jamb: 'all', waec: 'all', neco: 'all', pq: 'all', which: 'oldest', videos: true, lessons: true, notes: true, novels: true, syllabus: 'all', ai: 100, offline: true, compete: true }
   };
   ST.YEARS = Array.from({ length: 26 }, (_, i) => 2000 + i);       // 2000 to 2025
@@ -143,8 +143,45 @@
   }
 
   function statusBar() {
-    return `<div class="statusbar"><span>10:24</span><span class="ic">${ST.icon('cell-signal-full', 1)}${ST.icon('wifi-high', 1)}${ST.icon('battery-high', 1)}</span></div>`;
+    return `<div class="statusbar"><span>10:24</span><span class="ic">${ST.icon('cell-signal-full', 1)}${ST.icon(ST.isOffline() ? 'wifi-slash' : 'wifi-high', 1)}${ST.icon('battery-high', 1)}</span></div>`;
   }
+  /** Connection strip shown on every screen when offline, and briefly when back online. */
+  const netBar = () => `<div class="netbar" role="status" aria-live="polite">
+      <span class="nb-off">${ST.icon('wifi-slash', 1)}<span>You are offline. ${ST.can('offline') ? 'Downloaded tests still work.' : 'Some things need internet.'}</span></span>
+      <span class="nb-on">${ST.icon('check-circle', 1)}<span>Back online. Your results are syncing.</span></span></div>`;
+
+  // ---------- Network status (real browser events + prototype switch) ----------
+  let simOffline = false;
+  ST.isOffline = () => simOffline || navigator.onLine === false;
+  const applyNet = (wasOffline) => {
+    const phone = document.querySelector('.phone'); if (!phone) return;
+    const off = ST.isOffline();
+    phone.classList.toggle('offline', off);
+    document.querySelectorAll('.statusbar .ic .ph-fill:nth-child(2)').forEach(i => { i.className = 'ph-fill ph-' + (off ? 'wifi-slash' : 'wifi-high'); });
+    if (wasOffline && !off) { phone.classList.add('back-online'); clearTimeout(applyNet.t); applyNet.t = setTimeout(() => phone.classList.remove('back-online'), 2800); }
+    ST.syncPanel?.();
+    if (ST.onNet) ST.onNet(off);
+  };
+  ST.setOffline = on => { const was = ST.isOffline(); simOffline = !!on; applyNet(was); };
+  addEventListener('offline', () => applyNet(false));
+  addEventListener('online', () => applyNet(true));
+  /** Guard for actions that need the internet. Returns true (and explains) when offline. */
+  ST.needsNet = what => { if (!ST.isOffline()) return false; ST.toast(`You are offline. ${what || 'This'} needs internet.`, 'wifi-slash'); return true; };
+
+  // ---------- Skeletons (shown while a screen's data loads the first time) ----------
+  const sk = (w, h, r) => `<div class="sk" style="width:${w};height:${h}px;${r ? `border-radius:${r}px` : ''}"></div>`;
+  const skBar = `<div class="appbar">${sk('40px', 40, 20)}<div style="flex:1;padding:0 8px">${sk('45%', 16)}</div></div>`;
+  ST.skeletons = {
+    home: () => `<div class="scr-body" aria-busy="true"><div class="home-head">${sk('44px', 44, 22)}<div class="grow stack g2">${sk('40%', 10)}${sk('60%', 16)}</div>${sk('56px', 36, 18)}</div>
+      <div class="px5 stack g5">${sk('100%', 96, 16)}${sk('100%', 150, 16)}${sk('50%', 16)}${sk('100%', 76, 16)}${sk('100%', 76, 16)}${sk('100%', 76, 16)}</div></div>`,
+    list: () => `${skBar}<div class="scr-body" aria-busy="true"><div class="pad stack g3">${sk('100%', 120, 16)}${Array.from({ length: 5 }, () => `<div class="row g3" style="padding:6px 0">${sk('44px', 44, 12)}<div class="grow stack g2">${sk('70%', 12)}${sk('45%', 10)}</div></div>`).join('')}</div></div>`,
+    grid: () => `${skBar}<div class="scr-body" aria-busy="true"><div class="pad stack g4">${sk('100%', 36, 18)}<div class="grid2">${Array.from({ length: 6 }, () => sk('100%', 128, 16)).join('')}</div></div></div>`,
+    cards: () => `${skBar}<div class="scr-body" aria-busy="true"><div class="pad stack g4">${sk('100%', 36, 18)}${Array.from({ length: 3 }, () => `<div class="stack g2">${sk('100%', 150, 16)}${sk('80%', 14)}${sk('40%', 10)}</div>`).join('')}</div></div>`,
+    article: () => `<div class="scr-body" aria-busy="true">${sk('100%', 220, 0)}<div class="pad stack g3">${sk('30%', 20, 10)}${sk('90%', 24)}${sk('75%', 24)}${Array.from({ length: 6 }, (_, i) => sk(`${90 - i * 7}%`, 12)).join('')}</div></div>`,
+    profile: () => `${skBar}<div class="scr-body" aria-busy="true"><div class="prof-head">${sk('72px', 72, 36)}<div class="grow stack g2">${sk('60%', 18)}${sk('40%', 12)}</div></div><div class="px5 stack g4"><div class="grid2">${Array.from({ length: 4 }, () => sk('100%', 72, 16)).join('')}</div>${sk('100%', 170, 16)}</div></div>`
+  };
+  const loaded = new Set();
+
 
   function bottomNav(active) {
     const tabs = [['home', 'Home', 'house'], ['study', 'Study', 'book-open-text'], ['test', 'Test', 'exam'], ['ai', 'AI Tutor', 'sparkle'], ['profile', 'Me', 'user-circle']];
@@ -161,7 +198,11 @@
     const el = document.createElement('section');
     el.className = 'scr' + (cfg.navy ? ' on-navy' : '') + (cfg.cls ? ' ' + cfg.cls : '');
     el.dataset.screen = id;
-    el.innerHTML = (cfg.noStatus ? '' : statusBar()) + cfg.render(params || {}) + (cfg.tab ? bottomNav(cfg.tab) : '');
+    // First visit to a data screen: show its skeleton, then the content (in the app: until the API answers)
+    const key = id + JSON.stringify(params || {});
+    const skel = cfg.skeleton && cfg === cfg0 && !loaded.has(key) ? ST.skeletons[cfg.skeleton] : null;
+    const chrome = body => (cfg.noStatus ? '' : statusBar() + netBar()) + body + (cfg.tab ? bottomNav(cfg.tab) : '');
+    el.innerHTML = chrome(skel ? skel() : cfg.render(params || {}));
     if (cfg.noStatus && inFrame()) el.style.paddingTop = '0';
     // stagger: number children of every .enter container
     el.querySelectorAll('.enter').forEach(c => [...c.children].forEach((k, i) => k.style.setProperty('--i', Math.min(i, 10))));
@@ -177,8 +218,20 @@
     }
     el.addEventListener('animationend', () => el.classList.remove(tIn), { once: true });
     current = el;
-    ST.math(el);
-    if (cfg.mount) cfg.mount(el, params || {});
+    const finish = () => {
+      ST.math(el);
+      if (cfg.mount) cfg.mount(el, params || {});
+    };
+    if (skel) {
+      loaded.add(key);
+      setTimeout(() => {
+        if (!el.isConnected) return;
+        el.innerHTML = chrome(cfg.render(params || {}));
+        el.querySelectorAll('.enter').forEach(c => [...c.children].forEach((k, i) => k.style.setProperty('--i', Math.min(i, 10))));
+        el.classList.add('loaded-in');
+        finish();
+      }, ST.isOffline() ? 300 : 650);
+    } else finish();
     document.title = (cfg.title || id) + ' · SolutionTee CBT prototype';
     document.querySelectorAll('.jump').forEach(j => j.classList.toggle('on', j.dataset.go === id));
     if (ST.onRoute) ST.onRoute(id);

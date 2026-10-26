@@ -6,14 +6,14 @@
   const G = 'Challenges & events';
 
   // ---------- Locked feature page (used by core for screens with `needs`) ----------
-  const FEATURE_NAMES = { videos: 'Video solutions', lessons: 'Topic video lessons', notes: 'Lesson notes', novels: 'Novels', compete: 'Challenges' };
+  const FEATURE_NAMES = { videos: 'Video solutions', lessons: 'Topic video lessons', notes: 'Lesson notes', novels: 'Novels', compete: 'Challenges', offline: 'Offline downloads' };
   ST.lockedScreen = (cfg, need) => ({
     ...cfg, mount: null, cls: '',
     render: () => `
       <div class="appbar"><button class="icon-btn" data-back="study" aria-label="Back">${I('arrow-left')}</button><span class="title">${FEATURE_NAMES[need] || cfg.title}</span></div>
       <div class="scr-body"><div class="state">
         <div class="art gold">${I('lock-simple', 1)}</div>
-        <h2 class="t-h2">${FEATURE_NAMES[need] || 'This'} ${need === 'novels' || need === 'notes' ? 'are' : 'is'} for Premium</h2>
+        <h2 class="t-h2">${FEATURE_NAMES[need] || 'This'} ${['novels', 'notes', 'offline'].includes(need) ? 'are' : 'is'} for Premium</h2>
         <p class="muted">Your plan does not include ${(FEATURE_NAMES[need] || 'this').toLowerCase()}. Go Premium to open it, with every past-question year and 100 AI prompts a day.</p>
         <button class="btn btn-accent btn-block mt4" data-sheet="paywall" data-reason="${need}">${I('crown-simple', 1)} See Premium plans</button>
         <button class="btn btn-ghost" data-go="pq">Practise free past questions</button>
@@ -163,6 +163,7 @@
         else foot.innerHTML = paid ? `<button class="btn btn-primary btn-block" id="startCh">${I('play', 1)} Start challenge</button>` : `<button class="btn btn-primary btn-block" id="payJoin">Pay ${money(c.entry)} to join</button>`;
         foot.querySelector('#startCh')?.addEventListener('click', () => {
           if (!ok.checked) { el.querySelector('#fpBox').classList.add('shake'); ok.closest('.check').style.color = 'var(--c-error)'; setTimeout(() => el.querySelector('#fpBox').classList.remove('shake'), 400); ok.focus(); ST.toast('Tick the fair-play box first.', 'shield-warning'); return; }
+          if (ST.needsNet('Challenges')) return;
           ST.go('challenge-play', { id: c.id });
         });
         foot.querySelector('#payJoin')?.addEventListener('click', () => {

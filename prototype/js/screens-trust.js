@@ -163,4 +163,9 @@
     },
     mount(el) { el.querySelectorAll('[data-img]').forEach(b => b.onclick = () => ST.viewImage(b.dataset.img, 'Proof of payment')); }
   });
+
+  // ---------- Screens that load data from the server: show a skeleton first; Downloads is Premium ----------
+  Object.entries({ home: 'home', study: 'grid', test: 'list', pq: 'grid', videos: 'cards', novels: 'cards', docs: 'list', news: 'cards', 'news-detail': 'article',
+    compete: 'list', leaderboard: 'list', profile: 'profile', 'winners-wall': 'cards', referral: 'list', winnings: 'list' }).forEach(([id, t]) => { if (ST.screens[id]) ST.screens[id].skeleton = t; });
+  if (ST.screens.offline) ST.screens.offline.needs = 'offline';
 })();

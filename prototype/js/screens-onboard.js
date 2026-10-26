@@ -170,7 +170,7 @@
           <button class="btn btn-primary btn-block" id="go">Create account</button>
           <div class="or">OR</div>
           ${googleBtn('Continue with Google', true)}
-          <p class="t-sm muted" style="text-align:center;padding-bottom:24px">Already have an account? <a href="#" data-go="login" class="bold">Log in</a></p>
+          <p class="t-sm muted" style="text-align:center;padding-bottom:24px">Already have an account? <a href="#" data-go="login" class="bold link-btn">Log in</a></p>
         </form></div>`,
     mount(el) {
       pwToggle(el);
@@ -215,12 +215,12 @@
         <form class="px5 stack g4 enter" onsubmit="return false">
           ${field('Email address', 'email', 'you@example.com', { ic: 'envelope-simple', val: 'tolu.adeyemi@gmail.com' })}
           ${field('Password', 'password', 'Your password', { ic: 'lock-simple', err: 'That password is not correct. Try again or reset it.', val: 'wrongpass' })}
-          <a href="#" data-go="forgot" class="t-sm bold" style="align-self:flex-end">Forgot password?</a>
+          <a href="#" data-go="forgot" class="t-sm bold link-btn" style="align-self:flex-end">Forgot password?</a>
           <button class="btn btn-primary btn-block" data-go="welcome-back" data-mode="fade">Log in</button>
           <div class="or">OR</div>
           ${googleBtn('Continue with Google')}
           <p class="t-cap muted" style="text-align:center">If you are new, continuing with Google creates an account and means you agree to the <a href="#" data-go="help">Terms</a> and <a href="#" data-go="help">Privacy Policy</a>.</p>
-          <p class="t-sm muted" style="text-align:center">New here? <a href="#" data-go="signup" class="bold">Create an account</a></p>
+          <p class="t-sm muted" style="text-align:center">New here? <a href="#" data-go="signup" class="bold link-btn">Create an account</a></p>
         </form></div>`,
     mount: pwToggle
   });

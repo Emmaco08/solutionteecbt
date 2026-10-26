@@ -24,23 +24,37 @@
   ST.examCard = examCard;
 
   // ---------- Home ----------
+  ST.greeting = () => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'; };
+  const NOTES = [['trophy', 'gold', 'Weekly Challenge #44 is live', 'Win ₦20,000. Closes tonight.', 'challenge', 'id=wk44', '2 min ago'],
+    ['newspaper', 'blue', 'JAMB 2027 registration dates are out', 'Read what to bring and the fees.', 'news-detail', 'id=reg', '1 h ago'],
+    ['video-camera', 'navy', 'Live class today at 4:00 PM', 'Physics: Waves and sound with Mr. Bello.', '', '', '3 h ago'],
+    ['fire', 'gold', 'Keep your 6-day streak', 'Answer 8 more questions today.', 'test', '', 'Yesterday']];
+  ST.sheets.notifications = () => ST.sheet(`<div class="row between"><h2 class="t-h3">Notifications</h2><button class="btn btn-ghost btn-sm" data-close data-toast="All marked as read">Mark all read</button></div>
+    <div class="card list mt3">${NOTES.map(([ic, c, t, d, go, pr, when], i) => `<button class="list-item" ${go ? `data-go="${go}" ${pr ? `data-params="${pr}"` : ''}` : 'data-toast="We will remind you at 3:55 PM"'}><span class="ic ${c}" style="width:40px;height:40px;border-radius:10px;display:grid;place-items:center;font-size:20px;flex:none">${I(ic, 1)}</span>
+      <span class="grow"><b class="t-sm">${t}</b><div class="t-cap muted">${d}</div><div class="t-cap subtle">${when}</div></span>${i < 2 ? '<span class="unread-dot" aria-label="Unread"></span>' : ''}</button>`).join('')}</div>
+    <button class="btn btn-ghost btn-block mt3" data-close data-go="settings">Notification settings</button>`, {
+    mount: w => w.addEventListener('click', e => { if (e.target.closest('[data-go]')) ST.closeOverlay(true); }, true)
+  });
+
   def('home', {
     title: 'Home', group: 'Main tabs', tab: 'home',
-    render: () => `
+    render: () => {
+      const lb = ST.lbSettings && ST.lbSettings().on;
+      const tile = (go, ic, c, title, sub, extra = '') => `<button class="card card-tap quick-tile" ${go}><span class="ic ${c}">${I(ic, 1)}</span><b class="t-sm">${title}</b><span class="t-cap muted">${sub}</span>${extra}</button>`;
+      return `
       <div class="scr-body">
         <div class="home-head">
           <button data-go="profile" aria-label="Open my profile" style="border-radius:50%">${ST.avatar()}</button>
-          <div class="grow"><div class="t-cap muted">Good afternoon,</div><div class="t-h3">${S.first}</div></div>
+          <div class="grow"><div class="t-cap muted">${ST.greeting()},</div><div class="t-h3">${S.first}</div></div>
           <span class="streak" title="${S.streak}-day streak">${I('fire', 1)} ${S.streak}</span>
-          <button class="icon-btn" aria-label="Notifications" data-toast="2 new announcements">${I('bell')}</button>
+          <button class="icon-btn bell" aria-label="Notifications, 2 unread" data-sheet="notifications">${I('bell')}<span class="bell-dot"></span></button>
         </div>
-        <div class="px5 stack g6" style="padding-bottom:var(--s-8)">
-          <div class="card goal-card enter">
-            ${ring(0.6, 64, 3.6, '<b class="t-sm tnum">12/20</b>')}
-            <div class="grow"><b>Today's goal</b><p class="t-sm muted">Answer 8 more questions to keep your ${S.streak}-day streak.</p></div>
-          </div>
+        <div class="px5 stack g5" style="padding-bottom:var(--s-8)">
+          <div class="goal-strip enter">${ring(0.6, 44, 3.6, '')}<span class="grow"><b class="t-sm">Today: 12 of 20 questions</b><span class="t-cap muted" style="display:block">8 more keeps your ${S.streak}-day streak</span></span><button class="btn btn-tonal btn-sm" data-go="test-setup" data-params="body=JAMB&mode=quick">Practise</button></div>
 
           ${ST.challengeHero ? ST.challengeHero() : ''}
+
+          ${ST.unfinishedCard ? ST.unfinishedCard() : ''}
 
           <section data-tour="start">
             <div class="sect-title"><h2 class="t-h3">Start a CBT practice</h2>${ST.isPremium() ? `<span class="badge badge-gold">${I('crown-simple', 1)} Premium</span>` : ''}</div>
@@ -51,34 +65,31 @@
             </div>
           </section>
 
-          ${ST.unfinishedCard ? ST.unfinishedCard() : ''}
+          ${ST.qotdCard ? ST.qotdCard() : ''}
 
           <section>
             <div class="sect-title"><h2 class="t-h3">News</h2><button class="btn btn-ghost" data-go="news">See all</button></div>
             <div class="news">${ST.allNews ? ST.allNews().slice(0, 4).map(ST.newsCard).join('') : ''}</div>
           </section>
 
-          ${ST.qotdCard ? ST.qotdCard() : ''}
-
-          ${ST.lbSettings && ST.lbSettings().on ? `<button class="card card-tap row g3" style="padding:var(--s-4)" data-go="leaderboard">
-            <span class="ic gold" style="width:48px;height:48px;border-radius:12px;display:grid;place-items:center;font-size:24px;flex:none">${I('ranking', 1)}</span>
-            <span class="grow"><span class="t-cap muted bold">JAMB 2027 leaderboard</span><b style="display:block">You are #128 in Nigeria</b><span class="t-cap muted">38 points to reach the top 100</span></span>${I('caret-right')}</button>` : ''}
-
-          ${ST.referralCard ? ST.referralCard() : ''}
+          <section>
+            <div class="sect-title"><h2 class="t-h3">More for you</h2></div>
+            <div class="grid2 quick-grid">
+              ${lb ? tile('data-go="leaderboard"', 'ranking', 'gold', 'Leaderboard', 'You are #128') : tile('data-go="compete"', 'trophy', 'gold', 'Challenges', 'Win prizes')}
+              ${tile('data-go="referral"', 'gift', 'green', 'Invite friends', `${ST.refRules ? ST.refRules().step : 10}% off per friend`)}
+              ${tile('data-go="winners-wall"', 'seal-check', 'blue', 'Winners wall', 'Proof we pay')}
+              ${tile('data-toast="We will remind you at 3:55 PM"', 'video-camera', 'navy', 'Live class 4:00 PM', 'Physics: Waves')}
+            </div>
+          </section>
 
           ${ST.isPremium() ? '' : `<div class="upgrade-banner" data-tour="upgrade">
             <div class="crown">${I('crown-simple', 1)}</div>
-            <div class="grow" style="position:relative;z-index:1"><b>Unlock all years and exams</b><p class="t-sm" style="color:#AFC0DD">WAEC, NECO, every year, 100 AI prompts a day.</p></div>
+            <div class="grow" style="position:relative;z-index:1"><b>Get every year and every lesson</b><p class="t-sm" style="color:#AFC0DD">Videos, notes, novels, offline downloads and 100 AI prompts a day.</p></div>
             <button class="btn btn-accent btn-sm" data-sheet="paywall" style="position:relative;z-index:1">Upgrade</button>
           </div>`}
-
-          <section class="card card-pad row g3">
-            <div class="ic gold" style="width:48px;height:48px;border-radius:12px;display:grid;place-items:center;font-size:24px">${I('video-camera', 1)}</div>
-            <div class="grow"><span class="t-cap muted bold">Next live class</span><div class="bold">Physics: Waves and sound</div><div class="t-cap muted">Today · 4:00 PM · Mr. Bello</div></div>
-            <button class="btn btn-tonal btn-sm" data-toast="Class link opens at 3:55 PM">Remind me</button>
-          </section>
         </div>
-      </div>`,
+      </div>`;
+    },
     mount(el) {
       ST.animateRings(el); ST.animateBars(el);
       ST.mountQotd && ST.mountQotd(el);
@@ -89,9 +100,9 @@
   def('study', {
     title: 'Study', group: 'Main tabs', tab: 'study',
     render: () => `
-      <div class="appbar"><span class="title" style="padding-left:12px;font-size:var(--t-h2-size)">Study</span><button class="icon-btn" aria-label="Search">${I('magnifying-glass')}</button><button class="icon-btn" aria-label="Downloads" data-go="offline">${I('download-simple')}</button></div>
+      <div class="appbar"><span class="title" style="padding-left:12px;font-size:var(--t-h2-size)">Study</span><button class="icon-btn" aria-label="Search" data-search>${I('magnifying-glass')}</button><button class="icon-btn" aria-label="Downloads" ${gate('offline', 'data-go="offline"', 'offline')}>${I('download-simple')}</button></div>
       <div class="scr-body"><div class="pad stack g6" style="padding-top:var(--s-2)">
-        <div class="chips">${['All', 'Mathematics', 'English', 'Physics', 'Chemistry', 'Biology'].map((c, i) => `<button class="chip ${i ? '' : 'on'}">${c}</button>`).join('')}</div>
+        <button class="search-field" data-search>${I('magnifying-glass')}<span>Search questions, topics, notes</span></button>
         <div class="grid2 enter">
           <button class="card card-tap study-tile" data-go="pq"><span class="ic navy">${I('exam', 1)}</span><span><b>Past questions</b><br><span class="t-cap muted">Study mode with answers</span></span></button>
           <button class="card card-tap study-tile" ${gate('videos', 'data-go="videos"', 'video')}>${tileLock('videos')}<span class="ic blue">${I('play-circle', 1)}</span><span><b>Video solutions</b><br><span class="t-cap muted">Watch each answer</span></span></button>
@@ -102,9 +113,12 @@
         </div>
         <section>
           <div class="sect-title"><h2 class="t-h3">Continue learning</h2></div>
+          <div class="chips filter" style="margin-bottom:var(--s-3)">${['All', 'Mathematics', 'Chemistry', 'Physics', 'English'].map((c, i) => `<button class="chip ${i ? '' : 'on'}" data-f="${c}">${c}</button>`).join('')}</div>
           <div class="card list">
-            <button class="list-item" ${gate('notes', 'data-go="note"', 'notes')}><span class="lead">${I('note', 1)}</span><span class="grow"><b class="t-sm">Quadratic equations</b><div class="bar mt2" style="height:6px"><i data-v="64%"></i></div></span><span class="t-cap muted">64%</span></button>
-            <button class="list-item" ${gate('videos', 'data-go="video"', 'video')}><span class="lead" style="background:var(--c-secondary-soft);color:var(--c-on-secondary-soft)">${I('play', 1)}</span><span class="grow"><b class="t-sm">JAMB 2002 Chemistry Q14</b><div class="t-cap muted">Video solution · 4:38</div></span>${I('caret-right').replace('class="', 'class="trail ')}</button>
+            <button class="list-item" data-subj="Mathematics" ${gate('notes', 'data-go="note"', 'notes')}><span class="lead">${I('note', 1)}</span><span class="grow"><b class="t-sm">Quadratic equations</b><div class="bar mt2" style="height:6px"><i data-v="64%"></i></div></span><span class="t-cap muted">64%</span></button>
+            <button class="list-item" data-subj="Chemistry" ${gate('videos', 'data-go="video"', 'video')}><span class="lead" style="background:var(--c-secondary-soft);color:var(--c-on-secondary-soft)">${I('play', 1)}</span><span class="grow"><b class="t-sm">JAMB 2002 Chemistry Q14</b><div class="t-cap muted">Video solution · 4:38</div></span>${I('caret-right').replace('class="', 'class="trail ')}</button>
+            <button class="list-item" data-subj="Physics" data-go="test-setup" data-params="body=JAMB&mode=topic&subj=phy&topic=Motion"><span class="lead" style="background:var(--c-accent-soft);color:var(--c-on-accent-soft)">${I('target', 1)}</span><span class="grow"><b class="t-sm">Topic drill: Motion</b><div class="t-cap muted">Physics · 6 of 20 done</div></span>${I('caret-right').replace('class="', 'class="trail ')}</button>
+            <div class="filter-empty hidden state" style="padding:var(--s-5)"><b>Nothing here yet</b><span class="t-cap muted">Start a lesson or drill in this subject and it shows here.</span></div>
           </div>
         </section>
         <section>
@@ -143,33 +157,42 @@
     }
   });
 
+  const PQS = [
+    { topic: 'Indices & logarithms', lvl: 'Medium', q: 'If $\\log_{10} 2 = 0.3010$ and $\\log_{10} 3 = 0.4771$, evaluate $\\log_{10} 4.5$.', o: ['$0.6532$', '$0.6990$', '$0.6543$', '$0.7781$'], a: 0,
+      exp: '<p>Write $4.5$ using $2$ and $3$: $$4.5 = \\frac{9}{2} = \\frac{3^2}{2}$$</p><p>So $\\log_{10} 4.5 = 2\\log_{10} 3 - \\log_{10} 2 = 0.6532$.</p>', ai: 'log' },
+    { topic: 'Quadratic equations', lvl: 'Easy', q: 'Find the roots of $x^2 - 7x + 12 = 0$.', o: ['$3$ and $4$', '$-3$ and $-4$', '$2$ and $6$', '$1$ and $12$'], a: 0,
+      exp: '<p>Two numbers that multiply to $12$ and add to $7$ are $3$ and $4$, so $(x-3)(x-4)=0$.</p>', ai: 'default' },
+    { topic: 'Probability', lvl: 'Medium', q: 'A die is thrown once. What is the probability of getting an even number?', o: ['$\\frac{1}{6}$', '$\\frac{1}{3}$', '$\\frac{1}{2}$', '$\\frac{2}{3}$'], a: 2,
+      exp: '<p>Even numbers: $2, 4, 6$, so $3$ out of $6$ outcomes: $\\frac{3}{6} = \\frac{1}{2}$.</p>', ai: 'default' }
+  ];
   def('pq-study', {
     title: 'Past question (study mode)', group: 'Study',
-    render: p => `
+    render: p => {
+      const n = Math.max(1, +(p.n || 7)), q = PQS[(n - 1) % PQS.length];
+      return `
       <div class="appbar lined"><button class="icon-btn" data-back="pq" aria-label="Back">${I('arrow-left')}</button>
-        <span class="title">JAMB ${p.year || 2001} Mathematics<small>Study mode · Question 7 of 50</small></span>
-        <button class="icon-btn" id="bm" aria-label="Bookmark">${I('bookmark-simple')}</button></div>
+        <span class="title">JAMB ${p.year || 2001} Mathematics<small>Study mode · Question ${n} of 50</small></span>
+        <button class="icon-btn" data-bookmark aria-label="Bookmark" aria-pressed="false">${I('bookmark-simple')}</button></div>
       <div class="scr-body"><div class="pad stack g4">
-        <div class="row g2"><span class="badge badge-soft">Indices & logarithms</span><span class="badge badge-neutral">Medium</span></div>
-        <p class="q-text" style="margin:0">If $\\log_{10} 2 = 0.3010$ and $\\log_{10} 3 = 0.4771$, evaluate $\\log_{10} 4.5$.</p>
-        <div class="opts" id="opts">
-          ${['0.6532', '0.6990', '0.6543', '0.7781'].map((o, k) => `<button class="opt" data-ok="${k === 0}"><span class="key">${'ABCD'[k]}</span>$${o}$</button>`).join('')}
-        </div>
+        <div class="row g2"><span class="badge badge-soft">${q.topic}</span><span class="badge badge-neutral">${q.lvl}</span></div>
+        <p class="q-text" style="margin:0">${q.q}</p>
+        <div class="opts" id="opts">${q.o.map((o, k) => `<button class="opt" data-ok="${k === q.a}"><span class="key">${'ABCD'[k]}</span><span>${o}</span></button>`).join('')}</div>
         <div id="exp" class="hidden stack g3">
-          <div class="explain"><b>Explanation</b>
-            <p class="mt2">Write $4.5$ using $2$ and $3$: $$4.5 = \\frac{9}{2} = \\frac{3^2}{2}$$</p>
-            <p>So $\\log_{10} 4.5 = 2\\log_{10} 3 - \\log_{10} 2 = 2(0.4771) - 0.3010 = 0.6532$.</p></div>
-          <div class="row g2"><button class="btn btn-tonal btn-sm grow" ${gate('videos', 'data-go="video"', 'video')}>${I(ST.can('videos') ? 'play-circle' : 'lock-simple', 1)} Watch solution</button><button class="btn btn-outline btn-sm grow" data-go="ai" data-params="q=log">${I('sparkle', 1)} Ask AI</button></div>
+          <div class="explain"><b>Explanation</b><div class="mt2">${q.exp}</div></div>
+          <div class="row g2"><button class="btn btn-tonal btn-sm grow" ${gate('videos', 'data-go="video"', 'video')}>${I(ST.can('videos') ? 'play-circle' : 'lock-simple', 1)} Watch solution</button><button class="btn btn-outline btn-sm grow" data-go="ai" data-params="q=${q.ai}">${I('sparkle', 1)} Ask AI</button></div>
         </div>
       </div></div>
-      <div class="cbt-bottom"><button class="btn btn-outline btn-sm">${I('caret-left')} Prev</button><span class="t-cap muted tnum">7 / 50</span><button class="btn btn-primary btn-sm">Next ${I('caret-right')}</button></div>`,
-    mount(el) {
+      <div class="cbt-bottom"><button class="btn btn-outline btn-sm" id="pqPrev" ${n === 1 ? 'disabled' : ''}>${I('caret-left')} Prev</button><span class="t-cap muted tnum">${n} / 50</span><button class="btn btn-primary btn-sm" id="pqNext" ${n === 50 ? 'disabled' : ''}>Next ${I('caret-right')}</button></div>`;
+    },
+    mount(el, p) {
+      const n = Math.max(1, +(p.n || 7));
       el.querySelectorAll('#opts .opt').forEach(b => b.onclick = () => {
         el.querySelectorAll('#opts .opt').forEach(o => { o.disabled = true; if (o.dataset.ok === 'true') { o.classList.add('right'); o.insertAdjacentHTML('beforeend', `<span class="tag" style="color:var(--c-on-success-soft)">Correct answer</span>`); } });
         if (b.dataset.ok !== 'true') { b.classList.add('wrong'); b.insertAdjacentHTML('beforeend', `<span class="tag" style="color:var(--c-on-error-soft)">Your answer</span>`); }
-        el.querySelector('#exp').classList.remove('hidden'); el.querySelector('#exp').classList.add('pop');
+        const ex = el.querySelector('#exp'); ex.classList.remove('hidden'); ex.classList.add('pop'); setTimeout(() => ex.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
       });
-      el.querySelector('#bm').onclick = e => { e.currentTarget.innerHTML = I('bookmark-simple', 1); e.currentTarget.style.color = 'var(--c-secondary)'; ST.toast('Saved to bookmarks', 'bookmark-simple'); };
+      el.querySelector('#pqPrev').onclick = () => ST.go('pq-study', { ...p, n: n - 1 }, { replace: true, mode: 'fade' });
+      el.querySelector('#pqNext').onclick = () => ST.go('pq-study', { ...p, n: n + 1 }, { replace: true, mode: 'fade' });
     }
   });
 
@@ -178,14 +201,14 @@
   def('videos', {
     title: 'Video solutions / lessons', group: 'Study', needs: p => p.kind === 'lessons' ? 'lessons' : 'videos',
     render: p => `
-      <div class="appbar"><button class="icon-btn" data-back="study" aria-label="Back">${I('arrow-left')}</button><span class="title">${p.kind === 'lessons' ? 'Topic lessons' : 'Video solutions'}</span><button class="icon-btn" aria-label="Search">${I('magnifying-glass')}</button></div>
+      <div class="appbar"><button class="icon-btn" data-back="study" aria-label="Back">${I('arrow-left')}</button><span class="title">${p.kind === 'lessons' ? 'Topic lessons' : 'Video solutions'}</span><button class="icon-btn" aria-label="Search" data-search>${I('magnifying-glass')}</button></div>
       <div class="scr-body"><div class="pad stack g4" style="padding-top:var(--s-2)">
-        <div class="chips">${['All subjects', 'Mathematics', 'Physics', 'Chemistry', 'Biology'].map((c, i) => `<button class="chip ${i ? '' : 'on'}">${c}</button>`).join('')}</div>
+        <div class="chips filter">${['All', 'Mathematics', 'Physics', 'Chemistry', 'Biology'].map((c, i) => `<button class="chip ${i ? '' : 'on'}" data-f="${c}">${i ? c : 'All subjects'}</button>`).join('')}</div>
         <div class="banner warn">${I('cell-signal-low', 1)}<span><b>Data saver is on.</b> Videos play in low quality. Download on Wi-Fi to watch offline.</span></div>
         <div class="stack g4 enter">${vids.map(([th, t, topic, d, lk, ic]) => { const lock = false; return `
-          <button class="card card-tap" style="padding:10px" ${lock ? `data-sheet="paywall" data-reason="video"` : 'data-go="video"'}>
+          <button class="card card-tap" style="padding:10px" data-subj="${{ flask: 'Chemistry', atom: 'Physics', function: 'Mathematics', dna: 'Biology' }[ic]}" ${lock ? `data-sheet="paywall" data-reason="video"` : 'data-go="video"'}>
             <div class="thumb ${th}"><i class="ph-fill ph-${ic} sub-ic"></i><span class="play">${I(lock ? 'lock-simple' : 'play', 1)}</span><span class="dur">${d}</span>${lock ? `<span class="lock-chip badge badge-gold">${I('crown-simple', 1)} Premium</span>` : ''}</div>
-            <div class="row between" style="padding:10px 4px 2px"><div><b class="t-sm">${t}</b><div class="t-cap muted">${topic}</div></div>${lock ? '' : `<span class="icon-btn" aria-label="Download">${I('download-simple')}</span>`}</div>
+            <div class="row between" style="padding:10px 4px 2px"><div><b class="t-sm">${t}</b><div class="t-cap muted">${topic}</div></div>${lock ? '' : `<span class="icon-btn" role="button" aria-label="Download" data-download="${d === '4:38' ? '18 MB' : '22 MB'}">${I('download-simple')}</span>`}</div>
           </button>`; }).join('')}</div>
       </div></div>`
   });
@@ -193,12 +216,12 @@
   def('video', {
     title: 'Video player', group: 'Study', needs: 'videos',
     render: () => `
-      <div class="appbar"><button class="icon-btn" data-back="videos" aria-label="Back">${I('arrow-left')}</button><span class="title">Video solution</span><button class="icon-btn" aria-label="More">${I('dots-three-vertical')}</button></div>
+      <div class="appbar"><button class="icon-btn" data-back="videos" aria-label="Back">${I('arrow-left')}</button><span class="title">Video solution</span><button class="icon-btn" aria-label="More options" data-sheet="videoMore">${I('dots-three-vertical')}</button></div>
       <div class="thumb th-1" style="border-radius:0;flex:none"><i class="ph-fill ph-flask sub-ic"></i><span class="play" style="width:60px;height:60px;font-size:26px">${I('play', 1)}</span>
         <div style="position:absolute;left:12px;right:12px;bottom:10px"><div class="bar" style="height:4px;background:rgba(255,255,255,.25)"><i data-v="32%" style="background:var(--gold-400)"></i></div><div class="row between t-cap" style="margin-top:6px;color:#fff"><span>1:29</span><span>4:38</span></div></div></div>
       <div class="scr-body"><div class="pad stack g4">
         <div><h1 class="t-h2">JAMB 2002 Chemistry Q14</h1><p class="t-sm muted mt2">Mole concept · Mrs. Okonkwo · 4:38</p></div>
-        <div class="row g2"><button class="btn btn-tonal btn-sm">${I('download-simple')} Download (18 MB)</button><button class="btn btn-outline btn-sm" id="q480">480p</button></div>
+        <div class="row g2"><button class="btn btn-tonal btn-sm" data-download="18 MB">${I('download-simple')} Download (18 MB)</button><button class="btn btn-outline btn-sm" data-quality>${I('sliders-horizontal')} <span id="q480">${ST.state.vq || '480p'}</span></button></div>
         <div class="card card-pad"><b class="t-sm">The question</b><p class="mt2">How many moles are in $4.4\\,\\text{g}$ of $\\text{CO}_2$? $(\\text{C}=12, \\text{O}=16)$</p></div>
         <div class="card card-pad"><b class="t-sm">Key working</b><p class="mt2">$$n = \\frac{m}{M} = \\frac{4.4}{44} = 0.1\\ \\text{mol}$$</p></div>
       </div></div>`,
@@ -211,7 +234,7 @@
     render: () => `
       <div class="read-progress"><i id="rp"></i></div>
       <div class="appbar lined"><button class="icon-btn" data-back="study" aria-label="Back">${I('arrow-left')}</button><span class="title">Quadratic equations<small>Mathematics · 8 min read</small></span>
-        <button class="icon-btn" aria-label="Text size">${I('text-aa')}</button><button class="icon-btn" aria-label="Download">${I('download-simple')}</button></div>
+        <button class="icon-btn" aria-label="Text size" data-textsize>${I('text-aa')}</button><button class="icon-btn" aria-label="Download for offline" data-download="1.1 MB">${I('download-simple')}</button></div>
       <div class="scr-body" id="noteScroll"><article class="pad note-body">
         <p>A quadratic equation has the form $ax^2 + bx + c = 0$, where $a \\neq 0$. JAMB asks at least two questions on this topic every year.</p>
         <h2>1. The quadratic formula</h2>
@@ -230,7 +253,6 @@
         <p>Solve $2x^2 - 7x + 3 = 0$.</p>
         <p>Here $a=2$, $b=-7$, $c=3$, so $b^2-4ac = 49 - 24 = 25$.</p>
         $$x = \\frac{7 \\pm 5}{4} \\;\\Rightarrow\\; x = 3 \\text{ or } x = \\tfrac{1}{2}$$
-        <p>A bad formula shows a safe fallback instead of breaking the page: $\\frac{1}{$</p>
         <div class="card card-pad stack g3 mt6" style="font-size:15px;line-height:22px">
           <b>Check yourself</b><p class="muted t-sm">Try 5 quick questions on this note.</p>
           <button class="btn btn-primary btn-block" data-go="test-setup" data-params="body=JAMB&mode=topic&subj=mth&topic=Quadratic%20equations">Start topic drill</button>
@@ -258,7 +280,7 @@
         <div class="grid3 enter">
           <button class="stack g2" data-go="novel"><div class="cover c2"><b>Prose text</b></div><span class="t-cap bold" style="text-align:left">WAEC prose</span></button>
           <button class="stack g2" data-go="novel"><div class="cover c3" style="color:var(--navy-900)"><b>Drama text</b></div><span class="t-cap bold" style="text-align:left">WAEC drama</span></button>
-          <button class="stack g2" data-sheet="paywall" data-reason="novel"><div class="cover c1"><span class="lock-chip badge badge-gold">${I('lock-simple', 1)}</span><b>Poetry</b></div><span class="t-cap bold" style="text-align:left">Selected poems</span></button>
+          <button class="stack g2" data-go="novel"><div class="cover c1"><b>Poetry</b></div><span class="t-cap bold" style="text-align:left">Selected poems</span></button>
         </div>
       </div></div>`,
     mount: el => ST.animateBars(el)
@@ -267,13 +289,16 @@
   def('novel', {
     title: 'Novel detail', group: 'Study', needs: 'novels',
     render: () => `
-      <div class="appbar"><button class="icon-btn" data-back="novels" aria-label="Back">${I('arrow-left')}</button><span class="title">Featured novel</span><button class="icon-btn" aria-label="Bookmark">${I('bookmark-simple')}</button></div>
+      <div class="appbar"><button class="icon-btn" data-back="novels" aria-label="Back">${I('arrow-left')}</button><span class="title">Featured novel</span><button class="icon-btn" aria-label="Bookmark" data-bookmark>${I('bookmark-simple')}</button></div>
       <div class="scr-body"><div class="pad stack g5" style="padding-top:var(--s-2)">
         <div class="row g4"><div class="cover c1" style="width:88px;flex:none"><b>Novel (TBC)</b></div><div class="stack g1"><span class="badge badge-sample" style="align-self:flex-start">SAMPLE</span><h1 class="t-h2">Featured JAMB novel</h1><span class="t-sm muted">Author name · 12 chapters</span></div></div>
-        <div class="seg"><button class="on">Summary</button><button>Themes</button><button>Characters</button><button>Quizzes</button></div>
-        <div class="card list">${Array.from({ length: 6 }, (_, k) => `
-          <button class="list-item" ${k > 3 ? 'data-sheet="paywall" data-reason="novel"' : 'data-toast="Opens chapter summary and quiz"'}><span class="lead" style="${k < 3 ? 'background:var(--c-success-soft);color:var(--c-on-success-soft)' : ''}">${k < 3 ? I('check', 1) : k + 1}</span>
-            <span class="grow"><b class="t-sm">Chapter ${k + 1}</b><div class="t-cap muted">${k < 3 ? 'Quiz score 4/5' : '5-question quiz'}</div></span>${k > 3 ? I('lock-simple', 1).replace('class="', 'class="trail ') : I('caret-right').replace('class="', 'class="trail ')}</button>`).join('')}</div>
+        <div class="seg" data-tabs="nv">${['Chapters', 'Themes', 'Characters', 'Quizzes'].map((t, i) => `<button class="${i ? '' : 'on'}" data-v="${t}">${t}</button>`).join('')}</div>
+        <div class="card list" data-panel="nv:Chapters">${Array.from({ length: 6 }, (_, k) => `
+          <button class="list-item" data-toast="Opens the chapter ${k + 1} summary"><span class="lead" style="${k < 3 ? 'background:var(--c-success-soft);color:var(--c-on-success-soft)' : ''}">${k < 3 ? I('check', 1) : k + 1}</span>
+            <span class="grow"><b class="t-sm">Chapter ${k + 1}</b><div class="t-cap muted">${k < 3 ? 'Read · quiz 4/5' : 'Summary · 5-question quiz'}</div></span>${I('caret-right').replace('class="', 'class="trail ')}</button>`).join('')}</div>
+        <div class="stack g3 hidden" data-panel="nv:Themes">${[['Ambition and its cost', 'How the main character’s drive helps and hurts the people around them.'], ['Family and duty', 'What the characters owe their families, and what they choose.'], ['Change in society', 'Old ways meeting new ones in a growing town.']].map(([t, d]) => `<div class="card card-pad"><b class="t-sm">${t}</b><p class="t-sm muted mt2">${d}</p></div>`).join('')}<p class="t-cap subtle">Sample themes until the real novel is chosen.</p></div>
+        <div class="card list hidden" data-panel="nv:Characters">${[['Main character', 'Determined, proud, learns to listen'], ['The mentor', 'Wise, patient, tests the hero'], ['The rival', 'Clever, jealous, changes by the end']].map(([n, d]) => `<div class="list-item"><span class="avatar" style="width:40px;height:40px;font-size:14px">${n[0]}</span><span class="grow"><b class="t-sm">${n}</b><div class="t-cap muted">${d}</div></span></div>`).join('')}</div>
+        <div class="card list hidden" data-panel="nv:Quizzes">${Array.from({ length: 4 }, (_, k) => `<button class="list-item" data-toast="Starts the chapter ${k + 1} quiz"><span class="lead">${I('list-checks', 1)}</span><span class="grow"><b class="t-sm">Chapter ${k + 1} quiz</b><div class="t-cap muted">${k < 3 ? 'Best score 4/5' : 'Not taken yet'}</div></span><span class="btn btn-tonal btn-sm" style="pointer-events:none">${k < 3 ? 'Retry' : 'Start'}</span></button>`).join('')}</div>
       </div></div>`
   });
 
@@ -281,7 +306,7 @@
   def('doc', {
     title: 'Syllabus / brochure viewer', group: 'Study',
     render: () => `
-      <div class="appbar lined"><button class="icon-btn" data-back="study" aria-label="Back">${I('arrow-left')}</button><span class="title">JAMB syllabus: Mathematics<small>PDF · 24 pages · 1.2 MB</small></span><button class="icon-btn" aria-label="Download">${I('download-simple')}</button></div>
+      <div class="appbar lined"><button class="icon-btn" data-back="docs" aria-label="Back">${I('arrow-left')}</button><span class="title">JAMB syllabus: Mathematics<small>PDF · 24 pages · 1.2 MB</small></span><button class="icon-btn" aria-label="Download for offline" data-download="1.2 MB">${I('download-simple')}</button></div>
       <div class="row g2 px4" style="padding-block:10px;background:var(--c-surface);border-bottom:1px solid var(--c-border)">
         <div class="seg grow" style="max-width:220px"><button class="on">PDF</button><button id="topicsBtn">Topic list</button></div>
         <span class="grow"></span><span class="t-cap muted tnum">Page 3 / 24</span></div>
@@ -290,11 +315,12 @@
           <p style="margin-bottom:6px"><b>Topics:</b> ${n === 1 ? 'Number bases, fractions, decimals, indices, logarithms, surds, sets.' : 'Polynomials, variation, inequalities, progressions, binary operations, matrices.'}</p>
           ${Array.from({ length: 16 }, (_, k) => `<div class="ln" style="width:${60 + ((k * 37) % 40)}%"></div>`).join('')}</div>`).join('')}
       </div>
-      <div class="hidden scr-body" id="topics"><div class="pad"><div class="card list">${['Number bases', 'Fractions, decimals, approximations', 'Indices, logarithms and surds', 'Sets', 'Polynomials', 'Variation', 'Inequalities', 'Progressions'].map((t, k) => `<button class="list-item"><span class="lead">${k + 1}</span><span class="grow t-sm bold">${t}</span>${I('caret-right').replace('class="', 'class="trail ')}</button>`).join('')}</div></div></div>`,
+      <div class="hidden scr-body" id="topics"><div class="pad"><div class="card list">${['Number bases', 'Fractions, decimals, approximations', 'Indices, logarithms and surds', 'Sets', 'Polynomials', 'Variation', 'Inequalities', 'Progressions'].map((t, k) => `<button class="list-item" data-topic-page="${k * 3 + 1}"><span class="lead">${k + 1}</span><span class="grow"><b class="t-sm">${t}</b><div class="t-cap muted">Page ${k * 3 + 1}</div></span>${I('caret-right').replace('class="', 'class="trail ')}</button>`).join('')}</div></div></div>`,
     mount(el) {
       const [a, b] = el.querySelectorAll('.seg button');
       a.onclick = () => { a.classList.add('on'); b.classList.remove('on'); el.querySelector('#pdfv').classList.remove('hidden'); el.querySelector('#topics').classList.add('hidden'); };
       b.onclick = () => { b.classList.add('on'); a.classList.remove('on'); el.querySelector('#pdfv').classList.add('hidden'); el.querySelector('#topics').classList.remove('hidden'); };
+      el.querySelectorAll('[data-topic-page]').forEach(t => t.onclick = () => { a.click(); el.querySelector('.t-cap.tnum').textContent = `Page ${t.dataset.topicPage} / 24`; el.querySelector('#pdfv').scrollTop = 0; ST.toast(`Jumped to page ${t.dataset.topicPage}`, 'file-text'); });
     }
   });
 
@@ -324,8 +350,10 @@
           </div></section>
         ${ST.can('compete') ? `<button class="card card-tap mode-card" data-go="compete"><span class="ic gold" style="width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:22px;flex:none">${I('trophy', 1)}</span><span class="grow"><b>Challenges & events</b><br><span class="t-cap muted">Weekly cash prizes and special events</span></span>${ST.livePill ? ST.livePill() : ''}</button>` : ''}
         ${ST.lbSettings && ST.lbSettings().on ? `<button class="card card-tap mode-card" data-go="leaderboard"><span class="ic gold" style="width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:22px;flex:none">${I('ranking', 1)}</span><span class="grow"><b>Leaderboard</b><br><span class="t-cap muted">See the best JAMB students this season</span></span>${I('caret-right').replace('class="', 'class="trail ')}</button>` : ''}
-        <section><div class="sect-title"><h2 class="t-h3">Downloaded packs</h2><button class="btn btn-ghost" data-go="offline">Manage</button></div>
-          <div class="card list"><div class="list-item"><span class="lead">${I('cloud-check', 1)}</span><span class="grow"><b class="t-sm">JAMB 2000 to 2002 · all subjects</b><div class="t-cap muted">Works offline · 6.4 MB</div></span><span class="badge badge-success">Ready</span></div></div></section>
+        ${ST.can('offline')
+          ? `<section><div class="sect-title"><h2 class="t-h3">Downloaded for offline</h2><button class="btn btn-ghost" data-go="offline">Manage</button></div>
+          <div class="card list"><div class="list-item"><span class="lead">${I('cloud-check', 1)}</span><span class="grow"><b class="t-sm">JAMB 2023 to 2025 · your subjects</b><div class="t-cap muted">Works offline · 6.4 MB · encrypted on this phone</div></span><span class="badge badge-success">Ready</span></div></div></section>`
+          : `<button class="card card-tap row g3" style="padding:var(--s-4)" data-sheet="paywall" data-reason="offline"><span class="ic navy" style="width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:22px;flex:none">${I('cloud-arrow-down', 1)}</span><span class="grow"><b>Practise without data</b><br><span class="t-cap muted">Premium can download tests to use offline</span></span><span class="badge badge-neutral">${I('lock-simple', 1)} Premium</span></button>`}
       </div></div>`
   });
 
@@ -386,7 +414,8 @@
           ${st.mode !== 'quick' ? `<div class="field"><span class="field-label">Year</span><div class="chips">${['mixed', ...years].map(y => `<button class="chip ${String(st.year) === String(y) ? 'on' : ''}" data-year="${y}">${y === 'mixed' ? (allOpen ? 'Mixed (all years)' : 'Mixed (your free years)') : y}</button>`).join('')}${allOpen ? '' : `<button class="chip" data-sheet="paywall" data-reason="years">${I('lock-simple', 1)} More years</button>`}</div></div>` : ''}
           <div class="card card-pad row g4" style="justify-content:space-around;text-align:center">
             <div><b class="t-h2 tnum">${q}</b><div class="t-cap muted">questions</div></div><div><b class="t-h2 tnum">${pl.mins >= 60 ? Math.floor(pl.mins / 60) + ':' + String(pl.mins % 60).padStart(2, '0') : pl.mins}</b><div class="t-cap muted">${pl.mins >= 60 ? 'hours' : 'minutes'}</div></div><div><b class="t-h2 tnum">${pl.max}</b><div class="t-cap muted">${pl.maxLabel}</div></div></div>
-          <div class="banner info">${I('arrow-counter-clockwise', 1)}<span>This starts a <b>new</b> test. To finish an old one, use <b>Continue your test</b> on Home.</span></div>`;
+          <div class="banner info">${I('arrow-counter-clockwise', 1)}<span>This starts a <b>new</b> test. To finish an old one, use <b>Continue your test</b> on Home.</span></div>
+          ${ST.can('offline') ? `<p class="t-cap muted row g1">${I('cloud-check', 1)} Downloaded. You can take it offline.</p>` : `<p class="t-cap muted row g1">${I('wifi-high', 1)} Needs internet on the Free plan.</p>`}`;
         box.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { st.mode = b.dataset.m; draw(); });
         box.querySelectorAll('[data-sub]').forEach(b => b.onclick = () => { st.subj = b.dataset.sub; st.topics.clear(); draw(); });
         box.querySelectorAll('[data-topic]').forEach(b => b.onclick = () => { st.topics.has(b.dataset.topic) ? st.topics.delete(b.dataset.topic) : st.topics.add(b.dataset.topic); draw(); });
@@ -399,6 +428,7 @@
       draw();
       const begin = () => { const pl = plan(st); ST.startAttempt({ title: pl.title, subjects: pl.subjects, mins: pl.mins, body }); };
       start.onclick = () => {
+        if (!ST.can('offline') && ST.needsNet('Practice on the Free plan')) return;
         const saved = ST.cbtSaved;
         if (!saved || !ST.attemptAnswered(saved)) return begin();
         ST.dialog(`<div class="stack g3"><div class="ic blue" style="width:52px;height:52px;border-radius:14px;display:grid;place-items:center;font-size:26px">${I('clock-counter-clockwise', 1)}</div>
