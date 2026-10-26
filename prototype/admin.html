@@ -14,44 +14,40 @@
 <script src="js/tokens.js"></script>
 </head>
 <body class="admin">
-<div class="adm">
-  <aside class="side" aria-label="Admin navigation">
-    <div class="brand"><img src="/brand/favicon.svg" alt=""><div><b style="color:#fff;font-size:14px">SolutionTee CBT</b><div style="font-size:11px;color:#7F92B4">Admin CMS</div></div></div>
-    <a href="#dashboard" data-p="dashboard"><i class="ph ph-squares-four"></i>Dashboard</a>
-    <div class="grp">Content</div>
-    <a href="#editor" data-p="editor"><i class="ph ph-pencil-simple-line"></i>Questions</a>
-    <a href="#csv" data-p="csv"><i class="ph ph-file-csv"></i>CSV import</a>
-    <a href="#news" data-p="news"><i class="ph ph-newspaper"></i>News</a>
-    <a href="#challenges" data-p="challenges"><i class="ph ph-trophy"></i>Challenges & events</a>
-    <a class="soon" href="#"><i class="ph ph-books"></i>Study content</a>
-    <a class="soon" href="#"><i class="ph ph-exam"></i>Exams & years</a>
-    <div class="grp">App control</div>
-    <a href="#tabs" data-p="tabs"><i class="ph ph-layout"></i>Tabs manager</a>
-    <a href="#access" data-p="access"><i class="ph ph-scales"></i>Free vs Premium</a>
-    <a href="#plans" data-p="plans"><i class="ph ph-sliders-horizontal"></i>Plans & limits</a>
-    <a href="#leaderboard" data-p="leaderboard"><i class="ph ph-ranking"></i>Leaderboard</a>
-    <a class="soon" href="#"><i class="ph ph-flag"></i>Feature flags</a>
-    <div class="grp">People & money</div>
-    <a href="#codes" data-p="codes"><i class="ph ph-ticket"></i>Redeem codes</a>
-    <a href="#referrals" data-p="referrals"><i class="ph ph-gift"></i>Referrals</a>
-    <a href="#fraud" data-p="fraud"><i class="ph ph-shield-warning"></i>Fraud & bans</a>
-    <a class="soon" href="#"><i class="ph ph-users"></i>Users</a>
-    <a class="soon" href="#"><i class="ph ph-receipt"></i>Payments</a>
-    <a class="soon" href="#"><i class="ph ph-list-checks"></i>Audit log</a>
-    <div class="me"><span class="avatar" style="width:34px;height:34px;font-size:12px">AO</span><div><b style="color:#fff">Ada Okoye</b><div style="font-size:11px;color:#7F92B4">super_admin</div></div></div>
-  </aside>
-  <div class="main">
-    <div class="topbar">
-      <div class="input search"><i class="ph ph-magnifying-glass lead-ic"></i><input placeholder="Search questions, users, payments"></div>
-      <span class="grow"></span>
-      <div class="seg" id="theme" style="width:210px"><button data-t="system">Auto</button><button data-t="light">Light</button><button data-t="dark">Dark</button></div>
-      <button class="btn btn-accent btn-sm" onclick="ST.openFeedback(document.title.replace(/ · .*$/, '') + ' (admin)')"><i class="ph-fill ph-chat-circle-text"></i> Give feedback</button>
-      <a class="btn btn-outline btn-sm" href="index.html"><i class="ph ph-arrow-left"></i> All screens</a>
+<div class="adm" id="adm">
+  <aside class="side" id="side" aria-label="Admin navigation">
+    <a class="brand" href="#dashboard"><img src="/brand/favicon.svg" alt=""><span><b>SolutionTee</b><small>Admin CMS</small></span></a>
+    <button class="side-search" id="sideSearch"><i class="ph ph-magnifying-glass"></i><span>Search or jump to…</span><kbd>Ctrl K</kbd></button>
+    <nav id="nav"></nav>
+    <div class="side-foot">
+      <div class="env-pill"><span class="env-dot"></span>Prototype data</div>
     </div>
-    <div id="page"></div>
+  </aside>
+  <div class="scrim-side" id="scrimSide"></div>
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn only-sm" id="menuBtn" aria-label="Open menu"><i class="ph ph-list"></i></button>
+      <nav class="crumbs" id="crumbs" aria-label="Breadcrumb"></nav>
+      <span class="grow"></span>
+      <button class="icon-btn" id="themeBtn" aria-label="Theme"><i class="ph ph-sun"></i></button>
+      <div class="menu-wrap"><button class="icon-btn bell" id="alertsBtn" aria-label="Alerts"><i class="ph ph-bell"></i><span class="bell-count tnum" id="alertCount">4</span></button><div class="menu hidden" id="alertsMenu"></div></div>
+      <button class="btn btn-accent btn-sm only-lg" onclick="ST.openFeedback(document.title.replace(/ · .*$/, '') + ' (admin)')"><i class="ph-fill ph-chat-circle-text"></i> Feedback</button>
+      <div class="menu-wrap"><button class="me-btn" id="meBtn" aria-label="Account"><span class="avatar" style="width:34px;height:34px;font-size:12px">AO</span><span class="only-lg"><b>Ada Okoye</b><small>Super admin</small></span><i class="ph ph-caret-down only-lg"></i></button>
+        <div class="menu hidden" id="meMenu">
+          <div class="menu-head"><b>Ada Okoye</b><span>ada@solutiontee.com · Super admin</span></div>
+          <a href="#audit"><i class="ph ph-list-checks"></i>My activity</a>
+          <a href="index.html"><i class="ph ph-squares-four"></i>All prototype screens</a>
+          <a href="app.html#/home"><i class="ph ph-device-mobile"></i>Open the student app</a>
+          <button data-toast="Two-step login is on for this account"><i class="ph ph-shield-check"></i>Security (2-step on)</button>
+          <button data-toast="Signed out (prototype)"><i class="ph ph-sign-out"></i>Sign out</button>
+        </div></div>
+    </header>
+    <main id="page"></main>
   </div>
 </div>
-<div id="overlay" style="position:fixed;inset:0;pointer-events:none;z-index:50"></div>
+<div id="drawer" class="drawer hidden" role="dialog" aria-modal="true"></div>
+<div id="palette" class="palette-wrap hidden" role="dialog" aria-modal="true" aria-label="Search"></div>
+<div id="overlay" style="position:fixed;inset:0;pointer-events:none;z-index:80"></div>
 <script src="vendor/katex/katex.min.js"></script>
 <script src="vendor/katex/auto-render.min.js"></script>
 <script src="js/feedback.js"></script>
@@ -59,5 +55,6 @@
 <script src="js/screens-more.js"></script>
 <script src="js/screens-trust.js"></script>
 <script src="js/admin.js"></script>
+<script src="js/admin-shell.js"></script>
 </body>
 </html>

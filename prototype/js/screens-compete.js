@@ -86,9 +86,9 @@
   const typeBadge = c => c.type === 'cash' ? `<span class="badge badge-gold">${I('currency-ngn', 1)} Cash prize</span>` : c.type === 'event' ? `<span class="badge badge-soft">${I('calendar-star', 1)} Event</span>` : `<span class="badge badge-neutral">Practice</span>`;
 
   /** Home hero card for the live weekly challenge. */
-  ST.challengeHero = () => {
+  ST.challengeHero = (pick) => {
     if (!ST.can('compete')) return '';
-    const c = CH.find(x => x.type === 'cash' && statusOf(x) === 'live'); if (!c) return '';
+    const c = pick || visible().find(x => x.type === 'cash' && statusOf(x) === 'live'); if (!c) return '';
     return `<button class="ch-hero" data-go="challenge" data-params="id=${c.id}" data-tour="compete">
       <span class="ch-hero-glow"></span>
       <span class="row between" style="position:relative">${ST.livePill(`${c.joined.toLocaleString()} playing`, true)}${ST.chResults[c.id] ? `<span class="badge badge-success">${I('check', 1)} You took part</span>` : ''}</span>
@@ -97,17 +97,42 @@
     </button>`;
   };
 
+  /** Home section: live challenge first, otherwise the next one, otherwise a friendly empty state. */
+  ST.chDemo = ST.chDemo || 'on';
+  const visible = () => ST.chDemo === 'none' ? [] : CH.filter(c => statusOf(c) !== 'ended');
+  ST.challengeSection = () => {
+    if (!ST.can('compete')) return '';
+    const list = visible(), live = list.filter(c => statusOf(c) === 'live'), up = list.filter(c => statusOf(c) === 'upcoming').sort((a, b) => a.starts - b.starts);
+    const featured = live.find(c => c.type === 'cash') || live[0] || up[0];
+    const others = list.filter(c => c !== featured);
+    let top;
+    if (featured && statusOf(featured) === 'live') top = ST.challengeHero(featured);
+    else if (featured) top = `<button class="ch-next" data-go="challenge" data-params="id=${featured.id}">
+        <span class="ch-next-ic">${I(featured.cover.icon, 1)}</span>
+        <span class="grow"><span class="t-cap bold" style="color:var(--c-on-secondary-soft)">Next: starts in <span class="tnum" data-until="${featured.starts}">${until(featured.starts)}</span></span>
+        <b style="display:block">${featured.title}</b><span class="t-cap muted">${rewardText(featured)} · ${entryText(featured)}</span></span>
+        <span class="btn btn-tonal btn-sm" data-toast="We will remind you 15 minutes before it starts">${I('bell-ringing', 1)} Remind me</span></button>`;
+    else top = `<div class="ch-empty"><span class="ch-empty-ic">${I('trophy', 1)}</span><div class="grow"><b>No challenge right now</b><p class="t-sm muted">New challenges with prizes are posted every week. We will tell you the moment one starts.</p>
+        <div class="row g2 mt3"><button class="btn btn-tonal btn-sm" data-go="settings">${I('bell-ringing', 1)} Turn on alerts</button><button class="btn btn-ghost btn-sm" data-go="winners-wall">Past winners</button></div></div></div>`;
+    return `<section>
+      <div class="sect-title"><h2 class="t-h3">Challenges & events</h2><button class="btn btn-ghost" data-go="compete">See all</button></div>
+      ${top}
+      ${others.length ? `<div class="ch-strip mt3">${others.map(c => `<button class="ch-mini" data-go="challenge" data-params="id=${c.id}"><span class="row between">${statusOf(c) === 'live' ? ST.livePill() : `<span class="badge badge-soft">${I('clock', 1)} ${until(c.starts)}</span>`}<span class="ch-mini-ic">${I(c.cover.icon, 1)}</span></span>
+        <b class="t-sm">${c.title}</b><span class="t-cap muted">${c.prizes ? money(c.prizes[0]) + ' top prize' : c.reward ? 'Reward: Premium days' : 'Just for practice'}</span><span class="t-cap muted">${c.entry ? money(c.entry) + ' entry' : 'Free entry'}</span></button>`).join('')}</div>` : ''}
+    </section>`;
+  };
+
   def('compete', {
     title: 'Challenges & events list', group: G, tab: 'test',
     render: () => {
       CH.forEach(c => { if (statusOf(c) === 'ended' && !c.winners) c.winners = ranked(c).slice(0, 3).map(w => [w.n, w.st, `${w.score}/${c.q}`, mmss(w.secs)]); });
-      const live = CH.filter(c => statusOf(c) === 'live'), up = CH.filter(c => statusOf(c) === 'upcoming'), past = CH.filter(c => statusOf(c) === 'ended');
+      const vis = visible(), live = vis.filter(c => statusOf(c) === 'live'), up = vis.filter(c => statusOf(c) === 'upcoming'), past = CH.filter(c => statusOf(c) === 'ended');
       const card = c => `<button class="card card-tap ch-card" data-go="challenge" data-params="id=${c.id}">${ST.newsCover({ cover: c.cover }, 'thumb')}
         <span class="grow stack g1"><span class="row g2 wrap">${statusBadge(c)}${typeBadge(c)}</span><b class="t-sm">${c.title}</b><span class="t-cap muted">${rewardText(c)} · ${entryText(c)}</span></span>${I('caret-right').replace('class="', 'class="trail ')}</button>`;
       return `
       <div class="appbar"><button class="icon-btn" data-back="test" aria-label="Back">${I('arrow-left')}</button><span class="title">Challenges & events<small>Win prizes. Free and Premium can join.</small></span><button class="icon-btn" data-go="winners-wall" aria-label="Winners wall">${I('seal-check')}</button><button class="icon-btn" data-go="winnings" aria-label="My winnings">${I('wallet')}</button></div>
       <div class="scr-body"><div class="pad stack g5" style="padding-top:var(--s-2)">
-        ${ST.challengeHero()}
+        ${ST.challengeHero() || (!live.length && !up.length ? `<div class="ch-empty"><span class="ch-empty-ic">${I('trophy', 1)}</span><div class="grow"><b>No challenge right now</b><p class="t-sm muted">New challenges are posted every week. Turn on alerts so you never miss one.</p><button class="btn btn-tonal btn-sm mt3" data-go="settings">${I('bell-ringing', 1)} Turn on alerts</button></div></div>` : '')}
         ${live.length ? `<section class="stack g2"><h2 class="t-h3">Live now</h2>${live.map(card).join('')}</section>` : ''}
         ${up.length ? `<section class="stack g2"><h2 class="t-h3">Coming up</h2>${up.map(card).join('')}</section>` : ''}
         <button class="card card-tap row g3" style="padding:var(--s-4)" data-go="winners-wall"><span class="ic green" style="width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:22px;flex:none">${I('seal-check', 1)}</span><span class="grow"><b>Winners wall</b><br><span class="t-cap muted">See proof of every prize we have paid</span></span>${I('caret-right')}</button>
@@ -286,8 +311,9 @@
       const row = (w, i) => `<div class="rank-row ${w.me ? 'lb-you' : ''}"><span class="lb-rank tnum">${i + 1}</span><span class="grow"><b class="t-sm">${w.n}</b> <span class="t-cap muted">${w.st}</span><div class="t-cap muted">Started ${clock(w.start)}</div></span><span class="tnum t-sm bold">${w.score}/${c.q}</span><span class="tnum t-sm muted">${mmss(w.secs)}</span></div>`;
       return `
       <canvas id="confetti"></canvas>
-      <div class="scr-body" style="display:flex;flex-direction:column">
-        <div class="res-hero" style="padding-top:var(--s-6)">
+      <div class="appbar" style="background:transparent"><button class="icon-btn" data-go="compete" aria-label="Close" style="color:#fff">${I('x')}</button><span class="title" style="text-align:center;padding-right:48px">${c.title}</span></div>
+      <div class="scr-body" style="background:var(--c-bg)">
+        <div class="res-hero" style="padding-top:var(--s-3)">
           <span class="badge badge-success" style="margin:0 auto">${I('shield-check', 1)} Fair-play check passed</span>
           <div class="score tnum mt4" style="font-size:56px">${r.score}<span style="font-size:22px;color:#AFC0DD">/${r.total}</span></div>
           <p class="muted mt2">Finished in <b style="color:#fff">${mmss(r.secs)}</b> · started ${clock(r.startedAt)}</p>
@@ -297,7 +323,8 @@
         <div class="pad stack g4">
           <section class="card card-pad stack g2"><div class="row between"><b>Live ranking</b><span class="t-cap muted">${c.joined.toLocaleString()} students</span></div>
             ${top.map(row).join('')}${rank > 3 ? `<div class="t-cap muted" style="text-align:center">···</div>${row(meRow, rank - 1)}` : ''}
-            <p class="t-cap muted">${c.rule}</p></section>
+          </section>
+          <details class="card acc"><summary>How winners are decided ${I('caret-down')}</summary><p>${c.rule}</p></details>
           <div class="banner info">${I('megaphone', 1)}<span>Winners are announced the moment the challenge closes (in <b class="tnum" data-until="${c.ends || Date.now()}">${until(c.ends || Date.now())}</b>). Winners get a form to send their account details.</span></div>
           <button class="btn btn-outline btn-block" data-go="compete">See other challenges</button>
         </div>

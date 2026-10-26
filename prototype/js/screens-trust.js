@@ -164,8 +164,80 @@
     mount(el) { el.querySelectorAll('[data-img]').forEach(b => b.onclick = () => ST.viewImage(b.dataset.img, 'Proof of payment')); }
   });
 
+
+  // ---------- Notifications (full screen) ----------
+  const ago = m => m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : m < 2880 ? 'Yesterday' : `${Math.round(m / 1440)} days ago`;
+  ST.notes = ST.notes || [
+    { id: 1, cat: 'Challenges', ic: 'trophy', c: 'gold', t: 'Weekly Challenge #44 is live', d: 'Win ₦20,000. 10 questions, 30 seconds each. Closes tonight.', go: 'challenge', pr: 'id=wk44', m: 2, unread: true },
+    { id: 2, cat: 'Updates', ic: 'gift', c: 'green', t: 'Ada joined with your code', d: 'You now have 30% off Premium. Invite 7 more friends for Premium free.', go: 'referral', m: 25, unread: true },
+    { id: 3, cat: 'Updates', ic: 'newspaper', c: 'blue', t: 'JAMB 2027 registration dates are out', d: 'Registration opens 6 January. Read what to bring and the fees.', go: 'news-detail', pr: 'id=reg', m: 70, unread: true },
+    { id: 4, cat: 'Classes', ic: 'video-camera', c: 'navy', t: 'Live class today at 4:00 PM', d: 'Physics: Waves and sound with Mr. Bello. The link opens at 3:55 PM.', toast: 'We will remind you at 3:55 PM', m: 180 },
+    { id: 5, cat: 'Updates', ic: 'atom', c: 'blue', t: 'New: JAMB 2026 Physics', d: '40 new questions with full solutions are ready.', go: 'pq', m: 1500 },
+    { id: 6, cat: 'Challenges', ic: 'seal-check', c: 'green', t: 'Proof of payment posted', d: 'See how we paid the Weekly Challenge #43 winners.', go: 'winners-wall', m: 1700 },
+    { id: 7, cat: 'Updates', ic: 'fire', c: 'gold', t: 'Keep your 6-day streak', d: 'Answer 8 more questions today to keep it going.', go: 'test-setup', pr: 'body=JAMB&mode=quick', m: 2900 }
+  ];
+  ST.unreadCount = () => ST.notes.filter(n => n.unread).length;
+  def('notifications', {
+    title: 'Notifications', group: 'Main tabs',
+    render: p => {
+      const cat = p.cat || 'All', list = ST.notes.filter(n => cat === 'All' || n.cat === cat);
+      const today = list.filter(n => n.m < 1440), earlier = list.filter(n => n.m >= 1440);
+      const item = n => `<button class="note-item ${n.unread ? 'unread' : ''}" data-note="${n.id}">
+          <span class="ic ${n.c}">${I(n.ic, 1)}</span>
+          <span class="grow"><span class="row between g2"><b class="t-sm">${n.t}</b><span class="t-cap subtle" style="white-space:nowrap">${ago(n.m)}</span></span><span class="t-sm muted" style="display:block">${n.d}</span></span>
+          ${n.unread ? '<span class="unread-dot" aria-label="Unread"></span>' : ''}</button>`;
+      const group = (title, arr) => arr.length ? `<div class="stack g2"><span class="t-label muted">${title}</span><div class="card note-list">${arr.map(item).join('')}</div></div>` : '';
+      return `
+      <div class="appbar"><button class="icon-btn" data-back="home" aria-label="Back">${I('arrow-left')}</button><span class="title">Notifications${ST.unreadCount() ? `<small>${ST.unreadCount()} unread</small>` : ''}</span>
+        ${ST.unreadCount() ? `<button class="btn btn-ghost btn-sm" id="readAll">Mark all read</button>` : ''}<button class="icon-btn" aria-label="Notification settings" data-go="settings">${I('gear-six')}</button></div>
+      <div class="px4" style="padding-bottom:10px"><div class="chips">${['All', 'Challenges', 'Classes', 'Updates'].map(c => `<button class="chip ${c === cat ? 'on' : ''}" data-go="notifications" data-mode="fade" data-params="cat=${c}">${c}${c !== 'All' && ST.notes.some(n => n.cat === c && n.unread) ? ' <span class="unread-dot" style="width:7px;height:7px"></span>' : ''}</button>`).join('')}</div></div>
+      <div class="scr-body"><div class="pad stack g5" style="padding-top:var(--s-2)">
+        ${list.length ? group('Today', today) + group('Earlier', earlier)
+          : `<div class="state"><div class="art blue">${I('bell-simple', 1)}</div><h2 class="t-h3">You are all caught up</h2><p class="muted">Nothing in ${cat} yet. We will let you know when something new happens.</p></div>`}
+      </div></div>`;
+    },
+    mount(el, p) {
+      el.querySelector('#readAll')?.addEventListener('click', () => { ST.notes.forEach(n => n.unread = false); ST.go('notifications', p, { replace: true, mode: 'fade' }); ST.toast('All notifications marked as read', 'check-circle'); });
+      el.querySelectorAll('[data-note]').forEach(b => b.onclick = () => {
+        const n = ST.notes.find(x => x.id === +b.dataset.note); n.unread = false;
+        if (n.go) ST.go(n.go, n.pr ? Object.fromEntries(new URLSearchParams(n.pr)) : null); else { b.classList.remove('unread'); b.querySelector('.unread-dot')?.remove(); ST.toast(n.toast || 'Done', 'bell-ringing'); }
+      });
+    }
+  });
+
+  // ---------- Test history ----------
+  const HIST = [['JAMB UTME Mock', 'Full exam · 4 subjects', '287/400', '24 Oct', 'results', 'gold'], ['Mathematics', 'Subject practice · JAMB 2001', '31/40', '23 Oct', 'results', 'blue'],
+    ['Topic drill: Integration', '10 questions', '7/10', '22 Oct', 'review', 'navy'], ['Weekly Challenge #43', 'Challenge · ranked #186', '8/10', '20 Oct', 'compete', 'gold'], ['Quick test', '20 mixed questions', '15/20', '19 Oct', 'results', 'green'], ['JAMB UTME Mock', 'Full exam · 4 subjects', '249/400', '12 Oct', 'results', 'gold']];
+  def('history', {
+    title: 'Test history', group: 'Profile',
+    render: () => `
+      <div class="appbar"><button class="icon-btn" data-back="profile" aria-label="Back">${I('arrow-left')}</button><span class="title">Test history<small>${HIST.length} tests this month</small></span></div>
+      <div class="scr-body"><div class="pad stack g4" style="padding-top:var(--s-2)">
+        <div class="grid3"><div class="card stat"><b class="tnum">24</b><span>Tests</span></div><div class="card stat"><b class="tnum">71%</b><span>Average</span></div><div class="card stat"><b class="tnum">287</b><span>Best JAMB</span></div></div>
+        <div class="card list enter">${HIST.map(([t, d, sc, date, go, c]) => `<button class="list-item" data-go="${go}"><span class="ic ${c}" style="width:40px;height:40px;border-radius:10px;display:grid;place-items:center;font-size:20px;flex:none">${I(go === 'compete' ? 'trophy' : 'exam', 1)}</span>
+          <span class="grow"><b class="t-sm">${t}</b><div class="t-cap muted">${d} · ${date}</div></span><b class="tnum t-sm">${sc}</b>${I('caret-right').replace('class="', 'class="trail ')}</button>`).join('')}</div>
+      </div></div>`
+  });
+
+  // ---------- Bookmarks ----------
+  const BMS = { Questions: [['JAMB 2001 Maths Q7', 'Indices and logarithms', 'pq-study', 'year=2001'], ['JAMB Mock Maths Q3', 'Integration', 'review', 'f=wrong'], ['JAMB 2002 Chemistry Q14', 'Mole concept', 'pq-study', 'year=2002']],
+    Notes: [['Quadratic equations', 'Mathematics · 8 min read', 'note', '']], Videos: [] };
+  def('bookmarks', {
+    title: 'Bookmarks', group: 'Study',
+    render: p => {
+      const tab = p.tab || 'Questions', list = BMS[tab] || [];
+      return `
+      <div class="appbar"><button class="icon-btn" data-back="study" aria-label="Back">${I('arrow-left')}</button><span class="title">Bookmarks</span></div>
+      <div class="px4" style="padding-bottom:10px"><div class="seg">${Object.keys(BMS).map(k => `<button class="${k === tab ? 'on' : ''}" data-go="bookmarks" data-mode="fade" data-params="tab=${k}">${k} <span class="muted">${BMS[k].length}</span></button>`).join('')}</div></div>
+      <div class="scr-body"><div class="pad stack g3" style="padding-top:var(--s-2)">
+        ${list.length ? `<div class="card list">${list.map(([t, d, go, pr]) => `<div class="list-item"><button class="row g3 grow" style="text-align:left" ${ST.gate && (go === 'note' ? ST.gate('notes', `data-go="${go}"`, 'notes') : `data-go="${go}" ${pr ? `data-params="${pr}"` : ''}`)}><span class="lead">${I('bookmark-simple', 1)}</span><span class="grow"><b class="t-sm">${t}</b><div class="t-cap muted">${d}</div></span></button><button class="icon-btn" aria-label="Remove bookmark" data-remove-row="1 bookmark">${I('x')}</button></div>`).join('')}</div>`
+          : `<div class="state"><div class="art blue">${I('bookmark-simple', 1)}</div><h2 class="t-h3">No ${tab.toLowerCase()} saved yet</h2><p class="muted">Tap the bookmark icon on any ${tab === 'Videos' ? 'video' : tab === 'Notes' ? 'note' : 'question'} to save it here.</p></div>`}
+      </div></div>`;
+    }
+  });
+
   // ---------- Screens that load data from the server: show a skeleton first; Downloads is Premium ----------
   Object.entries({ home: 'home', study: 'grid', test: 'list', pq: 'grid', videos: 'cards', novels: 'cards', docs: 'list', news: 'cards', 'news-detail': 'article',
-    compete: 'list', leaderboard: 'list', profile: 'profile', 'winners-wall': 'cards', referral: 'list', winnings: 'list' }).forEach(([id, t]) => { if (ST.screens[id]) ST.screens[id].skeleton = t; });
+    compete: 'list', leaderboard: 'list', profile: 'profile', 'winners-wall': 'cards', referral: 'list', winnings: 'list', notifications: 'list', history: 'list', bookmarks: 'list' }).forEach(([id, t]) => { if (ST.screens[id]) ST.screens[id].skeleton = t; });
   if (ST.screens.offline) ST.screens.offline.needs = 'offline';
 })();

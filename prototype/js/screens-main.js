@@ -18,7 +18,7 @@
   /** Exam card: open for JAMB on Free, and for every exam on Premium; otherwise opens the paywall. */
   const examCard = (body, title, meta) => {
     const open = ST.examOpen(body), n = ST.rule(body.toLowerCase());
-    const yrs = open && n !== 'all' ? `<span class="badge badge-soft" style="margin-left:6px">${ST.yearsLabel(n)} free</span>` : '';
+    const yrs = '';
     return `<button class="card card-tap exam-card ${open ? '' : 'locked'}" ${open ? `data-go="test-setup" data-params="body=${body}"` : `data-sheet="paywall" data-reason="${body}"`}>${examLogo(body)}<div class="meta"><b>${title}</b>${yrs}<div class="t-cap muted">${meta}</div></div>${open ? `<span class="go">${I('play', 1)}</span>` : lockBadge}</button>`;
   };
   ST.examCard = examCard;
@@ -47,14 +47,14 @@
           <button data-go="profile" aria-label="Open my profile" style="border-radius:50%">${ST.avatar()}</button>
           <div class="grow"><div class="t-cap muted">${ST.greeting()},</div><div class="t-h3">${S.first}</div></div>
           <span class="streak" title="${S.streak}-day streak">${I('fire', 1)} ${S.streak}</span>
-          <button class="icon-btn bell" aria-label="Notifications, 2 unread" data-sheet="notifications">${I('bell')}<span class="bell-dot"></span></button>
+          <button class="icon-btn bell" aria-label="Notifications${ST.unreadCount && ST.unreadCount() ? `, ${ST.unreadCount()} unread` : ''}" data-go="notifications">${I('bell')}${ST.unreadCount && ST.unreadCount() ? `<span class="bell-count tnum">${ST.unreadCount()}</span>` : ''}</button>
         </div>
         <div class="px5 stack g5" style="padding-bottom:var(--s-8)">
           <div class="goal-strip enter">${ring(0.6, 44, 3.6, '')}<span class="grow"><b class="t-sm">Today: 12 of 20 questions</b><span class="t-cap muted" style="display:block">8 more keeps your ${S.streak}-day streak</span></span><button class="btn btn-tonal btn-sm" data-go="test-setup" data-params="body=JAMB&mode=quick">Practise</button></div>
 
-          ${ST.challengeHero ? ST.challengeHero() : ''}
-
           ${ST.unfinishedCard ? ST.unfinishedCard() : ''}
+
+          ${ST.challengeSection ? ST.challengeSection() : ''}
 
           <section data-tour="start">
             <div class="sect-title"><h2 class="t-h3">Start a CBT practice</h2>${ST.isPremium() ? `<span class="badge badge-gold">${I('crown-simple', 1)} Premium</span>` : ''}</div>
@@ -122,7 +122,7 @@
           </div>
         </section>
         <section>
-          <div class="sect-title"><h2 class="t-h3">Bookmarks</h2><button class="btn btn-ghost" data-go="empty">View all</button></div>
+          <div class="sect-title"><h2 class="t-h3">Bookmarks</h2><button class="btn btn-ghost" data-go="bookmarks">View all</button></div>
           <div class="card list">
             <button class="list-item" data-go="pq-study"><span class="lead">${I('bookmark-simple', 1)}</span><span class="grow"><b class="t-sm">JAMB 2001 Maths Q7</b><div class="t-cap muted">Indices and logarithms</div></span>${I('caret-right').replace('class="', 'class="trail ')}</button>
           </div>
@@ -328,7 +328,7 @@
   def('test', {
     title: 'Test hub', group: 'Main tabs', tab: 'test',
     render: () => `
-      <div class="appbar"><span class="title" style="padding-left:12px;font-size:var(--t-h2-size)">Test</span><button class="icon-btn" aria-label="History" data-go="profile">${I('clock-counter-clockwise')}</button></div>
+      <div class="appbar"><span class="title" style="padding-left:12px;font-size:var(--t-h2-size)">Test</span><button class="icon-btn" aria-label="Test history" data-go="history">${I('clock-counter-clockwise')}</button></div>
       <div class="scr-body"><div class="pad stack g6" style="padding-top:var(--s-2)">
         <div class="card surface-navy card-pad stack g3" style="position:relative;overflow:hidden">
           <div class="row g3">${examLogo('JAMB', 'bare')}<div class="grow"><b>Full JAMB simulation</b><div class="t-cap muted">English + 3 subjects · 180 questions · 2 hours</div></div></div>

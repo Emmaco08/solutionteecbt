@@ -49,6 +49,10 @@
     mount: w => w.querySelectorAll('[data-q]').forEach(b => b.onclick = () => { ST.state.vq = b.dataset.q; document.querySelectorAll('[data-quality] .t-cap, #q480').forEach(x => x.textContent = b.dataset.q); ST.closeOverlay(); ST.toast(`Quality set to ${b.dataset.q}`, 'sliders-horizontal'); })
   });
 
+  // Live countdowns anywhere: <b data-until="timestamp">
+  const untilText = t => { const s = Math.max(0, Math.round((t - Date.now()) / 1000)); const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60); return d ? `${d}d ${h}h` : h ? `${h}h ${String(m).padStart(2, '0')}m` : `${m}m ${String(s % 60).padStart(2, '0')}s`; };
+  setInterval(() => { const scr = ST.current && ST.current(); if (scr) scr.querySelectorAll('[data-until]').forEach(x => x.textContent = untilText(+x.dataset.until)); }, 1000);
+
   document.addEventListener('click', e => {
     const t = e.target;
     // search

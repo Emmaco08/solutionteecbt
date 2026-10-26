@@ -779,19 +779,15 @@ Print your mock exam slip 7 days before the date. Bring the slip and arrive 1 ho
   // ---------- Router ----------
   const go = () => go_();
   const go_ = () => {
-    const id = (location.hash.slice(1) || 'dashboard');
+    const id = (location.hash.slice(1) || 'dashboard').split('?')[0];
     const fn = P[id] || P.dashboard;
     const page = document.getElementById('page');
     page.innerHTML = `<div class="page">${fn()}</div>`;
     math(page);
     fn.mount && fn.mount(page);
-    document.querySelectorAll('.side a[data-p]').forEach(a => a.classList.toggle('on', a.dataset.p === id));
     document.title = (document.querySelector('.page h1')?.textContent || 'Admin') + ' · SolutionTee Admin';
+    window.ADMIN && ADMIN.afterRender && ADMIN.afterRender(id);
   };
-  ST.tokensReady.then(() => {
-    addEventListener('hashchange', go); go();
-    const sync = () => document.querySelectorAll('#theme button').forEach(b => b.classList.toggle('on', b.dataset.t === ST.getTheme()));
-    document.querySelectorAll('#theme button').forEach(b => b.onclick = () => { ST.setTheme(b.dataset.t); sync(); });
-    sync();
-  });
+  // The shell (admin-shell.js) owns routing, navigation, theme and menus.
+  window.ADMIN = { P, I, naira, esc, toast, math, render: go_ };
 })();

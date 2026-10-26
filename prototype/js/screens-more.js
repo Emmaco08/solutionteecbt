@@ -95,9 +95,9 @@
         <div class="seg" id="flv"><button class="${S.payFlavor === 'play' ? 'on' : ''}" data-f="play">Play Store build</button><button class="${S.payFlavor === 'direct' ? 'on' : ''}" data-f="direct">Website APK build</button></div>
         <div class="card card-pad stack g3">
           <div class="row between"><span class="t-sm muted">Plan</span><span class="badge badge-sample">SAMPLE</span></div>
-          <div class="row between"><b class="t-h3">SolutionTee Premium · ${plan.name}</b></div>
+          <div class="row between"><b class="t-h3">SolutionTee Premium</b></div>
           <div class="row between t-sm"><span class="muted">Access</span><span class="bold">${plan.per}</span></div>
-          <div class="row between t-sm"><span class="muted">Price</span><span class="bold tnum">${ST.naira(plan.price)}</span></div>
+          <div class="row between t-sm hidden" id="priceRow"><span class="muted">Price</span><span class="bold tnum">${ST.naira(plan.price)}</span></div>
           <div class="row between t-sm hidden" id="discRow"><span class="row g1" style="color:var(--c-success)">${I('ticket', 1)} <span id="discLabel"></span></span><span class="bold tnum" style="color:var(--c-success)" id="discAmt"></span></div>
           <hr class="divider"><div class="row between"><span class="bold">Total</span><span class="stack" style="align-items:flex-end"><s class="t-cap muted tnum hidden" id="oldTotal">${ST.naira(plan.price)}</s><b class="t-h2 tnum" id="total">${ST.naira(plan.price)}</b></span></div>
         </div>
@@ -113,7 +113,7 @@
       const price = () => plan.price - (applied ? applied.off : 0);
       const updateTotals = () => {
         el.querySelector('#discRow').classList.toggle('hidden', !applied);
-        el.querySelector('#oldTotal').classList.toggle('hidden', !applied);
+        el.querySelector('#priceRow').classList.toggle('hidden', !applied);
         if (applied) { el.querySelector('#discLabel').textContent = `${applied.code} · ${applied.label}`; el.querySelector('#discAmt').textContent = '−' + ST.naira(applied.off); }
         el.querySelector('#total').textContent = ST.naira(price());
         const pay = el.querySelector('#pay'); if (!pay.classList.contains('is-loading')) pay.textContent = `Pay ${ST.naira(price())}`;
@@ -409,7 +409,7 @@
             <div class="grid3" style="grid-template-columns:repeat(4,1fr)">
               ${[['fire', 'gold', '7-day streak'], ['target', 'blue', 'First 250+'], ['lightning', 'navy', 'Speedster'], ['star', 'gold', '100 correct'], ['trophy', '', 'Score 300'], ['moon-stars', '', 'Night owl'], ['books', '', 'Bookworm'], ['medal', '', 'Full mock']].map(([ic, c, t], k) => `<div class="badge-tile ${c ? '' : 'off'}"><span class="medal ic ${c}">${I(ic, 1)}</span>${t}</div>`).join('')}</div></section>
           <section class="card list">
-            ${[['clock-counter-clockwise', 'Test history', 'test'], ['bookmark-simple', 'Bookmarks', 'empty'], ['download-simple', 'Downloads', 'offline'], ['sparkle', `AI prompts left today: ${S.aiLeft}`, 'ai'], ['video-camera', 'My classes', 'empty'], ['gift', 'Invite friends', 'referral'], ['trophy', 'My winnings', 'winnings'], ['seal-check', 'Winners wall', 'winners-wall'], ['ticket', 'Redeem a code', '#redeem'], ['gear-six', 'Settings', 'settings'], ['question', 'Help & support', 'help']].map(([ic, t, go]) => `
+            ${[['clock-counter-clockwise', 'Test history', 'history'], ['bookmark-simple', 'Bookmarks', 'bookmarks'], ['download-simple', 'Downloads', 'offline'], ['sparkle', `AI prompts left today: ${S.aiLeft}`, 'ai'], ['video-camera', 'My classes', 'empty'], ['gift', 'Invite friends', 'referral'], ['trophy', 'My winnings', 'winnings'], ['seal-check', 'Winners wall', 'winners-wall'], ['ticket', 'Redeem a code', '#redeem'], ['gear-six', 'Settings', 'settings'], ['question', 'Help & support', 'help']].map(([ic, t, go]) => `
               <button class="list-item" ${go[0] === '#' ? `id="${go.slice(1)}"` : `data-go="${go}"`}><span class="lead">${I(ic, 1)}</span><span class="grow t-sm bold">${t}</span>${I('caret-right').replace('class="', 'class="trail ')}</button>`).join('')}
           </section>
           <button class="btn btn-outline btn-block" data-go="welcome" data-mode="fade">${I('sign-out')} Log out</button>
