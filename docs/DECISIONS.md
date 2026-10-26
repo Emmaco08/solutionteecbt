@@ -192,3 +192,28 @@ The owner chose to focus on Android and skip a native iOS app. iPhone users (and
 - **Timing:** the web app sits in Phase 5 with the website, so iPhone users get access after the Android core is done. It can move earlier if the owner wants.
 - No native desktop app for now; laptop users use the web app.
 
+**D-044 · 2026-10-26 · Phase 4b for challenges, referrals and trust**
+The approved design added challenges with cash prizes, anti-cheat, referrals, one-account-per-person, bans and the winners wall. These were not in the original phase list. They become **Phase 4b — Challenges, referrals & trust** (approval word `CHALLENGES APPROVED`), after payments (Phase 4), because they need entitlements, payments and server-side marking first. The phase plan in `docs/PHASES.md` gets this entry when Phase 4 starts. Phase 2 already creates the flags (`challenges_enabled`, `referrals_enabled`, `cash_challenges_on_web`).
+
+**D-045 · 2026-10-26 · Images are stored in Cloudflare R2 (owner)**
+This replaces Supabase Storage for all images.
+- **Buckets:**
+  - `st-question-images` is private. Its links are signed for a few minutes by server code (Next.js server or a Supabase Edge Function) only after `public.can_view_question_image(key)` returns true for that student. So a Free student cannot open the picture of a locked question.
+  - `st-public` sits behind a Cloudflare CDN domain and holds news, onboarding art and logos.
+- **Uploads:** the admin uploads with a short presigned PUT link, issued only after `public.can_upload_images()` returns true.
+- **Keys:** R2 keys live only in server env or Edge Function secrets.
+- **Database:** stores the object key.
+- **Why R2:** the owner's choice. It has no egress fees, which suits image-heavy question banks and data-light users.
+
+**D-046 · 2026-10-26 · Phase 2 data-model choices**
+- **Students never read the `questions` table directly** (RLS gives them nothing). They call `public.fetch_questions(exam, subject, year, mode)`, which checks sign-in, bans, published year, the plan rule for that mode (test vs study mode, which have different Free year counts), page size (max 100) and an hourly cap (3,000 questions per hour) to slow down scraping. This enforces the per-mode Free rules on the server; plain RLS could not tell the modes apart.
+- **One `access_rules` table with a `free` and a `premium` row** replaces the separate `free_access_rules` and `ai_limits` tables in SPEC §7. It has exactly the shape the approved admin edits (years per exam, oldest or newest, study-mode years, videos, notes, novels, syllabus, AI per day, offline, challenges). AI model settings (model id, prompt, temperature) come in Phase 4 with the AI tutor.
+- **Every admin write needs 2-step login (TOTP, `aal2` in the JWT), checked inside RLS**, so a stolen password alone cannot change anything. The same check covers RPCs.
+- **Audit:**
+  - Triggers log every write to admin-editable tables with before and after values, even writes made outside the website.
+  - Bulk actions (CSV import, undo, bulk publish) write one summary row instead of thousands.
+- **CSV imports** arrive as drafts. Undo soft-deletes the batch.
+- **Manual Premium grants** need a reason. Only server code can create Paystack, Play, code, referral or prize entitlements.
+- **Google sign-in moves to Phase 3,** because it needs the Android app's signing-key fingerprint.
+- **No local database:** tests run on the hosted dev project inside a transaction that is always rolled back (`scripts/run-db-tests.mjs`).
+

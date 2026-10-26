@@ -2,12 +2,12 @@
 
 Everything the owner needs to install, create or configure. Kept up to date every phase.
 
-Machine: **Windows 11 Pro**, 4 cores, **7.9 GB RAM**, C: drive **~5.4 GB free (98% full)**.
+Machine: **Windows 11 Pro**, 4 cores, **7.9 GB RAM**, C: drive **~40 GB free** (2026-10-26; was 5.4 GB on 2026-10-24).
 Shell for commands below: **PowerShell** (run as your normal user; only where noted, as Administrator).
 
 ---
 
-## 0. FIRST: free disk space (blocking)
+## 0. Disk space (solved 2026-10-26: ~40 GB free)
 
 Flutter SDK (~2.5 GB after first run), Gradle caches (~2–4 GB) and `node_modules` will not fit in 5.4 GB. Aim for **at least 20 GB free**.
 
@@ -167,3 +167,98 @@ cd ..\solutiontee-cbt-design; git add -A; git commit -m "Design update"; git pus
 - **Vercel (one-time, free Hobby plan):** vercel.com → sign in with GitHub → *Add New… → Project* → import `solutiontee-cbt-design` → Framework preset **Other**, no build command, output directory `.` (already set in `vercel.json`) → **Deploy**. Every push to `main` redeploys automatically. Production URLs are public; preview URLs are protected by Vercel login by default.
 - **Vercel MCP (optional, lets Claude check deployments):** Claude desktop → Connectors → Vercel (https://mcp.vercel.com) → Connect and sign in. In the terminal version of Claude Code instead: `claude mcp add --transport http vercel https://mcp.vercel.com`, then run `/mcp` and authenticate.
 - **Client feedback:** the client taps *Give feedback* in the prototype (needs a free GitHub account). Feedback lands in the repo's Issues tab.
+
+---
+
+## 7. Phase 2: Supabase, Brevo and the admin (owner steps)
+
+Do these once. **Never paste keys or passwords into the chat.** Put them only where shown.
+
+### 7.1 Supabase project (free)
+1. Go to https://supabase.com, choose **Start your project**, and sign in with GitHub.
+2. Create an organisation (Free plan), then **New project**:
+   - Name `solutiontee-dev`.
+   - Region **West EU (London)**.
+   - Click *Generate a password*, then **save it in your password manager**.
+3. Wait about 2 minutes for the project to start.
+
+Free plan limits: 500 MB database, 1 GB storage, 50k monthly users. The project **pauses after about 7 days without use**; *Restore* brings it back. We add a separate `solutiontee-prod` project on the Pro plan before launch.
+
+### 7.2 Link the CLI (in PowerShell, in `C:\solutiontee-cbt`)
+```powershell
+pnpm supabase login
+```
+A browser opens; approve it. Then:
+```powershell
+pnpm supabase link --project-ref YOUR_PROJECT_REF
+```
+- The project ref is the part of the project URL `https://YOUR_PROJECT_REF.supabase.co`, also shown in *Project Settings → General*.
+- When asked, type the database password from 7.1. It is not shown on screen.
+
+Tell me "linked" in the chat. Then I can push the database (`pnpm db:push`) and run the tests.
+
+### 7.3 Keys for the admin website and the tests
+In Supabase, open *Project Settings → API Keys* (and *Data API* for the URL). Then copy the two templates:
+```powershell
+Copy-Item apps\web\.env.example apps\web\.env.local
+Copy-Item supabase\.env.example supabase\.env
+```
+Open each new file in Notepad and paste the values where the template says:
+```powershell
+notepad apps\web\.env.local
+notepad supabase\.env
+```
+- `apps\web\.env.local` needs:
+  - the project URL;
+  - the **publishable / anon** key;
+  - the **secret / service_role** key (server only; the site never sends it to the browser).
+- `supabase\.env` needs the **database connection string** for the RLS tests: *Connect → Session pooler*, with your password filled in.
+
+Both files are git-ignored and never leave your laptop.
+
+### 7.4 Brevo email (6-digit login codes)
+1. Create a free account at https://www.brevo.com. The free plan allows **300 emails per day**.
+2. *Senders, Domains & Dedicated IPs → Domains → Add a domain*: `solutiontee.com`. Add the DNS records Brevo shows (Brevo code, DKIM, DMARC) at your domain host, then click **Verify**.
+3. *Senders → Add a sender*: name `SolutionTee CBT`, email `no-reply@solutiontee.com`.
+4. *SMTP & API → SMTP*: note the server (`smtp-relay.brevo.com`), port `587` and your login, then **Generate a new SMTP key**.
+5. In Supabase, go to *Authentication → Emails → SMTP Settings* and turn on **Custom SMTP**:
+   - sender email `no-reply@solutiontee.com`, sender name `SolutionTee CBT`;
+   - host `smtp-relay.brevo.com`, port `587`;
+   - username = your Brevo SMTP login, password = the SMTP key.
+6. Still in *Authentication*, apply the settings below (they match `supabase/config.toml`).
+
+| Where | Setting |
+|---|---|
+| Sign In / Providers → Email | Confirm email **on**, Secure password change **on**, Minimum password length **8**, Password requirements **letters and digits**, Email OTP expiration **600** s, Email OTP length **6** |
+| Rate limits | Emails sent per hour **30** (raise later), Sign-ups/sign-ins per 5 min per IP **30**, Token verifications **30** |
+| URL Configuration | Site URL `http://localhost:3000`; redirect URLs `http://localhost:3000/**`, `https://solutiontee.com/**`, `https://app.solutiontee.com/**` |
+| Multi-Factor | **TOTP (App Authenticator)**: enabled |
+| Emails → Templates → *Confirm signup* and *Magic Link* | Use the code template from `supabase/templates/otp.html` (I add it). It shows `{{ .Token }}`, the 6-digit code, instead of a link. |
+
+### 7.5 Authenticator app
+Install **Google Authenticator** or **Microsoft Authenticator** on your phone. The admin asks you to scan a QR code the first time you log in (2-step login is required for every admin).
+
+### 7.6 Run the admin on your laptop
+```powershell
+pnpm install
+pnpm web:dev
+```
+Open http://localhost:3000/admin, then stop it with `Ctrl+C` when done (low-RAM rule: one heavy process at a time).
+
+### 7.7 Cloudflare R2 (images)
+Images are stored in Cloudflare R2 (D-045).
+1. Go to https://dash.cloudflare.com, sign up, then open **R2 Object Storage**. You must add a card, but the free tier is 10 GB storage plus 1 million writes and 10 million reads a month, and there is no download (egress) fee.
+2. Create the buckets:
+   - **`st-question-images`**: private (leave public access off).
+   - **`st-public`**: news and onboarding pictures. *Settings → Public access → Custom domain* `cdn.solutiontee.com` (your domain must be on Cloudflare DNS for this), or use the r2.dev URL while testing.
+3. On `st-question-images`, open *Settings → CORS policy* and allow `PUT` and `GET` from `http://localhost:3000` (and later `https://solutiontee.com`) so the admin can upload.
+4. *R2 → Manage R2 API tokens → Create API token*: permission **Object Read & Write**, limited to the two buckets.
+5. Put the **Account ID**, **Access Key ID** and **Secret Access Key** into `apps\web\.env.local` (the template shows where). Never put them in the app or in chat.
+
+### 7.8 Commands I use (for reference)
+| Command | What it does |
+|---|---|
+| `pnpm db:push` | Applies new migrations to the linked project |
+| `pnpm db:test` | Runs the RLS security tests on the dev database (each test is rolled back) |
+| `pnpm shared:test` | CSV parser/validator unit tests |
+| `pnpm web:check` | Lint + type-check the admin website |

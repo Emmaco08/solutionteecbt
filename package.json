@@ -1,0 +1,20 @@
+{
+  "name": "solutiontee-cbt",
+  "private": true,
+  "description": "SolutionTee CBT monorepo: Next.js admin/web, shared TS, Supabase backend. Flutter app lives in apps/mobile.",
+  "scripts": {
+    "supabase": "supabase",
+    "db:push": "supabase db push",
+    "db:test": "node scripts/run-db-tests.mjs",
+    "shared:test": "pnpm -C packages/shared test",
+    "web:dev": "pnpm -C apps/web dev",
+    "web:check": "pnpm -C apps/web lint && pnpm -C apps/web typecheck"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "pg": "^8.23.1",
+    "supabase": "^2.122.0"
+  }
+}
