@@ -182,3 +182,13 @@ The owner wants a single app that runs on Android and iOS, and a desktop version
 - Testing stays on the owner's real Android phone over USB debugging (no emulator, low RAM). We ask the owner before any step that needs the phone.
 - The rule stays: everything except Free content is gated on the server.
 
+**D-043 · 2026-10-26 · Android app + web app for iPhone users (owner; replaces the iOS and desktop parts of D-042)**
+The owner chose to focus on Android and skip a native iOS app. iPhone users (and laptop users) will use a web app at a URL like `app.solutiontee.com`.
+- **Android:** Flutter app, as planned (Play build + direct APK).
+- **Web app:** built in Next.js (already the locked web stack) as an installable PWA, not Flutter web. Why: Flutter web downloads several MB before the first screen, which is bad for data costs in Nigeria. Next.js loads light, works well on iPhone Safari and shares the web code we already need for the site and admin.
+- Both clients use the same Supabase backend and the same design spec. **CBT scoring, JAMB scaling, entitlements, AI quota and challenge ranking run on the server**, so the Android and web apps cannot disagree and neither can be tricked.
+- **Payments on the web app:** Paystack with redeem codes (no Apple fee, because it is not an App Store app).
+- **Web limits:** Premium offline downloads stay Android-only. Anti-cheat in a browser is weaker (tab switch, fullscreen exit and copy can be detected; app cloners and Play Integrity do not apply), so an admin flag can make cash challenges app-only. Default: web students can join free-prize challenges and see cash challenges with a "Play this in the Android app" note. The owner can change this.
+- **Timing:** the web app sits in Phase 5 with the website, so iPhone users get access after the Android core is done. It can move earlier if the owner wants.
+- No native desktop app for now; laptop users use the web app.
+

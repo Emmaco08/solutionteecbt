@@ -8,22 +8,22 @@ If this document and the prototype disagree, the prototype wins for looks and th
 
 ## 1. Platforms
 
-One Flutter codebase ships to:
+Two student clients share one Supabase backend, one design and the same server-side rules (D-043):
 
-| Target | Status | Notes |
+| Target | Built with | Notes |
 |---|---|---|
-| Android (phones, 3 GB RAM and up) | Primary | Tested on the owner's Android phone over USB. Play Store build and direct-APK build (see §8). |
-| iOS (iPhone) | Required | Same screens and same rules. Needs macOS + Xcode to build, so builds run on a cloud Mac (Codemagic or GitHub Actions macOS). The owner has no Mac or iPhone, so iOS is tested through TestFlight with a tester device. |
-| Desktop (Windows first, macOS later) | If possible | Same app with wide layouts (§6.3). Anti-cheat is weaker on desktop, so cash challenges can be phone-only (admin flag). |
-| Web | Next.js site (Phase 5) | Marketing, student portal, `/admin` CMS. Not the Flutter app. |
+| **Android app** (phones, 3 GB RAM and up) | Flutter | The main product. Play Store build and direct-APK build (see §8). Tested on the owner's Android phone over USB. |
+| **Student web app** at `app.solutiontee.com` | Next.js (PWA) | For iPhone users and anyone on a laptop. Installable to the home screen ("Add to Home Screen" on iPhone). Same screens as the app, mobile-first, with wide layouts on desktop (§6.3). |
+| Marketing site + `/admin` CMS | Next.js | `solutiontee.com` and the admin. |
 
-Platform adaptations (same design, native feel):
-- **Safe areas** on every screen (notch, Dynamic Island, Android gesture bar).
-- **Back:** iOS swipe-back on pushed pages; Android system back. The CBT and challenge screens block back with the "Leave test?" dialog on both.
-- **Scrolling:** platform scroll physics (bounce on iOS, glow or stretch on Android).
-- **Haptics:** light haptic on answer select, submit and celebration, when the device supports it.
+No native iOS or desktop app for now (owner decision, 2026-10-26). The Flutter code avoids needless Android-only choices so iOS can be added later if the owner asks.
+
+Adaptations (same design, native feel):
+- **Safe areas** on every screen (Android gesture bar; on the web app, `env(safe-area-inset-*)` for iPhone notches).
+- **Back:** Android system back; browser back on the web app. The CBT and challenge screens block back with the "Leave test?" dialog.
+- **Haptics:** light haptic on answer select, submit and celebration (Android; the web uses vibration only where the browser supports it).
 - **Fonts:** Plus Jakarta Sans is bundled on every platform; no system-font switching.
-- **Payments:** platform-specific (§8). Icons, colors and layouts are identical.
+- **Payments:** Play Billing in the Play build, Paystack in the direct APK and the web app (§8). Icons, colors and layouts are identical.
 
 ## 2. Tokens
 
@@ -203,7 +203,7 @@ Every screen has loading (skeleton), empty, error and offline states. `[needs]` 
 - Amounts in naira with `₦` and thousands separators. Show an amount once per screen section.
 - Show the disclaimer on onboarding (small), About, Terms and the store listing: *"SolutionTee CBT is an independent exam-practice platform and is not affiliated with or endorsed by JAMB, WAEC or NECO."*
 
-### 6.3 Tablet and desktop (Flutter desktop, web portal)
+### 6.3 Tablet and desktop (web app on laptops, Android tablets)
 - **≥ 768:** bottom nav becomes a navigation rail.
 - **≥ 1024:**
   - Lists and details go side by side (two panes).
@@ -234,15 +234,14 @@ Every screen has loading (skeleton), empty, error and offline states. `[needs]` 
 
 - **Everything except Free content is gated on the server.** Locked questions, videos, notes, novels and AI never reach a Free device. The UI lock is only a hint; RLS and Edge Functions decide.
 - The Free plan is admin-controlled. Defaults: JAMB, WAEC and NECO 3 years each; past questions 2 years; 2 syllabuses; AI 3 per day; no videos, lessons, notes, novels or downloads; challenges open to all.
-- **Offline downloads are Premium only.** They are encrypted and tied to the account and device. Free questions may be cached for offline practice.
+- **Offline downloads are Premium only, and only in the Android app.** They are encrypted and tied to the account and device. Free questions may be cached for offline practice. The web app works online, keeps an in-progress test safe through short drops, and does not store Premium content.
 - **One person, one account.**
-  - Device binding plus Play Integrity on Android and App Attest / DeviceCheck on iOS.
+  - Device binding plus Play Integrity on Android. On the web app: account-level limits (one active session, device fingerprint, rate limits); weaker than the app, so admins can make cash challenges app-only.
   - Cloner and dual-app detection on Android.
   - Bans are recorded server-side.
 - **Payments:**
   - **Google Play** Billing in the Play build.
-  - **Apple In-App Purchase** in the iOS build (Apple requires it for digital content).
-  - **Paystack** in the website and direct-APK builds, with redeem codes.
+  - **Paystack** in the web app and the direct-APK build, with redeem codes.
   - Every purchase is verified on the server before access is given; webhooks are idempotent.
 - Challenge scoring, ranking, tie-breaks and disqualification are decided on the server, from server timestamps.
 
@@ -261,4 +260,4 @@ A Flutter screen matches the design when:
 3. Loading, empty, error and offline states exist.
 4. Tap targets are ≥ 48 dp and text contrast is AA.
 5. Its widget test passes.
-6. It is checked side by side with the prototype on the owner's Android phone.
+6. It is checked side by side with the prototype on the owner's Android phone (Android app) or in a phone-sized browser and on an iPhone tester (web app).

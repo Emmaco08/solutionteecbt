@@ -60,10 +60,11 @@ Rules: work on one phase at a time. Each phase starts with `docs/plans/phase-<n>
 - Tests: AI quota, entitlement expiry, paywall widget test.
 **Approval word:** `PREMIUM APPROVED`
 
-## Phase 5 — Website, student portal, JAMB classes & community
-**Goal:** Public website and the online classes product.
+## Phase 5 — Website, student web app, JAMB classes & community
+**Goal:** Public website, the student web app for iPhone and laptop users, and the online classes product.
 **Deliverables**
-- Marketing landing page (animated hero, features, logos, pricing, FAQ, download buttons, news/blog, disclaimer).
+- **Student web app at `app.solutiontee.com`** (Next.js PWA, mobile-first): sign-in, onboarding, Home, Study, Test setup, CBT screen (timer, palette, passage, calculator, autosave + resume), results, review, AI tutor, Premium via Paystack, challenges (admin can keep cash challenges app-only), notifications, profile. Same design spec and the same server-side gating as the Android app. No Premium offline downloads on the web.
+- Marketing landing page (animated hero, features, logos, pricing, FAQ, Android download buttons + "Use on iPhone" link to the web app, news/blog, disclaimer).
 - JAMB classes: info, timetable, teachers, register + pay with Paystack.
 - Student dashboard: classes, schedule + meeting links, recordings, materials, assignments, CBT results, premium status, payments.
 - Community: channels, announcements, threads, Q&A, reactions, moderation, Realtime.
