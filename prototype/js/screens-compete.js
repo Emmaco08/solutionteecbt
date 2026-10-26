@@ -117,8 +117,10 @@
     return `<section>
       <div class="sect-title"><h2 class="t-h3">Challenges & events</h2><button class="btn btn-ghost" data-go="compete">See all</button></div>
       ${top}
-      ${others.length ? `<div class="ch-strip mt3">${others.map(c => `<button class="ch-mini" data-go="challenge" data-params="id=${c.id}"><span class="row between">${statusOf(c) === 'live' ? ST.livePill() : `<span class="badge badge-soft">${I('clock', 1)} ${until(c.starts)}</span>`}<span class="ch-mini-ic">${I(c.cover.icon, 1)}</span></span>
-        <b class="t-sm">${c.title}</b><span class="t-cap muted">${c.prizes ? money(c.prizes[0]) + ' top prize' : c.reward ? 'Reward: Premium days' : 'Just for practice'}</span><span class="t-cap muted">${c.entry ? money(c.entry) + ' entry' : 'Free entry'}</span></button>`).join('')}</div>` : ''}
+      ${others.length ? `<div class="ch-strip">${others.map(c => `<button class="ch-mini" data-go="challenge" data-params="id=${c.id}">
+        <span class="ch-mini-top"><span class="ch-mini-ic">${I(c.cover.icon, 1)}</span>${statusOf(c) === 'live' ? ST.livePill() : `<span class="badge badge-soft">${I('clock', 1)} ${until(c.starts)}</span>`}</span>
+        <b class="ch-mini-title">${c.title}</b>
+        <span class="ch-mini-foot"><span><small>Prize</small><b>${c.prizes ? money(c.prizes[0]) : c.reward ? 'Premium' : 'Practice'}</b></span><span><small>Entry</small><b>${c.entry ? money(c.entry) : 'Free'}</b></span></span></button>`).join('')}</div>` : ''}
     </section>`;
   };
 
