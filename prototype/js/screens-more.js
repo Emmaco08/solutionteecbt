@@ -37,6 +37,18 @@
   };
   const planRow = (p, on) => `<button class="plan ${on ? 'on' : ''}" data-plan="${p.id}">${p.best ? '<span class="best badge badge-gold">Best value</span>' : ''}<span class="radio"></span>
     <span class="grow"><b>${p.name}</b><br><span class="t-cap muted">${p.note}</span></span><span class="price"><b>${ST.naira(p.price)}</b><span class="t-cap muted">${p.per}</span></span></button>`;
+  /** Paywall benefits are written from the admin's Free vs Premium rules, so they stay true. */
+  ST.premiumBenefits = () => {
+    const A = ST.access(), f = A.free, p = A.premium, y = v => v === 'all' ? 'every year' : v + ' years';
+    const out = [];
+    ['jamb', 'waec', 'neco'].forEach(k => { if (p[k] !== f[k]) out.push(`${k.toUpperCase()} CBT: ${y(p[k])}${f[k] ? ` (Free: ${y(f[k])})` : ' (not on Free)'}`); });
+    if (p.pq !== f.pq) out.push(`Past questions with answers: ${y(p.pq)} (Free: ${y(f.pq)})`);
+    const feats = [['videos', 'Video solutions'], ['lessons', 'Topic video lessons'], ['notes', 'Lesson notes'], ['novels', 'Novel summaries and quizzes']].filter(([k]) => p[k] && !f[k]).map(([, n]) => n);
+    if (feats.length) out.push(feats.join(', '));
+    if (p.syllabus !== f.syllabus) out.push(`Syllabuses and brochure: ${p.syllabus === 'all' ? 'all' : p.syllabus} (Free: ${f.syllabus})`);
+    if (p.ai !== f.ai) out.push(`${p.ai} AI tutor prompts a day (Free: ${f.ai})`);
+    return out.slice(0, 7);
+  };
   const bindPlans = (root, cb) => root.querySelectorAll('[data-plan]').forEach(b => b.onclick = () => { root.querySelectorAll('[data-plan]').forEach(x => x.classList.toggle('on', x === b)); cb && cb(b.dataset.plan); });
 
   // ---------- Paywall bottom sheet ----------
@@ -49,7 +61,7 @@
         <div class="row g3"><div class="upgrade-banner" style="padding:0;width:52px;height:52px;border-radius:14px;justify-content:center;flex:none"><span class="crown" style="width:52px;height:52px;border-radius:14px">${I('crown-simple', 1)}</span></div>
           <div><h2 class="t-h2">${head}</h2><p class="t-sm muted">Unlock everything and practise without limits.</p></div></div>
         <div class="stack g3 enter">
-          ${['All JAMB years, not just 2000 to 2002', 'WAEC and NECO past questions and CBT', '100 AI tutor prompts every day', 'Every video, lesson note and novel', 'Download everything for offline use'].map(b => `<div class="benefit">${I('check-circle', 1)}<span>${b}</span></div>`).join('')}
+          ${ST.premiumBenefits().map(b => `<div class="benefit">${I('check-circle', 1)}<span>${b}</span></div>`).join('')}
         </div>
         <div class="row between"><span class="t-label">Choose a plan</span><span class="badge badge-sample">SAMPLE PRICES</span></div>
         <div class="stack g3" style="padding-top:6px">${PLANS.map(p => planRow(p, p.id === pick)).join('')}</div>
@@ -388,7 +400,7 @@
             <div class="grid3" style="grid-template-columns:repeat(4,1fr)">
               ${[['fire', 'gold', '7-day streak'], ['target', 'blue', 'First 250+'], ['lightning', 'navy', 'Speedster'], ['star', 'gold', '100 correct'], ['trophy', '', 'Score 300'], ['moon-stars', '', 'Night owl'], ['books', '', 'Bookworm'], ['medal', '', 'Full mock']].map(([ic, c, t], k) => `<div class="badge-tile ${c ? '' : 'off'}"><span class="medal ic ${c}">${I(ic, 1)}</span>${t}</div>`).join('')}</div></section>
           <section class="card list">
-            ${[['clock-counter-clockwise', 'Test history', 'test'], ['bookmark-simple', 'Bookmarks', 'empty'], ['download-simple', 'Downloads', 'offline'], ['sparkle', `AI prompts left today: ${S.aiLeft}`, 'ai'], ['video-camera', 'My classes', 'empty'], ['ticket', 'Redeem a code', '#redeem'], ['gear-six', 'Settings', 'settings'], ['question', 'Help & support', 'help']].map(([ic, t, go]) => `
+            ${[['clock-counter-clockwise', 'Test history', 'test'], ['bookmark-simple', 'Bookmarks', 'empty'], ['download-simple', 'Downloads', 'offline'], ['sparkle', `AI prompts left today: ${S.aiLeft}`, 'ai'], ['video-camera', 'My classes', 'empty'], ['trophy', 'My winnings', 'winnings'], ['ticket', 'Redeem a code', '#redeem'], ['gear-six', 'Settings', 'settings'], ['question', 'Help & support', 'help']].map(([ic, t, go]) => `
               <button class="list-item" ${go[0] === '#' ? `id="${go.slice(1)}"` : `data-go="${go}"`}><span class="lead">${I(ic, 1)}</span><span class="grow t-sm bold">${t}</span>${I('caret-right').replace('class="', 'class="trail ')}</button>`).join('')}
           </section>
           <button class="btn btn-outline btn-block" data-go="welcome" data-mode="fade">${I('sign-out')} Log out</button>

@@ -23,6 +23,8 @@
       <div class="ctl"><span>Student plan</span><div class="seg" id="pPlan" style="flex:1;max-width:170px"><button data-p="free">Free</button><button data-p="premium">Premium</button></div></div>
       <div><div class="grp" style="margin-top:0">CBT demo</div>
         <div class="demo"><button class="btn btn-outline btn-sm" data-demo="600">Timer 10:00</button><button class="btn btn-outline btn-sm" data-demo="300">Timer 5:00</button><button class="btn btn-outline btn-sm" data-demo="4">Time up</button><button class="btn btn-outline btn-sm" data-demo="submit">Submit</button></div></div>
+      <div><div class="grp" style="margin-top:0">Challenge demo</div>
+        <div class="demo"><button class="btn btn-outline btn-sm" id="pCheat">Simulate cheating</button></div></div>
     </div>
     <hr class="divider">
     <nav id="pList" aria-label="All screens"></nav>
@@ -44,6 +46,7 @@
 <script src="js/screens-cbt.js"></script>
 <script src="js/screens-more.js"></script>
 <script src="js/screens-extra.js"></script>
+<script src="js/screens-compete.js"></script>
 <script>
   ST.tokensReady.then(() => {
     // panel: screen list grouped
@@ -76,6 +79,7 @@
         w.querySelector('#fbGo').onclick = () => { ST.closeOverlay(true); ST.openFeedback(curTitle()); };
         w.querySelectorAll('#fPlan button').forEach(b => b.onclick = () => setPlan(b.dataset.p));
       } });
+    document.getElementById('pCheat').onclick = () => ST.simulateCheat ? ST.simulateCheat() : ST.toast('Start a challenge first (Test → Challenges & events).', 'info');
     ST.syncPanel();
     ST.boot();
   });

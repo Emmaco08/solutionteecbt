@@ -8,8 +8,36 @@
     payFlavor: 'play', reg: '20261 0457 GH'
   };
 
-  /** Register a screen. cfg: { title, group, tab?, navy?, render(params) -> html, mount?(el, params) } */
+  /** Register a screen. cfg: { title, group, tab?, navy?, needs? (feature key), render(params) -> html, mount?(el, params) } */
   ST.def = (id, cfg) => { ST.screens[id] = Object.assign({ id }, cfg); ST.order.push(id); };
+
+  // ---------- Free vs Premium access rules (set by admin in "Free vs Premium") ----------
+  // Years: a number = how many years are open, 'all' = every year, 0 = exam closed.
+  // In the real app these come from the server (free_access_rules); here admin saves them in this browser.
+  ST.ACCESS_DEFAULT = {
+    free:    { jamb: 3, waec: 3, neco: 3, pq: 2, which: 'oldest', videos: false, lessons: false, notes: false, novels: false, syllabus: 2, ai: 3, offline: true, compete: true },
+    premium: { jamb: 'all', waec: 'all', neco: 'all', pq: 'all', which: 'oldest', videos: true, lessons: true, notes: true, novels: true, syllabus: 'all', ai: 100, offline: true, compete: true }
+  };
+  ST.YEARS = Array.from({ length: 26 }, (_, i) => 2000 + i);       // 2000 to 2025
+  ST.access = () => {
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem('st-access') || '{}'); } catch (e) {}
+    return { free: { ...ST.ACCESS_DEFAULT.free, ...(saved.free || {}) }, premium: { ...ST.ACCESS_DEFAULT.premium, ...(saved.premium || {}) } };
+  };
+  ST.rule = key => ST.access()[ST.state.plan === 'premium' ? 'premium' : 'free'][key];
+  ST.can = key => !!ST.rule(key);
+  ST.examOpen = body => ST.rule(body.toLowerCase()) !== 0;
+  /** Is this year open for this exam? kind 'cbt' uses the exam's rule, 'pq' uses the study-mode rule. */
+  ST.yearOpen = (body, year, kind = 'cbt') => {
+    const n = kind === 'pq' ? ST.rule('pq') : ST.rule(body.toLowerCase());
+    if (!ST.examOpen(body)) return false;
+    if (n === 'all') return true;
+    const ys = ST.YEARS, which = ST.rule('which');
+    const open = which === 'newest' ? ys.slice(-n) : ys.slice(0, n);
+    return open.includes(+year);
+  };
+  ST.openYears = (body, kind = 'cbt') => ST.YEARS.filter(y => ST.yearOpen(body, y, kind));
+  ST.yearsLabel = n => n === 'all' ? 'all years' : `${n} year${n === 1 ? '' : 's'}`;
 
   const BODIES = { JAMB: 'jamb.png', WAEC: 'waec.png', NECO: 'neco.png' };
   // Visible-content box of each owner-supplied PNG [x, y, w, h, imageW, imageH], measured from the alpha channel.
@@ -125,7 +153,10 @@
   }
 
   function render(id, params, mode) {
-    const cfg = ST.screens[id] || ST.screens.error;
+    const cfg0 = ST.screens[id] || ST.screens.error;
+    // Feature not included in the student's plan → show the locked page instead (content never loads)
+    const need = typeof cfg0.needs === 'function' ? cfg0.needs(params || {}) : cfg0.needs;
+    const cfg = need && !ST.can(need) && ST.lockedScreen ? ST.lockedScreen(cfg0, need) : cfg0;
     ST.closeOverlay(true);
     const el = document.createElement('section');
     el.className = 'scr' + (cfg.navy ? ' on-navy' : '') + (cfg.cls ? ' ' + cfg.cls : '');
@@ -169,7 +200,7 @@
   /** Re-render the current screen in place (after a plan or setting change). */
   ST.refresh = () => { const { id, params } = parseHash(); stack[stack.length - 1] = { id, params }; render(id, params, 'fade'); };
 
-  window.addEventListener('hashchange', () => { const { id, params } = parseHash(); stack.push({ id, params }); render(id, params, 'fade'); });
+  window.addEventListener('hashchange', () => { if (!host()) return; const { id, params } = parseHash(); stack.push({ id, params }); render(id, params, 'fade'); });
 
   // ---------- Overlays ----------
   const ov = () => document.getElementById('overlay');
@@ -222,6 +253,7 @@
   // ---------- Fit phone to window ----------
   function fit() {
     const phone = document.querySelector('.phone');
+    if (!phone) return;            // admin pages have no phone frame
     const real = matchMedia('(max-width: 560px)').matches;
     phone.classList.toggle('real', real);
     if (real) return;

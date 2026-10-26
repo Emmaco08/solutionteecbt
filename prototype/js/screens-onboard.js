@@ -62,6 +62,13 @@
         <div class="layer l2" style="position:absolute;z-index:2"><div class="mini fx-float" style="position:static;--rot:0deg;--d:-1.3s">${examLogo('JAMB', 'lg')}</div></div>
         <div class="layer l3" style="position:absolute;right:40px;top:70px"><div class="mini fx-float" style="position:static;--rot:8deg;--d:-2.6s">${examLogo('NECO', 'lg')}</div></div>
         <div class="layer l2" style="position:absolute;bottom:56px;left:70px"><div class="mini" style="position:static;padding:8px 12px"><span class="timer" style="height:30px;font-size:14px"><span class="fx-tick">${I('timer', 1)}</span> <span class="tnum" data-countdown>01:58:34</span></span></div></div>` },
+    { t: 'Win cash prizes every week', d: 'Answer our weekly challenge fast and right to win money. Free and Premium students can join, and play is fair for everyone.',
+      art: () => `<div class="art-disc gold fx-breathe"></div>
+        <div class="layer l1" style="position:absolute;top:58px"><div class="mini fx-float" style="position:static;--rot:-3deg;--d:0s;width:230px;text-align:center;padding:14px 12px">
+          <span class="ob-trophy">${I('trophy', 1)}</span><div class="t-cap muted bold mt2">Weekly Challenge</div><b class="ob-prize fx-pulse">Win ${ST.naira(20000)}</b></div></div>
+        <div class="layer l2" style="position:absolute;bottom:58px;left:28px"><div class="mini" style="position:static;width:200px;padding:10px 12px">
+          ${[['1', 'Chiamaka O.', '10/10'], ['2', 'You', '10/10'], ['3', 'Abdullahi M.', '9/10']].map(([r, n, s], k) => `<div class="row g2 t-cap ob-row" style="--k:${k};padding:3px 0"><b style="width:14px">${r}</b><span class="grow ${n === 'You' ? 'bold' : ''}">${n}</span><b class="tnum">${s}</b></div>`).join('')}</div></div>
+        <div class="layer l3" style="position:absolute;right:24px;bottom:150px"><span class="badge badge-error fx-pulse" style="height:30px;padding:0 12px"><span class="fx-live"></span>LIVE</span></div>` },
     { t: 'Past questions, videos and notes', d: 'Every answer comes with a clear explanation. Watch video solutions and read simple lesson notes.',
       art: () => `<div class="art-disc blue fx-breathe"></div>
         <div class="layer l1" style="position:absolute;top:60px"><div class="mini" style="position:static;width:220px;padding:8px"><div class="thumb th-1"><span class="play fx-ripple">${I('play', 1)}</span><span class="dur">6:12</span></div></div></div>
@@ -90,7 +97,7 @@
   ST.onboardSlides = slides;
 
   def('onboard', {
-    title: 'Onboarding slides (5)', group: G,
+    title: 'Onboarding slides (6)', group: G,
     render: p => `
       <div class="appbar"><span class="grow"></span><button class="btn btn-ghost" data-go="signup">Skip</button></div>
       <div class="ob-slides"><div class="ob-track">${slides.map((s, i) => `
@@ -460,6 +467,7 @@
   // ---------- Guided tour (spotlight on Home) ----------
   const TOUR = [
     { sel: '[data-tour=start]', t: 'Start a test here', d: 'Tap JAMB, WAEC or NECO to start a timed CBT practice.' },
+    { sel: '[data-tour=compete]', t: 'Win cash every week', d: 'Join the weekly challenge. Fastest correct answers win money. Free for everyone.' },
     { sel: '[data-tab=study]', t: 'Study anytime', d: 'Past questions, video solutions, lesson notes, novels and syllabuses.' },
     { sel: '[data-tab=test]', t: 'All test modes', d: 'Full exam, single subject, topic drills, quick tests and practice by year.' },
     { sel: '[data-tab=ai]', t: 'Ask SolutionTee AI', d: 'Get step-by-step help on any question. Free users get 3 prompts a day.' },

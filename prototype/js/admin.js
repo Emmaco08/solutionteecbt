@@ -199,10 +199,8 @@
     </section>
     <div class="two" style="grid-template-columns:1fr 1fr">
       <section class="card card-pad stack g4"><h2 class="t-h3">Free access rules</h2>
-        <div class="field"><label>Exams available on Free</label><div class="row g2 wrap">${['JAMB', 'WAEC', 'NECO', 'Post-UTME'].map((e, i) => `<button class="chip ${i ? '' : 'on'}">${e}</button>`).join('')}</div></div>
-        <div class="field"><label>Free years</label><div class="row g2 wrap">${[2000, 2001, 2002, 2003, 2004].map((y, i) => `<button class="chip ${i < 3 ? 'on' : ''}">${y}</button>`).join('')}<button class="chip">${I('plus')} Add</button></div></div>
-        <div class="field"><label>Study content on Free</label><div class="seg"><button class="on">Items marked free</button><button>Nothing</button><button>Everything</button></div></div>
-        <label class="row between t-sm bold"><span>Offline downloads on Free (free content only)</span><span class="switch"><input type="checkbox" checked><span></span></span></label>
+        <p class="t-sm muted">Years, study features, syllabuses and AI limits for Free and Premium are now set on one page.</p>
+        <a class="btn btn-tonal" href="#access">${I('sliders-horizontal')} Open Free vs Premium</a>
       </section>
       <section class="card card-pad stack g4"><h2 class="t-h3">AI tutor</h2>
         <div class="grid2"><div class="field"><label>Free prompts per day</label><div class="input num-input"><input type="number" value="3"></div></div>
@@ -543,6 +541,123 @@ Print your mock exam slip 7 days before the date. Bring the slip and arrive 1 ho
       const ok = storeSet('st-lb', { on: el.querySelector('#lbOn').checked, years, names: el.querySelector('#lbNames').value, minTests: +el.querySelector('#lbMin').value || 3 });
       toast(ok ? (el.querySelector('#lbOn').checked ? 'Saved. Students can see the leaderboard.' : 'Saved. Leaderboards are hidden from students.') : 'Could not save in this browser.');
     };
+  };
+
+  // ---------- Free vs Premium (access rules) ----------
+  const ACC_ROWS = [
+    ['Exams (years open in CBT practice)', null],
+    ['jamb', 'JAMB', 'years'], ['waec', 'WAEC', 'years'], ['neco', 'NECO', 'years'],
+    ['Study', null],
+    ['pq', 'Past questions with answers (study mode)', 'years'], ['videos', 'Video solutions', 'bool'], ['lessons', 'Topic video lessons', 'bool'],
+    ['notes', 'Lesson notes', 'bool'], ['novels', 'Novels', 'bool'], ['syllabus', 'Syllabuses and brochure', 'count'],
+    ['Other', null],
+    ['ai', 'AI tutor prompts per day', 'num'], ['offline', 'Offline downloads', 'bool'], ['compete', 'Challenges and events', 'bool']
+  ];
+  const accCell = (plan, key, kind, v) => {
+    if (kind === 'bool') return `<span class="switch"><input type="checkbox" data-k="${plan}.${key}" ${v ? 'checked' : ''}><span></span></span>`;
+    if (kind === 'num') return `<div class="input num-input" style="min-height:40px"><input type="number" min="0" data-k="${plan}.${key}" value="${v}" style="min-height:40px"></div>`;
+    const all = v === 'all';
+    return `<div class="row g2"><div class="input num-input" style="min-height:40px;width:84px"><input type="number" min="0" max="26" data-k="${plan}.${key}" value="${all ? '' : v}" placeholder="All" ${all ? 'disabled' : ''} style="min-height:40px"></div>
+      <label class="row g1 t-cap bold"><input type="checkbox" data-all="${plan}.${key}" ${all ? 'checked' : ''} style="width:18px;height:18px;accent-color:var(--c-secondary)">All</label></div>`;
+  };
+  P.access = () => {
+    const A = ST.access();
+    return `
+    <div class="page-head"><div><span class="t-sm muted">App control</span><h1 class="t-h1 mt2">Free vs Premium</h1><p class="muted mt2">Choose exactly what each plan gets. Changes apply to students straight away and are enforced on the server.</p></div>
+      <div class="row g2"><button class="btn btn-outline" id="accReset">Reset to default</button><button class="btn btn-primary" id="accSave">Save changes</button></div></div>
+    <div class="banner info" style="margin-bottom:16px">${I('info', 1)}<span>Years: type how many years are open, tick <b>All</b> for every year, or type <b>0</b> to close that exam. Free years are the
+      <select id="accWhich" style="font:inherit;font-weight:700;border:0;background:transparent;color:var(--c-link)"><option value="oldest" ${A.free.which === 'oldest' ? 'selected' : ''}>oldest</option><option value="newest" ${A.free.which === 'newest' ? 'selected' : ''}>newest</option></select> years (e.g. 2000 to 2002).</span></div>
+    <section class="card" style="overflow:hidden"><table class="tbl acc-tbl"><thead><tr><th>Feature</th><th style="width:240px">Free</th><th style="width:240px">${I('crown-simple', 1)} Premium</th></tr></thead><tbody>
+      ${ACC_ROWS.map(([key, label, kind]) => !label ? `<tr class="acc-grp"><td colspan="3">${key}</td></tr>`
+        : `<tr><td class="bold" style="vertical-align:middle">${label}</td><td>${accCell('free', key, kind, A.free[key])}</td><td>${accCell('premium', key, kind, A.premium[key])}</td></tr>`).join('')}
+    </tbody></table></section>
+    <section class="card card-pad stack g3" style="margin-top:16px"><b>What students will see on the paywall</b><div class="stack g2" id="accPreview"></div></section>`;
+  };
+  P.access.mount = el => {
+    const read = () => {
+      const out = { free: {}, premium: {} };
+      el.querySelectorAll('[data-k]').forEach(x => {
+        const [plan, key] = x.dataset.k.split('.'), allBox = el.querySelector(`[data-all="${plan}.${key}"]`);
+        out[plan][key] = x.type === 'checkbox' ? x.checked : allBox && allBox.checked ? 'all' : Math.max(0, +x.value || 0);
+      });
+      out.free.which = out.premium.which = el.querySelector('#accWhich').value;
+      return out;
+    };
+    const preview = () => {
+      const saved = localStorage.getItem('st-access');
+      try { localStorage.setItem('st-access', JSON.stringify(read())); } catch (e) {}
+      el.querySelector('#accPreview').innerHTML = (ST.premiumBenefits ? ST.premiumBenefits() : []).map(b => `<div class="benefit">${I('check-circle', 1)}<span>${b}</span></div>`).join('') || '<span class="muted t-sm">Free and Premium are the same.</span>';
+      try { saved === null ? localStorage.removeItem('st-access') : localStorage.setItem('st-access', saved); } catch (e) {}
+    };
+    el.querySelectorAll('[data-all]').forEach(b => b.onchange = () => { const inp = el.querySelector(`[data-k="${b.dataset.all}"]`); inp.disabled = b.checked; if (!b.checked && !inp.value) inp.value = 3; preview(); });
+    el.addEventListener('input', preview); el.addEventListener('change', preview);
+    el.querySelector('#accSave').onclick = () => {
+      const r = read();
+      if (r.free.ai > r.premium.ai) { toast('Free cannot have more AI prompts than Premium.'); return; }
+      try { localStorage.setItem('st-access', JSON.stringify(r)); toast('Saved. Students see the new limits now. Logged in audit log.'); } catch (e) { toast('Could not save in this browser.'); }
+    };
+    el.querySelector('#accReset').onclick = () => { try { localStorage.removeItem('st-access'); } catch (e) {} go_(); toast('Back to the default Free and Premium rules.'); };
+    preview();
+  };
+
+  // ---------- Challenges & events ----------
+  P.challenges = () => `
+    <div class="page-head"><div><span class="t-sm muted">Content</span><h1 class="t-h1 mt2">Challenges & events</h1><p class="muted mt2">Post question sets any time: weekly cash challenges, events with or without rewards, free or paid entry. Open to Free and Premium.</p></div>
+      <span class="badge badge-sample">SAMPLE DATA</span></div>
+    <div class="kpi-grid">
+      ${[['Live now', '2', 'broadcast'], ['Entries this week', '1,696', 'users-three'], ['Prizes to pay', naira(35000), 'currency-ngn'], ['Disqualified this week', '23', 'shield-warning']].map(([l, v, ic]) => `
+        <div class="card kpi-tile"><div class="row between"><span class="t-sm muted bold">${l}</span><span class="ic navy" style="width:32px;height:32px;border-radius:9px;display:grid;place-items:center;font-size:16px">${I(ic, 1)}</span></div><b>${v}</b></div>`).join('')}
+    </div>
+    <div class="two" style="grid-template-columns:1.3fr 1fr">
+      <section class="card card-pad stack g4" id="cForm">
+        <h2 class="t-h3">Create a challenge or event</h2>
+        <div class="field"><label>Type</label><div class="seg" id="cType"><button class="on" data-t="cash">Cash challenge</button><button data-t="event">Event</button><button data-t="practice">Practice (no reward)</button></div></div>
+        <div class="field" id="cfTitle"><label for="cTitle">Title</label><div class="input"><input id="cTitle" value="Weekly Challenge #45"></div></div>
+        <div class="field"><label>Questions</label><div class="row g2 wrap"><button class="btn btn-outline btn-sm">${I('plus')} Write new</button><button class="btn btn-outline btn-sm">${I('database')} Pick from bank</button><button class="btn btn-outline btn-sm">${I('file-csv')} Import CSV</button><span class="badge badge-success" style="height:32px">${I('check', 1)} 10 new questions added</span></div>
+          <span class="help">Use new questions for cash challenges. Past questions can be searched online.</span></div>
+        <div class="grid3"><div class="field"><label for="cStart">Starts</label><div class="input"><input id="cStart" type="datetime-local" value="2026-11-01T18:00"></div></div>
+          <div class="field"><label for="cEnd">Closes</label><div class="input"><input id="cEnd" type="datetime-local" value="2026-11-01T21:00"></div></div>
+          <div class="field"><label for="cPer">Seconds per question</label><div class="input"><input id="cPer" type="number" value="30" min="10" max="180"></div></div></div>
+        <div class="field"><label>Entry</label><div class="seg" id="cEntry"><button class="on" data-e="free">Free</button><button data-e="paid">Paid entry</button></div></div>
+        <div class="field hidden" id="cFeeF"><label for="cFee">Entry fee (₦)</label><div class="input num-input"><input id="cFee" type="number" value="200"></div><span class="help">Paid with Paystack. Not available in the Play Store build until approved (see note).</span></div>
+        <div class="field" id="cRewardF"><label>Reward</label><div class="seg" id="cReward"><button class="on" data-r="cash">Cash</button><button data-r="premium">Premium days</button><button data-r="badge">Badge only</button><button data-r="none">None</button></div></div>
+        <div class="grid3" id="cPrizes"><div class="field"><label>1st (₦)</label><div class="input"><input type="number" value="20000"></div></div><div class="field"><label>2nd (₦)</label><div class="input"><input type="number" value="10000"></div></div><div class="field"><label>3rd (₦)</label><div class="input"><input type="number" value="5000"></div></div></div>
+        <div class="field"><label>Winner rule</label><div class="input"><select><option>Highest score, then fastest time</option><option>First student to get every question right</option></select><i class="ph ph-caret-down sel-caret"></i></div></div>
+        <section class="card card-pad stack g3" style="background:var(--c-success-soft);border-color:transparent">
+          <b class="row g2" style="color:var(--c-on-success-soft)">${I('shield-check', 1)} Fair play (anti-cheat)</b>
+          ${[['Leaving the app, split screen or floating apps submits and disqualifies', true], ['Block screenshots, screen recording and copying', true], ['One question at a time, no going back', true], ['Shuffle questions and options per student', true], ['Flag too-fast or unusual answer patterns for review', true], ['Block rooted phones and emulators (Play Integrity)', true], ['One entry per person, phone and NIN', true], ['Winners must verify identity (guardian for under-18)', true]].map(([t, on]) => `<label class="row between t-sm"><span>${t}</span><span class="switch"><input type="checkbox" ${on ? 'checked' : ''}><span></span></span></label>`).join('')}
+          <div class="row g3 t-sm"><span class="grow">App switches allowed before disqualification</span><div class="input num-input" style="min-height:40px;width:80px"><input type="number" value="0" min="0" max="3" style="min-height:40px"></div></div>
+        </section>
+        <label class="row between t-sm bold"><span>Send a push notification when it goes live</span><span class="switch"><input type="checkbox" checked><span></span></span></label>
+        <div class="row g3"><button class="btn btn-primary" id="cGo">${I('paper-plane-tilt', 1)} Schedule</button><span class="t-cap muted">Logged in the audit log.</span></div>
+      </section>
+      <aside class="stack g4">
+        <section class="card card-pad stack g3"><div class="row between"><b>Fair-play review</b><span class="badge badge-warning">3 to check</span></div>
+          ${[['Tolu A.', 'Left the app at 1:12 (switched to Chrome)', 'Auto-disqualified'], ['Precious E.', 'Answered 10 in 0:41, 4s each', 'Flagged: too fast'], ['Emeka O.', 'Same phone as another winner', 'Flagged: duplicate device']].map(([n, r, s]) => `
+          <div class="stack g2 dq-row"><div class="row between"><b class="t-sm">${n}</b><span class="badge ${s.startsWith('Auto') ? 'badge-error' : 'badge-warning'}">${s}</span></div><span class="t-cap muted">${r} · Weekly Challenge #44</span>
+            <div class="row g2"><button class="btn btn-outline btn-sm" data-dq="keep">Keep disqualified</button><button class="btn btn-ghost btn-sm" data-dq="ok">Reinstate</button></div></div>`).join('')}
+        </section>
+        <section class="card card-pad stack g3"><b>Winners to pay</b>
+          ${[['Ifeoma N.', '#1 · Challenge #43', 20000, 'Verified'], ['Mubarak I.', '#2 · Challenge #43', 10000, 'Verified'], ['Zainab Y. (guardian)', '#3 · Challenge #43', 5000, 'Waiting for guardian']].map(([n, d, a, s]) => `
+          <div class="row g3"><span class="grow"><b class="t-sm">${n}</b><br><span class="t-cap muted">${d} · ${s}</span></span><b class="tnum">${naira(a)}</b><button class="btn btn-sm ${s === 'Verified' ? 'btn-primary' : 'btn-outline'}" ${s === 'Verified' ? 'data-pay' : 'disabled'}>Pay</button></div>`).join('')}
+          <p class="t-cap muted">Payouts go by Paystack Transfer to the verified account. Two admins must approve payouts above ${naira(50000)}.</p>
+        </section>
+      </aside>
+    </div>
+    <section class="card" style="margin-top:16px;overflow:hidden"><div class="card-pad"><h2 class="t-h3">All challenges and events</h2></div>
+      <table class="tbl"><thead><tr><th>Title</th><th>Type</th><th>Entry</th><th>Reward</th><th>Entries</th><th>Status</th></tr></thead><tbody>
+        ${[['Weekly Challenge #44', 'Cash', 'Free', `${naira(20000)} / ${naira(10000)} / ${naira(5000)}`, '1,284', 'Live'], ['Physics Practice Night', 'Practice', 'Free', 'None', '96', 'Live'], ['Maths Sprint Cup', 'Event', naira(200), `${naira(50000)} top prize`, '412', 'Scheduled'], ['Use of English Bee', 'Event', 'Free', '30 days Premium (top 10)', '230', 'Scheduled'], ['Weekly Challenge #43', 'Cash', 'Free', `${naira(20000)} / ${naira(10000)} / ${naira(5000)}`, '1,532', 'Paying out']]
+          .map(r => `<tr>${r.map((c, i) => `<td>${i === 5 ? `<span class="badge ${c === 'Live' ? 'badge-error' : c === 'Scheduled' ? 'badge-soft' : 'badge-warning'}">${c}</span>` : i === 0 ? `<b>${c}</b>` : c}</td>`).join('')}</tr>`).join('')}
+      </tbody></table></section>
+    <div class="banner warn" style="margin-top:16px">${I('scales', 1)}<span><b>Legal check needed before launch:</b> cash prizes, and especially paid entry, may need a licence (e.g. lottery/gaming rules) and Google Play's real-money contest rules may apply. Many players are minors. Confirm with a lawyer before turning on paid entry.</span></div>`;
+  P.challenges.mount = el => {
+    const seg = (id, cb) => el.querySelectorAll(`#${id} button`).forEach(b => b.onclick = () => { el.querySelectorAll(`#${id} button`).forEach(x => x.classList.toggle('on', x === b)); cb(b); });
+    seg('cType', b => { const t = b.dataset.t; el.querySelector('#cRewardF').classList.toggle('hidden', t === 'practice'); el.querySelector('#cPrizes').classList.toggle('hidden', t !== 'cash' && el.querySelector('#cReward .on').dataset.r !== 'cash' || t === 'practice'); el.querySelector('#cTitle').value = { cash: 'Weekly Challenge #45', event: 'Biology Blitz', practice: 'Chemistry Practice Night' }[t]; });
+    seg('cEntry', b => el.querySelector('#cFeeF').classList.toggle('hidden', b.dataset.e !== 'paid'));
+    seg('cReward', b => el.querySelector('#cPrizes').classList.toggle('hidden', b.dataset.r !== 'cash'));
+    el.querySelectorAll('[data-dq]').forEach(b => b.onclick = () => { const row = b.closest('.dq-row'); row.style.opacity = .5; row.querySelectorAll('button').forEach(x => x.disabled = true); toast(b.dataset.dq === 'ok' ? 'Entry reinstated. The student is told.' : 'Disqualification kept. The student is told.'); });
+    el.querySelectorAll('[data-pay]').forEach(b => b.onclick = () => { b.classList.add('is-loading'); b.textContent = ''; setTimeout(() => { b.classList.remove('is-loading'); b.textContent = 'Paid'; b.disabled = true; toast('Transfer sent. Receipt saved in Payments.'); }, 900); });
+    el.querySelector('#cGo').onclick = () => toast(`"${el.querySelector('#cTitle').value}" scheduled. Students get a push when it goes live.`);
   };
 
   // ---------- Router ----------

@@ -72,11 +72,12 @@
 <script src="js/screens-cbt.js"></script>
 <script src="js/screens-more.js"></script>
 <script src="js/screens-extra.js"></script>
+<script src="js/screens-compete.js"></script>
 <script>
   ST.tokensReady.then(t => {
     const groups = {};
     ST.order.forEach(id => { const g = ST.screens[id].group || 'Other'; (groups[g] = groups[g] || []).push(id); });
-    groups['Admin CMS (desktop)'] = [['dashboard', 'Dashboard'], ['editor', 'Question editor (live KaTeX)'], ['csv', 'CSV import + validation'], ['tabs', 'Tabs manager'], ['plans', 'Plans & limits'], ['codes', 'Redeem codes (discounts)'], ['news', 'News (post with image)'], ['leaderboard', 'Leaderboard settings']];
+    groups['Admin CMS (desktop)'] = [['dashboard', 'Dashboard'], ['editor', 'Question editor (live KaTeX)'], ['csv', 'CSV import + validation'], ['tabs', 'Tabs manager'], ['plans', 'Plans & limits'], ['codes', 'Redeem codes (discounts)'], ['news', 'News (post with image)'], ['leaderboard', 'Leaderboard settings'], ['access', 'Free vs Premium (access rules)'], ['challenges', 'Challenges & events (anti-cheat, payouts)']];
     let n = 0;
     document.getElementById('groups').innerHTML = Object.entries(groups).map(([g, ids]) => `
       <section class="group"><h2 class="t-h3">${g}</h2><div class="scr-grid">${ids.map(id => {

@@ -74,3 +74,7 @@ body.admin { background: var(--c-bg); min-height: 100dvh; }
 @media (max-width: 760px) { .adm { grid-template-columns: 1fr; } .side { position: static; height: auto; } .topbar .search { display: none; } .page { padding: var(--s-4); } }
 .tab-row .input { min-width: 0; } .tab-row .input input { width: 100%; padding: 0 10px; }
 .gen-code { padding: 4px 0 4px 12px; border-radius: 8px; background: var(--c-surface-alt); margin-bottom: 4px; }
+.acc-tbl td { vertical-align: middle; }
+.acc-grp td { background: var(--c-surface-alt); font-size: 11px; letter-spacing: .6px; text-transform: uppercase; font-weight: 700; color: var(--c-text-subtle); padding-top: 14px; }
+.dq-row { padding-bottom: 12px; border-bottom: 1px solid var(--c-border); }
+.dq-row:last-of-type { border-bottom: 0; }

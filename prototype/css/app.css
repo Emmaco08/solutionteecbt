@@ -605,3 +605,40 @@ body:has(#overlay > *) .proto-fab { display: none !important; }
 .q2-result.no { background: var(--c-warning-soft); color: var(--c-on-warning-soft); }
 .cbt-top .who span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .news-cover.hero .nc-logo { top: auto; bottom: 14px; left: 14px; }
+
+/* ---------- Challenges & events ---------- */
+.ch-hero { position: relative; overflow: hidden; display: flex; flex-direction: column; gap: var(--s-3); padding: var(--s-4); border-radius: var(--r-lg); text-align: left; width: 100%;
+  background: linear-gradient(135deg, var(--navy-900), var(--navy-700)); color: #F4F7FC; box-shadow: var(--shadow-2); transition: transform var(--dur-fast) var(--ease-out); }
+.ch-hero:active { transform: scale(.985); }
+.ch-hero-glow { position: absolute; right: -60px; top: -60px; width: 200px; height: 200px; border-radius: 50%; background: radial-gradient(circle, rgba(242,178,51,.45), transparent 70%); }
+.ch-hero-amt { display: block; font-size: 30px; line-height: 36px; letter-spacing: -.5px; color: var(--gold-400); margin: 2px 0; }
+.ch-hero .btn-accent { pointer-events: none; }
+.ch-card { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-3); text-align: left; width: 100%; }
+.ch-facts > div { display: flex; flex-direction: column; align-items: center; padding: var(--s-3) 4px; border-radius: var(--r-md); background: var(--c-surface); border: 1px solid var(--c-border); text-align: center; }
+.ch-facts b { font-size: 18px; }
+.ch-facts span { font-size: 11px; color: var(--c-text-muted); font-weight: var(--w-bold); }
+.ch-prize-banner { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-4); border-radius: var(--r-lg); background: linear-gradient(135deg, var(--gold-400), var(--gold-300)); color: var(--navy-900); }
+.ch-prize-banner > .ph-fill { font-size: 34px; flex: none; }
+.ch-prize-banner b { font-size: 22px; }
+.tile-lock { position: absolute; top: 10px; right: 10px; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--c-surface-sunken); color: var(--c-text-muted); font-size: 13px; }
+.study-tile { position: relative; }
+.lb-you { background: var(--c-accent-soft); border-radius: 8px; padding: 4px 0; }
+
+/* Challenge play */
+.ch-play { background: var(--c-bg); }
+.ch-top { flex: none; display: flex; align-items: center; gap: var(--s-2); padding: var(--s-2) var(--s-4); background: var(--c-surface); border-bottom: 1px solid var(--c-border); min-height: 52px; }
+.fp-on { display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 10px; border-radius: 99px; background: var(--c-success-soft); color: var(--c-on-success-soft); font-size: 12px; font-weight: var(--w-bold); flex: none; }
+.ch-progress { flex: none; height: 4px; background: var(--c-surface-sunken); }
+.ch-progress i { display: block; height: 100%; width: 0; background: var(--c-accent); transition: width var(--dur-base) var(--ease-out); }
+.ch-body { flex: 1; overflow-y: auto; padding: var(--s-5) var(--s-4) var(--s-8); }
+.no-copy { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.q-timer { position: relative; width: 48px; height: 48px; display: grid; place-items: center; }
+.q-timer svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+.q-timer circle { fill: none; stroke-width: 3.5; }
+.qt-track { stroke: var(--c-surface-sunken); }
+.qt-val { stroke: var(--c-secondary); stroke-dasharray: 1; stroke-dashoffset: 0; stroke-linecap: round; transition: stroke-dashoffset .25s linear; }
+.q-timer.low .qt-val { stroke: var(--c-error); }
+.q-timer.low b { color: var(--c-error); }
+.ob-trophy { width: 56px; height: 56px; border-radius: 50%; display: inline-grid; place-items: center; background: var(--gold-400); color: var(--navy-900); font-size: 30px; }
+.ob-prize { display: inline-block; font-size: 22px; color: var(--c-on-accent-soft); margin-top: 2px; }
+.ob-slide.cur .ob-row { animation: st-rise var(--dur-slow) var(--ease-out) both; animation-delay: calc(350ms + var(--k) * 180ms); }

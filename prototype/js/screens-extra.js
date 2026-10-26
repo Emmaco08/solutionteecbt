@@ -7,7 +7,8 @@
   ST.isPremium = () => S.plan === 'premium';
   ST.setPlan = plan => {
     S.plan = plan;
-    if (plan === 'premium') { S.aiMax = 100; S.aiLeft = Math.max(S.aiLeft, 98); } else { S.aiMax = 3; S.aiLeft = Math.min(S.aiLeft, 2); }
+    const ai = ST.access()[plan === 'premium' ? 'premium' : 'free'].ai;
+    S.aiMax = ai; S.aiLeft = plan === 'premium' ? Math.max(Math.min(S.aiLeft, ai), ai - 2) : Math.min(S.aiLeft, Math.max(0, ai - 1));
     ST.syncPanel?.();
   };
   /** Leaderboard visibility is set by admin (Admin → Leaderboard). Production default: OFF. */
