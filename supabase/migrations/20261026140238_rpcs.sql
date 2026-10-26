@@ -124,7 +124,7 @@ begin
   select row_no, exam_code, subject_key into v_bad from _imp where exam_id is null or subject_id is null limit 1;
   if found then
     raise exception 'unknown_exam_or_subject' using errcode = '22023',
-      detail = format('row %s: exam "%s", subject "%s"', v_bad.row_no + 1, v_bad.exam_code, v_bad.subject_key);
+      detail = format('row %s: exam "%s", subject "%s"', v_bad.row_no + 2, v_bad.exam_code, v_bad.subject_key);
   end if;
 
   select count(*) into v_dupes from _imp i

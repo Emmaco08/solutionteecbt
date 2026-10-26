@@ -121,8 +121,7 @@ select tests.check(public.my_plan() ->> 'tier' = 'free', 'free: my_plan says fre
 select tests.throws(format($q$insert into public.questions (exam_id, subject_id, year, body, options, answer)
   values (%s, %s, 2000, 'hack', '{"A":"1","B":"2","C":"3","D":"4"}', 'A')$q$, (select jamb from tests.ids), (select mth from tests.ids)),
   '42501', null, 'free: cannot insert a question');
-select tests.check((with u as (update public.access_rules set rules = '{"jamb":"all"}' where tier = 'free' returning 1) select count(*) from u) = 0,
-  'free: cannot change Free vs Premium rules');
+with u as (update public.access_rules set rules = '{"jamb":"all"}' where tier = 'free' returning 1) select tests.check(count(*) = 0, 'free: cannot change Free vs Premium rules') from u;
 select tests.throws($q$insert into public.entitlements (user_id, source, expires_at, reason, granted_by)
   values ('00000000-0000-4000-8000-0000000000a1', 'manual', now() + interval '1 year', 'free premium', '00000000-0000-4000-8000-0000000000a1')$q$,
   '42501', null, 'free: cannot give themselves Premium');
@@ -130,10 +129,8 @@ select tests.check((select count(*) from public.entitlements) = 0, 'free: cannot
 select tests.check((select count(*) from public.profiles) = 1, 'free: sees only their own profile');
 select tests.throws($q$update public.profiles set banned_at = null where id = '00000000-0000-4000-8000-0000000000a1'$q$,
   '42501', null, 'free: cannot touch ban fields');
-select tests.check((with u as (update public.profiles set full_name = 'Tolu' where id = '00000000-0000-4000-8000-0000000000a1' returning 1) select count(*) from u) = 1,
-  'free: can edit own name');
-select tests.check((with u as (update public.profiles set full_name = 'Hacked' where id = '00000000-0000-4000-8000-0000000000a2' returning 1) select count(*) from u) = 0,
-  'free: cannot edit another student');
+with u as (update public.profiles set full_name = 'Tolu' where id = '00000000-0000-4000-8000-0000000000a1' returning 1) select tests.check(count(*) = 1, 'free: can edit own name') from u;
+with u as (update public.profiles set full_name = 'Hacked' where id = '00000000-0000-4000-8000-0000000000a2' returning 1) select tests.check(count(*) = 0, 'free: cannot edit another student') from u;
 select tests.check((select count(*) from public.audit_log) = 0, 'free: cannot read the audit log');
 select tests.check((select count(*) from public.staff) = 0, 'free: cannot list staff');
 select tests.throws('select * from public.admin_list_users()', '42501', 'not_allowed', 'free: cannot list users');
@@ -175,14 +172,12 @@ select tests.throws(format($q$insert into public.questions (exam_id, subject_id,
 reset role;
 
 select tests.as_user('00000000-0000-4000-8000-0000000000a4', 'aal2');
-select tests.check((with i as (insert into public.questions (exam_id, subject_id, year, body, options, answer)
-  values ((select jamb from tests.ids), (select mth from tests.ids), 2000, 'TEST editor question', '{"A":"1","B":"2","C":"3","D":"4"}', 'C') returning 1) select count(*) from i) = 1,
-  'editor (aal2): can add a question');
+with i as (insert into public.questions (exam_id, subject_id, year, body, options, answer)
+  values ((select jamb from tests.ids), (select mth from tests.ids), 2000, 'TEST editor question', '{"A":"1","B":"2","C":"3","D":"4"}', 'C') returning 1) select tests.check(count(*) = 1, 'editor (aal2): can add a question') from i;
 select tests.throws($q$insert into public.questions (exam_id, subject_id, year, body, options, answer)
   select exam_id, subject_id, year, 'bad answer', '{"A":"1","B":"2","C":"3","D":"4"}', 'E' from public.questions limit 1$q$,
   '23514', null, 'editor: answer must be one of the options (constraint)');
-select tests.check((with u as (update public.access_rules set rules = '{"jamb":"all"}' where tier = 'free' returning 1) select count(*) from u) = 0,
-  'editor: cannot change Free vs Premium rules (admins only)');
+with u as (update public.access_rules set rules = '{"jamb":"all"}' where tier = 'free' returning 1) select tests.check(count(*) = 0, 'editor: cannot change Free vs Premium rules (admins only)') from u;
 select tests.throws($q$insert into public.entitlements (user_id, source, expires_at, reason, granted_by)
   values ('00000000-0000-4000-8000-0000000000a1', 'manual', now() + interval '30 days', 'friend', '00000000-0000-4000-8000-0000000000a4')$q$,
   '42501', null, 'editor: cannot give Premium');
@@ -194,9 +189,8 @@ select tests.check(exists (select 1 from public.audit_log where table_name = 'qu
 
 -- ---------------------------------------------------------------- admin with 2-step
 select tests.as_user('00000000-0000-4000-8000-0000000000a5', 'aal2');
-select tests.check((with i as (insert into public.entitlements (user_id, source, expires_at, reason, granted_by)
-  values ('00000000-0000-4000-8000-0000000000a1', 'manual', now() + interval '7 days', 'support case', '00000000-0000-4000-8000-0000000000a5') returning 1) select count(*) from i) = 1,
-  'admin (aal2): can give Premium with a reason');
+with i as (insert into public.entitlements (user_id, source, expires_at, reason, granted_by)
+  values ('00000000-0000-4000-8000-0000000000a1', 'manual', now() + interval '7 days', 'support case', '00000000-0000-4000-8000-0000000000a5') returning 1) select tests.check(count(*) = 1, 'admin (aal2): can give Premium with a reason') from i;
 select tests.throws($q$insert into public.entitlements (user_id, source, expires_at, reason, granted_by)
   values ('00000000-0000-4000-8000-0000000000a1', 'paystack', now() + interval '7 days', 'fake payment', '00000000-0000-4000-8000-0000000000a5')$q$,
   '42501', null, 'admin: cannot fake a Paystack entitlement (server only)');
