@@ -24,7 +24,9 @@
       <div><div class="grp" style="margin-top:0">CBT demo</div>
         <div class="demo"><button class="btn btn-outline btn-sm" data-demo="600">Timer 10:00</button><button class="btn btn-outline btn-sm" data-demo="300">Timer 5:00</button><button class="btn btn-outline btn-sm" data-demo="4">Time up</button><button class="btn btn-outline btn-sm" data-demo="submit">Submit</button></div></div>
       <div><div class="grp" style="margin-top:0">Challenge demo</div>
-        <div class="demo"><button class="btn btn-outline btn-sm" id="pCheat">Simulate cheating</button></div></div>
+        <div class="demo"><button class="btn btn-outline btn-sm" id="pCheat">Simulate cheating</button><button class="btn btn-outline btn-sm" id="pClose">Close challenge now</button></div></div>
+      <div><div class="grp" style="margin-top:0">Trust demo</div>
+        <div class="demo"><button class="btn btn-outline btn-sm" data-trust="unsafe-app">App cloner found</button><button class="btn btn-outline btn-sm" data-trust="device-taken">2nd account on phone</button><button class="btn btn-outline btn-sm" data-trust="banned">Banned</button></div></div>
     </div>
     <hr class="divider">
     <nav id="pList" aria-label="All screens"></nav>
@@ -47,6 +49,7 @@
 <script src="js/screens-more.js"></script>
 <script src="js/screens-extra.js"></script>
 <script src="js/screens-compete.js"></script>
+<script src="js/screens-trust.js"></script>
 <script>
   ST.tokensReady.then(() => {
     // panel: screen list grouped
@@ -79,6 +82,8 @@
         w.querySelector('#fbGo').onclick = () => { ST.closeOverlay(true); ST.openFeedback(curTitle()); };
         w.querySelectorAll('#fPlan button').forEach(b => b.onclick = () => setPlan(b.dataset.p));
       } });
+    document.getElementById('pClose').onclick = () => ST.closeChallenge('wk44');
+    document.querySelectorAll('[data-trust]').forEach(b => b.onclick = () => ST.go(b.dataset.trust, null, { mode: 'fade' }));
     document.getElementById('pCheat').onclick = () => ST.simulateCheat ? ST.simulateCheat() : ST.toast('Start a challenge first (Test → Challenges & events).', 'info');
     ST.syncPanel();
     ST.boot();

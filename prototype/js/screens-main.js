@@ -64,6 +64,8 @@
             <span class="ic gold" style="width:48px;height:48px;border-radius:12px;display:grid;place-items:center;font-size:24px;flex:none">${I('ranking', 1)}</span>
             <span class="grow"><span class="t-cap muted bold">JAMB 2027 leaderboard</span><b style="display:block">You are #128 in Nigeria</b><span class="t-cap muted">38 points to reach the top 100</span></span>${I('caret-right')}</button>` : ''}
 
+          ${ST.referralCard ? ST.referralCard() : ''}
+
           ${ST.isPremium() ? '' : `<div class="upgrade-banner" data-tour="upgrade">
             <div class="crown">${I('crown-simple', 1)}</div>
             <div class="grow" style="position:relative;z-index:1"><b>Unlock all years and exams</b><p class="t-sm" style="color:#AFC0DD">WAEC, NECO, every year, 100 AI prompts a day.</p></div>
@@ -320,7 +322,7 @@
             ? `<button class="card card-tap exam-card" data-go="test-setup" data-params="body=${b}" style="flex-direction:column;align-items:flex-start">${examLogo(b)}<b class="t-sm">${b}</b><span class="badge ${ST.rule(b.toLowerCase()) === 'all' ? 'badge-success' : 'badge-soft'}">${I('lock-simple-open', 1)} ${ST.rule(b.toLowerCase()) === 'all' ? 'All years' : ST.yearsLabel(ST.rule(b.toLowerCase())) + ' free'}</span></button>`
             : `<button class="card card-tap exam-card locked" data-sheet="paywall" data-reason="${b}" style="flex-direction:column;align-items:flex-start">${examLogo(b)}<b class="t-sm">${b}</b><span class="badge badge-neutral">${I('lock-simple', 1)} Premium</span></button>`).join('')}
           </div></section>
-        ${ST.can('compete') ? `<button class="card card-tap mode-card" data-go="compete"><span class="ic gold" style="width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:22px;flex:none">${I('trophy', 1)}</span><span class="grow"><b>Challenges & events</b><br><span class="t-cap muted">Weekly cash prizes and special events</span></span><span class="badge badge-error">LIVE</span></button>` : ''}
+        ${ST.can('compete') ? `<button class="card card-tap mode-card" data-go="compete"><span class="ic gold" style="width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:22px;flex:none">${I('trophy', 1)}</span><span class="grow"><b>Challenges & events</b><br><span class="t-cap muted">Weekly cash prizes and special events</span></span>${ST.livePill ? ST.livePill() : ''}</button>` : ''}
         ${ST.lbSettings && ST.lbSettings().on ? `<button class="card card-tap mode-card" data-go="leaderboard"><span class="ic gold" style="width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:22px;flex:none">${I('ranking', 1)}</span><span class="grow"><b>Leaderboard</b><br><span class="t-cap muted">See the best JAMB students this season</span></span>${I('caret-right').replace('class="', 'class="trail ')}</button>` : ''}
         <section><div class="sect-title"><h2 class="t-h3">Downloaded packs</h2><button class="btn btn-ghost" data-go="offline">Manage</button></div>
           <div class="card list"><div class="list-item"><span class="lead">${I('cloud-check', 1)}</span><span class="grow"><b class="t-sm">JAMB 2000 to 2002 · all subjects</b><div class="t-cap muted">Works offline · 6.4 MB</div></span><span class="badge badge-success">Ready</span></div></div></section>

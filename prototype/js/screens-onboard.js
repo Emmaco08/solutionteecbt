@@ -68,7 +68,7 @@
           <span class="ob-trophy">${I('trophy', 1)}</span><div class="t-cap muted bold mt2">Weekly Challenge</div><b class="ob-prize fx-pulse">Win ${ST.naira(20000)}</b></div></div>
         <div class="layer l2" style="position:absolute;bottom:58px;left:28px"><div class="mini" style="position:static;width:200px;padding:10px 12px">
           ${[['1', 'Chiamaka O.', '10/10'], ['2', 'You', '10/10'], ['3', 'Abdullahi M.', '9/10']].map(([r, n, s], k) => `<div class="row g2 t-cap ob-row" style="--k:${k};padding:3px 0"><b style="width:14px">${r}</b><span class="grow ${n === 'You' ? 'bold' : ''}">${n}</span><b class="tnum">${s}</b></div>`).join('')}</div></div>
-        <div class="layer l3" style="position:absolute;right:24px;bottom:150px"><span class="badge badge-error fx-pulse" style="height:30px;padding:0 12px"><span class="fx-live"></span>LIVE</span></div>` },
+        <div class="layer l3" style="position:absolute;right:24px;bottom:150px">${ST.livePill ? ST.livePill('1,284 playing') : ''}</div>` },
     { t: 'Past questions, videos and notes', d: 'Every answer comes with a clear explanation. Watch video solutions and read simple lesson notes.',
       art: () => `<div class="art-disc blue fx-breathe"></div>
         <div class="layer l1" style="position:absolute;top:60px"><div class="mini" style="position:static;width:220px;padding:8px"><div class="thumb th-1"><span class="play fx-ripple">${I('play', 1)}</span><span class="dur">6:12</span></div></div></div>
@@ -90,7 +90,7 @@
     { t: 'Join live JAMB classes', d: 'Learn with real teachers online. Join classes, ask questions and get study materials.',
       art: () => `<div class="art-disc blue fx-breathe"></div>
         <div class="layer l1" style="position:absolute;top:80px"><div class="mini" style="position:static;width:250px"><div class="row g3"><div class="ic blue" style="width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:22px">${I('video-camera', 1)}</div>
-          <div class="grow"><b class="t-sm">Physics: Waves</b><div class="t-cap muted">Today · 4:00 PM</div></div><span class="badge badge-error"><span class="fx-live"></span>LIVE</span></div>
+          <div class="grow"><b class="t-sm">Physics: Waves</b><div class="t-cap muted">Today · 4:00 PM</div></div>${ST.livePill ? ST.livePill() : ''}</div>
           <button class="btn btn-accent btn-sm btn-block mt3 fx-pulse" tabindex="-1">Join class</button></div></div>
         <div class="layer l2" style="position:absolute;bottom:70px;left:46px"><div class="mini t-cap bold fx-float" style="position:static;--rot:0deg;--d:-1s">${I('users-three', 1)} <span class="tnum" data-students>214</span> students</div></div>` }
   ];
@@ -160,6 +160,9 @@
         <form class="px5 stack g4 enter" onsubmit="return false" novalidate>
           ${field('Email address', 'email', 'you@example.com', { ic: 'envelope-simple', attrs: 'id="em" autocomplete="email"' })}
           ${field('Password', 'password', 'At least 8 characters', { ic: 'lock-simple', help: 'Use 8+ characters with a number.', attrs: 'id="pw" autocomplete="new-password"' })}
+          <details class="ref-field" ${ST.refFromLink ? 'open' : ''}><summary class="t-sm bold">${I('gift')} Have a referral code? <span class="muted" style="font-weight:500">(optional)</span></summary>
+            <div class="field mt3" id="refF"><div class="input"><i class="ph ph-ticket lead-ic"></i><input id="refIn" class="code-input" placeholder="e.g. TOLU-7K3P" maxlength="12" autocomplete="off" value="${ST.refFromLink || ''}"></div>
+            <span class="help">Your friend gets rewarded when you finish your first practice test.</span></div></details>
           <div class="consent" id="consent">
             <label class="check"><input type="checkbox" id="agree" aria-describedby="agreeErr" required> <span>I agree to the <a href="#" data-go="help">Terms</a> and <a href="#" data-go="help">Privacy Policy</a>. If I am under 18, my parent or guardian agrees too.</span></label>
             <span class="err hidden" id="agreeErr" role="alert">${I('warning-circle', 1)} Please tick the box to agree to the Terms and Privacy Policy.</span>
@@ -194,6 +197,9 @@
         if (!/^\S+@\S+\.\S+$/.test(em.value)) fail(em, 'Enter a valid email, like tolu@gmail.com');
         if (pw.value.length < 8) fail(pw, 'Password needs at least 8 characters');
         if (!checkConsent()) bad = true;
+        const ref = el.querySelector('#refIn'), rf = el.querySelector('#refF');
+        if (ref && ref.value && !/^[A-Z]{2,8}-[A-Z0-9]{4}$/.test(ref.value.trim().toUpperCase())) { rf.classList.add('has-error'); rf.querySelector('.err')?.remove(); rf.insertAdjacentHTML('beforeend', `<span class="err">${I('warning-circle', 1)} That referral code does not look right. Check it or leave it empty.</span>`); bad = true; }
+        if (ST.deviceTaken) { ST.go('device-taken'); return; }
         if (bad) { shake(); (el.querySelector('.field.has-error input') || agree).focus(); return; }
         const b = el.querySelector('#go'); b.classList.add('is-loading'); b.textContent = 'Sending code';
         setTimeout(() => ST.go('otp', { email: em.value }), 900);

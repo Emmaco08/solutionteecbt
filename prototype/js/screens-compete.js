@@ -41,11 +41,11 @@
   const NOW = Date.now(), H = 3600e3;
   const CH = [
     { id: 'wk44', type: 'cash', title: 'Weekly Challenge #44', sub: 'Mixed JAMB subjects · new questions', status: 'live', ends: NOW + 2.2 * H, q: 10, perQ: 30, entry: 0,
-      prizes: [20000, 10000, 5000], rule: 'Highest score wins. If scores tie, the fastest time wins.', joined: 1284, cover: { g: 'c-gold', icon: 'trophy' } },
+      prizes: [20000, 10000, 5000], rule: 'Best score wins. Same score: the fastest time wins. Same score and same time: the student who started earlier wins.', joined: 1284, cover: { g: 'c-gold', icon: 'trophy' } },
     { id: 'sprint', type: 'event', title: 'Maths Sprint Cup', sub: 'Algebra and calculus · 15 questions', status: 'upcoming', starts: NOW + 26 * H, q: 15, perQ: 40, entry: 200,
-      prizes: [50000, 25000, 10000], rule: 'Highest score wins. Ties go to the fastest time.', joined: 412, cover: { g: 'c-navy', icon: 'function' } },
+      prizes: [50000, 25000, 10000], rule: 'Best score wins. Same score: the fastest time wins. Same score and same time: the student who started earlier wins.', joined: 412, cover: { g: 'c-navy', icon: 'function' } },
     { id: 'bee', type: 'event', title: 'Use of English Bee', sub: 'Lexis, structure and comprehension', status: 'upcoming', starts: NOW + 50 * H, q: 20, perQ: 30, entry: 0,
-      reward: '30 days of Premium for the top 10', rule: 'Top 10 scores win. Ties go to the fastest time.', joined: 230, cover: { g: 'c-blue', icon: 'book-open-text' } },
+      reward: '30 days of Premium for the top 10', rule: 'Top 10 win. Ranked by best score, then fastest time, then who started earlier.', joined: 230, cover: { g: 'c-blue', icon: 'book-open-text' } },
     { id: 'night', type: 'practice', title: 'Physics Practice Night', sub: 'For fun and practice, no prize', status: 'live', ends: NOW + 5 * H, q: 10, perQ: 45, entry: 0,
       rule: 'No winners. See how you rank against other students.', joined: 96, cover: { g: 'c-green', icon: 'atom' } },
     { id: 'wk43', type: 'cash', title: 'Weekly Challenge #43', sub: 'Mixed JAMB subjects', status: 'ended', q: 10, perQ: 30, entry: 0, prizes: [20000, 10000, 5000],
@@ -57,33 +57,60 @@
   const until = t => { const s = Math.max(0, Math.round((t - Date.now()) / 1000)); const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60); return d ? `${d}d ${h}h` : h ? `${h}h ${String(m).padStart(2, '0')}m` : `${m}m ${String(s % 60).padStart(2, '0')}s`; };
   const rewardText = c => c.prizes ? `${money(c.prizes[0])} first prize` : c.reward || 'No prize, just for practice';
   const entryText = c => c.entry ? `${money(c.entry)} to join` : 'Free to join';
-  const statusBadge = c => c.status === 'live' ? `<span class="badge badge-error"><span class="fx-live" style="animation:st-blink 1.2s steps(1) infinite"></span>LIVE</span>` : c.status === 'upcoming' ? `<span class="badge badge-soft">${I('clock', 1)} Starts in ${until(c.starts)}</span>` : `<span class="badge badge-neutral">Ended</span>`;
+  /** Broadcast-style live indicator: ripple dot + LIVE + optional detail. dark = on navy surfaces. */
+  ST.livePill = (detail, dark) => `<span class="live-pill ${dark ? 'dark' : ''}"><span class="live-dot" aria-hidden="true"></span><span class="lp-txt">Live</span>${detail ? `<span class="lp-sep" aria-hidden="true"></span><span class="lp-detail">${detail}</span>` : ''}</span>`;
+
+  // ---- One attempt per challenge, ranking and closing ----
+  ST.chResults = ST.chResults || {};
+  const closedIds = () => { try { return JSON.parse(localStorage.getItem('st-closed') || '[]'); } catch (e) { return []; } };
+  const statusOf = c => closedIds().includes(c.id) ? 'ended' : c.status;
+  const clock = t => new Date(t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const mmss = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  const BASE = Date.now() - 50 * 60e3;   // sample entries started about 50 minutes ago
+  const OTHERS = [['Chiamaka O.', 'Anambra', 10, 171, BASE + 2 * 60e3], ['Ifeoma N.', 'Enugu', 10, 171, BASE + 5.5 * 60e3], ['Abdullahi M.', 'Kano', 10, 210, BASE],
+    ['Zainab Y.', 'Kaduna', 9, 150, BASE + 9 * 60e3], ['Temiloluwa A.', 'Lagos', 9, 188, BASE + 12 * 60e3]];
+  /** Best score, then fastest time, then earliest start. */
+  const ranked = c => {
+    const list = OTHERS.map(([n, st, score, secs, start]) => ({ n, st, score, secs, start }));
+    const me = ST.chResults[c.id];
+    if (me && !me.dq) list.push({ n: 'You', st: 'Oyo', score: me.score, secs: me.secs, start: me.startedAt, me: true });
+    return list.sort((a, b) => b.score - a.score || a.secs - b.secs || a.start - b.start);
+  };
+  const tieNote = (list, i) => { const a = list[i], b = list[i + 1]; return b && a.score === b.score && a.secs === b.secs ? `Same score and time as ${b.me ? 'you' : b.n.replace(/\.$/, '')}, but started ${Math.round((b.start - a.start) / 60e3)} min earlier.` : ''; };
+  ST.closeChallenge = id => {
+    const ids = closedIds(); if (!ids.includes(id)) ids.push(id);
+    try { localStorage.setItem('st-closed', JSON.stringify(ids)); } catch (e) {}
+    ST.go('challenge-winners', { id }, { mode: 'fade' });
+  };
+  const statusBadge = c => statusOf(c) === 'live' ? ST.livePill() : statusOf(c) === 'upcoming' ? `<span class="badge badge-soft">${I('clock', 1)} Starts in ${until(c.starts)}</span>` : `<span class="badge badge-neutral">Ended</span>`;
   const typeBadge = c => c.type === 'cash' ? `<span class="badge badge-gold">${I('currency-ngn', 1)} Cash prize</span>` : c.type === 'event' ? `<span class="badge badge-soft">${I('calendar-star', 1)} Event</span>` : `<span class="badge badge-neutral">Practice</span>`;
 
   /** Home hero card for the live weekly challenge. */
   ST.challengeHero = () => {
     if (!ST.can('compete')) return '';
-    const c = CH.find(x => x.type === 'cash' && x.status === 'live'); if (!c) return '';
+    const c = CH.find(x => x.type === 'cash' && statusOf(x) === 'live'); if (!c) return '';
     return `<button class="ch-hero" data-go="challenge" data-params="id=${c.id}" data-tour="compete">
       <span class="ch-hero-glow"></span>
-      <span class="row between" style="position:relative"><span class="badge badge-error"><span class="fx-live" style="animation:st-blink 1.2s steps(1) infinite"></span>LIVE NOW</span><span class="t-cap" style="color:#AFC0DD">${c.joined.toLocaleString()} students in</span></span>
+      <span class="row between" style="position:relative">${ST.livePill(`${c.joined.toLocaleString()} playing`, true)}${ST.chResults[c.id] ? `<span class="badge badge-success">${I('check', 1)} You took part</span>` : ''}</span>
       <span style="position:relative"><span class="t-cap" style="color:var(--gold-300);font-weight:700">${c.title}</span><b class="ch-hero-amt">Win ${money(c.prizes[0])}</b><span class="t-sm" style="color:#DCE4F2">${c.q} questions · ${c.perQ}s each · free for everyone</span></span>
-      <span class="row between" style="position:relative"><span class="t-cap" style="color:#AFC0DD">${I('timer', 1)} Closes in <b class="tnum" data-until="${c.ends}">${until(c.ends)}</b></span><span class="btn btn-accent btn-sm">Join challenge ${I('arrow-right')}</span></span>
+      <span class="row between" style="position:relative"><span class="t-cap" style="color:#AFC0DD">${I('timer', 1)} Winners announced in <b class="tnum" data-until="${c.ends}">${until(c.ends)}</b></span><span class="btn btn-accent btn-sm">${ST.chResults[c.id] ? 'My result' : 'Join challenge'} ${I('arrow-right')}</span></span>
     </button>`;
   };
 
   def('compete', {
     title: 'Challenges & events list', group: G, tab: 'test',
     render: () => {
-      const live = CH.filter(c => c.status === 'live'), up = CH.filter(c => c.status === 'upcoming'), past = CH.filter(c => c.status === 'ended');
+      CH.forEach(c => { if (statusOf(c) === 'ended' && !c.winners) c.winners = ranked(c).slice(0, 3).map(w => [w.n, w.st, `${w.score}/${c.q}`, mmss(w.secs)]); });
+      const live = CH.filter(c => statusOf(c) === 'live'), up = CH.filter(c => statusOf(c) === 'upcoming'), past = CH.filter(c => statusOf(c) === 'ended');
       const card = c => `<button class="card card-tap ch-card" data-go="challenge" data-params="id=${c.id}">${ST.newsCover({ cover: c.cover }, 'thumb')}
         <span class="grow stack g1"><span class="row g2 wrap">${statusBadge(c)}${typeBadge(c)}</span><b class="t-sm">${c.title}</b><span class="t-cap muted">${rewardText(c)} · ${entryText(c)}</span></span>${I('caret-right').replace('class="', 'class="trail ')}</button>`;
       return `
-      <div class="appbar"><button class="icon-btn" data-back="test" aria-label="Back">${I('arrow-left')}</button><span class="title">Challenges & events<small>Win prizes. Free and Premium can join.</small></span><button class="icon-btn" data-go="winnings" aria-label="My winnings">${I('wallet')}</button></div>
+      <div class="appbar"><button class="icon-btn" data-back="test" aria-label="Back">${I('arrow-left')}</button><span class="title">Challenges & events<small>Win prizes. Free and Premium can join.</small></span><button class="icon-btn" data-go="winners-wall" aria-label="Winners wall">${I('seal-check')}</button><button class="icon-btn" data-go="winnings" aria-label="My winnings">${I('wallet')}</button></div>
       <div class="scr-body"><div class="pad stack g5" style="padding-top:var(--s-2)">
         ${ST.challengeHero()}
         ${live.length ? `<section class="stack g2"><h2 class="t-h3">Live now</h2>${live.map(card).join('')}</section>` : ''}
         ${up.length ? `<section class="stack g2"><h2 class="t-h3">Coming up</h2>${up.map(card).join('')}</section>` : ''}
+        <button class="card card-tap row g3" style="padding:var(--s-4)" data-go="winners-wall"><span class="ic green" style="width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:22px;flex:none">${I('seal-check', 1)}</span><span class="grow"><b>Winners wall</b><br><span class="t-cap muted">See proof of every prize we have paid</span></span>${I('caret-right')}</button>
         ${past.length ? `<section class="stack g2"><h2 class="t-h3">Past winners</h2>${past.map(c => `<div class="card card-pad stack g2"><div class="row between"><b class="t-sm">${c.title}</b><span class="t-cap muted">${c.joined.toLocaleString()} took part</span></div>
           ${c.winners.map((w, i) => `<div class="row g3 t-sm"><span class="pod-av ${['gold', 'silver', 'bronze'][i]}" style="width:30px;height:30px;font-size:12px;margin:0">${i + 1}</span><span class="grow"><b>${w[0]}</b> <span class="muted">${w[1]}</span></span><span class="tnum muted">${w[2]} · ${w[3]}</span><b class="tnum">${money(c.prizes[i])}</b></div>`).join('')}</div>`).join('')}</section>` : ''}
         <p class="t-cap subtle" style="text-align:center">Prizes are paid after a fair-play review. Sample amounts for the prototype.</p>
@@ -127,9 +154,10 @@
     mount(el, p) {
       const c = CH.find(x => x.id === p.id) || CH[0], foot = el.querySelector('#chFoot'), ok = el.querySelector('#fpOk');
       const draw = () => {
-        const paid = ST.joined.has(c.id) || !c.entry;
-        if (c.status === 'ended') foot.innerHTML = `<button class="btn btn-outline btn-block" data-go="compete">See past winners</button>`;
-        else if (c.status === 'upcoming') foot.innerHTML = paid
+        const paid = ST.joined.has(c.id) || !c.entry, mine = ST.chResults[c.id], st = statusOf(c);
+        if (st === 'ended') foot.innerHTML = `<button class="btn btn-primary btn-block" data-go="challenge-winners" data-params="id=${c.id}">See the winners</button>`;
+        else if (mine) foot.innerHTML = `<div class="taken"><span>${I(mine.dq ? 'shield-warning' : 'check-circle', 1)}</span><span class="grow"><b class="t-sm">${mine.dq ? 'Your entry was disqualified' : `You scored ${mine.score}/${mine.total} in ${mmss(mine.secs)}`}</b><br><span class="t-cap muted">Each challenge can be taken only once.</span></span><button class="btn btn-tonal btn-sm" data-go="${mine.dq ? 'challenge-dq' : 'challenge-result'}" data-params="id=${c.id}">${mine.dq ? 'Details' : 'My result'}</button></div>`;
+        else if (st === 'upcoming') foot.innerHTML = paid
           ? `<button class="btn btn-tonal btn-block" data-toast="We will remind you 15 minutes before it starts">${I('bell-ringing', 1)} You are in. Remind me</button>`
           : `<button class="btn btn-primary btn-block" id="payJoin">Pay ${money(c.entry)} to join</button>`;
         else foot.innerHTML = paid ? `<button class="btn btn-primary btn-block" id="startCh">${I('play', 1)} Start challenge</button>` : `<button class="btn btn-primary btn-block" id="payJoin">Pay ${money(c.entry)} to join</button>`;
@@ -182,6 +210,7 @@
     },
     mount(el, p) {
       const c = CH.find(x => x.id === p.id) || CH[0];
+      if (ST.chResults[c.id]) { ST.go('challenge-result', { id: c.id }, { replace: true, mode: 'fade' }); ST.toast('You have already taken this challenge. Each challenge can be taken once.', 'info'); return; }
       const qs = shuffle(CQ).slice(0, c.q).map(x => { const order = shuffle(x.o.map((o, i) => ({ o, i }))); return { ...x, order }; });
       const t0 = Date.now(); let i = 0, score = 0, qTimer = null, over = false; const times = [];
       const body = el.querySelector('#chBody');
@@ -208,7 +237,8 @@
       const finish = (dq) => {
         if (over) return; over = true; clearInterval(qTimer); clearInterval(totalIv); guardOff(); ST.simulateCheat = null;
         const secs = Math.round((Date.now() - t0) / 1000);
-        ST.lastChallenge = { id: c.id, score, total: qs.length, secs, dq, at: Math.round((Date.now() - t0) / 1000), answered: i };
+        ST.lastChallenge = { id: c.id, score, total: qs.length, secs, dq, at: Math.round((Date.now() - t0) / 1000), answered: i, startedAt: t0 };
+        ST.chResults[c.id] = ST.lastChallenge;   // server: one attempt per student per challenge (unique key)
         ST.go(dq ? 'challenge-dq' : 'challenge-result', { id: c.id }, { mode: 'fade', replace: true });
       };
       function violation(reason) { if (over || !el.isConnected) return; ST.lastReason = reason; finish(true); }
@@ -247,29 +277,61 @@
   def('challenge-result', {
     title: 'Challenge result', group: G, navy: true,
     render: p => {
-      const c = CH.find(x => x.id === p.id) || CH[0], r = ST.lastChallenge && ST.lastChallenge.id === c.id ? ST.lastChallenge : { score: 9, total: 10, secs: 192 };
-      const rank = r.score === r.total ? 2 : r.score >= r.total - 1 ? 14 : 186, mm = `${Math.floor(r.secs / 60)}:${String(r.secs % 60).padStart(2, '0')}`;
-      const inPrize = c.prizes && rank <= c.prizes.length;
+      const c = CH.find(x => x.id === p.id) || CH[0];
+      const r = ST.chResults[c.id] || { score: 9, total: 10, secs: 192, startedAt: Date.now() - 30 * 60e3 };
+      if (!ST.chResults[c.id]) ST.chResults[c.id] = r;
+      const list = ranked(c), rank = list.findIndex(x => x.me) + 1, inPrize = c.prizes && rank > 0 && rank <= c.prizes.length;
+      const top = list.slice(0, 3), meRow = list[rank - 1];
+      const row = (w, i) => `<div class="rank-row ${w.me ? 'lb-you' : ''}"><span class="lb-rank tnum">${i + 1}</span><span class="grow"><b class="t-sm">${w.n}</b> <span class="t-cap muted">${w.st}</span><div class="t-cap muted">Started ${clock(w.start)}</div></span><span class="tnum t-sm bold">${w.score}/${c.q}</span><span class="tnum t-sm muted">${mmss(w.secs)}</span></div>`;
       return `
       <canvas id="confetti"></canvas>
       <div class="scr-body" style="display:flex;flex-direction:column">
         <div class="res-hero" style="padding-top:var(--s-6)">
           <span class="badge badge-success" style="margin:0 auto">${I('shield-check', 1)} Fair-play check passed</span>
           <div class="score tnum mt4" style="font-size:56px">${r.score}<span style="font-size:22px;color:#AFC0DD">/${r.total}</span></div>
-          <p class="muted mt2">Finished in <b style="color:#fff">${mm}</b></p>
-          <h1 class="t-h2 mt4">${inPrize ? `You are #${rank} so far!` : `You are #${rank} so far`}</h1>
-          <p class="muted t-sm mt2">${c.prizes ? (inPrize ? `If you stay in the top ${c.prizes.length} you win ${money(c.prizes[rank - 1])}.` : 'Keep practising. A new challenge comes every week.') : c.reward || 'Thanks for taking part.'}</p>
+          <p class="muted mt2">Finished in <b style="color:#fff">${mmss(r.secs)}</b> · started ${clock(r.startedAt)}</p>
+          <h1 class="t-h2 mt4">You are #${rank} right now</h1>
+          <p class="muted t-sm mt2">${c.prizes ? (inPrize ? `Stay in the top ${c.prizes.length} until it closes to win ${money(c.prizes[rank - 1])}.` : 'Keep practising. A new challenge comes every week.') : c.reward || 'Thanks for taking part.'}</p>
         </div>
         <div class="pad stack g4">
           <section class="card card-pad stack g2"><div class="row between"><b>Live ranking</b><span class="t-cap muted">${c.joined.toLocaleString()} students</span></div>
-            ${[['Chiamaka O.', 'Anambra', '10/10', '2:51'], ['You', 'Oyo', `${r.score}/${r.total}`, mm], ['Abdullahi M.', 'Kano', '10/10', '3:30']].sort((a, b) => a[0] === 'You' ? rank - 2 : b[0] === 'You' ? 2 - rank : 0).map((w, k) => `<div class="row g3 t-sm ${w[0] === 'You' ? 'lb-you' : ''}"><span class="lb-rank tnum">${w[0] === 'You' ? rank : k + 1}</span><span class="grow"><b>${w[0]}</b> <span class="muted">${w[1]}</span></span><span class="tnum">${w[2]}</span><span class="tnum muted">${w[3]}</span></div>`).join('')}</section>
-          <div class="banner info">${I('clock', 1)}<span>Winners are announced when the challenge closes, after the fair-play review. We will notify you.</span></div>
-          ${inPrize ? `<button class="btn btn-accent btn-block" data-go="claim-prize" data-params="id=${c.id}&rank=${rank}">${I('gift', 1)} How I get my prize</button>` : ''}
+            ${top.map(row).join('')}${rank > 3 ? `<div class="t-cap muted" style="text-align:center">···</div>${row(meRow, rank - 1)}` : ''}
+            <p class="t-cap muted">${c.rule}</p></section>
+          <div class="banner info">${I('megaphone', 1)}<span>Winners are announced the moment the challenge closes (in <b class="tnum" data-until="${c.ends || Date.now()}">${until(c.ends || Date.now())}</b>). Winners get a form to send their account details.</span></div>
           <button class="btn btn-outline btn-block" data-go="compete">See other challenges</button>
         </div>
       </div>`;
     },
-    mount(el, p) { const c = CH.find(x => x.id === p.id) || CH[0]; const r = ST.lastChallenge; if (r && r.score >= r.total - 1 && !ST.reduceMotion()) ST.confetti(el.querySelector('#confetti')); }
+    mount(el, p) {
+      const r = ST.lastChallenge; if (r && r.id === p.id && r.score >= r.total - 1 && !ST.reduceMotion()) ST.confetti(el.querySelector('#confetti'));
+      const iv = setInterval(() => { if (!el.isConnected) return clearInterval(iv); el.querySelectorAll('[data-until]').forEach(x => x.textContent = until(+x.dataset.until)); }, 1000);
+    }
+  });
+
+  // ---------- Winners announcement (sent the moment the challenge closes) ----------
+  def('challenge-winners', {
+    title: 'Winners announced (at close)', group: G,
+    render: p => {
+      const c = CH.find(x => x.id === p.id) || CH[0], list = ranked(c), winners = list.slice(0, c.prizes ? c.prizes.length : 3);
+      const meIdx = list.findIndex(x => x.me), iWon = meIdx > -1 && meIdx < winners.length && c.prizes;
+      return `
+      <canvas id="confetti"></canvas>
+      <div class="appbar"><button class="icon-btn" data-go="compete" aria-label="Close">${I('x')}</button><span class="title">Winners · ${c.title}</span></div>
+      <div class="scr-body"><div class="pad stack g4" style="padding-top:var(--s-2)">
+        ${iWon ? `<section class="won-card pop"><span class="won-ic">${I('trophy', 1)}</span><div class="grow"><span class="t-cap bold">Congratulations, ${S.first}!</span><b class="won-amt">You won ${money(c.prizes[meIdx])}</b><span class="t-sm">#${meIdx + 1} of ${c.joined.toLocaleString()} students. Send your account details within 7 days to get paid.</span></div></section>
+          <button class="btn btn-accent btn-block" data-go="claim-prize" data-params="id=${c.id}&rank=${meIdx + 1}">${I('bank', 1)} Send my account details</button>` : ''}
+        <section class="podium" aria-label="Winners">
+          ${[[winners[1], 2], [winners[0], 1], [winners[2], 3]].filter(([w]) => w).map(([w, r]) => `<div class="pod pod-${r}"><div class="pod-av ${['gold', 'silver', 'bronze'][r - 1]}">${w.me ? 'You' : w.n.split(' ').map(x => x[0]).join('')}<span class="pod-r">${r}</span></div><b class="t-sm">${w.n}</b><span class="t-cap muted">${w.score}/${c.q} · ${mmss(w.secs)}</span><span class="pod-bar"><b class="tnum">${c.prizes ? money(c.prizes[r - 1]) : ''}</b></span></div>`).join('')}
+        </section>
+        ${winners.map((w, i) => tieNote(list, i) ? `<div class="banner info">${I('scales', 1)}<span><b>Tie-break for #${i + 1}:</b> ${w.me ? 'You rank' : w.n.replace(/\.$/, '') + ' ranks'} higher. ${tieNote(list, i)}</span></div>` : '').join('')}
+        ${meIdx >= winners.length ? `<div class="card card-pad row g3"><span class="lb-rank tnum">#${meIdx + 1}</span><span class="grow t-sm">Your result: <b>${list[meIdx].score}/${c.q}</b> in ${mmss(list[meIdx].secs)}. A new challenge comes next week.</span></div>` : ''}
+        <div class="banner ok">${I('seal-check', 1)}<span>After we pay the winners, the proof of payment is posted on the <a href="#" data-go="winners-wall" class="bold">Winners wall</a>.</span></div>
+      </div></div>`;
+    },
+    mount(el, p) {
+      const c = CH.find(x => x.id === p.id) || CH[0], list = ranked(c), i = list.findIndex(x => x.me);
+      if (i > -1 && i < 3 && !ST.reduceMotion()) ST.confetti(el.querySelector('#confetti'));
+    }
   });
 
   def('challenge-dq', {
@@ -301,7 +363,7 @@
       <div class="scr-body"><div class="pad stack g4" style="padding-top:var(--s-2)">
         <div class="ch-prize-banner">${I('trophy', 1)}<span class="grow"><b>${money(amt)}</b><br><span class="t-cap">${c.title} · #${rank} (pending review)</span></span></div>
         <div class="steps"><i class="on"></i><i></i><i></i></div>
-        <p class="t-sm muted">We pay prizes by bank transfer within 3 working days after the challenge closes and the fair-play review is done.</p>
+        <p class="t-sm muted">You won! Send the account we should pay. We transfer the prize within 3 working days, then post the proof of payment on the Winners wall (your account number is hidden).</p>
         <div class="field"><label>Are you 18 or older?</label><div class="seg" id="age"><button class="on" data-a="18">Yes, 18+</button><button data-a="u18">No, under 18</button></div></div>
         <div class="stack g4 hidden" id="guard">
           <div class="banner info">${I('users', 1)}<span>Because you are under 18, the prize is paid to your parent or guardian, and they must agree.</span></div>

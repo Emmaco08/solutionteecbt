@@ -122,3 +122,24 @@ Owner rule: when cheating is detected, submit automatically and disqualify. Laye
 6. Device integrity (Play Integrity: no rooted phones/emulators), one account per person and device, identity check for winners.
 Disqualified students get a clear reason and can appeal within 24 hours (e.g. a phone call).
 **Owner/legal decisions needed before launch:** cash prizes and especially **paid entry** may fall under Nigerian lottery/gaming rules (National Lottery Act, state gaming authorities) and need a licence; many players are under 18; Google Play's real-money contest rules may block paid entry in the Play build (planned remote flag `paid_events_in_play_build`, default off); prize payouts need KYC and may have tax implications. Paid entry should stay off until a lawyer confirms.
+
+**D-030 · 2026-10-26 · Challenge rules: one attempt, winners at close, tie-breaks, claim form (owner)**
+- **New live indicator:** a quiet "broadcast" pill (ripple dot + LIVE + optional detail such as "1,284 playing"), light and dark versions, replaces the generic red badge everywhere (Home hero, challenge lists, onboarding art, Test hub). Ripple off under reduce motion.
+- **One attempt:** each student can take a challenge once (finished or disqualified). The challenge page then shows their score and "Each challenge can be taken only once"; opening the play screen again goes to the result. Server: unique (challenge_id, user_id) attempt row created when the first question is served.
+- **Ranking:** best score, then fastest time, then the student who **started earlier**. The result and winners screens show start times and explain each tie.
+- **Winners announced the moment it closes:** automatic (no manual step); push + in-app "You won ₦X" with **Send my account details** (the claim form), to be completed within 7 days. Non-winners see their final place. Admin can also close early ("Close now").
+
+**D-031 · 2026-10-26 · Referral programme (owner request, admin-configurable)**
+Student gets a code/link (TOLU-7K3P). Defaults set in Admin → Referrals: **10% off per successful friend**, **10 friends = 100% off (free Premium, 3 Months)**, **30 friends (total) = ₦5,000 cash** paid to the bank after verification; a friend counts when they verify their phone and finish one practice test on their own phone (admin can choose "verify only" or "buys Premium"); monthly cap. Using a discount spends those friends; the cash counter never resets. Screens: Invite friends (code, WhatsApp share, discount meter, cash progress, friends list with Pending/Blocked), referral field on Sign up, Home and Me entry points. Admin: rules with live preview (warns when step × friends < 100%), cash rewards due (pay / review), top referrers.
+
+**D-032 · 2026-10-26 · One person, one account (multiple accounts, app cloners) and bans**
+Planned protections (native, Phase 3–4), shown in the prototype screens and admin:
+- **One account per phone:** device ID bound to the account on the server (Android ID for our signing key + Play Integrity device verdict + hardware key attestation). A second sign-up on the same phone is blocked ("This phone already has an account").
+- **App cloners / dual apps / work-profile copies blocked:** checks for a non-primary Android user or work profile, app data path not matching the real install, known cloner packages (Parallel Space, Dual Space, App Cloner, Island/Shelter), re-signed APK (signature check), Play Integrity "app not recognised", root/emulator/hooking frameworks. Detection shows a blocking screen and logs the device.
+- **Identity signals:** phone number OTP before any reward or prize; one phone number, one NIN and one bank account per person; disposable emails blocked; sign-up bursts from one IP flagged.
+- **Referral rules:** a friend only counts on a different phone, phone number, IP pattern and payment method; flagged groups have rewards held.
+- **Enforcement:** linked-account groups appear in Admin → Fraud & bans; "Ban all" bans every linked account and the device, cancels unpaid rewards and prizes; banned students see a ban screen with one appeal within 14 days. Everything goes to the audit log.
+No method is 100% (a determined person with several phones and SIMs can still try), so payouts always wait for review and KYC.
+
+**D-033 · 2026-10-26 · Proof of payment / Winners wall (owner request)**
+After paying a winner (or a referral cash reward), admin uploads the transfer receipt, must confirm that the account number, balance and other private details are hidden, can add the winner's message (with permission), and publishes it to the **Winners wall** (and optionally News). Students see the total paid, each winner (first name + initial, state), place, amount and the receipt image. Minors are paid through a guardian and shown by first name only. Sample receipts in the prototype are clearly labelled SAMPLE.

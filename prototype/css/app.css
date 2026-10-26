@@ -642,3 +642,53 @@ body:has(#overlay > *) .proto-fab { display: none !important; }
 .ob-trophy { width: 56px; height: 56px; border-radius: 50%; display: inline-grid; place-items: center; background: var(--gold-400); color: var(--navy-900); font-size: 30px; }
 .ob-prize { display: inline-block; font-size: 22px; color: var(--c-on-accent-soft); margin-top: 2px; }
 .ob-slide.cur .ob-row { animation: st-rise var(--dur-slow) var(--ease-out) both; animation-delay: calc(350ms + var(--k) * 180ms); }
+
+/* ---------- Live pill (broadcast style) ---------- */
+.live-pill { display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 11px 0 9px; border-radius: 999px; flex: none; white-space: nowrap;
+  background: var(--c-error-soft); color: var(--c-on-error-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c-error) 28%, transparent);
+  font-size: 11px; font-weight: var(--w-bold); line-height: 1; }
+.live-pill .lp-txt { letter-spacing: .14em; text-transform: uppercase; }
+.live-pill .lp-sep { width: 1px; height: 12px; background: currentColor; opacity: .3; }
+.live-pill .lp-detail { font-variant-numeric: tabular-nums; letter-spacing: 0; opacity: .9; }
+.live-dot { position: relative; width: 8px; height: 8px; border-radius: 50%; background: #E5484D; box-shadow: 0 0 0 2px color-mix(in srgb, #E5484D 25%, transparent); flex: none; }
+.live-dot::after { content: ''; position: absolute; inset: -5px; border-radius: 50%; border: 1.5px solid #E5484D; opacity: 0; animation: live-ring 1.8s var(--ease-out) infinite; }
+@keyframes live-ring { 0% { transform: scale(.45); opacity: .9; } 100% { transform: scale(1.35); opacity: 0; } }
+.live-pill.dark { background: rgba(229,72,77,.16); color: #FFC9CA; box-shadow: inset 0 0 0 1px rgba(255,120,124,.38); }
+.live-pill.dark .live-dot { background: #FF5A5F; }
+.live-pill.dark .live-dot::after { border-color: #FF5A5F; }
+@media (prefers-reduced-motion: reduce) { .live-dot::after { animation: none; } }
+html.rm .live-dot::after { animation: none; }
+
+/* ---------- Challenge: taken once, ranking, winners ---------- */
+.taken { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-2) 0; }
+.taken > span:first-child { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--c-success-soft); color: var(--c-on-success-soft); font-size: 22px; flex: none; }
+.rank-row { display: flex; align-items: center; gap: var(--s-3); padding: 6px 4px; }
+.won-card { display: flex; gap: var(--s-3); align-items: center; padding: var(--s-4); border-radius: var(--r-lg); background: linear-gradient(135deg, var(--gold-400), var(--gold-200)); color: var(--navy-900); }
+.won-card .grow { display: flex; flex-direction: column; gap: 2px; }
+.won-ic { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; background: var(--navy-900); color: var(--gold-400); font-size: 28px; flex: none; }
+.won-amt { font-size: 26px; line-height: 32px; }
+
+/* ---------- Referral ---------- */
+.ref-hero { display: flex; flex-direction: column; gap: var(--s-3); padding: var(--s-5) var(--s-4) var(--s-4); border-radius: var(--r-lg); color: #F4F7FC; position: relative; overflow: hidden;
+  background: radial-gradient(120% 90% at 100% 0%, rgba(242,178,51,.32), transparent 55%), linear-gradient(140deg, var(--navy-900), var(--navy-700)); }
+.ref-big { font-size: 24px; line-height: 30px; letter-spacing: -.3px; }
+.ref-code { display: flex; align-items: center; gap: var(--s-3); padding: 10px 10px 10px 14px; border-radius: var(--r-md); background: rgba(255,255,255,.08); border: 1px dashed rgba(255,255,255,.3); }
+.ref-code > b { flex: 1; font-size: 20px; letter-spacing: 2px; color: #fff; }
+.ref-code .btn { background: rgba(255,255,255,.14); color: #fff; --bh: 36px; }
+.ref-pct { font-size: 20px; color: var(--c-success); }
+.ref-meter { display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; }
+.ref-meter i { height: 12px; border-radius: 4px; background: var(--c-surface-sunken); }
+.ref-meter i.on { background: var(--c-success); animation: st-pop var(--dur-base) var(--ease-emphasized) both; animation-delay: calc(var(--k) * 60ms); }
+.ref-st-success { background: var(--c-success-soft) !important; color: var(--c-on-success-soft) !important; }
+.ref-st-pending { background: var(--c-surface-sunken) !important; color: var(--c-text-muted) !important; }
+.ref-st-blocked { background: var(--c-error-soft) !important; color: var(--c-on-error-soft) !important; }
+.ref-field summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 6px; color: var(--c-link); min-height: 32px; }
+.ref-field summary::-webkit-details-marker { display: none; }
+
+/* ---------- Winners wall ---------- */
+.proof-card { display: flex; flex-direction: column; gap: var(--s-3); padding: var(--s-4); }
+.proof-receipt { display: flex; flex-direction: column; gap: 4px; padding: var(--s-3) var(--s-4); border-radius: var(--r-md); background: var(--c-surface-alt); border: 1px dashed var(--c-border-strong); position: relative; }
+.proof-receipt .badge-sample { position: absolute; top: 8px; right: 8px; }
+.proof-img { display: block; border-radius: var(--r-md); overflow: hidden; border: 1px solid var(--c-border); max-height: 260px; }
+.proof-img img { width: 100%; object-fit: cover; }
+.ref-code > b { white-space: nowrap; font-size: 18px; letter-spacing: 1.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }

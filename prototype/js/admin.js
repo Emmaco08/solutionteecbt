@@ -622,7 +622,7 @@ Print your mock exam slip 7 days before the date. Bring the slip and arrive 1 ho
         <div class="field hidden" id="cFeeF"><label for="cFee">Entry fee (₦)</label><div class="input num-input"><input id="cFee" type="number" value="200"></div><span class="help">Paid with Paystack. Not available in the Play Store build until approved (see note).</span></div>
         <div class="field" id="cRewardF"><label>Reward</label><div class="seg" id="cReward"><button class="on" data-r="cash">Cash</button><button data-r="premium">Premium days</button><button data-r="badge">Badge only</button><button data-r="none">None</button></div></div>
         <div class="grid3" id="cPrizes"><div class="field"><label>1st (₦)</label><div class="input"><input type="number" value="20000"></div></div><div class="field"><label>2nd (₦)</label><div class="input"><input type="number" value="10000"></div></div><div class="field"><label>3rd (₦)</label><div class="input"><input type="number" value="5000"></div></div></div>
-        <div class="field"><label>Winner rule</label><div class="input"><select><option>Highest score, then fastest time</option><option>First student to get every question right</option></select><i class="ph ph-caret-down sel-caret"></i></div></div>
+        <div class="field"><label>Winner rule (same for every challenge)</label><div class="card card-pad t-sm" style="background:var(--c-surface-alt)"><b>1.</b> Best score &nbsp; <b>2.</b> Fastest time &nbsp; <b>3.</b> Started earlier<br><span class="t-cap muted">Winners are announced automatically the moment it closes. Each student can take a challenge only once.</span></div></div>
         <section class="card card-pad stack g3" style="background:var(--c-success-soft);border-color:transparent">
           <b class="row g2" style="color:var(--c-on-success-soft)">${I('shield-check', 1)} Fair play (anti-cheat)</b>
           ${[['Leaving the app, split screen or floating apps submits and disqualifies', true], ['Block screenshots, screen recording and copying', true], ['One question at a time, no going back', true], ['Shuffle questions and options per student', true], ['Flag too-fast or unusual answer patterns for review', true], ['Block rooted phones and emulators (Play Integrity)', true], ['One entry per person, phone and NIN', true], ['Winners must verify identity (guardian for under-18)', true]].map(([t, on]) => `<label class="row between t-sm"><span>${t}</span><span class="switch"><input type="checkbox" ${on ? 'checked' : ''}><span></span></span></label>`).join('')}
@@ -639,15 +639,15 @@ Print your mock exam slip 7 days before the date. Bring the slip and arrive 1 ho
         </section>
         <section class="card card-pad stack g3"><b>Winners to pay</b>
           ${[['Ifeoma N.', '#1 · Challenge #43', 20000, 'Verified'], ['Mubarak I.', '#2 · Challenge #43', 10000, 'Verified'], ['Zainab Y. (guardian)', '#3 · Challenge #43', 5000, 'Waiting for guardian']].map(([n, d, a, s]) => `
-          <div class="row g3"><span class="grow"><b class="t-sm">${n}</b><br><span class="t-cap muted">${d} · ${s}</span></span><b class="tnum">${naira(a)}</b><button class="btn btn-sm ${s === 'Verified' ? 'btn-primary' : 'btn-outline'}" ${s === 'Verified' ? 'data-pay' : 'disabled'}>Pay</button></div>`).join('')}
+          <div class="stack g2 pay-row" data-name="${n}" data-amt="${a}" data-place="${d}"><div class="row g3"><span class="grow"><b class="t-sm">${n}</b><br><span class="t-cap muted">${d} · ${s}</span></span><b class="tnum">${naira(a)}</b><button class="btn btn-sm ${s === 'Verified' ? 'btn-primary' : 'btn-outline'}" ${s === 'Verified' ? 'data-pay' : 'disabled'}>Pay</button></div><div class="proof-box hidden"></div></div>`).join('')}
           <p class="t-cap muted">Payouts go by Paystack Transfer to the verified account. Two admins must approve payouts above ${naira(50000)}.</p>
         </section>
       </aside>
     </div>
     <section class="card" style="margin-top:16px;overflow:hidden"><div class="card-pad"><h2 class="t-h3">All challenges and events</h2></div>
-      <table class="tbl"><thead><tr><th>Title</th><th>Type</th><th>Entry</th><th>Reward</th><th>Entries</th><th>Status</th></tr></thead><tbody>
+      <table class="tbl"><thead><tr><th>Title</th><th>Type</th><th>Entry</th><th>Reward</th><th>Entries</th><th>Status</th><th></th></tr></thead><tbody>
         ${[['Weekly Challenge #44', 'Cash', 'Free', `${naira(20000)} / ${naira(10000)} / ${naira(5000)}`, '1,284', 'Live'], ['Physics Practice Night', 'Practice', 'Free', 'None', '96', 'Live'], ['Maths Sprint Cup', 'Event', naira(200), `${naira(50000)} top prize`, '412', 'Scheduled'], ['Use of English Bee', 'Event', 'Free', '30 days Premium (top 10)', '230', 'Scheduled'], ['Weekly Challenge #43', 'Cash', 'Free', `${naira(20000)} / ${naira(10000)} / ${naira(5000)}`, '1,532', 'Paying out']]
-          .map(r => `<tr>${r.map((c, i) => `<td>${i === 5 ? `<span class="badge ${c === 'Live' ? 'badge-error' : c === 'Scheduled' ? 'badge-soft' : 'badge-warning'}">${c}</span>` : i === 0 ? `<b>${c}</b>` : c}</td>`).join('')}</tr>`).join('')}
+          .map(r => `<tr>${r.map((c, i) => `<td>${i === 5 ? `<span class="badge ${c === 'Live' ? 'badge-error' : c === 'Scheduled' ? 'badge-soft' : 'badge-warning'}">${c}</span>` : i === 0 ? `<b>${c}</b>` : c}</td>`).join('')}<td>${r[5] === 'Live' ? `<button class="btn btn-outline btn-sm" data-close-ch="${{ 'Weekly Challenge #44': 'wk44', 'Physics Practice Night': 'night' }[r[0]]}">Close now</button>` : ''}</td></tr>`).join('')}
       </tbody></table></section>
     <div class="banner warn" style="margin-top:16px">${I('scales', 1)}<span><b>Legal check needed before launch:</b> cash prizes, and especially paid entry, may need a licence (e.g. lottery/gaming rules) and Google Play's real-money contest rules may apply. Many players are minors. Confirm with a lawyer before turning on paid entry.</span></div>`;
   P.challenges.mount = el => {
@@ -656,8 +656,124 @@ Print your mock exam slip 7 days before the date. Bring the slip and arrive 1 ho
     seg('cEntry', b => el.querySelector('#cFeeF').classList.toggle('hidden', b.dataset.e !== 'paid'));
     seg('cReward', b => el.querySelector('#cPrizes').classList.toggle('hidden', b.dataset.r !== 'cash'));
     el.querySelectorAll('[data-dq]').forEach(b => b.onclick = () => { const row = b.closest('.dq-row'); row.style.opacity = .5; row.querySelectorAll('button').forEach(x => x.disabled = true); toast(b.dataset.dq === 'ok' ? 'Entry reinstated. The student is told.' : 'Disqualification kept. The student is told.'); });
-    el.querySelectorAll('[data-pay]').forEach(b => b.onclick = () => { b.classList.add('is-loading'); b.textContent = ''; setTimeout(() => { b.classList.remove('is-loading'); b.textContent = 'Paid'; b.disabled = true; toast('Transfer sent. Receipt saved in Payments.'); }, 900); });
+    // Pay → then upload proof of payment and publish it to the Winners wall
+    el.querySelectorAll('[data-pay]').forEach(b => b.onclick = () => {
+      b.classList.add('is-loading'); b.textContent = '';
+      setTimeout(() => {
+        b.classList.remove('is-loading'); b.textContent = 'Paid'; b.disabled = true;
+        const row = b.closest('.pay-row'), box = row.querySelector('.proof-box');
+        box.classList.remove('hidden');
+        box.innerHTML = `<div class="card card-pad stack g3" style="background:var(--c-surface-alt)">
+          <b class="t-sm">${I('seal-check', 1)} Post proof of payment</b>
+          <label class="drop" style="cursor:pointer;padding:12px">${I('image', 1)}<span class="grow t-cap">Upload the transfer receipt (screenshot or PDF image)</span><span class="btn btn-outline btn-sm">Choose</span><input type="file" accept="image/*" class="sr" data-proof-file></label>
+          <div class="hidden" data-proof-prev></div>
+          <label class="check"><input type="checkbox" data-proof-mask> <span>I have hidden the full account number, balance and any other private details.</span></label>
+          <div class="field"><label>Winner's message (optional, with their permission)</label><div class="input"><input data-proof-note placeholder="e.g. I did not believe it until the alert came!"></div></div>
+          <label class="row between t-sm"><span>Show on the Winners wall</span><span class="switch"><input type="checkbox" checked data-proof-wall><span></span></span></label>
+          <label class="row between t-sm"><span>Also post in News</span><span class="switch"><input type="checkbox" data-proof-news><span></span></span></label>
+          <button class="btn btn-primary btn-sm" data-proof-go>Publish proof</button></div>`;
+        let img = null;
+        box.querySelector('[data-proof-file]').onchange = async e => {
+          const f = e.target.files[0]; if (!f) return;
+          try { img = await shrink(f); const pv = box.querySelector('[data-proof-prev]'); pv.classList.remove('hidden'); pv.innerHTML = `<img src="${img.data}" alt="" style="max-height:140px;border-radius:8px">`; }
+          catch (err) { toast('That file is not an image.'); }
+        };
+        box.querySelector('[data-proof-go]').onclick = () => {
+          if (!img) { toast('Upload the receipt first.'); return; }
+          if (!box.querySelector('[data-proof-mask]').checked) { toast('Hide the private details and tick the box first.'); return; }
+          const proof = { name: row.dataset.name.replace(' (guardian)', ''), state: '', ch: row.dataset.place.split('·')[1]?.trim() || 'Weekly challenge', place: row.dataset.place.split('·')[0].trim(), amt: +row.dataset.amt, date: 'Today', img: img.data, note: box.querySelector('[data-proof-note]').value.trim() };
+          if (box.querySelector('[data-proof-wall]').checked) { try { const list = JSON.parse(localStorage.getItem('st-proofs') || '[]'); list.unshift(proof); localStorage.setItem('st-proofs', JSON.stringify(list.slice(0, 5))); } catch (err) { toast('Image too large for this browser demo.'); return; } }
+          box.innerHTML = `<span class="badge badge-success">${I('check', 1)} Proof published${box.querySelector('[data-proof-news]')?.checked ? ' and posted in News' : ''}</span>`;
+          toast('Proof of payment is live on the Winners wall.');
+        };
+        toast('Transfer sent. Now post the proof of payment.');
+      }, 900);
+    });
+    el.querySelectorAll('[data-close-ch]').forEach(b => b.onclick = () => {
+      try { const ids = JSON.parse(localStorage.getItem('st-closed') || '[]'); if (!ids.includes(b.dataset.closeCh)) ids.push(b.dataset.closeCh); localStorage.setItem('st-closed', JSON.stringify(ids)); } catch (err) {}
+      b.outerHTML = '<span class="badge badge-success">Closed · winners announced</span>';
+      toast('Closed. Winners announced and notified with the claim form.');
+    });
     el.querySelector('#cGo').onclick = () => toast(`"${el.querySelector('#cTitle').value}" scheduled. Students get a push when it goes live.`);
+  };
+
+  // ---------- Referrals ----------
+  P.referrals = () => {
+    const R = ST.refRules();
+    return `
+    <div class="page-head"><div><span class="t-sm muted">People & money</span><h1 class="t-h1 mt2">Referrals</h1><p class="muted mt2">Set the rewards. Every reward is checked by the fraud rules before it is given.</p></div>
+      <button class="btn btn-primary" id="refSave">Save changes</button></div>
+    <div class="kpi-grid">
+      ${[['Successful referrals', '2,418', 'users-three'], ['Discount codes given', '1,903', 'ticket'], ['Free Premium earned', '97', 'crown-simple'], ['Blocked as fraud', '312', 'prohibit']].map(([l, v, ic]) => `
+        <div class="card kpi-tile"><div class="row between"><span class="t-sm muted bold">${l}</span><span class="ic navy" style="width:32px;height:32px;border-radius:9px;display:grid;place-items:center;font-size:16px">${I(ic, 1)}</span></div><b>${v}</b></div>`).join('')}
+    </div>
+    <div class="two" style="grid-template-columns:1fr 1fr">
+      <section class="card card-pad stack g4">
+        <h2 class="t-h3">Rewards</h2>
+        <div class="grid2"><div class="field"><label for="rStep">Discount per successful friend</label><div class="input"><input id="rStep" type="number" min="1" max="100" value="${R.step}"><span class="t-sm muted" style="padding-right:12px">%</span></div></div>
+          <div class="field"><label for="rFree">Friends for 100% off (Premium free)</label><div class="input"><input id="rFree" type="number" min="1" value="${R.freeAt}"></div></div></div>
+        <div class="field"><label for="rPlan">Free Premium plan given at 100%</label><div class="input"><select id="rPlan">${['Monthly', '3 Months', 'Exam Season'].map(x => `<option ${x === R.freePlan ? 'selected' : ''}>${x}</option>`).join('')}</select><i class="ph ph-caret-down sel-caret"></i></div></div>
+        <div class="grid2"><div class="field"><label for="rCashAt">Friends for a cash reward</label><div class="input"><input id="rCashAt" type="number" min="1" value="${R.cashAt}"></div></div>
+          <div class="field"><label for="rCash">Cash reward (₦)</label><div class="input"><input id="rCash" type="number" min="0" value="${R.cashAmount}"></div></div></div>
+        <div class="field"><label for="rSuccess">A friend counts when they</label><div class="input"><select id="rSuccess">
+          <option value="verify" ${R.success === 'verify' ? 'selected' : ''}>Sign up and verify email and phone</option>
+          <option value="test" ${R.success === 'test' ? 'selected' : ''}>Verify phone and finish one practice test (recommended)</option>
+          <option value="pay" ${R.success === 'pay' ? 'selected' : ''}>Buy Premium</option></select><i class="ph ph-caret-down sel-caret"></i></div></div>
+        <div class="field"><label for="rCap">Most rewards one student can earn per month</label><div class="input num-input"><input id="rCap" type="number" min="1" value="${R.monthlyCap}"></div></div>
+        <div class="card card-pad t-sm" id="rPreview" style="background:var(--c-surface-alt)"></div>
+      </section>
+      <section class="card card-pad stack g3"><div class="row between"><h2 class="t-h3">Cash rewards due</h2><span class="badge badge-warning">2 to pay</span></div>
+        ${[['Chukwuemeka O.', 'Imo', 30, 'Paid · proof posted'], ['Halima S.', 'FCT Abuja', 30, 'Verified'], ['Kelechi U.', 'Rivers', 31, 'Verified'], ['Seyi A.', 'Lagos', 34, 'Flagged: 9 friends share 2 phones']].map(([n, st, c, s]) => `
+          <div class="row g3 t-sm"><span class="grow"><b>${n}</b> <span class="muted">${st}</span><br><span class="t-cap muted">${c} successful friends · ${s}</span></span>${s === 'Verified' ? `<button class="btn btn-primary btn-sm" data-rpay>Pay ${naira(R.cashAmount)}</button>` : s.startsWith('Flagged') ? `<a class="btn btn-outline btn-sm" href="#fraud">Review</a>` : `<span class="badge badge-success">Paid</span>`}</div>`).join('')}
+        <hr class="divider"><h2 class="t-h3">Top referrers this month</h2>
+        <table class="tbl"><thead><tr><th>Student</th><th>Successful</th><th>Blocked</th><th>Reward</th></tr></thead><tbody>
+          ${[['Seyi A.', 34, 11, 'On hold'], ['Kelechi U.', 31, 0, 'Cash due'], ['Halima S.', 30, 1, 'Cash due'], ['Tolu A.', 12, 1, 'Premium free'], ['Bola F.', 7, 0, '70% code']].map(r => `<tr>${r.map((x, i) => `<td class="${i ? 'tnum' : 'bold'}">${x}</td>`).join('')}</tr>`).join('')}
+        </tbody></table>
+      </section>
+    </div>`;
+  };
+  P.referrals.mount = el => {
+    const $ = s => el.querySelector(s);
+    const read = () => ({ step: +$('#rStep').value || 10, freeAt: +$('#rFree').value || 10, freePlan: $('#rPlan').value, cashAt: +$('#rCashAt').value || 30, cashAmount: +$('#rCash').value || 0, success: $('#rSuccess').value, monthlyCap: +$('#rCap').value || 50 });
+    const pv = () => { const r = read(); $('#rPreview').innerHTML = `<b>Students see:</b> “${r.step}% off for every friend. ${r.freeAt} friends = Premium free (${r.freePlan}). ${r.cashAt} friends = ${naira(r.cashAmount)} cash.”${r.step * r.freeAt < 100 ? `<br><span style="color:var(--c-warning)">Note: ${r.freeAt} × ${r.step}% is only ${r.step * r.freeAt}%, so they never reach 100% off.</span>` : ''}`; };
+    el.addEventListener('input', pv); el.addEventListener('change', pv); pv();
+    $('#refSave').onclick = () => { try { localStorage.setItem('st-ref', JSON.stringify(read())); toast('Saved. Students see the new referral rewards now.'); } catch (e) { toast('Could not save in this browser.'); } };
+    el.querySelectorAll('[data-rpay]').forEach(b => b.onclick = () => { b.classList.add('is-loading'); b.textContent = ''; setTimeout(() => { b.outerHTML = '<span class="badge badge-success">Paid</span>'; toast('Transfer sent. Upload the proof in Challenges & events → Winners to pay.'); }, 900); });
+  };
+
+  // ---------- Fraud & bans (one account per person) ----------
+  P.fraud = () => `
+    <div class="page-head"><div><span class="t-sm muted">People & money</span><h1 class="t-h1 mt2">Fraud & bans</h1><p class="muted mt2">One person, one account. Find multiple accounts, app cloners and fake referrals, then ban every linked account.</p></div></div>
+    <div class="kpi-grid">
+      ${[['Sign-ups blocked (phone already used)', '1,206', 'device-mobile'], ['App cloners blocked', '842', 'copy-simple'], ['Linked groups to review', '6', 'graph'], ['Banned accounts', '388', 'prohibit']].map(([l, v, ic]) => `
+        <div class="card kpi-tile"><div class="row between"><span class="t-sm muted bold">${l}</span><span class="ic navy" style="width:32px;height:32px;border-radius:9px;display:grid;place-items:center;font-size:16px">${I(ic, 1)}</span></div><b>${v}</b></div>`).join('')}
+    </div>
+    <div class="two" style="grid-template-columns:1.2fr 1fr">
+      <section class="card card-pad stack g3"><div class="row between"><h2 class="t-h3">Linked accounts to review</h2><span class="badge badge-warning">6 groups</span></div>
+        ${[['Device ••a91f (Tecno Spark 10)', ['seyi.a@…', 'seyi.ad@…', 'adeseyi2@…', 'sy.ade@…'], 'Same phone, 4 accounts · 9 referrals to the same code · same Wi-Fi IP', 'high'],
+           ['Bank account GTBank ••••0373', ['halima.s@…', 'h.sani@…'], 'Two accounts asked prizes to the same bank account', 'high'],
+           ['App cloner: Parallel Space', ['tunde99@…'], 'Second copy of the app detected inside Parallel Space', 'med'],
+           ['Signup burst · IP 102.89.•.•', ['ola1@…', 'ola2@…', 'ola3@…'], '3 sign-ups in 6 minutes, similar emails, all used code OLA-5TQ2', 'med']].map(([g, accts, why, lvl], i) => `
+          <div class="stack g2 dq-row" data-grp="${i}"><div class="row between"><b class="t-sm">${g}</b><span class="badge ${lvl === 'high' ? 'badge-error' : 'badge-warning'}">${lvl === 'high' ? 'High risk' : 'Medium risk'}</span></div>
+            <span class="t-cap muted">${why}</span><div class="row g2 wrap">${accts.map(a => `<span class="chip" style="min-height:28px;cursor:default">${I('user')} ${a}</span>`).join('')}</div>
+            <div class="row g2"><button class="btn btn-danger btn-sm" data-ban>${I('prohibit', 1)} Ban all ${accts.length} and this device</button><button class="btn btn-ghost btn-sm" data-dismiss>Not fraud</button></div></div>`).join('')}
+      </section>
+      <aside class="stack g4">
+        <section class="card card-pad stack g3"><h2 class="t-h3">Protection rules</h2>
+          ${[['One account per phone (device ID + Play Integrity)', true], ['Block app cloners, dual apps and work-profile copies', true], ['Block rooted phones and emulators', true], ['Phone number OTP before any reward or prize', true], ['One phone number, one NIN and one bank account per person', true], ['Block disposable email addresses', true], ['Referral only counts on a different phone, IP and payment method', true], ['Hold rewards when a group is flagged', true]].map(([t, on]) => `<label class="row between t-sm"><span>${t}</span><span class="switch"><input type="checkbox" ${on ? 'checked' : ''}><span></span></span></label>`).join('')}
+        </section>
+        <section class="card card-pad stack g2"><h2 class="t-h3">Cloners blocked this month</h2>
+          ${[['Parallel Space', 402], ['Dual Space', 188], ['Phone "Dual apps" / "Clone apps"', 151], ['App Cloner', 63], ['Work profile (Island, Shelter)', 38]].map(([n, v]) => `<div class="stack g1"><div class="row between t-sm"><span>${n}</span><b class="tnum">${v}</b></div><div class="bar" style="height:6px"><i style="width:${Math.round(v / 4.02)}%"></i></div></div>`).join('')}
+        </section>
+        <section class="card card-pad stack g2"><h2 class="t-h3">Recently banned</h2>
+          ${[['adeseyi2@…', 'Multiple accounts on one phone', '25 Oct'], ['kemi.k@…', 'Cheating in Weekly Challenge #42 (appeal rejected)', '21 Oct']].map(([a, r, d]) => `<div class="row g3 t-sm"><span class="grow"><b>${a}</b><br><span class="t-cap muted">${r} · ${d}</span></span><button class="btn btn-ghost btn-sm" data-unban>Unban</button></div>`).join('')}
+        </section>
+      </aside>
+    </div>`;
+  P.fraud.mount = el => {
+    el.querySelectorAll('[data-ban]').forEach(b => b.onclick = () => { if (!b.dataset.sure) { b.dataset.sure = '1'; b.innerHTML = 'Tap again to ban all and cancel their rewards'; return; } const row = b.closest('.dq-row'); row.style.opacity = .5; row.querySelectorAll('button').forEach(x => x.disabled = true); toast('Group banned. Rewards cancelled. Logged in the audit log.'); });
+    el.querySelectorAll('[data-dismiss]').forEach(b => b.onclick = () => { b.closest('.dq-row').remove(); toast('Marked as not fraud. Rewards released.'); });
+    el.querySelectorAll('[data-unban]').forEach(b => b.onclick = () => { b.textContent = 'Unbanned'; b.disabled = true; toast('Account unbanned. Logged in the audit log.'); });
   };
 
   // ---------- Router ----------
