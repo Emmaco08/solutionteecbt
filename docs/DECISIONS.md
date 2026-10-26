@@ -173,3 +173,12 @@ New shell: grouped sidebar (Overview, Content, Students, Money, App control, Sys
 **D-041 · 2026-10-26 · Cleaner challenge cards on Home (owner feedback)**
 The small cards under the weekly challenge were cramped. They now have 16 px padding inside, a fixed width that hints there are more to scroll, 16 px space below the big card, equal heights, and a clear order: icon and status on top, the title, then a footer split off by a line with "Prize" and "Entry" side by side.
 
+**D-042 · 2026-10-26 · One app for Android, iOS and (if possible) desktop (owner, at DESIGN APPROVED)**
+The owner wants a single app that runs on Android and iOS, and a desktop version if possible. Flutter, already the locked stack, builds all of these from one codebase, so the stack does not change, but the scope grows:
+- iOS builds need macOS + Xcode. The owner's laptop is Windows, so iOS builds will run on a cloud Mac (Codemagic free tier or GitHub Actions macOS runners). iOS cannot be tested on the owner's machine; it needs TestFlight and an iPhone tester.
+- iOS payments must use Apple In-App Purchase for Premium (Apple's rule for digital content), verified on the server like Play purchases.
+- iOS anti-multi-account uses App Attest / DeviceCheck instead of Play Integrity. Cloner detection is Android-only (iOS does not allow cloners).
+- Desktop (Windows first) reuses the same screens with wide layouts (design-spec §6.3). Building it on Windows needs the Visual Studio C++ workload (several GB; the laptop now has about 40 GB free). Cash challenges may be phone-only via an admin flag because desktop anti-cheat is weaker.
+- Testing stays on the owner's real Android phone over USB debugging (no emulator, low RAM). We ask the owner before any step that needs the phone.
+- The rule stays: everything except Free content is gated on the server.
+

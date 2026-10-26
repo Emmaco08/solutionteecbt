@@ -31,8 +31,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started · `[!]` blocked on
 - [x] Feedback round 3: student images: AI photo questions + profile photo (D-016)
 - [x] Feedback rounds 4–9: tour/modes/premium fixes, news, leaderboard, QOTD, challenges, anti-cheat, Free vs Premium rules, referrals, anti multi-account, winners wall, security plan, skeletons, offline strip, QA pass
 - [x] Feedback round 10: no "3 years free" badge, challenge result fixed, Challenges & events on Home (live / next / none), notifications screen, test history, bookmarks, checkout shows the amount once, admin CMS redesign + 8 new admin pages (D-037 to D-040)
-- [ ] Owner tests on laptop + phone and sends feedback
-- [ ] `DESIGN APPROVED` → write `docs/design-spec.md`, commit
+- [x] Feedback round 11: roomier challenge cards on Home (D-041)
+- [x] Owner tested and sent feedback (11 rounds)
+- [x] `DESIGN APPROVED` (2026-10-26) → `docs/design-spec.md` written and committed
 
 ## Phase 2 — Backend & CMS core  (approval: `BACKEND APPROVED`)
 - [ ] Not started
