@@ -817,6 +817,23 @@ export type Database = {
           total: number
         }[]
       }
+      admin_year_counts: {
+        Args: { p_exam: number }
+        Returns: { subject_id: number; year: number; total: number; published: number }[]
+      }
+      admin_list_staff: {
+        Args: never
+        Returns: {
+          user_id: string
+          email: string
+          full_name: string | null
+          role: Database["public"]["Enums"]["staff_role"]
+          created_at: string
+          last_sign_in_at: string | null
+          has_2fa: boolean
+        }[]
+      }
+      admin_user_detail: { Args: { p_user: string }; Returns: Json }
       admin_set_ban: {
         Args: { p_banned: boolean; p_reason?: string; p_user: string }
         Returns: undefined

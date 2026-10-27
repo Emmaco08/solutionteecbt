@@ -262,3 +262,34 @@ Images are stored in Cloudflare R2 (D-045).
 | `pnpm db:test` | Runs the RLS security tests on the dev database (each test is rolled back) |
 | `pnpm shared:test` | CSV parser/validator unit tests |
 | `pnpm web:check` | Lint + type-check the admin website |
+
+### 7.9 Phase 2 status and how to use the admin (2026-10-27)
+**Already done for you:**
+- The Supabase project `solutiontee-dev` was created through the Supabase connector (Free plan, London). Its ref is `mxeemubacnmcmmmzteax`, and its URL is https://mxeemubacnmcmmmzteax.supabase.co.
+- All database migrations are applied.
+- Supabase generated the database password, so nobody knows it. You only need it for the CLI (`supabase link`) or `pnpm db:test`. Reset it in *Project Settings → Database → Reset database password*, and keep it in your password manager.
+
+**Run the admin on your laptop** (one heavy program at a time):
+```powershell
+pnpm install
+pnpm web:dev
+```
+Open http://localhost:3000/admin, then follow these steps:
+1. **First run:** the page says *Set up your admin account*. Enter your name, email and a strong password (at least 10 characters, with letters and numbers). This creates the **super admin**, and the form disappears for good.
+2. **2-step login:** scan the QR code with Google Authenticator or Microsoft Authenticator, then type the 6-digit code. Every login after that asks for a new code.
+3. Things to try:
+   - *CSV import*: download the template, fill a few rows, check them, then import.
+   - *Question bank*: select rows and publish them.
+   - *Exams & years*: tap a year to publish it.
+   - *Free vs Premium*: change a rule, then save.
+   - *Plans & prices*: confirm the prices.
+   - *Staff*: invite an editor.
+   - *Audit log*: see each change.
+4. Stop the server with `Ctrl+C` when you finish.
+
+**R2 checks (D-049):**
+- In Cloudflare, open *R2 → your bucket → Settings*. **Public access** must be **off** for the bucket that holds question images.
+- Add a CORS rule that allows `PUT` and `GET` from `http://localhost:3000`, so uploads from the admin work.
+
+**Brevo for student login codes (needed in Phase 3):** in Supabase, go to *Authentication → Emails → SMTP Settings* and enter the Brevo SMTP details (§7.4). The admin's staff invites already use your Brevo API key.
+

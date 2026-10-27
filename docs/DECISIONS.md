@@ -217,3 +217,24 @@ This replaces Supabase Storage for all images.
 - **Google sign-in moves to Phase 3,** because it needs the Android app's signing-key fingerprint.
 - **No local database:** tests run on the hosted dev project inside a transaction that is always rolled back (`scripts/run-db-tests.mjs`).
 
+**D-047 · 2026-10-27 · Admin website build choices (Phase 2)**
+- **Next.js 16.4 defaults kept:**
+  - `proxy.ts` (the new name for middleware) refreshes the session and sends signed-out visitors to login.
+  - `cacheComponents` is on: every page reads the session inside `<Suspense>`, which also gives each page its loading skeleton.
+  - The Supabase server clients call `await connection()` first, so they are never prerendered.
+- **shadcn/ui** ("base-nova", built on Base UI) is themed with our tokens: `design/scripts/tokens-to-css.mjs` turns `tokens.json` into `app/tokens.css`. Plus Jakarta Sans is bundled locally (500/700). Icons are Phosphor, as in the approved prototype. Real logos are copied unchanged into `public/brand`.
+- **Question editor:** a plain text area with maths helper buttons and a live KaTeX preview, matching the approved design. KaTeX output is the only HTML; all other text is escaped. Tiptap rich text is kept for lesson notes in Phase 4, where formatting matters.
+- **First super admin:**
+  - A one-time form on the login page while no staff exists.
+  - The server checks again before creating the account, using the secret key on the server only.
+  - Later admins are invited by a super admin. The server makes a one-time Supabase link and sends it through the Brevo API from the owner's sender. If Brevo fails, the link is shown to copy and send by hand.
+- **Ban:** besides `profiles.banned_at`, the student is also banned at the Supabase Auth level, so they cannot sign in at all.
+- **Manual Premium grants:** start at the database's own time (avoids laptop or server clock skew); extensions start when the current Premium ends.
+- **Every admin save refreshes all admin pages** (`revalidatePath('/admin', 'layout')`), so the dashboard never shows stale numbers.
+
+**D-048 · 2026-10-27 · Staff reads also need 2-step login**
+Browser testing showed that RLS only required `aal2` (2-step) for staff writes. A stolen staff password could therefore have read student emails and every question through the API. `private.is_staff()` now requires `aal2`, so without the 2-step code a staff account has only student rights. It can still read its own staff row, which the 2-step page needs. The RLS suite has new tests for this (68/68 pass).
+
+**D-049 · 2026-10-27 · One R2 bucket with key prefixes (owner's env)**
+The owner's `.env.local` has a single `R2_BUCKET`. The code stores question images under `q/…` and news images under `public/news/…` in that bucket, and only ever hands out short signed links (`R2_SIGNED_URL_TTL`). **The bucket must be private.** If public access (r2.dev or a custom domain) is on for it, anyone who guesses a key could open locked question images. If the owner wants a public CDN for news and onboarding pictures, the plan is a second, public bucket for those only. Open question for the owner.
+

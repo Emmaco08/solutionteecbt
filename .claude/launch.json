@@ -6,6 +6,12 @@
       "runtimeExecutable": "node",
       "runtimeArgs": ["prototype/serve.mjs", "5173"],
       "port": 5173
+    },
+    {
+      "name": "web",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["-C", "apps/web", "dev"],
+      "port": 3000
     }
   ]
 }

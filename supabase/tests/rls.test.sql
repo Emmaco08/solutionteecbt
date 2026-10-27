@@ -165,13 +165,16 @@ reset role;
 
 -- ---------------------------------------------------------------- editor without / with 2-step
 select tests.as_user('00000000-0000-4000-8000-0000000000a4', 'aal1');
-select tests.check((select count(*) from public.questions where body like 'TEST%') = 9, 'editor (aal1): can read all questions incl. drafts');
+select tests.check((select count(*) from public.questions where body like 'TEST%') = 0, 'editor (aal1): no 2-step, so no staff reads (sees no questions)');
+select tests.check((select count(*) from public.staff) = 1, 'editor (aal1): can still read own staff row (for the 2-step page)');
+select tests.throws('select public.admin_dashboard()', '42501', 'not_allowed', 'editor (aal1): dashboard refused without 2-step');
 select tests.throws(format($q$insert into public.questions (exam_id, subject_id, year, body, options, answer)
   values (%s, %s, 2000, 'no 2fa', '{"A":"1","B":"2","C":"3","D":"4"}', 'A')$q$, (select jamb from tests.ids), (select mth from tests.ids)),
   '42501', null, 'editor (aal1): cannot write without 2-step login');
 reset role;
 
 select tests.as_user('00000000-0000-4000-8000-0000000000a4', 'aal2');
+select tests.check((select count(*) from public.questions where body like 'TEST%') = 9, 'editor (aal2): can read all questions incl. drafts');
 with i as (insert into public.questions (exam_id, subject_id, year, body, options, answer)
   values ((select jamb from tests.ids), (select mth from tests.ids), 2000, 'TEST editor question', '{"A":"1","B":"2","C":"3","D":"4"}', 'C') returning 1) select tests.check(count(*) = 1, 'editor (aal2): can add a question') from i;
 select tests.throws($q$insert into public.questions (exam_id, subject_id, year, body, options, answer)
@@ -186,6 +189,11 @@ select tests.throws($q$insert into public.staff (user_id, role) values ('0000000
 reset role;
 select tests.check(exists (select 1 from public.audit_log where table_name = 'questions' and action = 'insert'
   and actor = '00000000-0000-4000-8000-0000000000a4'), 'audit: editor''s insert is logged with their id');
+
+select tests.as_user('00000000-0000-4000-8000-0000000000a5', 'aal1');
+select tests.throws('select * from public.admin_list_users()', '42501', 'not_allowed', 'admin (aal1): cannot list students without 2-step');
+select tests.check((select count(*) from public.audit_log) = 0, 'admin (aal1): cannot read the audit log without 2-step');
+reset role;
 
 -- ---------------------------------------------------------------- admin with 2-step
 select tests.as_user('00000000-0000-4000-8000-0000000000a5', 'aal2');

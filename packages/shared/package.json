@@ -6,7 +6,8 @@
   "description": "Code shared by the admin, the web app and server functions: CSV import parser/validator, types.",
   "exports": {
     ".": "./src/index.ts",
-    "./csv": "./src/csv/index.ts"
+    "./csv": "./src/csv/index.ts",
+    "./database": "./src/database.types.ts"
   },
   "scripts": {
     "test": "vitest run",
