@@ -238,3 +238,25 @@ Browser testing showed that RLS only required `aal2` (2-step) for staff writes. 
 **D-049 · 2026-10-27 · One R2 bucket with key prefixes (owner's env)**
 The owner's `.env.local` has a single `R2_BUCKET`. The code stores question images under `q/…` and news images under `public/news/…` in that bucket, and only ever hands out short signed links (`R2_SIGNED_URL_TTL`). **The bucket must be private.** If public access (r2.dev or a custom domain) is on for it, anyone who guesses a key could open locked question images. If the owner wants a public CDN for news and onboarding pictures, the plan is a second, public bucket for those only. Open question for the owner.
 
+**D-050 · 2026-10-27 · SolutionTee sends its own auth emails (Brevo API), not Supabase**
+- **Why:**
+  - The owner wanted OTP, forgot-password and similar emails set up.
+  - Making Supabase send through Brevo SMTP needs the dashboard, and Claude may not type an SMTP key into a web form.
+  - Our own sending also gives branded templates, our senders and our own limits.
+- **How:**
+  - The server (Next.js API, secret key on the server only) calls `auth.admin.generateLink` to create the account or reset and get the one-time code. Supabase sends nothing.
+  - We email the code through the Brevo API from `noreply@mail.solutiontee.com`; replies go to `support@mail.solutiontee.com`.
+  - The app verifies the code directly with Supabase (`verifyOtp`).
+  - Contract: `docs/AUTH_EMAIL.md`.
+- **Safety:**
+  - Rate limits live in Postgres and store only HMAC hashes of email and IP.
+  - Forgot-password always gives the same answer.
+  - A second sign-up can never change an unconfirmed account's password (tested), and a resend needs the same password.
+  - Notices need the user's own access token, and the welcome email goes out only once.
+  - `EMAIL_TRANSPORT=log` (development only) logs emails instead of sending them, for tests.
+- **Known setting:** the hosted project sends 8-digit codes. The app reads `codeLength` from the API, so 6 or 8 both work. The owner can set 6 digits and a 10-minute expiry in the dashboard.
+- **Tested:** the full flow through the real endpoints, and an existing account answers 409 before any rate limit. **Not yet tested:** delivery to a real inbox (Claude cannot read email). The owner presses *Send me a test email* on the admin Emails page.
+
+
+**D-049 update · 2026-10-27:** the owner confirmed the R2 bucket stays **private**. All images (questions and news) are served through short signed links from the server. A public CDN bucket for news and onboarding pictures can be added later if needed.
+

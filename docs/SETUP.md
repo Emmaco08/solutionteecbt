@@ -293,3 +293,15 @@ Open http://localhost:3000/admin, then follow these steps:
 
 **Brevo for student login codes (needed in Phase 3):** in Supabase, go to *Authentication → Emails → SMTP Settings* and enter the Brevo SMTP details (§7.4). The admin's staff invites already use your Brevo API key.
 
+### 7.10 Emails (2026-10-27)
+Login codes, password-reset codes, welcome emails and staff invites are sent by SolutionTee through your Brevo account (D-050). You don't need to put the SMTP key into Supabase for these. Two optional Supabase settings make the codes match the design. In the Supabase dashboard, open *Authentication → Sign In / Providers → Email* and set:
+- **Email OTP Length:** `6` (it is 8 now; the app works with either)
+- **Email OTP Expiration:** `600` seconds (10 minutes)
+
+Check delivery yourself:
+1. Run the admin (`pnpm web:dev`), log in, and open **System → Emails**.
+2. Press **Send me a test email**. It arrives from `info@mail.solutiontee.com`; check spam the first time.
+3. The same page shows today's count (limit 280 a day) and previews every template.
+
+*For developers:* with `EMAIL_TRANSPORT=log` in development, emails go to the server log instead (`docs/AUTH_EMAIL.md`).
+

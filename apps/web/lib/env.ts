@@ -18,7 +18,13 @@ export const env = {
   brevo: {
     apiKey: read("BREVO_API_KEY"),
     fromEmail: read("BREVO_FROM_EMAIL") || read("MAIL_SENDER_NOREPLY"),
-    fromName: read("BREVO_FROM_NAME") || "SolutionTee CBT",
+    fromName: read("MAIL_FROM_NAME") || read("BREVO_FROM_NAME") || "SolutionTee CBT",
+  },
+  mail: {
+    noreply: read("MAIL_SENDER_NOREPLY") || read("BREVO_FROM_EMAIL"),
+    info: read("MAIL_SENDER_INFO") || read("BREVO_FROM_EMAIL"),
+    support: read("MAIL_SENDER_SUPPORT") || read("MAIL_SENDER_INFO"),
+    logoUrl: read("EMAIL_LOGO_URL"),
   },
   siteUrl: read("NEXT_PUBLIC_SITE_URL") || "http://localhost:3000",
 };

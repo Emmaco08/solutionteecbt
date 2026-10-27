@@ -45,10 +45,12 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started · `[!]` blocked on
 - [x] Admin pages: dashboard (real counts), question bank (filters, bulk publish), question editor (live KaTeX, R2 images), passages, CSV import (map, check, server dry run, import, undo), exams & years, news, users (Premium grant/revoke, ban), plans, Free vs Premium, onboarding, tabs, flags & settings, staff (invite by Brevo email), audit log
 - [x] Browser-tested end to end on the dev DB with a temporary QA admin and student (both deleted after; database left empty for the owner)
 - [x] `eslint` 0 errors, `tsc` clean, `next build` passes
-- [ ] Owner: create the first super admin, set up the authenticator app, try the flows in SETUP §7.9
-- [ ] Owner: confirm the R2 bucket for question images is private (or add a second private bucket); add R2 CORS for localhost
-- [ ] Owner: Brevo SMTP in Supabase Auth (student OTP emails) — needed by Phase 3
-- [ ] `BACKEND APPROVED`
+- [x] Owner: R2 bucket stays private (D-049); support email `support@mail.solutiontee.com`; transparent logo added to `/brand`
+- [x] Email services (owner's condition for approval): sign-up code, resend, forgot-password code, password-changed notice, welcome email, staff invites, all sent through Brevo with branded templates and DB rate limits (D-050, `docs/AUTH_EMAIL.md`)
+- [x] Email flows tested end to end through the real API in log mode (sign-up → code → confirm → welcome once → forgot → code → new password → notice; limits; existing-account answers). Brevo account and `mail.solutiontee.com` senders checked (read-only)
+- [x] Admin **Emails** page: Brevo status, verified senders, sends in the last 24 h, template previews, "Send me a test email"
+- [x] `BACKEND APPROVED` (2026-10-27, conditional on the email services, now done)
+- [ ] Owner: create the first super admin; press *Send me a test email* on the Emails page; in Supabase set Email OTP length 6 and expiry 600 s (SETUP §7.10)
 
 ## Phase 3 — Mobile app core  (approval: `APP CORE APPROVED`)
 - [ ] Not started

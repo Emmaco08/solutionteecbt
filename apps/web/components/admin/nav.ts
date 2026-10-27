@@ -49,6 +49,7 @@ export const NAV: NavGroup[] = [
     label: "System",
     items: [
       { href: "/admin/staff", label: "Staff", icon: "IdentificationBadge", roles: ADMINS },
+      { href: "/admin/emails", label: "Emails", icon: "EnvelopeSimple", roles: ADMINS },
       { href: "/admin/audit", label: "Audit log", icon: "ListChecks", roles: ADMINS },
     ],
   },

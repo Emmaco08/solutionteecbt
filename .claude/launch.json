@@ -12,6 +12,12 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["-C", "apps/web", "dev"],
       "port": 3000
+    },
+    {
+      "name": "web-email-log",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "set EMAIL_TRANSPORT=log&& pnpm -C apps/web dev"],
+      "port": 3000
     }
   ]
 }

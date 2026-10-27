@@ -10,7 +10,8 @@ Provided by the owner on 2026-10-26. Used in legal pages, the About screen, rece
 | Website | https://solutiontee.com |
 | Student web app (planned) | https://app.solutiontee.com |
 | WhatsApp support | +234 812 244 5948 (`https://wa.me/2348122445948`) |
-| Support email | **To confirm with the owner** (placeholder until confirmed) |
+| Support email | support@mail.solutiontee.com (replies to all app emails go here) |
+| Email senders | noreply@mail.solutiontee.com (codes, security notices) · info@mail.solutiontee.com (welcome, invites) · domain `mail.solutiontee.com` verified in Brevo |
 | Product | SolutionTee CBT · "Learn. Think. Solve." |
 
 Legal status:

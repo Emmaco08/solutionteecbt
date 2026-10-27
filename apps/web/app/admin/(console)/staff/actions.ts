@@ -4,7 +4,8 @@ import { z } from "zod";
 import { requireStaff, ROLE_LABEL } from "@/lib/auth";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { env, hasServiceKey } from "@/lib/env";
-import { sendEmail, inviteEmail } from "@/lib/email";
+import { sendEmail } from "@/lib/email";
+import { inviteEmail } from "@/lib/email-templates";
 import { friendlyError, type ActionResult } from "@/lib/result";
 
 const Role = z.enum(["super_admin", "admin", "editor", "teacher"]);
@@ -31,7 +32,7 @@ export async function inviteStaff(form: FormData): Promise<ActionResult<{ link?:
 
   const type = gen.data.properties.verification_type === "recovery" ? "recovery" : "invite";
   const link = `${env.siteUrl}/admin/accept?token_hash=${encodeURIComponent(gen.data.properties.hashed_token)}&type=${type}`;
-  const sent = await sendEmail(p.data.email, "You're invited to the SolutionTee admin", inviteEmail(link, ROLE_LABEL[p.data.role], me.name));
+  const sent = await sendEmail({ to: p.data.email, ...inviteEmail(link, ROLE_LABEL[p.data.role], me.name), from: "info", tags: ["staff-invite"] });
   revalidatePath("/admin", "layout");
   return sent.ok
     ? { ok: true, message: `Invite sent to ${p.data.email}.` }

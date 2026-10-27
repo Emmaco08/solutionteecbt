@@ -834,6 +834,9 @@ export type Database = {
         }[]
       }
       admin_user_detail: { Args: { p_user: string }; Returns: Json }
+      email_send_allowed: { Args: { p_kind: string; p_email_hash: string; p_ip_hash: string | null }; Returns: string }
+      email_sent_last_24h: { Args: never; Returns: number }
+      auth_user_status: { Args: { p_email: string }; Returns: string }
       admin_set_ban: {
         Args: { p_banned: boolean; p_reason?: string; p_user: string }
         Returns: undefined
