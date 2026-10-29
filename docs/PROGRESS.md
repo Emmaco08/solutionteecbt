@@ -64,7 +64,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started · `[!]` blocked on
 - [x] App: Me, history, settings (theme, reduce motion, data saver), help, about/terms/privacy, delete account, log out
 - [x] Tests: scoring, exam clock, calculator, widget tests (onboarding, sign-up consent, CBT answer/flag/submit): 18/18 pass. `flutter analyze` clean
 - [x] Dev sample papers (`supabase/seed/dev-sample-questions.sql`, `[SAMPLE]`, dev project only)
-- [ ] Debug APK builds on the laptop
+- [x] Debug APK builds on the laptop (2026-10-29, first build ~40 min because of downloads; later builds reuse the cache)
 - [ ] Run on the owner's phone over USB and walk through the test plan
 - [ ] Owner approval: `APP CORE APPROVED`
 
