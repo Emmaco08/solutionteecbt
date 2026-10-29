@@ -305,3 +305,24 @@ Check delivery yourself:
 
 *For developers:* with `EMAIL_TRANSPORT=log` in development, emails go to the server log instead (`docs/AUTH_EMAIL.md`).
 
+
+## 8. Phase 3: the Android app on your phone
+
+Installed on the laptop (2026-10-28/29): Flutter stable at `C:\dev\flutter`, JDK 17 at `C:\dev\jdk-17`, Android command-line tools in `%LOCALAPPDATA%\Android\Sdk`. `JAVA_HOME`, `ANDROID_HOME` and `PATH` are set for your Windows user. `flutter config --jdk-dir=C:\dev\jdk-17` is set, because Android Studio's Java 25 is too new for Gradle. There is no emulator and Android Studio is not used.
+
+Full steps are in `apps/mobile/README.md`. In short:
+
+1. Phone: turn on Developer options → **USB debugging**, plug in, tap **Allow**.
+2. `adb devices` (you should see `device`), then `adb reverse tcp:3000 tcp:3000`.
+3. `pnpm -C apps/web dev` (the website API the app uses for codes, images and account deletion).
+4. `cd apps/mobile`, then `flutter run -d <your phone id>`.
+
+**Sample papers (dev only).** The dev database has `[SAMPLE]` papers so you can try the CBT:
+- JAMB English, Maths, Physics and Chemistry for 2001–2004. A Free account opens 2001–2003, and 2004 shows as locked.
+- WAEC Maths for 2001–2002.
+
+They are not real past questions. Remove them once real questions are imported. The delete commands are at the bottom of `supabase/seed/dev-sample-questions.sql`.
+
+**Still yours to do:**
+- **OTP length.** In Supabase → Authentication → Providers → Email, set *Email OTP length* to 6 and *expiry* to 600 seconds. The app already works with 8-digit codes.
+- **App icon.** Provide a 512×512 PNG icon (Play Store and launcher). The app still shows Flutter's default launcher icon until then.

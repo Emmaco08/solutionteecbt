@@ -72,7 +72,7 @@ ${Object.entries(t.type).map(([k, v]) => `  static const ${camel(k)} = (size: ${
 /// Motion: durations (ms) and easing curves. Respect reduce-motion (MediaQuery.disableAnimations).
 abstract final class Motion {
 ${Object.entries(t.motion.duration).map(([k, v]) => `  static const ${camel(k)} = Duration(milliseconds: ${v});`).join('\n')}
-${Object.entries(t.motion.easing).map(([k, v]) => { const n = v.match(/[\d.]+/g).map(Number); return `  static const ${camel(k)} = Cubic(${n.join(', ')});`; }).join('\n')}
+${Object.entries(t.motion.easing).map(([k, v]) => { const n = v.match(/[\d.]+/g).map(Number); return `  static const ${k === "in" ? "easeIn" : camel(k)} = Cubic(${n.join(', ')});`; }).join('\n')}
   static const stagger = Duration(milliseconds: ${t.motion.stagger});
   static const pressScale = ${t.motion.pressScale};
 }

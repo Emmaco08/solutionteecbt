@@ -53,7 +53,20 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started · `[!]` blocked on
 - [ ] Owner: create the first super admin; press *Send me a test email* on the Emails page; in Supabase set Email OTP length 6 and expiry 600 s (SETUP §7.10)
 
 ## Phase 3 — Mobile app core  (approval: `APP CORE APPROVED`)
-- [ ] Not started
+- [x] Plan: `docs/plans/phase-3.md`
+- [x] Toolchain on the laptop: Flutter stable, JDK 17, Android command-line tools (no emulator, no Android Studio)
+- [x] Server: attempts tables + `submit_attempt` (server re-marks, idempotent), account deletion API, image-link API `/api/images/sign`
+- [x] App: splash, welcome, onboarding (server slides), sign-up/login/verify code/forgot/reset, 3-step profile setup
+- [x] App: tabs from the server, maintenance and force-update gates, Home (continue card, exam cards, news, plan badge)
+- [x] App: Test hub and setup (modes, subjects, years with server locks, timed switch)
+- [x] App: CBT screen (timer with warnings, subject tabs, passages, LaTeX, palette, flag, calculator, autosave, resume, auto-submit, FLAG_SECURE)
+- [x] App: results (score /400, per subject, weak topics, confetti) and review with filters and explanations
+- [x] App: Me, history, settings (theme, reduce motion, data saver), help, about/terms/privacy, delete account, log out
+- [x] Tests: scoring, exam clock, calculator, widget tests (onboarding, sign-up consent, CBT answer/flag/submit): 18/18 pass. `flutter analyze` clean
+- [x] Dev sample papers (`supabase/seed/dev-sample-questions.sql`, `[SAMPLE]`, dev project only)
+- [ ] Debug APK builds on the laptop
+- [ ] Run on the owner's phone over USB and walk through the test plan
+- [ ] Owner approval: `APP CORE APPROVED`
 
 ## Phase 4 — Study, premium, payments, AI  (approval: `PREMIUM APPROVED`)
 - [ ] Not started

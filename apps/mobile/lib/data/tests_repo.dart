@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'dart:math';
+
 import 'package:drift/drift.dart' show InsertMode, Value, BooleanExpressionOperators;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
+
 import '../core/api.dart';
 import '../core/providers.dart';
 import '../features/cbt/scoring.dart';
@@ -48,9 +50,14 @@ class TestsRepo {
     try {
       final all = <Map<String, dynamic>>[];
       for (var offset = 0; offset < 500; offset += 100) {
-        final page = await _sb.rpc('fetch_questions', params: {
-          'p_exam': examId, 'p_subject': subjectId, 'p_year': year, 'p_mode': 'cbt', 'p_limit': 100, 'p_offset': offset,
-        }).timeout(const Duration(seconds: 20)) as List;
+        final page =
+            await _sb
+                    .rpc(
+                      'fetch_questions',
+                      params: {'p_exam': examId, 'p_subject': subjectId, 'p_year': year, 'p_mode': 'cbt', 'p_limit': 100, 'p_offset': offset},
+                    )
+                    .timeout(const Duration(seconds: 20))
+                as List;
         all.addAll(page.map((e) => Map<String, dynamic>.from(e as Map)));
         if (page.length < 100) break;
       }
@@ -59,12 +66,20 @@ class TestsRepo {
           b.insert(
             _db.cachedQuestions,
             CachedQuestionsCompanion.insert(
-              id: q['id'] as String, examId: examId, subjectId: subjectId, year: year,
-              number: Value((q['number'] as num?)?.toInt()), body: q['body'] as String,
-              optionsJson: jsonEncode(q['options']), answer: q['answer'] as String,
-              explanation: Value(q['explanation'] as String?), topic: Value(q['topic'] as String?),
-              imagePath: Value(q['image_path'] as String?), passageId: Value(q['passage_id'] as String?),
-              passageTitle: Value(q['passage_title'] as String?), passageBody: Value(q['passage_body'] as String?),
+              id: q['id'] as String,
+              examId: examId,
+              subjectId: subjectId,
+              year: year,
+              number: Value((q['number'] as num?)?.toInt()),
+              body: q['body'] as String,
+              optionsJson: jsonEncode(q['options']),
+              answer: q['answer'] as String,
+              explanation: Value(q['explanation'] as String?),
+              topic: Value(q['topic'] as String?),
+              imagePath: Value(q['image_path'] as String?),
+              passageId: Value(q['passage_id'] as String?),
+              passageTitle: Value(q['passage_title'] as String?),
+              passageBody: Value(q['passage_body'] as String?),
               fetchedAt: Value(DateTime.now()),
             ),
             mode: InsertMode.insertOrReplace,
@@ -81,28 +96,38 @@ class TestsRepo {
     } catch (e) {
       if (e is ApiError) rethrow;
       // Offline: use what we downloaded before.
-      final cachedRows = await (_db.select(_db.cachedQuestions)
-            ..where((q) => q.examId.equals(examId) & q.subjectId.equals(subjectId) & q.year.equals(year)))
-          .get();
+      final cachedRows = await (_db.select(
+        _db.cachedQuestions,
+      )..where((q) => q.examId.equals(examId) & q.subjectId.equals(subjectId) & q.year.equals(year))).get();
       if (cachedRows.isNotEmpty) return cachedRows;
       throw ApiError('You are offline and this paper is not on your phone yet. Connect once to download it.');
     }
   }
 
   CachedQuestion _fromMap(Map<String, dynamic> q, int examId, int subjectId, int year) => CachedQuestion(
-        id: q['id'] as String, examId: examId, subjectId: subjectId, year: year, number: (q['number'] as num?)?.toInt(),
-        body: q['body'] as String, optionsJson: jsonEncode(q['options']), answer: q['answer'] as String,
-        explanation: q['explanation'] as String?, topic: q['topic'] as String?, imagePath: q['image_path'] as String?,
-        passageId: q['passage_id'] as String?, passageTitle: q['passage_title'] as String?, passageBody: q['passage_body'] as String?,
-        fetchedAt: DateTime.now(),
-      );
+    id: q['id'] as String,
+    examId: examId,
+    subjectId: subjectId,
+    year: year,
+    number: (q['number'] as num?)?.toInt(),
+    body: q['body'] as String,
+    optionsJson: jsonEncode(q['options']),
+    answer: q['answer'] as String,
+    explanation: q['explanation'] as String?,
+    topic: q['topic'] as String?,
+    imagePath: q['image_path'] as String?,
+    passageId: q['passage_id'] as String?,
+    passageTitle: q['passage_title'] as String?,
+    passageBody: q['passage_body'] as String?,
+    fetchedAt: DateTime.now(),
+  );
 
   /// Open (published + allowed) years for a subject, newest first.
   Future<List<int>> openYears(int examId, int subjectId) async {
     final years = await ref.read(openYearsProvider.future);
     return [
       for (final y in years)
-        if (y['exam_id'] == examId && y['subject_id'] == subjectId && y['cbt_open'] == true) (y['year'] as num).toInt()
+        if (y['exam_id'] == examId && y['subject_id'] == subjectId && y['cbt_open'] == true) (y['year'] as num).toInt(),
     ]..sort((a, b) => b.compareTo(a));
   }
 
@@ -142,11 +167,20 @@ class TestsRepo {
     final ids = [for (final q in picked) q.id];
     final limit = r.timed ? (picked.length * minutesPerQuestion * 60).round() : 0;
     final id = const Uuid().v4();
-    await _db.into(_db.localAttempts).insert(LocalAttemptsCompanion.insert(
-      id: id, examId: r.examId, examCode: r.examCode, mode: r.mode.name,
-      configJson: jsonEncode({'subjects': r.subjectIds, 'year': r.year, 'topic': r.topic, 'timed': r.timed, 'title': r.title}),
-      questionIdsJson: jsonEncode(ids), limitSeconds: limit, startedAt: DateTime.now(),
-    ));
+    await _db
+        .into(_db.localAttempts)
+        .insert(
+          LocalAttemptsCompanion.insert(
+            id: id,
+            examId: r.examId,
+            examCode: r.examCode,
+            mode: r.mode.name,
+            configJson: jsonEncode({'subjects': r.subjectIds, 'year': r.year, 'topic': r.topic, 'timed': r.timed, 'title': r.title}),
+            questionIdsJson: jsonEncode(ids),
+            limitSeconds: limit,
+            startedAt: DateTime.now(),
+          ),
+        );
     // A new test replaces any unfinished one (the student chose "fresh" over "continue").
     await (_db.delete(_db.localAttempts)..where((a) => a.submittedAt.isNull() & a.id.equals(id).not())).go();
     return id;
@@ -157,11 +191,14 @@ class TestsRepo {
     final a = await (_db.select(_db.localAttempts)..where((x) => x.id.equals(attemptId))).getSingle();
     final ids = (jsonDecode(a.questionIdsJson) as List).cast<String>();
     final qs = await _db.questionsByIds(ids);
-    final answers = {for (final x in await _db.answersFor(attemptId)) if (x.choice != null) x.questionId: x.choice!};
+    final answers = {
+      for (final x in await _db.answersFor(attemptId))
+        if (x.choice != null) x.questionId: x.choice!,
+    };
     final score = scoreAttempt([for (final q in qs) QuestionKey(id: q.id, subjectId: q.subjectId, answer: q.answer, topic: q.topic)], answers);
-    await (_db.update(_db.localAttempts)..where((x) => x.id.equals(attemptId))).write(LocalAttemptsCompanion(
-      submittedAt: Value(DateTime.now()), usedMs: Value(usedMs), clientScoreJson: Value(jsonEncode(score.toJson())),
-    ));
+    await (_db.update(_db.localAttempts)..where((x) => x.id.equals(attemptId))).write(
+      LocalAttemptsCompanion(submittedAt: Value(DateTime.now()), usedMs: Value(usedMs), clientScoreJson: Value(jsonEncode(score.toJson()))),
+    );
     await syncPending();
     return score;
   }
@@ -172,17 +209,30 @@ class TestsRepo {
     for (final a in await _db.unsyncedAttempts()) {
       final answers = await _db.answersFor(a.id);
       try {
-        final server = await _sb.rpc('submit_attempt', params: {
-          'p': {
-            'id': a.id, 'exam_id': a.examId, 'mode': a.mode, 'config': jsonDecode(a.configJson),
-            'question_ids': jsonDecode(a.questionIdsJson), 'started_at': a.startedAt.toUtc().toIso8601String(),
-            'submitted_at': a.submittedAt!.toUtc().toIso8601String(), 'time_used_s': (a.usedMs / 1000).round(),
-            'client_score': a.clientScoreJson == null ? null : jsonDecode(a.clientScoreJson!),
-            'answers': [for (final x in answers) {'q': x.questionId, 'c': x.choice, 'f': x.flagged, 't': x.timeMs}],
-          },
-        }).timeout(const Duration(seconds: 20));
-        await (_db.update(_db.localAttempts)..where((x) => x.id.equals(a.id)))
-            .write(LocalAttemptsCompanion(synced: const Value(true), serverScoreJson: Value(jsonEncode(server))));
+        final server = await _sb
+            .rpc(
+              'submit_attempt',
+              params: {
+                'p': {
+                  'id': a.id,
+                  'exam_id': a.examId,
+                  'mode': a.mode,
+                  'config': jsonDecode(a.configJson),
+                  'question_ids': jsonDecode(a.questionIdsJson),
+                  'started_at': a.startedAt.toUtc().toIso8601String(),
+                  'submitted_at': a.submittedAt!.toUtc().toIso8601String(),
+                  'time_used_s': (a.usedMs / 1000).round(),
+                  'client_score': a.clientScoreJson == null ? null : jsonDecode(a.clientScoreJson!),
+                  'answers': [
+                    for (final x in answers) {'q': x.questionId, 'c': x.choice, 'f': x.flagged, 't': x.timeMs},
+                  ],
+                },
+              },
+            )
+            .timeout(const Duration(seconds: 20));
+        await (_db.update(
+          _db.localAttempts,
+        )..where((x) => x.id.equals(a.id))).write(LocalAttemptsCompanion(synced: const Value(true), serverScoreJson: Value(jsonEncode(server))));
         done++;
       } catch (_) {
         // Offline or temporarily failing: try again later.

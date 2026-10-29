@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'tokens.g.dart';
 
 /// Material 3 theme built only from design tokens (design/tokens.json → tokens.g.dart).
@@ -22,13 +23,13 @@ extension AppThemeX on BuildContext {
 }
 
 TextStyle _ts(({double size, double line, int weight, double tracking}) s, Color color) => TextStyle(
-      fontFamily: kFont,
-      fontSize: s.size,
-      height: s.line / s.size,
-      fontWeight: s.weight >= 700 ? FontWeight.w700 : FontWeight.w500,
-      letterSpacing: s.tracking,
-      color: color,
-    );
+  fontFamily: kFont,
+  fontSize: s.size,
+  height: s.line / s.size,
+  fontWeight: s.weight >= 700 ? FontWeight.w700 : FontWeight.w500,
+  letterSpacing: s.tracking,
+  color: color,
+);
 
 ThemeData buildTheme(Brightness brightness) {
   final c = brightness == Brightness.dark ? AppColors.dark : AppColors.light;
@@ -94,7 +95,10 @@ ThemeData buildTheme(Brightness brightness) {
       color: c.surface,
       elevation: 0,
       margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Radii.lg), side: BorderSide(color: c.border)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Radii.lg),
+        side: BorderSide(color: c.border),
+      ),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
@@ -115,20 +119,28 @@ ThemeData buildTheme(Brightness brightness) {
       ),
     ),
     textButtonTheme: TextButtonThemeData(
-      style: TextButton.styleFrom(
-        minimumSize: const Size(Sizes.tapMin, Sizes.tapMin),
-        foregroundColor: c.link,
-        textStyle: _ts(TypeScale.label, c.link),
-      ),
+      style: TextButton.styleFrom(minimumSize: const Size(Sizes.tapMin, Sizes.tapMin), foregroundColor: c.link, textStyle: _ts(TypeScale.label, c.link)),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: c.surface,
       contentPadding: const EdgeInsets.symmetric(horizontal: Space.s4, vertical: Space.s4),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(Radii.md), borderSide: BorderSide(color: c.borderStrong, width: 1.5)),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(Radii.md), borderSide: BorderSide(color: c.borderStrong, width: 1.5)),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(Radii.md), borderSide: BorderSide(color: c.secondary, width: 2)),
-      errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(Radii.md), borderSide: BorderSide(color: c.error, width: 1.5)),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(Radii.md),
+        borderSide: BorderSide(color: c.borderStrong, width: 1.5),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(Radii.md),
+        borderSide: BorderSide(color: c.borderStrong, width: 1.5),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(Radii.md),
+        borderSide: BorderSide(color: c.secondary, width: 2),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(Radii.md),
+        borderSide: BorderSide(color: c.error, width: 1.5),
+      ),
       hintStyle: _ts(TypeScale.body, c.textSubtle),
       labelStyle: _ts(TypeScale.label, c.textMuted),
     ),
@@ -146,7 +158,10 @@ ThemeData buildTheme(Brightness brightness) {
       showDragHandle: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.sheet))),
     ),
-    dialogTheme: DialogThemeData(backgroundColor: c.surface, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Radii.xl))),
+    dialogTheme: DialogThemeData(
+      backgroundColor: c.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Radii.xl)),
+    ),
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
       backgroundColor: c.primary,
@@ -154,8 +169,6 @@ ThemeData buildTheme(Brightness brightness) {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Radii.md)),
     ),
     dividerTheme: DividerThemeData(color: c.border, thickness: 1, space: 1),
-    pageTransitionsTheme: const PageTransitionsTheme(builders: {
-      TargetPlatform.android: PredictiveBackPageTransitionsBuilder(),
-    }),
+    pageTransitionsTheme: const PageTransitionsTheme(builders: {TargetPlatform.android: PredictiveBackPageTransitionsBuilder()}),
   );
 }

@@ -1,6 +1,8 @@
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'config.dart';
 
 /// A friendly error the UI can show as-is.
@@ -26,9 +28,7 @@ class WebApi {
       headers['authorization'] = 'Bearer $token';
     }
     try {
-      final r = await _http
-          .post(Uri.parse('${Config.apiBase}$path'), headers: headers, body: jsonEncode(body))
-          .timeout(const Duration(seconds: 25));
+      final r = await _http.post(Uri.parse('${Config.apiBase}$path'), headers: headers, body: jsonEncode(body)).timeout(const Duration(seconds: 25));
       final data = r.body.isEmpty ? <String, dynamic>{} : jsonDecode(r.body) as Map<String, dynamic>;
       if (r.statusCode >= 400) throw ApiError((data['error'] as String?) ?? 'Something went wrong. Try again.', status: r.statusCode);
       return data;
@@ -42,7 +42,10 @@ class WebApi {
   /// Creates the account (unconfirmed) and emails a code. Returns how many digits the code has.
   Future<int> signUp({required String email, required String password, required String fullName, String? referralCode}) async {
     final d = await _post('/api/auth/sign-up', {
-      'email': email, 'password': password, 'fullName': fullName, 'consent': true,
+      'email': email,
+      'password': password,
+      'fullName': fullName,
+      'consent': true,
       if (referralCode != null && referralCode.isNotEmpty) 'referralCode': referralCode,
     });
     return (d['codeLength'] as num?)?.toInt() ?? 6;
@@ -60,6 +63,12 @@ class WebApi {
     } catch (_) {
       // Notices are best-effort.
     }
+  }
+
+  /// A short-lived link to a question image. The server checks the student may see that question first.
+  Future<String> signImage(String key) async {
+    final d = await _post('/api/images/sign', {'key': key}, auth: true);
+    return d['url'] as String;
   }
 
   Future<void> deleteAccount() => _post('/api/account/delete', {'confirm': 'DELETE'}, auth: true);

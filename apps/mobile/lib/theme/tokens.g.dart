@@ -311,7 +311,7 @@ abstract final class Motion {
   static const celebrate = Duration(milliseconds: 1200);
   static const standard = Cubic(0.2, 0, 0, 1);
   static const out = Cubic(0.16, 1, 0.3, 1);
-  static const in = Cubic(0.4, 0, 1, 1);
+  static const easeIn = Cubic(0.4, 0, 1, 1);
   static const emphasized = Cubic(0.3, 0, 0, 1.15);
   static const stagger = Duration(milliseconds: 50);
   static const pressScale = 0.97;

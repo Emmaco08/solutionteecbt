@@ -21,8 +21,7 @@ class SubjectScore {
   /// Score out of 100 for this subject: round(100 * correct / questions). Unanswered counts as wrong.
   int get score => total == 0 ? 0 : (100 * correct / total).round();
 
-  Map<String, Object> toJson() =>
-      {'subject_id': subjectId, 'total': total, 'correct': correct, 'answered': answered, 'score': score};
+  Map<String, Object> toJson() => {'subject_id': subjectId, 'total': total, 'correct': correct, 'answered': answered, 'score': score};
 }
 
 class AttemptScore {
@@ -41,13 +40,13 @@ class AttemptScore {
   int get accuracy => questions == 0 ? 0 : (100 * correct / questions).round();
 
   Map<String, Object> toJson() => {
-        'questions': questions,
-        'answered': answered,
-        'correct': correct,
-        'total': total,
-        'max': max,
-        'subjects': [for (final s in subjects) s.toJson()],
-      };
+    'questions': questions,
+    'answered': answered,
+    'correct': correct,
+    'total': total,
+    'max': max,
+    'subjects': [for (final s in subjects) s.toJson()],
+  };
 }
 
 /// Marks a test. [answers] maps question id to the chosen letter (missing = not answered).
@@ -78,7 +77,9 @@ List<({String topic, int wrong, int total})> weakTopics(List<QuestionKey> questi
     final wrong = answers[q.id]?.toUpperCase() != q.answer;
     stats[t] = (wrong: s.wrong + (wrong ? 1 : 0), total: s.total + 1);
   }
-  final list = [for (final e in stats.entries) if (e.value.wrong > 0) (topic: e.key, wrong: e.value.wrong, total: e.value.total)]
-    ..sort((a, b) => (b.wrong / b.total).compareTo(a.wrong / a.total));
+  final list = [
+    for (final e in stats.entries)
+      if (e.value.wrong > 0) (topic: e.key, wrong: e.value.wrong, total: e.value.total),
+  ]..sort((a, b) => (b.wrong / b.total).compareTo(a.wrong / a.total));
   return list.take(top).toList();
 }

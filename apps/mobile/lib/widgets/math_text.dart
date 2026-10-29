@@ -28,16 +28,31 @@ class MathText extends StatelessWidget {
         onErrorFallback: (err) => Container(
           padding: const EdgeInsets.symmetric(horizontal: 4),
           decoration: BoxDecoration(color: const Color(0x22D93A3A), borderRadius: BorderRadius.circular(4)),
-          child: Text(raw, style: base.copyWith(fontFamily: 'monospace', fontSize: (base.fontSize ?? 15) * .9)),
+          child: Text(
+            raw,
+            style: base.copyWith(fontFamily: 'monospace', fontSize: (base.fontSize ?? 15) * .9),
+          ),
         ),
       );
-      spans.add(display
-          ? WidgetSpan(child: SizedBox(width: double.infinity, child: Center(child: SingleChildScrollView(scrollDirection: Axis.horizontal, child: math))))
-          : WidgetSpan(alignment: PlaceholderAlignment.middle, child: math));
+      spans.add(
+        display
+            ? WidgetSpan(
+                child: SizedBox(
+                  width: double.infinity,
+                  child: Center(
+                    child: SingleChildScrollView(scrollDirection: Axis.horizontal, child: math),
+                  ),
+                ),
+              )
+            : WidgetSpan(alignment: PlaceholderAlignment.middle, child: math),
+      );
       last = m.end;
     }
     if (last < text.length) spans.add(TextSpan(text: _unescape(text.substring(last))));
-    return Text.rich(TextSpan(style: base, children: spans), textAlign: textAlign);
+    return Text.rich(
+      TextSpan(style: base, children: spans),
+      textAlign: textAlign,
+    );
   }
 
   static String _unescape(String s) => s.replaceAll(r'\$', r'$');

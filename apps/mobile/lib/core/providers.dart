@@ -1,7 +1,9 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../data/db.dart';
 import 'api.dart';
 
@@ -33,20 +35,20 @@ class AppSettings {
   final bool toured;
 
   AppSettings copyWith({ThemeMode? theme, bool? reduceMotion, bool? dataSaver, bool? onboarded, bool? toured}) => AppSettings(
-        theme: theme ?? this.theme,
-        reduceMotion: reduceMotion ?? this.reduceMotion,
-        dataSaver: dataSaver ?? this.dataSaver,
-        onboarded: onboarded ?? this.onboarded,
-        toured: toured ?? this.toured,
-      );
+    theme: theme ?? this.theme,
+    reduceMotion: reduceMotion ?? this.reduceMotion,
+    dataSaver: dataSaver ?? this.dataSaver,
+    onboarded: onboarded ?? this.onboarded,
+    toured: toured ?? this.toured,
+  );
   Map<String, Object> toJson() => {'theme': theme.name, 'rm': reduceMotion, 'ds': dataSaver, 'ob': onboarded, 'tour': toured};
   static AppSettings fromJson(Map<String, dynamic> j) => AppSettings(
-        theme: ThemeMode.values.firstWhere((m) => m.name == j['theme'], orElse: () => ThemeMode.system),
-        reduceMotion: j['rm'] == true,
-        dataSaver: j['ds'] == true,
-        onboarded: j['ob'] == true,
-        toured: j['tour'] == true,
-      );
+    theme: ThemeMode.values.firstWhere((m) => m.name == j['theme'], orElse: () => ThemeMode.system),
+    reduceMotion: j['rm'] == true,
+    dataSaver: j['ds'] == true,
+    onboarded: j['ob'] == true,
+    toured: j['tour'] == true,
+  );
 }
 
 class SettingsNotifier extends Notifier<AppSettings> {
@@ -86,29 +88,45 @@ Future<T> cached<T>(Ref ref, String key, Future<Object?> Function(SupabaseClient
 
 List<Map<String, dynamic>> rows(Object? j) => [for (final r in (j as List? ?? const [])) Map<String, dynamic>.from(r as Map)];
 
-final appSettingsProvider = FutureProvider<Map<String, dynamic>>((ref) => cached(ref, 'app_settings',
-    (s) => s.from('app_settings').select('key, value'), (j) => {for (final r in rows(j)) r['key'] as String: r['value']}));
+final appSettingsProvider = FutureProvider<Map<String, dynamic>>(
+  (ref) => cached(ref, 'app_settings', (s) => s.from('app_settings').select('key, value'), (j) => {for (final r in rows(j)) r['key'] as String: r['value']}),
+);
 
-final onboardingProvider = FutureProvider<List<Map<String, dynamic>>>((ref) => cached(
-    ref, 'onboarding', (s) => s.from('onboarding_slides').select('title, body, animation, sort').eq('enabled', true).order('sort'), rows));
+final onboardingProvider = FutureProvider<List<Map<String, dynamic>>>(
+  (ref) => cached(ref, 'onboarding', (s) => s.from('onboarding_slides').select('title, body, animation, sort').eq('enabled', true).order('sort'), rows),
+);
 
-final tabsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) =>
-    cached(ref, 'tabs', (s) => s.from('app_tabs').select('key, title, icon, type, sort, premium_only, config').eq('enabled', true).order('sort'), rows));
+final tabsProvider = FutureProvider<List<Map<String, dynamic>>>(
+  (ref) => cached(ref, 'tabs', (s) => s.from('app_tabs').select('key, title, icon, type, sort, premium_only, config').eq('enabled', true).order('sort'), rows),
+);
 
-final examsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) =>
-    cached(ref, 'exams', (s) => s.from('exam_bodies').select('id, code, name, sort, exam_configs(*)').eq('is_active', true).order('sort'), rows));
+final examsProvider = FutureProvider<List<Map<String, dynamic>>>(
+  (ref) => cached(ref, 'exams', (s) => s.from('exam_bodies').select('id, code, name, sort, exam_configs(*)').eq('is_active', true).order('sort'), rows),
+);
 
-final subjectsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) =>
-    cached(ref, 'subjects', (s) => s.from('subjects').select('id, code, name, sort').order('sort'), rows));
+final subjectsProvider = FutureProvider<List<Map<String, dynamic>>>(
+  (ref) => cached(ref, 'subjects', (s) => s.from('subjects').select('id, code, name, sort').order('sort'), rows),
+);
 
-final examSubjectsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) =>
-    cached(ref, 'exam_subjects', (s) => s.from('exam_subjects').select('exam_id, subject_id, compulsory, question_count, minutes'), rows));
+final examSubjectsProvider = FutureProvider<List<Map<String, dynamic>>>(
+  (ref) => cached(ref, 'exam_subjects', (s) => s.from('exam_subjects').select('exam_id, subject_id, compulsory, question_count, minutes'), rows),
+);
 
 final newsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) {
   ref.watch(sessionProvider);
-  return cached(ref, 'news', (s) => s.from('news_posts').select('id, title, summary, body, category, link_type, link_target, is_pinned, publish_at')
-      .eq('status', 'published').lte('publish_at', DateTime.now().toUtc().toIso8601String())
-      .order('is_pinned', ascending: false).order('publish_at', ascending: false).limit(10), rows);
+  return cached(
+    ref,
+    'news',
+    (s) => s
+        .from('news_posts')
+        .select('id, title, summary, body, category, link_type, link_target, is_pinned, publish_at')
+        .eq('status', 'published')
+        .lte('publish_at', DateTime.now().toUtc().toIso8601String())
+        .order('is_pinned', ascending: false)
+        .order('publish_at', ascending: false)
+        .limit(10),
+    rows,
+  );
 });
 
 /// Published years with lock status for this student (server decides).
@@ -125,6 +143,10 @@ final myPlanProvider = FutureProvider<Map<String, dynamic>>((ref) {
 final profileProvider = FutureProvider<Map<String, dynamic>?>((ref) async {
   final session = ref.watch(sessionProvider).value;
   if (session == null) return null;
-  return cached(ref, 'profile', (s) => s.from('profiles').select().eq('id', session.user.id).maybeSingle(),
-      (j) => j == null ? null : Map<String, dynamic>.from(j as Map));
+  return cached(
+    ref,
+    'profile',
+    (s) => s.from('profiles').select().eq('id', session.user.id).maybeSingle(),
+    (j) => j == null ? null : Map<String, dynamic>.from(j as Map),
+  );
 });

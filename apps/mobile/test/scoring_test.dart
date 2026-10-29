@@ -2,10 +2,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:solutiontee_cbt/features/cbt/scoring.dart';
 
 List<QuestionKey> jambFull() => [
-      for (var i = 0; i < 60; i++) QuestionKey(id: 'e$i', subjectId: 1, answer: 'A', topic: i < 10 ? 'Concord' : 'Comprehension'),
-      for (final s in [2, 3, 4])
-        for (var i = 0; i < 40; i++) QuestionKey(id: 's$s-$i', subjectId: s, answer: 'B', topic: 'T$s'),
-    ];
+  for (var i = 0; i < 60; i++) QuestionKey(id: 'e$i', subjectId: 1, answer: 'A', topic: i < 10 ? 'Concord' : 'Comprehension'),
+  for (final s in [2, 3, 4])
+    for (var i = 0; i < 40; i++) QuestionKey(id: 's$s-$i', subjectId: s, answer: 'B', topic: 'T$s'),
+];
 
 void main() {
   test('perfect JAMB paper scores 400 (60 English + 3 x 40)', () {
@@ -59,7 +59,8 @@ void main() {
     final qs = jambFull();
     final answers = {for (final q in qs) q.id: q.answer}
       ..['e0'] = 'B'
-      ..['e1'] = 'B' // Concord: 2 wrong of 10
+      ..['e1'] =
+          'B' // Concord: 2 wrong of 10
       ..['s2-0'] = 'A'; // T2: 1 wrong of 40
     final weak = weakTopics(qs, answers);
     expect(weak.first.topic, 'Concord');

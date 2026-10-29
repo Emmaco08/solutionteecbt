@@ -8,8 +8,9 @@ library;
 
 class ExamClock {
   ExamClock({required this.limit, Duration used = Duration.zero, DateTime Function()? now})
-      : _used = used,
-        _now = now ?? DateTime.now;
+    // ignore: prefer_initializing_formals
+    : _used = used,
+      _now = now ?? DateTime.now;
 
   /// Total time allowed (Duration.zero = untimed).
   final Duration limit;
@@ -33,7 +34,13 @@ class ExamClock {
   bool get expired => timed && left == Duration.zero;
 
   /// Warning level for the header colour: 0 normal, 1 at 10 minutes left, 2 at 5 minutes left.
-  int get warning => !timed ? 0 : left <= const Duration(minutes: 5) ? 2 : left <= const Duration(minutes: 10) ? 1 : 0;
+  int get warning => !timed
+      ? 0
+      : left <= const Duration(minutes: 5)
+      ? 2
+      : left <= const Duration(minutes: 10)
+      ? 1
+      : 0;
 
   void start() => _runningSince ??= _now();
 

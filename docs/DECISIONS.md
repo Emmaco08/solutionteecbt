@@ -260,3 +260,16 @@ The owner's `.env.local` has a single `R2_BUCKET`. The code stores question imag
 
 **D-049 update · 2026-10-27:** the owner confirmed the R2 bucket stays **private**. All images (questions and news) are served through short signed links from the server. A public CDN bucket for news and onboarding pictures can be added later if needed.
 
+
+**D-051 · 2026-10-29 · Phase 3 app-core choices**
+- **The exam clock pauses while the app is closed.** The phone saves the used time with every answer and whenever the app goes to the background. A test reopened later carries on with the time that was left. A student whose phone dies does not lose the paper. Real JAMB has no "app closed", so this is the fairest offline rule.
+- **Two marks, one that counts.** The phone marks at once, so results show offline. The server re-marks from its own answer key when the attempt syncs (`submit_attempt`, idempotent), and the results screen then says "Checked by SolutionTee". The two formulas are identical and tested on both sides.
+- **Dev API over USB.** Debug builds call the laptop's Next.js API at `http://localhost:3000` through `adb reverse tcp:3000 tcp:3000`. Plain http is allowed **only** for localhost and **only** in debug builds (`android/app/src/debug/res/xml/network_security_config.xml`). Release builds are HTTPS-only.
+- **App id `com.solutiontee.cbt`.** The Play Store link in the force-update screen uses it.
+- **Screenshots blocked in tests.** `FLAG_SECURE` is on while a CBT screen is open (MethodChannel `solutiontee/secure`) and off elsewhere.
+- **No Android backup** (`allowBackup=false` + data-extraction rules). Login tokens and question packs never leave the phone in a backup.
+- **Question images** come through `POST /api/images/sign`. The server runs `can_view_question_image` as the student, then returns a 5-minute R2 link. A locked image is never signed. With data saver on, diagrams load only on tap.
+- **Icons: our own Phosphor set, not `phosphor_flutter`.** That package (last release 2024) no longer compiles on current Flutter, because `IconData` became a final class. `design/scripts/phosphor-to-dart.py` builds `lib/widgets/phosphor.g.dart` and two subset fonts (≈32 KB) from the MIT Phosphor fonts already vendored for the prototype. Calls look the same (`PhosphorIcons.house(PhosphorIconsStyle.fill)`). Re-run the script after using a new icon.
+- **Fonts.** Plus Jakarta Sans 500/700 is converted to TTF from the prototype's woff2 files. The latin and latin-ext subsets are merged, so ₦ is included. Licence: OFL.
+- **Legal pages in the app link to the website** (one source of truth). The lawyer's approved text will live at solutiontee.com/terms and /privacy.
+- **Log out wipes the phone's test data.** It also clears cached questions and attempts. Synced attempts stay in the account.
