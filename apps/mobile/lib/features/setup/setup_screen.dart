@@ -72,7 +72,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
   final _subjects = <String>{};
   double _target = 290;
   bool _saving = false;
-  String? _nameErr, _error;
+  String? _nameErr, _stateErr, _error;
 
   bool get _jamb => _exams.contains('JAMB');
   int get _total => _jamb ? 3 : 2;
@@ -148,8 +148,11 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
 
   void _continue() {
     if (_step == 1) {
-      if (_name.text.trim().length < 2) return setState(() => _nameErr = 'Enter your full name');
-      setState(() => _nameErr = null);
+      setState(() {
+        _nameErr = _name.text.trim().length < 2 ? 'Enter your full name' : null;
+        _stateErr = _state == null ? 'Choose your state' : null;
+      });
+      if (_nameErr != null || _stateErr != null) return;
     }
     if (_step == 2 && _exams.isEmpty) {
       toast(context, 'Pick at least one exam.', icon: PhosphorIcons.info(PhosphorIconsStyle.fill));
@@ -261,7 +264,17 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       help: 'For class reminders only. We never share it.',
     ),
     const Gap(Space.s4),
-    _SelectField(label: 'State', value: _state, hint: 'Choose your state', options: nigerianStates, onChanged: (v) => setState(() => _state = v)),
+    _SelectField(
+      label: 'State',
+      value: _state,
+      hint: 'Choose your state',
+      options: nigerianStates,
+      error: _stateErr,
+      onChanged: (v) => setState(() {
+        _state = v;
+        _stateErr = null;
+      }),
+    ),
     const Gap(Space.s4),
     Field(
       label: 'School (optional)',
@@ -472,9 +485,9 @@ class SubjTile extends StatelessWidget {
 
 /// Select styled as an `.input` with a caret; opens a sheet with the options.
 class _SelectField extends StatelessWidget {
-  const _SelectField({required this.label, required this.value, required this.options, required this.onChanged, this.hint});
+  const _SelectField({required this.label, required this.value, required this.options, required this.onChanged, this.hint, this.error});
   final String label;
-  final String? value, hint;
+  final String? value, hint, error;
   final List<String> options;
   final ValueChanged<String> onChanged;
   @override
@@ -515,7 +528,7 @@ class _SelectField extends StatelessWidget {
               decoration: BoxDecoration(
                 color: c.surface,
                 borderRadius: BorderRadius.circular(Radii.md),
-                border: Border.all(color: c.borderStrong, width: 1.5),
+                border: Border.all(color: error != null ? c.error : c.borderStrong, width: error != null ? 2 : 1.5),
               ),
               child: Row(
                 children: [
@@ -526,6 +539,7 @@ class _SelectField extends StatelessWidget {
             ),
           ),
         ),
+        if (error != null) ...[const Gap(Space.s2), ErrText(error!)],
       ],
     );
   }

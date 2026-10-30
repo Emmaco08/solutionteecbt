@@ -169,22 +169,34 @@ class WelcomeScreen extends StatelessWidget {
         child: Column(
           children: [
             Expanded(
-              child: ClipRect(
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    const ArtDisc(size: 300),
-                    Transform.translate(
-                      offset: const Offset(90, -90),
-                      child: const ArtDisc(size: 180, tone: Tone.gold, breathe: false),
+              // The navy disc, the gold disc (up and right, like the prototype) and the app icon, kept whole:
+              // the group is 330 × 330 and shrinks to fit shorter phones instead of being cut.
+              child: Padding(
+                padding: const EdgeInsets.all(Space.s3),
+                child: Center(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: SizedBox(
+                      width: 330,
+                      height: 330,
+                      child: Stack(
+                        children: [
+                          const Positioned(left: 0, top: 30, child: ArtDisc(size: 300)),
+                          const Positioned(left: 150, top: 0, child: ArtDisc(size: 180, tone: Tone.gold, breathe: false)),
+                          Positioned(
+                            left: 150 - 54,
+                            top: 180 - 54,
+                            child: rm
+                                ? const AppIconArt()
+                                : const Float(child: AppIconArt())
+                                      .animate()
+                                      .scale(begin: const Offset(.85, .85), duration: Motion.slow, curve: Motion.emphasized)
+                                      .fadeIn(),
+                          ),
+                        ],
+                      ),
                     ),
-                    rm
-                        ? const AppIconArt()
-                        : const Float(child: AppIconArt())
-                              .animate()
-                              .scale(begin: const Offset(.85, .85), duration: Motion.slow, curve: Motion.emphasized)
-                              .fadeIn(),
-                  ],
+                  ),
                 ),
               ),
             ),
