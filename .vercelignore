@@ -1,0 +1,19 @@
+# Vercel uploads only the website and the shared package (D-055). Everything else stays on the laptop.
+/*
+!/apps
+/apps/*
+!/apps/web
+!/packages
+!/package.json
+!/pnpm-lock.yaml
+!/pnpm-workspace.yaml
+!/.npmrc
+
+# never upload build output, installed packages or secrets
+**/node_modules
+**/.next
+**/*.tsbuildinfo
+**/.env*
+!**/.env.example
+**/.secrets
+**/.vercel
