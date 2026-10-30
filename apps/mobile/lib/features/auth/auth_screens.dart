@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:async';
 
 import 'package:flutter/gestures.dart';
@@ -10,6 +11,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/api.dart';
 import '../../core/providers.dart';
+import '../../data/db.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
 import '../../ui/kit.dart';
@@ -156,10 +158,9 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     try {
       final len = await this.ref.read(apiProvider).signUp(email: email, password: _pw.text, fullName: '', referralCode: ref);
       if (!mounted) return;
-      context.push(
-        '/verify',
-        extra: VerifyArgs(email: email, type: OtpType.signup, codeLength: len, password: _pw.text),
-      );
+      final args = VerifyArgs(email: email, type: OtpType.signup, codeLength: len, password: _pw.text);
+      await VerifyArgs.remember(this.ref.read(dbProvider), args);
+      if (mounted) context.push('/verify', extra: args);
     } on ApiError catch (e) {
       setState(() {
         _error = e.message;
@@ -277,7 +278,34 @@ class VerifyArgs {
   final String email;
   final OtpType type; // signup only (password reset uses the Reset screen)
   final int codeLength;
-  final String? password;
+  final String? password; // kept in memory only (for "Resend"), never saved to disk
+
+  /// The code screen being shown. go_router can rebuild the route without its `extra` (for example when the
+  /// login state changes right after the code is accepted), so the screen falls back to this.
+  static VerifyArgs? last;
+
+  /// Remembers the email (not the password) on the phone too, so the code screen comes back if Android closes
+  /// the app while the student is in their email app.
+  static Future<void> remember(AppDb db, VerifyArgs a) async {
+    last = a;
+    await db.kvSet('pending_verify', jsonEncode({'email': a.email, 'len': a.codeLength, 'at': DateTime.now().toIso8601String()}));
+  }
+
+  static Future<void> forget(AppDb db) async {
+    last = null;
+    await db.kvSet('pending_verify', '{}');
+  }
+
+  /// A code screen left open in the last 30 minutes (after the app was closed), if any.
+  static Future<VerifyArgs?> restore(AppDb db) async {
+    if (last != null) return last;
+    final raw = await db.kvGet('pending_verify');
+    if (raw == null) return null;
+    final j = jsonDecode(raw) as Map<String, dynamic>;
+    final at = DateTime.tryParse((j['at'] as String?) ?? '');
+    if (at == null || DateTime.now().difference(at) > const Duration(minutes: 30)) return null;
+    return last = VerifyArgs(email: j['email'] as String, type: OtpType.signup, codeLength: (j['len'] as num).toInt());
+  }
 }
 
 class VerifyCodeScreen extends ConsumerStatefulWidget {
@@ -345,6 +373,8 @@ class _VerifyCodeScreenState extends ConsumerState<VerifyCodeScreen> {
     try {
       await Supabase.instance.client.auth.verifyOTP(email: widget.args.email, token: _code.text, type: widget.args.type);
       ref.read(apiProvider).notify('welcome');
+      await VerifyArgs.forget(ref.read(dbProvider));
+      if (!mounted) return;
       setState(() => _ok = true);
       await Future<void>.delayed(const Duration(milliseconds: 600));
       if (mounted) context.go('/setup');
@@ -365,8 +395,13 @@ class _VerifyCodeScreenState extends ConsumerState<VerifyCodeScreen> {
 
   Future<void> _resend() async {
     setState(() => _error = null);
+    final pw = widget.args.password;
+    if (pw == null) {
+      setState(() => _error = 'To get a new code, go back and enter your email and password again.');
+      return;
+    }
     try {
-      await ref.read(apiProvider).signUp(email: widget.args.email, password: widget.args.password!, fullName: '');
+      await ref.read(apiProvider).signUp(email: widget.args.email, password: pw, fullName: '');
       _startTimer();
       if (mounted) toast(context, 'New code sent. Check your inbox and spam folder.', icon: PhosphorIcons.paperPlaneTilt(PhosphorIconsStyle.fill));
     } on ApiError catch (e) {
@@ -616,7 +651,10 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     try {
       final len = await ref.read(apiProvider).forgotPassword(email);
       if (mounted) {
-        context.push('/reset', extra: ResetArgs(email: email, codeLength: len));
+        context.push(
+          '/reset',
+          extra: ResetArgs.last = ResetArgs(email: email, codeLength: len),
+        );
       }
     } on ApiError catch (e) {
       setState(() => _error = e.message);
@@ -651,6 +689,9 @@ class ResetArgs {
   const ResetArgs({required this.email, required this.codeLength});
   final String email;
   final int codeLength;
+
+  /// Fallback when the route is rebuilt without its `extra` (see [VerifyArgs.last]).
+  static ResetArgs? last;
 }
 
 /// Code from the email + new password + confirm, on one screen (prototype: reset).

@@ -41,12 +41,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
       GoRoute(
         path: '/verify',
-        builder: (_, s) => VerifyCodeScreen(args: s.extra as VerifyArgs),
+        builder: (_, s) {
+          final a = s.extra as VerifyArgs? ?? VerifyArgs.last;
+          return a == null ? const SignUpScreen() : VerifyCodeScreen(args: a);
+        },
       ),
       GoRoute(path: '/forgot', builder: (_, _) => const ForgotPasswordScreen()),
       GoRoute(
         path: '/reset',
-        builder: (_, s) => NewPasswordScreen(args: s.extra as ResetArgs?),
+        builder: (_, s) => NewPasswordScreen(args: s.extra as ResetArgs? ?? ResetArgs.last),
       ),
       GoRoute(path: '/setup', builder: (_, _) => const SetupScreen()),
       GoRoute(path: '/welcome-new', builder: (_, _) => const WelcomeNewScreen()),

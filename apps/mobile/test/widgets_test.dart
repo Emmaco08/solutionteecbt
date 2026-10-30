@@ -60,7 +60,9 @@ void main() {
 
   testWidgets('sign-up needs consent before anything is sent', (t) async {
     final api = FakeApi();
-    await t.pumpWidget(app(const SignUpScreen(), overrides: [apiProvider.overrideWithValue(api)], routes: {'/verify': const Text('VERIFY')}));
+    final signupDb = AppDb(NativeDatabase.memory());
+    addTearDown(signupDb.close);
+    await t.pumpWidget(app(const SignUpScreen(), overrides: [apiProvider.overrideWithValue(api), dbProvider.overrideWithValue(signupDb)], routes: {'/verify': const Text('VERIFY')}));
     await t.pumpAndSettle();
 
     await t.enterText(find.byType(TextField).at(0), 'ada@example.com');

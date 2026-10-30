@@ -13,17 +13,21 @@ import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
 import '../../ui/kit.dart';
 import '../../widgets/exam_logo.dart';
-import '../../widgets/math_text.dart';
 import '../../widgets/phosphor.g.dart';
+import '../auth/auth_screens.dart';
 import '../home/home_screen.dart';
+import 'onboarding_art.dart';
 import '../../ui/confetti.dart';
 import '../../ui/subject_icons.dart';
 
-/// Decides where to go: onboarding (first launch), login, profile setup, or Home.
+/// Logged out: Welcome every time (prototype: splash → welcome), or back to the email code if the app was
+/// closed while the student was fetching it.
 Future<String> nextRoute(WidgetRef ref) async {
-  if (!ref.read(settingsProvider).onboarded) return '/welcome';
   final session = Supabase.instance.client.auth.currentSession;
-  if (session == null) return '/login';
+  if (session == null) {
+    final pending = await VerifyArgs.restore(ref.read(dbProvider));
+    return pending != null ? '/verify' : '/welcome';
+  }
   try {
     final profile = await ref.read(profileProvider.future);
     final exams = (profile?['target_exams'] as List?) ?? const [];
@@ -47,9 +51,19 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   void initState() {
     super.initState();
     final rm = WidgetsBinding.instance.platformDispatcher.accessibilityFeatures.disableAnimations || ref.read(settingsProvider).reduceMotion;
-    Future.wait([Future<void>.delayed(Duration(milliseconds: rm ? 1200 : 2600)), nextRoute(ref)]).then((r) {
-      if (mounted) context.go(r[1] as String);
-    });
+    _next = nextRoute(ref);
+    Future.wait([Future<void>.delayed(Duration(milliseconds: rm ? 1200 : 3400)), _next]).then((r) => _go());
+  }
+
+  late final Future<String> _next;
+  bool _gone = false;
+
+  /// Tapping the splash skips the wait (prototype).
+  Future<void> _go() async {
+    if (_gone) return;
+    _gone = true;
+    final r = await _next;
+    if (mounted) context.go(r);
   }
 
   @override
@@ -59,35 +73,65 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     Widget rise(Widget w, int ms) => rm ? w : w.animate().fadeIn(delay: ms.ms, duration: Motion.slow).slideY(begin: .3, curve: Motion.out);
     return Scaffold(
       backgroundColor: Palette.navy900,
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: 168,
-              height: 168,
-              child: rm
-                  ? const Center(child: Mark(height: 96, onDark: true))
-                  : Lottie.asset('assets/brand/solutiontee-loader-dark.json', errorBuilder: (_, _, _) => const Center(child: Mark(height: 96, onDark: true))),
-            ),
-            const Gap(Space.s4),
-            rise(Text('SolutionTee CBT', style: context.ty.h2.copyWith(fontSize: 24, letterSpacing: -.3).col(fg)), 1100),
-            const Gap(Space.s4),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                rise(Text('Learn.', style: context.ty.body.col(const Color(0xFFAFC0DD))), 1350),
-                const SizedBox(width: 8),
-                rise(Text('Think.', style: context.ty.body.col(const Color(0xFFAFC0DD))), 1550),
-                const SizedBox(width: 8),
-                rise(Text('Solve.', style: context.ty.body.col(Palette.gold400)), 1750),
-              ],
-            ),
-          ],
+      body: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: _go,
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(width: 168, height: 168, child: rm ? const Center(child: Mark(height: 96, onDark: true)) : const _Loader()),
+              const Gap(Space.s4),
+              rise(Text('SolutionTee CBT', style: context.ty.h2.copyWith(fontSize: 24, letterSpacing: -.3).col(fg)), 1100),
+              const Gap(Space.s4),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  rise(Text('Learn.', style: context.ty.body.col(const Color(0xFFAFC0DD))), 1350),
+                  const SizedBox(width: 8),
+                  rise(Text('Think.', style: context.ty.body.col(const Color(0xFFAFC0DD))), 1550),
+                  const SizedBox(width: 8),
+                  rise(Text('Solve.', style: context.ty.body.col(Palette.gold400)), 1750),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
+}
+
+/// The brand loader (brand/solutiontee-loader-dark.json): intro frames 0–52 once, then frames 52–149 on a loop.
+class _Loader extends StatefulWidget {
+  const _Loader();
+  @override
+  State<_Loader> createState() => _LoaderState();
+}
+
+class _LoaderState extends State<_Loader> with SingleTickerProviderStateMixin {
+  late final _c = AnimationController(vsync: this);
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Lottie.asset(
+    'assets/brand/solutiontee-loader-dark.json',
+    controller: _c,
+    onLoaded: (comp) {
+      final frames = comp.endFrame - comp.startFrame;
+      double at(double f) => ((f - comp.startFrame) / frames).clamp(0, 1);
+      _c.duration = comp.duration;
+      _c.animateTo(at(52)).then((_) {
+        if (mounted) _c.repeat(min: at(52), max: at(149));
+      });
+    },
+    errorBuilder: (_, _, _) => const Center(child: Mark(height: 96, onDark: true)),
+  );
 }
 
 // ---------------------------------------------------------------- welcome (prototype: welcome)
@@ -238,7 +282,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     children: [
                       Expanded(
                         child: Center(
-                          child: _SlideArt(kind: s['animation'] as String? ?? 'cbt', current: i == _i),
+                          child: SlideArt(kind: s['animation'] as String? ?? 'cbt', current: i == _i),
                         ),
                       ),
                       ConstrainedBox(
@@ -281,548 +325,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         ],
       ),
     );
-  }
-}
-
-/// Slide pictures (prototype `slides[].art`): a disc with floating mini cards that slide in by layer.
-class _SlideArt extends StatelessWidget {
-  const _SlideArt({required this.kind, required this.current});
-  final String kind;
-  final bool current;
-
-  Widget _layer(BuildContext context, int n, Widget child) {
-    if (context.reduceMotion) return child;
-    return AnimatedSlide(
-      offset: current ? Offset.zero : Offset(.15 * n, 0),
-      duration: Motion.slow,
-      curve: Motion.out,
-      child: AnimatedOpacity(opacity: current ? 1 : 0, duration: Motion.slow, child: child),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.c;
-    final ty = context.ty;
-    final (Tone disc, List<Widget> layers) = switch (kind) {
-      'trophy' => (
-        Tone.gold,
-        [
-          Positioned(
-            top: 58,
-            child: _layer(
-              context,
-              1,
-              Float(
-                rotate: -3,
-                child: Mini(
-                  width: 230,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 56,
-                        height: 56,
-                        decoration: const BoxDecoration(color: Palette.gold400, shape: BoxShape.circle),
-                        child: Icon(PhosphorIcons.trophy(PhosphorIconsStyle.fill), size: 30, color: Palette.navy900),
-                      ),
-                      const Gap(Space.s2),
-                      Text('Weekly Challenge', style: ty.cap.bold.col(c.textMuted)),
-                      Text('Win ₦20,000', style: ty.h2.copyWith(fontSize: 22).col(c.onAccentSoft)),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: 58,
-            left: 28,
-            child: _layer(
-              context,
-              2,
-              Mini(
-                width: 200,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                child: Column(
-                  children: [
-                    for (final (r, n, s) in const [('1', 'Chiamaka O.', '10/10'), ('2', 'You', '10/10'), ('3', 'Abdullahi M.', '9/10')])
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 3),
-                        child: Row(
-                          children: [
-                            SizedBox(width: 14, child: Text(r, style: ty.cap.bold)),
-                            const Gap(Space.s2),
-                            Expanded(child: Text(n, style: n == 'You' ? ty.cap.bold : ty.cap)),
-                            Text(s, style: ty.cap.bold.tnum),
-                          ],
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Positioned(right: 24, bottom: 150, child: _layer(context, 3, const _LivePill(detail: '1,284 playing'))),
-        ],
-      ),
-      'study' => (
-        Tone.blue,
-        [
-          Positioned(
-            top: 60,
-            child: _layer(
-              context,
-              1,
-              Mini(
-                width: 220,
-                padding: const EdgeInsets.all(8),
-                child: AspectRatio(
-                  aspectRatio: 16 / 9,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(Radii.md),
-                      gradient: const LinearGradient(colors: [Palette.navy800, Palette.blue600], begin: Alignment.topLeft, end: Alignment.bottomRight),
-                    ),
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(color: Colors.white.withValues(alpha: .92), shape: BoxShape.circle, boxShadow: context.shadow(2)),
-                          child: Icon(PhosphorIcons.play(PhosphorIconsStyle.fill), size: 20, color: Palette.navy900),
-                        ),
-                        Positioned(
-                          right: 8,
-                          bottom: 8,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(color: const Color.fromRGBO(6, 19, 43, .78), borderRadius: BorderRadius.circular(6)),
-                            child: Text('6:12', style: ty.cap.bold.copyWith(fontSize: 11).col(Colors.white)),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: 60,
-            left: 30,
-            child: _layer(
-              context,
-              2,
-              Mini(
-                width: 200,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Quadratic equations', style: ty.sm.bold),
-                    Text('Lesson note · 8 min read', style: ty.cap.col(c.textMuted)),
-                    const Gap(Space.s2),
-                    const ProgressBar(.64),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            right: 28,
-            bottom: 120,
-            child: _layer(
-              context,
-              3,
-              Mini(
-                padding: const EdgeInsets.all(10),
-                child: Icon(PhosphorIcons.checkCircle(PhosphorIconsStyle.fill), size: 28, color: c.success),
-              ),
-            ),
-          ),
-        ],
-      ),
-      'ai' => (
-        Tone.gold,
-        [
-          Positioned(
-            top: 66,
-            right: 36,
-            child: _layer(
-              context,
-              1,
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                decoration: BoxDecoration(
-                  color: c.primary,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(18),
-                    topRight: Radius.circular(18),
-                    bottomLeft: Radius.circular(18),
-                    bottomRight: Radius.circular(6),
-                  ),
-                ),
-                child: MathText(r'Solve $x^2-5x+6=0$', style: ty.body.col(c.onPrimary)),
-              ),
-            ),
-          ),
-          Positioned(
-            top: 126,
-            left: 30,
-            child: _layer(
-              context,
-              2,
-              Container(
-                width: 250,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                decoration: BoxDecoration(
-                  color: c.surface,
-                  border: Border.all(color: c.border),
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(18),
-                    topRight: Radius.circular(18),
-                    bottomRight: Radius.circular(18),
-                    bottomLeft: Radius.circular(6),
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    MathText(r'Find two numbers that multiply to $6$ and add to $-5$: that is $-2$ and $-3$.', style: ty.body),
-                    const Gap(Space.s2),
-                    MathText(r'So $x=2$ or $x=3$.', style: ty.body),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: 56,
-            right: 50,
-            child: _layer(
-              context,
-              3,
-              Container(
-                height: 32,
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                decoration: BoxDecoration(color: c.accentSoft, borderRadius: BorderRadius.circular(99)),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(PhosphorIcons.sparkle(PhosphorIconsStyle.fill), size: 14, color: c.onAccentSoft),
-                    const SizedBox(width: 6),
-                    Text('Step by step', style: ty.cap.bold.col(c.onAccentSoft)),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-      'progress' => (
-        Tone.navy,
-        [
-          Positioned(
-            top: 70,
-            child: _layer(
-              context,
-              1,
-              Mini(
-                width: 240,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(child: Text('JAMB score trend', style: ty.sm.bold)),
-                        const Pill('+38', kind: BadgeKind.success),
-                      ],
-                    ),
-                    const Gap(Space.s2),
-                    SizedBox(
-                      height: 64,
-                      child: CustomPaint(
-                        painter: _TrendPainter(line: c.secondary, dot: c.accent),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: 60,
-            left: 36,
-            child: _layer(
-              context,
-              2,
-              Mini(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SizedBox(
-                      width: 56,
-                      height: 56,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          SizedBox.expand(
-                            child: CircularProgressIndicator(
-                              value: .7,
-                              strokeWidth: 5.6,
-                              color: c.accent,
-                              backgroundColor: c.surfaceSunken,
-                              strokeCap: StrokeCap.round,
-                            ),
-                          ),
-                          Text('70%', style: ty.cap.bold),
-                        ],
-                      ),
-                    ),
-                    const Gap(Space.s3),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Weak topic', style: ty.sm.bold),
-                        Text('Organic chemistry', style: ty.cap.col(c.textMuted)),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-      'classes' => (
-        Tone.blue,
-        [
-          Positioned(
-            top: 80,
-            child: _layer(
-              context,
-              1,
-              Mini(
-                width: 250,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      children: [
-                        IconTile(PhosphorIcons.videoCamera(PhosphorIconsStyle.fill), tone: Tone.blue, size: 44, radius: 12),
-                        const Gap(Space.s3),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Physics: Waves', style: ty.sm.bold),
-                              Text('Today · 4:00 PM', style: ty.cap.col(c.textMuted)),
-                            ],
-                          ),
-                        ),
-                        const _LivePill(),
-                      ],
-                    ),
-                    const Gap(Space.s3),
-                    IgnorePointer(
-                      child: Btn('Join class', kind: BtnKind.accent, sm: true, block: true, onPressed: () {}),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: 70,
-            left: 46,
-            child: _layer(
-              context,
-              2,
-              Float(
-                delay: -1,
-                child: Mini(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(PhosphorIcons.usersThree(PhosphorIconsStyle.fill), size: 16, color: c.text),
-                      const SizedBox(width: 6),
-                      Text('214 students', style: ty.cap.bold),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-      _ => (
-        Tone.navy,
-        [
-          Positioned(
-            left: 40,
-            top: 70,
-            child: _layer(
-              context,
-              1,
-              const Float(
-                rotate: -8,
-                child: Mini(child: ExamLogo('WAEC', size: LogoSize.lg)),
-              ),
-            ),
-          ),
-          _layer(
-            context,
-            2,
-            const Float(
-              delay: -1.3,
-              child: Mini(child: ExamLogo('JAMB', size: LogoSize.lg)),
-            ),
-          ),
-          Positioned(
-            right: 40,
-            top: 70,
-            child: _layer(
-              context,
-              3,
-              const Float(
-                rotate: 8,
-                delay: -2.6,
-                child: Mini(child: ExamLogo('NECO', size: LogoSize.lg)),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: 56,
-            left: 70,
-            child: _layer(
-              context,
-              2,
-              Mini(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                child: Container(
-                  height: 30,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(color: c.primarySoft, borderRadius: BorderRadius.circular(99)),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(PhosphorIcons.timer(PhosphorIconsStyle.fill), size: 16, color: c.onPrimarySoft),
-                      const SizedBox(width: 6),
-                      _Countdown(style: ty.sm.bold.tnum.col(c.onPrimarySoft), running: current),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    };
-    // Fill the art area like the prototype's `.ob-art` (absolute positions are relative to it).
-    return SizedBox.expand(
-      child: Stack(
-        alignment: Alignment.center,
-        clipBehavior: Clip.none,
-        children: [
-          ArtDisc(tone: disc),
-          ...layers,
-        ],
-      ),
-    );
-  }
-}
-
-class _TrendPainter extends CustomPainter {
-  _TrendPainter({required this.line, required this.dot});
-  final Color line, dot;
-  @override
-  void paint(Canvas canvas, Size size) {
-    const pts = [(0, 52), (40, 46), (80, 48), (120, 32), (160, 26), (200, 12)];
-    final sx = size.width / 200, sy = size.height / 64;
-    final path = Path()..moveTo(0, pts.first.$2 * sy);
-    for (final (x, y) in pts.skip(1)) {
-      path.lineTo(x * sx, y * sy);
-    }
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = line
-        ..strokeWidth = 3
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round,
-    );
-    canvas.drawCircle(Offset(200 * sx, 12 * sy), 5, Paint()..color = dot);
-  }
-
-  @override
-  bool shouldRepaint(_TrendPainter old) => old.line != line || old.dot != dot;
-}
-
-/// "LIVE" broadcast pill (`.live-pill`).
-class _LivePill extends StatelessWidget {
-  const _LivePill({this.detail});
-  final String? detail;
-  @override
-  Widget build(BuildContext context) {
-    final c = context.c;
-    return Container(
-      height: 26,
-      padding: const EdgeInsets.fromLTRB(9, 0, 11, 0),
-      decoration: BoxDecoration(color: c.errorSoft, borderRadius: BorderRadius.circular(999)),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: const BoxDecoration(color: Color(0xFFE5484D), shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 7),
-          Text('LIVE', style: context.ty.cap.bold.copyWith(fontSize: 11, letterSpacing: 1.5).col(c.onErrorSoft)),
-          if (detail != null) ...[
-            const SizedBox(width: 7),
-            Container(width: 1, height: 12, color: c.onErrorSoft.withValues(alpha: .3)),
-            const SizedBox(width: 7),
-            Text(detail!, style: context.ty.cap.bold.copyWith(fontSize: 11).tnum.col(c.onErrorSoft)),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-/// Ambient exam countdown on slide 1 (paused under reduce motion).
-class _Countdown extends StatefulWidget {
-  const _Countdown({required this.style, required this.running});
-  final TextStyle style;
-  final bool running;
-  @override
-  State<_Countdown> createState() => _CountdownState();
-}
-
-class _CountdownState extends State<_Countdown> {
-  int _left = 1 * 3600 + 58 * 60 + 34;
-  Timer? _t;
-  @override
-  void initState() {
-    super.initState();
-    _t = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted && widget.running && !context.reduceMotion) setState(() => _left--);
-    });
-  }
-
-  @override
-  void dispose() {
-    _t?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    String two(int n) => n.toString().padLeft(2, '0');
-    return Text('${two(_left ~/ 3600)}:${two(_left % 3600 ~/ 60)}:${two(_left % 60)}', style: widget.style);
   }
 }
 
