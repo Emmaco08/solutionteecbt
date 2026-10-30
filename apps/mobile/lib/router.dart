@@ -30,7 +30,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final signedIn = auth.currentSession != null;
       final path = state.uri.path;
-      if (!signedIn && !_public.contains(path)) return '/login';
+      if (!signedIn && !_public.contains(path)) return '/welcome'; // logged out (or log out): Welcome, as in the prototype
       // The email code was accepted (now logged in): carry on to profile setup, never back to sign-up.
       if (signedIn && (path == '/verify' || path == '/signup')) return '/setup';
       return null;

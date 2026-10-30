@@ -39,19 +39,20 @@ String _date(DateTime d) {
   return '${d.day} ${m[d.month - 1]} ${d.year}';
 }
 
-/// Signs out and clears everything this account left on the phone.
+/// Clears everything this account left on the phone, then signs out. Order matters: signing out makes the
+/// router leave this screen at once, after which `ref` can no longer be used.
 Future<void> signOutAndWipe(WidgetRef ref) async {
+  final db = ref.read(dbProvider);
+  await db.wipe();
+  // Local lists re-read the now-empty database; account data (profile, plan, years) follows the login state by itself.
+  for (final p in [historyProvider, unfinishedProvider, practiceStatsProvider]) {
+    ref.invalidate(p);
+  }
   try {
     await Supabase.instance.client.auth.signOut();
   } catch (_) {
-    // Offline: the local session is still removed below.
+    // Offline: Supabase still removes the session from this phone.
   }
-  await ref.read(dbProvider).wipe();
-  ref.invalidate(profileProvider);
-  ref.invalidate(myPlanProvider);
-  ref.invalidate(historyProvider);
-  ref.invalidate(unfinishedProvider);
-  ref.invalidate(practiceStatsProvider);
 }
 
 Future<void> _open(BuildContext context, Uri uri) async {
