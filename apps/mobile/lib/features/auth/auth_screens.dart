@@ -292,18 +292,19 @@ class VerifyArgs {
   }
 
   static Future<void> forget(AppDb db) async {
-    last = null;
+    // `last` is kept: the route may still rebuild once before the router moves on to setup.
     await db.kvSet('pending_verify', '{}');
   }
 
   /// A code screen left open in the last 30 minutes (after the app was closed), if any.
   static Future<VerifyArgs?> restore(AppDb db) async {
-    if (last != null) return last;
     final raw = await db.kvGet('pending_verify');
     if (raw == null) return null;
     final j = jsonDecode(raw) as Map<String, dynamic>;
+    if (j['email'] == null) return null; // cleared after the code was accepted
     final at = DateTime.tryParse((j['at'] as String?) ?? '');
     if (at == null || DateTime.now().difference(at) > const Duration(minutes: 30)) return null;
+    if (last?.email == j['email']) return last;
     return last = VerifyArgs(email: j['email'] as String, type: OtpType.signup, codeLength: (j['len'] as num).toInt());
   }
 }

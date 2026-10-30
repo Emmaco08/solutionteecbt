@@ -231,12 +231,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       'body': 'Answer our weekly challenge fast and right to win money. Free and Premium students can join, and play is fair for everyone.',
       'animation': 'trophy',
     },
+    {'title': 'SolutionTee AI tutor', 'body': 'Stuck on a question? Ask our AI tutor. It explains step by step, like a patient teacher.', 'animation': 'ai'},
     {
       'title': 'Past questions, videos and notes',
       'body': 'Every answer comes with a clear explanation. Watch video solutions and read simple lesson notes.',
       'animation': 'study',
     },
-    {'title': 'SolutionTee AI tutor', 'body': 'Stuck on a question? Ask our AI tutor. It explains step by step, like a patient teacher.', 'animation': 'ai'},
     {'title': 'See your progress', 'body': 'Track your scores, find your weak topics and practise them until they become strong.', 'animation': 'progress'},
     {
       'title': 'Join live JAMB classes',

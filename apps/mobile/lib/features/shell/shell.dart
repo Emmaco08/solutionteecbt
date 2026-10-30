@@ -16,6 +16,12 @@ import '../../ui/kit.dart';
 /// Branch order in router.dart: home, study, test, ai, me.
 const _branchOf = {'home': 0, 'study': 1, 'test': 2, 'ai_chat': 3, 'profile': 4};
 
+/// The tab types shown in the bottom bar, in order (server `app_tabs`, or the prototype order when offline).
+List<String> visibleTabTypes(List<Map<String, dynamic>>? fromServer) {
+  final tabs = (fromServer ?? const []).where((t) => _branchOf.containsKey(t['type'])).map((t) => t['type'] as String).toList();
+  return tabs.isEmpty ? const ['home', 'study', 'test', 'ai_chat', 'profile'] : tabs.take(5).toList();
+}
+
 IconData tabIcon(String type, bool on) {
   final s = on ? PhosphorIconsStyle.fill : PhosphorIconsStyle.regular;
   return switch (type) {

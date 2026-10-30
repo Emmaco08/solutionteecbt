@@ -93,19 +93,34 @@ final appSettingsProvider = FutureProvider<Map<String, dynamic>>(
 );
 
 final onboardingProvider = FutureProvider<List<Map<String, dynamic>>>(
-  (ref) => cached(ref, 'onboarding', (s) => s.from('onboarding_slides').select('title, body, animation, sort').eq('enabled', true).order('sort'), rows),
+  (ref) => cached(
+    ref,
+    'onboarding',
+    (s) => s.from('onboarding_slides').select('title, body, animation, sort').eq('enabled', true).order('sort', ascending: true),
+    rows,
+  ),
 );
 
 final tabsProvider = FutureProvider<List<Map<String, dynamic>>>(
-  (ref) => cached(ref, 'tabs', (s) => s.from('app_tabs').select('key, title, icon, type, sort, premium_only, config').eq('enabled', true).order('sort'), rows),
+  (ref) => cached(
+    ref,
+    'tabs',
+    (s) => s.from('app_tabs').select('key, title, icon, type, sort, premium_only, config').eq('enabled', true).order('sort', ascending: true),
+    rows,
+  ),
 );
 
 final examsProvider = FutureProvider<List<Map<String, dynamic>>>(
-  (ref) => cached(ref, 'exams', (s) => s.from('exam_bodies').select('id, code, name, sort, exam_configs(*)').eq('is_active', true).order('sort'), rows),
+  (ref) => cached(
+    ref,
+    'exams',
+    (s) => s.from('exam_bodies').select('id, code, name, sort, exam_configs(*)').eq('is_active', true).order('sort', ascending: true),
+    rows,
+  ),
 );
 
 final subjectsProvider = FutureProvider<List<Map<String, dynamic>>>(
-  (ref) => cached(ref, 'subjects', (s) => s.from('subjects').select('id, code, name, sort').order('sort'), rows),
+  (ref) => cached(ref, 'subjects', (s) => s.from('subjects').select('id, code, name, sort').order('sort', ascending: true), rows),
 );
 
 final examSubjectsProvider = FutureProvider<List<Map<String, dynamic>>>(
@@ -114,7 +129,7 @@ final examSubjectsProvider = FutureProvider<List<Map<String, dynamic>>>(
 
 /// Syllabus topics per subject (for topic drills).
 final topicsProvider = FutureProvider<List<Map<String, dynamic>>>(
-  (ref) => cached(ref, 'topics', (s) => s.from('topics').select('id, subject_id, name, sort').order('sort'), rows),
+  (ref) => cached(ref, 'topics', (s) => s.from('topics').select('id, subject_id, name, sort').order('sort', ascending: true), rows),
 );
 
 final newsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) {

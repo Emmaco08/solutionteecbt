@@ -15,6 +15,7 @@ import '../../widgets/phosphor.g.dart';
 import '../../widgets/states.dart';
 import '../cbt/exam_clock.dart';
 import '../news/news_screens.dart';
+import '../shell/shell.dart';
 
 /// The unfinished test on this phone (if any), for the "Continue your test" card.
 final unfinishedProvider = FutureProvider<LocalAttempt?>((ref) => ref.watch(dbProvider).unfinishedAttempt());
@@ -102,9 +103,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       builder: (ctx) => TourOverlay(
         steps: [
           TourStep(target: () => _rectOf(_startKey), title: 'Start a test here', text: 'Tap JAMB, WAEC or NECO to start a timed CBT practice.'),
-          TourStep(target: () => _navRect(ctx, 1), title: 'Study anytime', text: 'Past questions, video solutions, lesson notes, novels and syllabuses.'),
-          TourStep(target: () => _navRect(ctx, 2), title: 'All test modes', text: 'Full exam, single subject, topic drills, quick tests and practice by year.'),
-          TourStep(target: () => _navRect(ctx, 3), title: 'Ask SolutionTee AI', text: 'Get step-by-step help on any question.'),
+          TourStep(target: () => _navRect(ctx, 'study'), title: 'Study anytime', text: 'Past questions, video solutions, lesson notes, novels and syllabuses.'),
+          TourStep(
+            target: () => _navRect(ctx, 'test'),
+            title: 'All test modes',
+            text: 'Full exam, single subject, topic drills, quick tests and practice by year.',
+          ),
+          TourStep(target: () => _navRect(ctx, 'ai_chat'), title: 'Ask SolutionTee AI', text: 'Get step-by-step help on any question.'),
           if (!premium) TourStep(target: () => _rectOf(_upgradeKey), title: 'Unlock everything', text: 'Go Premium for all years and all exams.'),
         ],
         onDone: () {
@@ -308,11 +313,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return box.localToGlobal(Offset.zero) & box.size;
   }
 
-  /// Bottom-nav tab rectangle (5 equal tabs above the bottom inset).
-  Rect _navRect(BuildContext context, int i) {
+  /// Where a tab sits in the bottom bar (same list and order the bar is built from); null if it is hidden.
+  Rect? _navRect(BuildContext context, String type) {
+    final types = visibleTabTypes(ref.read(tabsProvider).value);
+    final i = types.indexOf(type);
+    if (i < 0) return null;
     final size = MediaQuery.sizeOf(context);
-    final w = size.width / 5;
-    return Rect.fromLTWH(w * i + 6, size.height - Sizes.bottomNav + 6, w - 12, Sizes.bottomNav - 12);
+    final bottom = MediaQuery.paddingOf(context).bottom;
+    final w = size.width / types.length;
+    return Rect.fromLTWH(w * i + 6, size.height - bottom - Sizes.bottomNav + 6, w - 12, Sizes.bottomNav - 12);
   }
 }
 
