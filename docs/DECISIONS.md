@@ -321,3 +321,12 @@ The owner asked for the app to look exactly like the Phase 1 design.
 - **The paywall** reads plans and prices from the `plans` table (shown as SAMPLE PRICES). "Continue" says payments open in the next update; milestone 4C connects it to checkout.
 - **The novel "Quizzes" tab from the prototype is left out** until there are chapter quizzes to show (no fake content).
 
+**D-055 · 2026-10-30 · The website goes on Vercel before Phase 5 (owner)**
+The owner asked to run the admin from Vercel instead of the laptop.
+- **Address:** Vercel project `solutiontee-cbt` in team `solution-tee`, at https://solutiontee-cbt.vercel.app. The owner's own domain can be added later.
+- **What is uploaded:** only `apps/web` and `packages/shared` (`.vercelignore`). Deploys are run from the laptop with the Vercel CLI. There is no Git connection yet.
+- **Keys:** copied straight from `apps/web/.env.local` into Vercel's encrypted environment variables by a script that prints only the names. `NEXT_PUBLIC_SITE_URL` is the Vercel address.
+- **Same database as development.** It still uses the `solutiontee-dev` Supabase project. A separate production project comes before launch (Phase 6).
+- **R2 CORS** must list the Vercel address (SETUP §10.1). The R2 key only has object read/write, so the owner sets CORS in the Cloudflare dashboard.
+- **Admin password reset** is now self-service at /admin/forgot: an emailed code, then a new password, then the authenticator step as always.
+

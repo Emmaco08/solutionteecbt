@@ -344,3 +344,35 @@ They are not real past questions. Remove them once real questions are imported. 
 **Google Play Console (needed for the `play` build, milestone 4C)**
 - A Play Console developer account (one-off $25) for SolutionTee.
 - Payments can be tested with Paystack (test keys already set) until then.
+
+## 10. The website on Vercel (2026-10-30)
+The website (admin, sign-up codes, file links) runs on Vercel, so you can use the admin from any computer or phone.
+- **Address:** https://solutiontee-cbt.vercel.app/admin. Your own domain (for example admin.solutiontee.com) can be added later in *Vercel → Project → Settings → Domains*.
+- **Account:** Vercel team `solution-tee`, project `solutiontee-cbt`. The project builds `apps/web`.
+- **Keys:** copied from `apps/web/.env.local` into *Vercel → Project → Settings → Environment Variables* (Production and Preview). If you change a key, change it in both places and redeploy.
+- **Deploy again** (from `C:\solutiontee-cbt`): `npx vercel@65.8.0 deploy --prod`. Only the website and `packages/shared` are uploaded (`.vercelignore`).
+
+### 10.1 R2 CORS (needed for uploads, one time)
+Uploads go straight from the browser to R2. The bucket must allow the admin's web address, or every upload fails with "CORS not configured".
+1. Open https://dash.cloudflare.com → **R2 Object Storage** → bucket **solutiontee** → **Settings** → **CORS Policy** → **Add CORS policy** (or Edit).
+2. Paste this and save:
+```json
+[
+  {
+    "AllowedOrigins": [
+      "http://localhost:3000",
+      "https://solutiontee-cbt.vercel.app",
+      "https://solutiontee.com",
+      "https://www.solutiontee.com",
+      "https://app.solutiontee.com",
+      "https://admin.solutiontee.com"
+    ],
+    "AllowedMethods": ["GET", "PUT", "HEAD"],
+    "AllowedHeaders": ["content-type", "range"],
+    "ExposeHeaders": ["ETag", "Content-Length", "Content-Range"],
+    "MaxAgeSeconds": 3600
+  }
+]
+```
+3. To check it from the laptop: `node scripts/r2-cors.mjs` in `apps/web` (the R2 key has no permission to read bucket settings, so a 403 there is normal; the upload test is the real check).
+
