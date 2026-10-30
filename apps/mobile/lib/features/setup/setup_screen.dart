@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
-import '../../widgets/phosphor.g.dart';
-
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/providers.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
+import '../../ui/kit.dart';
+import '../../ui/subject_icons.dart';
 import '../../widgets/exam_logo.dart';
+import '../../widgets/phosphor.g.dart';
 import '../../widgets/states.dart';
-import '../shell/shell.dart';
 
 const nigerianStates = [
   'Abia',
@@ -53,24 +53,54 @@ const nigerianStates = [
   'Zamfara',
 ];
 
-/// Profile setup in 3 steps: exams → JAMB subjects (English + 3) → goal. Saved to `profiles`.
+/// Profile setup (prototype: setup): 1 about you, 2 exams + target score, 3 JAMB subjects (English + 3).
+/// Saved to `profiles`. Without JAMB the subjects step is skipped.
 class SetupScreen extends ConsumerStatefulWidget {
-  const SetupScreen({super.key});
+  const SetupScreen({super.key, this.subjectsOnly = false});
+
+  /// Settings → "Change JAMB subjects": only step 3, then back.
+  final bool subjectsOnly;
   @override
   ConsumerState<SetupScreen> createState() => _SetupScreenState();
 }
 
 class _SetupScreenState extends ConsumerState<SetupScreen> {
-  int _step = 0;
-  final _exams = <String>{'JAMB'};
-  final _subjects = <String>{'eng'};
-  double _target = 280;
+  int _step = 1;
+  final _name = TextEditingController(), _phone = TextEditingController(), _school = TextEditingController();
   String? _state;
+  final _exams = <String>{'JAMB'};
+  final _subjects = <String>{};
+  double _target = 290;
   bool _saving = false;
-  String? _error;
+  String? _nameErr, _error;
 
-  bool get _needsJamb => _exams.contains('JAMB');
-  int get _steps => _needsJamb ? 3 : 2;
+  bool get _jamb => _exams.contains('JAMB');
+  int get _total => _jamb ? 3 : 2;
+
+  @override
+  void initState() {
+    super.initState();
+    // Pre-fill from the profile (a setup left half-way).
+    final p = ref.read(profileProvider).value;
+    if (widget.subjectsOnly) {
+      _step = 3;
+      _subjects.addAll(((p?['jamb_subjects'] as List?) ?? const []).cast<String>().where((c) => c != 'eng'));
+    }
+    if (p != null) {
+      _name.text = (p['full_name'] as String?) ?? '';
+      _phone.text = (p['phone'] as String?) ?? '';
+      _school.text = (p['school'] as String?) ?? '';
+      _state = p['state'] as String?;
+    }
+  }
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _phone.dispose();
+    _school.dispose();
+    super.dispose();
+  }
 
   Future<void> _save() async {
     setState(() {
@@ -79,16 +109,35 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     });
     try {
       final uid = Supabase.instance.client.auth.currentUser!.id;
+      if (widget.subjectsOnly) {
+        final exams = {...((ref.read(profileProvider).value?['target_exams'] as List?) ?? const []).cast<String>(), 'JAMB'};
+        await Supabase.instance.client
+            .from('profiles')
+            .update({
+              'jamb_subjects': ['eng', ..._subjects],
+              'target_exams': exams.toList(),
+            })
+            .eq('id', uid);
+        ref.invalidate(profileProvider);
+        if (!mounted) return;
+        toast(context, 'Your JAMB subjects are saved.');
+        context.pop();
+        return;
+      }
       await Supabase.instance.client
           .from('profiles')
           .update({
-            'target_exams': _exams.toList(),
-            'jamb_subjects': _needsJamb ? _subjects.toList() : <String>[],
-            'target_score': _needsJamb ? _target.round() : null,
+            'full_name': _name.text.trim(),
+            'phone': _phone.text.trim().isEmpty ? null : _phone.text.trim(),
             'state': _state,
+            'school': _school.text.trim().isEmpty ? null : _school.text.trim(),
+            'target_exams': _exams.toList(),
+            'jamb_subjects': _jamb ? ['eng', ..._subjects] : <String>[],
+            'target_score': _jamb ? _target.round() : null,
           })
           .eq('id', uid);
       ref.invalidate(profileProvider);
+      await ref.read(profileProvider.future);
       if (mounted) context.go('/welcome-new');
     } catch (e) {
       setState(() => _error = 'Could not save. Check your internet and try again.');
@@ -97,133 +146,249 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     }
   }
 
-  void _next() {
-    if (_step == 0 && _exams.isEmpty) return setState(() => _error = 'Choose at least one exam.');
-    if (_step == 1 && _needsJamb && _subjects.length != 4) return setState(() => _error = 'Choose 3 subjects besides Use of English.');
-    setState(() => _error = null);
-    if (_step == _steps - 1) {
+  void _continue() {
+    if (_step == 1) {
+      if (_name.text.trim().length < 2) return setState(() => _nameErr = 'Enter your full name');
+      setState(() => _nameErr = null);
+    }
+    if (_step == 2 && _exams.isEmpty) {
+      toast(context, 'Pick at least one exam.', icon: PhosphorIcons.info(PhosphorIconsStyle.fill));
+      return;
+    }
+    if (_step == _total || widget.subjectsOnly) {
       _save();
     } else {
-      setState(() => _step = _needsJamb ? _step + 1 : 2);
+      setState(() => _step++);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final c = context.c;
-    final visualStep = _needsJamb ? _step : (_step == 0 ? 0 : 1);
-    return Scaffold(
-      appBar: AppBar(
-        leading: _step == 0
-            ? null
-            : IconButton(tooltip: 'Back', icon: Icon(PhosphorIcons.arrowLeft()), onPressed: () => setState(() => _step = _needsJamb ? _step - 1 : 0)),
-        title: Text('Step ${visualStep + 1} of $_steps'),
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
+    final body = switch (_step) {
+      1 => _about(),
+      2 => _examsStep(),
+      _ => _subjectsStep(),
+    };
+    final canFinish = _step != 3 || _subjects.length == 3;
+    if (widget.subjectsOnly) {
+      return Scaffold(
+        appBar: const TopBar(title: 'Change JAMB subjects'),
+        body: _subjectsStep(),
+        bottomNavigationBar: FooterCta(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (_error != null) ...[ErrText(_error!), const Gap(Space.s3)],
+              Btn('Save subjects', block: true, loading: _saving, onPressed: _subjects.length == 3 ? _save : null),
+            ],
+          ),
+        ),
+      );
+    }
+    return PopScope(
+      canPop: _step == 1,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _step > 1) setState(() => _step--);
+      },
+      child: Scaffold(
+        appBar: TopBar(
+          showBack: _step > 1,
+          onBack: () => setState(() => _step--),
+          center: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Space.s4),
+            child: StepsBar(step: _step, total: _total),
+          ),
+          actions: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: Space.s5),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: LinearProgressIndicator(value: (visualStep + 1) / _steps, minHeight: 6, backgroundColor: c.surfaceSunken, color: c.secondary),
-              ),
-            ),
-            Expanded(
-              child: AnimatedSwitcher(
-                duration: Motion.base,
-                child: KeyedSubtree(
-                  key: ValueKey(_step),
-                  child: switch (_step) {
-                    0 => _examsStep(),
-                    1 => _subjectsStep(),
-                    _ => _goalStep(),
-                  },
-                ),
-              ),
-            ),
-            if (_error != null)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: Space.s5),
-                child: Text(
-                  _error!,
-                  style: TextStyle(color: c.error, fontWeight: FontWeight.w700),
-                ),
-              ),
-            Padding(
-              padding: const EdgeInsets.all(Space.s5),
-              child: FilledButton(
-                onPressed: _saving ? null : _next,
-                child: _saving
-                    ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
-                    : Text(_step == _steps - 1 || (!_needsJamb && _step == 2) ? 'Finish' : 'Continue'),
-              ),
+              padding: const EdgeInsets.only(right: Space.s3),
+              child: Text('$_step/$_total', style: context.ty.cap.bold.col(context.c.textMuted)),
             ),
           ],
+        ),
+        body: AnimatedSwitcher(
+          duration: Motion.base,
+          child: KeyedSubtree(key: ValueKey(_step), child: body),
+        ),
+        bottomNavigationBar: FooterCta(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (_error != null) ...[ErrText(_error!), const Gap(Space.s3)],
+              Btn(_step == _total ? 'Finish setup' : 'Continue', block: true, loading: _saving, onPressed: canFinish ? _continue : null),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _title(String t, String s) => Padding(
-    padding: const EdgeInsets.fromLTRB(0, Space.s5, 0, Space.s5),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _page(String title, Widget subtitle, List<Widget> children) {
+    final rm = context.reduceMotion;
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(Space.s5, Space.s4, Space.s5, Space.s8),
       children: [
-        Text(t, style: context.t.headlineSmall),
-        gap2,
-        Text(s, style: context.t.bodyMedium?.copyWith(color: context.c.textMuted)),
+        Text(title, style: context.ty.h1),
+        const Gap(Space.s2),
+        DefaultTextStyle(style: context.ty.body.col(context.c.textMuted), child: subtitle),
+        const Gap(Space.s4),
+        for (var i = 0; i < children.length; i++)
+          rm ? children[i] : children[i].animate(delay: Motion.stagger * i).fadeIn(duration: Motion.slow).slideY(begin: .1, curve: Motion.out),
       ],
+    );
+  }
+
+  // Step 1: Tell us about you
+  Widget _about() => _page('Tell us about you', const Text('This helps us personalise your practice.'), [
+    Field(
+      label: 'Full name',
+      hint: 'e.g. Tolu Adeyemi',
+      icon: PhosphorIcons.user(),
+      controller: _name,
+      caps: TextCapitalization.words,
+      autofill: const [AutofillHints.name],
+      error: _nameErr,
     ),
-  );
+    const Gap(Space.s4),
+    Field(
+      label: 'Phone number (optional)',
+      hint: '0803 000 0000',
+      icon: PhosphorIcons.phone(),
+      controller: _phone,
+      keyboard: TextInputType.phone,
+      autofill: const [AutofillHints.telephoneNumber],
+      help: 'For class reminders only. We never share it.',
+    ),
+    const Gap(Space.s4),
+    _SelectField(label: 'State', value: _state, hint: 'Choose your state', options: nigerianStates, onChanged: (v) => setState(() => _state = v)),
+    const Gap(Space.s4),
+    Field(
+      label: 'School (optional)',
+      hint: 'e.g. Loyola College, Ibadan',
+      icon: PhosphorIcons.graduationCap(),
+      controller: _school,
+      caps: TextCapitalization.words,
+    ),
+  ]);
 
-  Widget _examsStep() => ListView(
-    padding: const EdgeInsets.symmetric(horizontal: Space.s5),
-    children: [
-      _title('Which exams are you preparing for?', 'Choose all that apply. You can change this later.'),
-      for (final (code, name) in [('JAMB', 'JAMB UTME'), ('WAEC', 'WAEC WASSCE'), ('NECO', 'NECO SSCE')]) ...[
-        _ChoiceTile(
-          selected: _exams.contains(code),
-          leading: ExamLogo(code, size: 44),
-          title: name,
-          onTap: () => setState(() => _exams.contains(code) ? _exams.remove(code) : _exams.add(code)),
+  // Step 2: Which exams are you writing? + target JAMB score
+  Widget _examsStep() => _page('Which exams are you writing?', const Text('Pick all that apply. You can change this later.'), [
+    for (final (code, name, sub) in const [
+      ('JAMB', 'JAMB UTME', '4 subjects · 180 questions · 2 hours'),
+      ('WAEC', 'WAEC WASSCE', 'Objective papers per subject'),
+      ('NECO', 'NECO SSCE', 'Objective papers per subject'),
+    ]) ...[
+      SubjTile(
+        on: _exams.contains(code),
+        minHeight: 72,
+        lead: ExamLogo(code),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(name, style: context.ty.label.bold),
+            Text(sub, style: context.ty.cap.col(context.c.textMuted)),
+          ],
         ),
-        gap3,
-      ],
+        onTap: () => setState(() => _exams.contains(code) ? _exams.remove(code) : _exams.add(code)),
+      ),
+      const Gap(Space.s3),
     ],
-  );
+    if (_jamb) ...[
+      const Gap(Space.s2),
+      Text('Target JAMB score', style: context.ty.sm.bold),
+      const Gap(Space.s2),
+      Row(
+        children: [
+          Expanded(
+            child: SliderTheme(
+              data: SliderThemeData(
+                activeTrackColor: context.c.secondary,
+                thumbColor: context.c.secondary,
+                inactiveTrackColor: context.c.surfaceSunken,
+                overlayColor: context.c.secondary.withValues(alpha: .12),
+              ),
+              child: Slider(value: _target, min: 180, max: 400, divisions: 44, label: '${_target.round()}', onChanged: (v) => setState(() => _target = v)),
+            ),
+          ),
+          SizedBox(
+            width: 44,
+            child: Text('${_target.round()}', style: context.ty.h3.tnum, textAlign: TextAlign.right),
+          ),
+        ],
+      ),
+      Text('Most competitive courses need 280+.', style: context.ty.cap.col(context.c.textMuted)),
+    ],
+  ]);
 
+  // Step 3: Your JAMB subjects (English + 3)
   Widget _subjectsStep() {
     final subjects = ref.watch(subjectsProvider);
-    final jambOnly = ref.watch(examSubjectsProvider).value;
+    final links = ref.watch(examSubjectsProvider).value;
     final exams = ref.watch(examsProvider).value ?? const [];
     final jambId = exams.where((e) => e['code'] == 'JAMB').map((e) => e['id']).firstOrNull;
     return asyncView(subjects, (list) {
-      final allowed = jambOnly == null
+      final allowed = links == null
           ? null
           : {
-              for (final r in jambOnly)
+              for (final r in links)
                 if (r['exam_id'] == jambId) r['subject_id'],
             };
-      final shown = list.where((s) => allowed == null || allowed.contains(s['id'])).toList();
-      return ListView(
-        padding: const EdgeInsets.symmetric(horizontal: Space.s5),
-        children: [
-          _title('Your JAMB subjects', 'Use of English is compulsory. Pick 3 more (${_subjects.length - 1}/3).'),
-          Wrap(
-            spacing: Space.s2,
-            runSpacing: Space.s2,
+      final shown = list.where((s) => s['code'] != 'eng' && (allowed == null || allowed.contains(s['id']))).toList();
+      return _page(
+        'Your JAMB subjects',
+        Text.rich(
+          TextSpan(
+            children: [
+              const TextSpan(text: 'Use of English is compulsory. Choose '),
+              TextSpan(text: '3 more', style: context.ty.body.bold.col(context.c.textMuted)),
+              const TextSpan(text: '.'),
+            ],
+          ),
+        ),
+        [
+          Row(
+            children: [
+              Expanded(child: Text('${_subjects.length} of 3 chosen', style: context.ty.sm.bold)),
+              Pill('English + 3', icon: PhosphorIcons.info(PhosphorIconsStyle.fill)),
+            ],
+          ),
+          const Gap(Space.s2),
+          SubjTile(
+            on: true,
+            locked: true,
+            lead: Icon(subjectIcon('eng'), size: 20),
+            trailingBadge: const Pill('Compulsory', kind: BadgeKind.neutral),
+            child: Text('Use of English', style: context.ty.label.bold),
+          ),
+          const Gap(Space.s2),
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: Space.s3,
+            crossAxisSpacing: Space.s3,
+            childAspectRatio: 2.9,
             children: [
               for (final s in shown)
-                FilterChip(
-                  label: Text(s['name'] as String),
-                  selected: _subjects.contains(s['code']),
-                  onSelected: s['code'] == 'eng'
-                      ? null
-                      : (on) => setState(() {
-                          if (on && _subjects.length >= 4) return;
-                          on ? _subjects.add(s['code'] as String) : _subjects.remove(s['code']);
-                        }),
+                SubjTile(
+                  on: _subjects.contains(s['code']),
+                  dense: true,
+                  lead: Icon(subjectIcon(s['code'] as String), size: 20),
+                  child: Text(
+                    s['name'] as String,
+                    style: context.ty.sm.bold.copyWith(height: 17 / 13),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  onTap: () {
+                    final code = s['code'] as String;
+                    if (!_subjects.contains(code) && _subjects.length >= 3) {
+                      toast(context, 'You can pick only 3. Tap one to remove it first.', icon: PhosphorIcons.info(PhosphorIconsStyle.fill));
+                      return;
+                    }
+                    setState(() => _subjects.contains(code) ? _subjects.remove(code) : _subjects.add(code));
+                  },
                 ),
             ],
           ),
@@ -231,73 +396,137 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       );
     }, onRetry: () => ref.invalidate(subjectsProvider));
   }
-
-  Widget _goalStep() => ListView(
-    padding: const EdgeInsets.symmetric(horizontal: Space.s5),
-    children: [
-      _title('Set your goal', 'We use this to show how close you are.'),
-      if (_needsJamb) ...[
-        Text('Target JAMB score', style: context.t.labelLarge),
-        Row(
-          children: [
-            Expanded(
-              child: Slider(
-                value: _target,
-                min: 120,
-                max: 400,
-                divisions: 28,
-                label: _target.round().toString(),
-                onChanged: (v) => setState(() => _target = v),
-              ),
-            ),
-            SizedBox(
-              width: 56,
-              child: Text('${_target.round()}', style: context.t.headlineSmall, textAlign: TextAlign.end),
-            ),
-          ],
-        ),
-        gap5,
-      ],
-      DropdownButtonFormField<String>(
-        initialValue: _state,
-        decoration: const InputDecoration(labelText: 'Your state (optional)'),
-        items: [for (final s in nigerianStates) DropdownMenuItem(value: s, child: Text(s))],
-        onChanged: (v) => setState(() => _state = v),
-      ),
-    ],
-  );
 }
 
-class _ChoiceTile extends StatelessWidget {
-  const _ChoiceTile({required this.selected, required this.leading, required this.title, required this.onTap});
-  final bool selected;
-  final Widget leading;
-  final String title;
-  final VoidCallback onTap;
+/// Selectable tile (`.subj`, `.subj.on`, `.subj.locked`) with a round tick on the right.
+class SubjTile extends StatelessWidget {
+  const SubjTile({
+    super.key,
+    required this.on,
+    required this.child,
+    this.lead,
+    this.onTap,
+    this.locked = false,
+    this.minHeight = 52,
+    this.dense = false,
+    this.trailingBadge,
+  });
+  final bool on, locked, dense;
+  final Widget child;
+  final Widget? lead, trailingBadge;
+  final VoidCallback? onTap;
+  final double minHeight;
   @override
   Widget build(BuildContext context) {
     final c = context.c;
-    return Material(
-      color: selected ? c.secondarySoft : c.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(Radii.lg),
-        side: BorderSide(color: selected ? c.secondary : c.border, width: selected ? 2 : 1),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(Radii.lg),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(Space.s4),
-          child: Row(
-            children: [
-              leading,
-              gap4,
-              Expanded(child: Text(title, style: context.t.titleMedium)),
-              Icon(selected ? PhosphorIcons.checkCircle(PhosphorIconsStyle.fill) : PhosphorIcons.circle(), color: selected ? c.secondary : c.borderStrong),
-            ],
+    return Semantics(
+      selected: on,
+      button: !locked,
+      child: Opacity(
+        opacity: locked ? .6 : 1,
+        child: Pressable(
+          onTap: locked ? null : onTap,
+          scale: .98,
+          borderRadius: BorderRadius.circular(Radii.md),
+          child: AnimatedContainer(
+            duration: Motion.fast,
+            constraints: BoxConstraints(minHeight: minHeight),
+            padding: EdgeInsets.symmetric(horizontal: dense ? 10 : 14),
+            decoration: BoxDecoration(
+              color: on ? c.secondarySoft : c.surface,
+              borderRadius: BorderRadius.circular(Radii.md),
+              border: Border.all(color: on ? c.secondary : c.border, width: on ? 2 : 1.5),
+            ),
+            child: Row(
+              children: [
+                if (lead != null) ...[
+                  IconTheme(
+                    data: IconThemeData(color: c.text),
+                    child: lead!,
+                  ),
+                  const SizedBox(width: 10),
+                ],
+                Expanded(child: child),
+                if (trailingBadge != null)
+                  trailingBadge!
+                else
+                  AnimatedContainer(
+                    duration: Motion.fast,
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: on ? c.secondary : Colors.transparent,
+                      shape: BoxShape.circle,
+                      border: on ? null : Border.all(color: c.borderStrong, width: 1.5),
+                    ),
+                    child: on ? Icon(PhosphorIcons.check(PhosphorIconsStyle.fill), size: 13, color: Colors.white) : null,
+                  ),
+              ],
+            ),
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Select styled as an `.input` with a caret; opens a sheet with the options.
+class _SelectField extends StatelessWidget {
+  const _SelectField({required this.label, required this.value, required this.options, required this.onChanged, this.hint});
+  final String label;
+  final String? value, hint;
+  final List<String> options;
+  final ValueChanged<String> onChanged;
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(label, style: context.ty.sm.bold),
+        const Gap(Space.s2),
+        Semantics(
+          button: true,
+          label: '$label: ${value ?? hint ?? ''}',
+          child: InkWell(
+            borderRadius: BorderRadius.circular(Radii.md),
+            onTap: () async {
+              final v = await showSheet<String>(
+                context,
+                builder: (ctx) => Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(label, style: ctx.ty.h3),
+                    const Gap(Space.s3),
+                    for (final o in options)
+                      ListTile(
+                        title: Text(o, style: ctx.ty.body),
+                        trailing: o == value ? Icon(PhosphorIcons.check(PhosphorIconsStyle.fill), color: ctx.c.secondary) : null,
+                        onTap: () => Navigator.pop(ctx, o),
+                      ),
+                  ],
+                ),
+              );
+              if (v != null) onChanged(v);
+            },
+            child: Container(
+              constraints: const BoxConstraints(minHeight: Sizes.inputHeight),
+              padding: const EdgeInsets.symmetric(horizontal: Space.s4),
+              decoration: BoxDecoration(
+                color: c.surface,
+                borderRadius: BorderRadius.circular(Radii.md),
+                border: Border.all(color: c.borderStrong, width: 1.5),
+              ),
+              child: Row(
+                children: [
+                  Expanded(child: Text(value ?? hint ?? '', style: context.ty.body.copyWith(fontSize: 16).col(value == null ? c.textSubtle : c.text))),
+                  Icon(PhosphorIcons.caretDown(), size: 18, color: c.textSubtle),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -53,10 +53,7 @@ class AppSettings {
 
 class SettingsNotifier extends Notifier<AppSettings> {
   @override
-  AppSettings build() => const AppSettings();
-
-  /// Loaded once at start-up (before the first frame) by [loadSettings].
-  void hydrate(AppSettings s) => state = s;
+  AppSettings build() => ref.read(initialSettingsProvider);
 
   Future<void> update(AppSettings Function(AppSettings) f) async {
     state = f(state);
@@ -65,6 +62,9 @@ class SettingsNotifier extends Notifier<AppSettings> {
 }
 
 final settingsProvider = NotifierProvider<SettingsNotifier, AppSettings>(SettingsNotifier.new);
+
+/// Settings read from SQLite before the first frame ([loadSettings]); main.dart overrides this.
+final initialSettingsProvider = Provider<AppSettings>((ref) => const AppSettings());
 
 Future<AppSettings> loadSettings(AppDb db) async {
   final raw = await db.kvGet('settings');
@@ -110,6 +110,11 @@ final subjectsProvider = FutureProvider<List<Map<String, dynamic>>>(
 
 final examSubjectsProvider = FutureProvider<List<Map<String, dynamic>>>(
   (ref) => cached(ref, 'exam_subjects', (s) => s.from('exam_subjects').select('exam_id, subject_id, compulsory, question_count, minutes'), rows),
+);
+
+/// Syllabus topics per subject (for topic drills).
+final topicsProvider = FutureProvider<List<Map<String, dynamic>>>(
+  (ref) => cached(ref, 'topics', (s) => s.from('topics').select('id, subject_id, name, sort').order('sort'), rows),
 );
 
 final newsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) {

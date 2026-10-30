@@ -1,33 +1,39 @@
 import 'dart:convert';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
-import '../../widgets/phosphor.g.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/providers.dart';
 import '../../data/db.dart';
 import '../../data/tests_repo.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
+import '../../ui/confetti.dart';
+import '../../ui/kit.dart';
 import '../../widgets/exam_logo.dart';
 import '../../widgets/math_text.dart';
+import '../../widgets/phosphor.g.dart';
 import '../../widgets/question_image.dart';
 import '../../widgets/states.dart';
+import '../cbt/cbt_screen.dart';
 import '../cbt/exam_clock.dart';
 import '../cbt/scoring.dart';
-import '../shell/shell.dart';
+import '../home/home_screen.dart';
 
 /// Everything the results and review screens need, read from the phone's database.
 class AttemptView {
-  AttemptView({required this.a, required this.questions, required this.answers, required this.subjectNames});
+  AttemptView({required this.a, required this.questions, required this.answers, required this.subjectNames, this.previous});
   final LocalAttempt a;
   final List<CachedQuestion> questions;
   final Map<String, LocalAnswer> answers;
   final Map<int, String> subjectNames;
+
+  /// The last finished test of the same exam and mode (for "You beat your last score by …").
+  final LocalAttempt? previous;
 
   Map<String, dynamic> get config => jsonDecode(a.configJson) as Map<String, dynamic>;
   String get title => (config['title'] as String?) ?? a.examCode;
@@ -38,11 +44,17 @@ class AttemptView {
   List<QuestionKey> get keys => [for (final q in questions) QuestionKey(id: q.id, subjectId: q.subjectId, answer: q.answer, topic: q.topic)];
 
   /// The server's mark once synced (the one that counts), else the phone's.
-  Map<String, dynamic> get score {
+  Map<String, dynamic> get score => scoreOf(a) ?? scoreAttempt(keys, choices).toJson();
+
+  static Map<String, dynamic>? scoreOf(LocalAttempt a) {
     final raw = a.serverScoreJson ?? a.clientScoreJson;
-    if (raw != null) return jsonDecode(raw) as Map<String, dynamic>;
-    return scoreAttempt(keys, choices).toJson();
+    return raw == null ? null : jsonDecode(raw) as Map<String, dynamic>;
   }
+
+  /// JAMB full mock and JAMB single subject show a scaled score (/400, /100); everything else shows a percentage.
+  bool get scaled => a.examCode == 'JAMB' && (a.mode == 'full' || a.mode == 'subject' || a.mode == 'year');
+
+  static String shortName(String n) => n == 'Use of English' ? 'English' : n;
 }
 
 final attemptViewProvider = FutureProvider.autoDispose.family<AttemptView, String>((ref, id) async {
@@ -56,14 +68,25 @@ final attemptViewProvider = FutureProvider.autoDispose.family<AttemptView, Strin
   }
   final ids = (jsonDecode(a.questionIdsJson) as List).cast<String>();
   final subjects = await ref.read(subjectsProvider.future).catchError((_) => <Map<String, dynamic>>[]);
+  final history = await db.finishedAttempts();
+  final previous = history
+      .where((h) => h.id != a!.id && h.examCode == a.examCode && h.mode == a.mode && h.submittedAt!.isBefore(a.submittedAt ?? DateTime.now()))
+      .firstOrNull;
   return AttemptView(
     a: a,
     questions: await db.questionsByIds(ids),
     answers: {for (final x in await db.answersFor(id)) x.questionId: x},
     subjectNames: {for (final s in subjects) (s['id'] as num).toInt(): s['name'] as String},
+    previous: previous,
   );
 });
 
+String _date(DateTime d) {
+  const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return '${d.day} ${m[d.month - 1]} ${d.year}';
+}
+
+// ---------------------------------------------------------------- results (prototype: results)
 class ResultsScreen extends ConsumerWidget {
   const ResultsScreen({super.key, required this.attemptId});
   final String attemptId;
@@ -72,296 +95,354 @@ class ResultsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final v = ref.watch(attemptViewProvider(attemptId));
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Your result'),
-        leading: IconButton(tooltip: 'Close', icon: Icon(PhosphorIcons.x()), onPressed: () => context.go('/home')),
-      ),
+      backgroundColor: context.c.bg,
       body: asyncView(v, (d) => _ResultsBody(d: d), onRetry: () => ref.invalidate(attemptViewProvider(attemptId))),
     );
   }
 }
 
-class _ResultsBody extends StatelessWidget {
+class _ResultsBody extends ConsumerWidget {
   const _ResultsBody({required this.d});
   final AttemptView d;
 
   @override
-  Widget build(BuildContext context) {
-    final c = context.c;
+  Widget build(BuildContext context, WidgetRef ref) {
     final s = d.score;
+    final questions = (s['questions'] as num).toInt(), correct = (s['correct'] as num).toInt();
+    final accuracy = questions == 0 ? 0 : (100 * correct / questions).round();
     final total = (s['total'] as num).toInt(), max = (s['max'] as num).toInt();
-    final correct = (s['correct'] as num).toInt(), questions = (s['questions'] as num).toInt();
-    final answered = (s['answered'] as num).toInt();
-    final pct = max == 0 ? 0.0 : total / max;
-    final weak = weakTopics(d.keys, d.choices);
+    final value = d.scaled ? total : accuracy;
+    final fraction = d.scaled ? (max == 0 ? 0.0 : total / max) : accuracy / 100;
     final subjects = [for (final x in (s['subjects'] as List)) Map<String, dynamic>.from(x as Map)];
-    final great = pct >= .7;
-    final reduce = context.reduceMotion;
+    final weak = weakTopics(d.keys, d.choices, top: 4);
+    final first = ((ref.watch(profileProvider).value?['full_name'] as String?) ?? '').split(' ').first;
+    final rm = context.reduceMotion;
+    final perQ = questions == 0 ? 0 : (d.a.usedMs / 1000 / questions).round();
+    final good = fraction >= .5;
 
-    final children = <Widget>[
-      // Score card
-      Container(
-        padding: const EdgeInsets.all(Space.s5),
-        decoration: BoxDecoration(color: c.primary, borderRadius: BorderRadius.circular(Radii.xl)),
-        child: Column(
-          children: [
-            Row(
+    // Compared with the last test of the same kind.
+    String? compare;
+    final prev = d.previous == null ? null : AttemptView.scoreOf(d.previous!);
+    if (prev != null) {
+      final pq = (prev['questions'] as num).toInt();
+      final pv = d.scaled ? (prev['total'] as num).toInt() : (pq == 0 ? 0 : (100 * (prev['correct'] as num) / pq).round());
+      final diff = value - pv;
+      compare = diff > 0 ? 'beat' : (diff < 0 ? 'below' : 'same');
+      compare = '$compare:${diff.abs()}';
+    }
+
+    const heroFg = Color(0xFFF4F7FC), heroMuted = Color(0xFFAFC0DD);
+    final hero = Container(
+      color: Palette.navy900,
+      padding: EdgeInsets.fromLTRB(Space.s5, MediaQuery.paddingOf(context).top, Space.s5, Space.s7),
+      child: Column(
+        children: [
+          SizedBox(
+            height: Sizes.appBar,
+            child: Row(
               children: [
-                ExamLogo(d.a.examCode, size: 36),
-                gap3,
+                IconBtn(PhosphorIcons.x(), label: 'Close', color: Colors.white, onPressed: () => context.go('/home')),
                 Expanded(
-                  child: Text(d.title, style: context.t.labelLarge?.copyWith(color: c.onPrimary), maxLines: 2),
+                  child: Text('Your result', textAlign: TextAlign.center, style: context.ty.h3.col(heroFg)),
                 ),
+                const SizedBox(width: Sizes.tapMin),
               ],
             ),
-            gap5,
-            Semantics(
-              label: 'Score $total out of $max',
-              child: SizedBox(
-                width: 168,
-                height: 168,
-                child: Stack(
-                  alignment: Alignment.center,
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ExamLogo(d.a.examCode, size: LogoSize.sm),
+              const Gap(Space.s2),
+              Flexible(
+                child: Text(
+                  '${d.title} · ${_date(d.a.submittedAt!.toLocal())}',
+                  style: context.ty.sm.col(heroMuted),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const Gap(Space.s4),
+          Semantics(
+            label: d.scaled ? 'Score $total out of $max' : 'Score $accuracy percent',
+            child: Ring(
+              value: fraction,
+              size: 176,
+              stroke: 12,
+              track: Colors.white.withValues(alpha: .12),
+              label: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TweenAnimationBuilder<int>(
+                    tween: IntTween(begin: rm ? value : 0, end: value),
+                    duration: const Duration(milliseconds: 1100),
+                    curve: Curves.easeOutCubic,
+                    builder: (_, n, _) =>
+                        Text(d.scaled ? '$n' : '$n%', style: context.ty.display.copyWith(fontSize: 48, height: 1, letterSpacing: -1).tnum.col(heroFg)),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(d.scaled ? 'out of $max' : 'score', style: context.ty.sm.copyWith(fontSize: 14).col(heroMuted)),
+                ],
+              ),
+            ),
+          ),
+          const Gap(Space.s3),
+          Text(
+            good ? 'Great work${first.isEmpty ? '' : ', $first'}!' : 'Keep practising${first.isEmpty ? '' : ', $first'}. You will get there.',
+            style: context.ty.h2.col(heroFg),
+            textAlign: TextAlign.center,
+          ),
+          const Gap(Space.s2),
+          if (compare != null)
+            Text.rich(
+              TextSpan(
+                style: context.ty.sm.col(heroMuted),
+                children: switch (compare.split(':')) {
+                  ['beat', final n] => [
+                    const TextSpan(text: 'You beat your last score by '),
+                    TextSpan(text: '$n ${d.scaled ? 'points' : 'percent'}', style: context.ty.sm.bold.col(Palette.gold400)),
+                    const TextSpan(text: '.'),
+                  ],
+                  ['below', final n] => [
+                    TextSpan(text: '$n ${d.scaled ? 'points' : 'percent'} below your last score. Review the wrong answers and try again.'),
+                  ],
+                  _ => [const TextSpan(text: 'The same as your last score.')],
+                },
+              ),
+              textAlign: TextAlign.center,
+            ),
+          Text(
+            d.a.synced ? 'Checked by SolutionTee.' : 'Marked on your phone. We will confirm it when you are online.',
+            style: context.ty.cap.col(heroMuted),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+
+    final cards = <Widget>[
+      AppCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(subjects.length > 1 ? 'Score by subject' : 'Your score', style: context.ty.h3),
+            const Gap(Space.s4),
+            for (final x in subjects) ...[
+              _SubjectScore(
+                name: AttemptView.shortName(d.subjectNames[(x['subject_id'] as num).toInt()] ?? 'Subject'),
+                score: (x['score'] as num).toInt(),
+                detail: '${x['correct']}/${x['total']}',
+                scaled: d.scaled,
+              ),
+              const Gap(Space.s4),
+            ],
+          ],
+        ),
+      ),
+      if (weak.isNotEmpty)
+        AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Topics to practise', style: context.ty.h3),
+              const Gap(Space.s3),
+              Wrap(
+                spacing: Space.s2,
+                runSpacing: Space.s2,
+                children: [for (final w in weak) AppChip(w.topic, on: false, icon: PhosphorIcons.target())],
+              ),
+              const Gap(Space.s3),
+              Btn('Practise weak topics', kind: BtnKind.tonal, block: true, onPressed: () => context.push('/test/setup?exam=${d.a.examCode}&mode=topic')),
+            ],
+          ),
+        ),
+      Row(
+        children: [
+          Expanded(child: Btn('Review answers', block: true, onPressed: () => context.push('/review/${d.a.id}'))),
+          const Gap(Space.s3),
+          Expanded(
+            child: Btn('Share', kind: BtnKind.outline, block: true, leading: PhosphorIcons.shareNetwork(), onPressed: () => _share(context, first, value, d)),
+          ),
+        ],
+      ),
+    ];
+
+    return Stack(
+      children: [
+        ListView(
+          padding: EdgeInsets.only(bottom: Space.s8 + MediaQuery.paddingOf(context).bottom),
+          children: [
+            hero,
+            // KPIs overlap the hero
+            Transform.translate(
+              offset: const Offset(0, -Space.s6),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Space.s5),
+                child: Row(
                   children: [
-                    TweenAnimationBuilder<double>(
-                      tween: Tween(begin: 0, end: pct),
-                      duration: reduce ? Duration.zero : const Duration(milliseconds: 900),
-                      curve: Motion.out,
-                      builder: (_, p, _) => SizedBox.expand(
-                        child: CircularProgressIndicator(
-                          value: p,
-                          strokeWidth: 12,
-                          color: c.accent,
-                          backgroundColor: c.onPrimary.withValues(alpha: .15),
-                          strokeCap: StrokeCap.round,
-                        ),
-                      ),
-                    ),
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        TweenAnimationBuilder<int>(
-                          tween: IntTween(begin: 0, end: total),
-                          duration: reduce ? Duration.zero : const Duration(milliseconds: 900),
-                          builder: (_, n, _) => Text(
-                            '$n',
-                            style: context.t.displaySmall?.copyWith(color: c.onPrimary, fontWeight: FontWeight.w700),
-                          ),
-                        ),
-                        Text('out of $max', style: context.t.bodySmall?.copyWith(color: c.onPrimary.withValues(alpha: .8))),
-                      ],
+                    _Kpi(value: '$accuracy%', label: 'Accuracy'),
+                    const Gap(Space.s2),
+                    _Kpi(value: perQ >= 60 ? '${perQ ~/ 60}m ${perQ % 60}s' : '${perQ}s', label: 'Per question'),
+                    const Gap(Space.s2),
+                    _Kpi(
+                      value: ExamClock.format(Duration(milliseconds: d.a.usedMs)),
+                      label: 'Time used',
                     ),
                   ],
                 ),
               ),
             ),
-            gap4,
-            Text(
-              great
-                  ? 'Excellent work!'
-                  : pct >= .5
-                  ? 'Good effort. Keep going!'
-                  : 'Keep practising. You will get there.',
-              style: context.t.titleMedium?.copyWith(color: c.onPrimary),
-            ),
-            gap2,
-            Text(
-              d.a.synced ? 'Checked by SolutionTee' : 'Marked on your phone. We will confirm it when you are online.',
-              style: context.t.bodySmall?.copyWith(color: c.onPrimary.withValues(alpha: .75)),
-              textAlign: TextAlign.center,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(Space.s5, 0, Space.s5, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (var i = 0; i < cards.length; i++) ...[
+                    if (i > 0) const Gap(Space.s5),
+                    rm ? cards[i] : cards[i].animate(delay: Motion.stagger * (i + 2)).fadeIn(duration: Motion.slow).slideY(begin: .06, curve: Motion.out),
+                  ],
+                ],
+              ),
             ),
           ],
         ),
-      ),
-      // Quick stats
-      Row(
+        if (good && !rm) const IgnorePointer(child: Confetti(delay: Duration(milliseconds: 300))),
+      ],
+    );
+  }
+
+  void _share(BuildContext context, String first, int value, AttemptView d) {
+    final text =
+        '${first.isEmpty ? 'I' : first} scored ${d.scaled ? '$value / ${(d.score['max'] as num).toInt()}' : '$value%'} in ${d.title} on SolutionTee CBT. Learn. Think. Solve.';
+    showSheet<void>(
+      context,
+      builder: (ctx) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _Tile(icon: PhosphorIcons.checkCircle(PhosphorIconsStyle.fill), color: c.success, value: '$correct/$questions', label: 'Correct'),
-          gap3,
-          _Tile(icon: PhosphorIcons.pencilSimple(PhosphorIconsStyle.fill), color: c.secondary, value: '$answered', label: 'Answered'),
-          gap3,
-          _Tile(
-            icon: PhosphorIcons.timer(PhosphorIconsStyle.fill),
-            color: c.warning,
-            value: ExamClock.format(Duration(milliseconds: d.a.usedMs)),
-            label: 'Time used',
+          Text('Share your result', style: ctx.ty.h3),
+          const Gap(Space.s4),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(Radii.lg),
+            child: Container(
+              padding: const EdgeInsets.all(Space.s5),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(colors: [Palette.navy900, Palette.blue800], begin: Alignment.topLeft, end: Alignment.bottomRight),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Mark(height: 22, onDark: true),
+                      const Gap(Space.s2),
+                      Text('SolutionTee CBT', style: ctx.ty.sm.bold.col(const Color(0xFFF4F7FC))),
+                    ],
+                  ),
+                  const Gap(Space.s4),
+                  Text('${first.isEmpty ? 'I' : first} scored', style: ctx.ty.sm.col(const Color(0xFFAFC0DD))),
+                  Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: d.scaled ? '$value' : '$value%',
+                          style: ctx.ty.display.copyWith(fontSize: 56, height: 1, letterSpacing: -1).tnum.col(const Color(0xFFF4F7FC)),
+                        ),
+                        if (d.scaled)
+                          TextSpan(text: ' / ${(d.score['max'] as num).toInt()}', style: ctx.ty.h3.copyWith(fontSize: 18).col(const Color(0xFFAFC0DD))),
+                      ],
+                    ),
+                  ),
+                  const Gap(Space.s2),
+                  Text('${d.title} · Learn. Think. Solve.', style: ctx.ty.sm.col(const Color(0xFFAFC0DD))),
+                ],
+              ),
+            ),
+          ),
+          const Gap(Space.s4),
+          Row(
+            children: [
+              Expanded(
+                child: Btn(
+                  'WhatsApp',
+                  kind: BtnKind.accent,
+                  block: true,
+                  leading: PhosphorIcons.whatsappLogo(PhosphorIconsStyle.fill),
+                  onPressed: () => launchUrl(Uri.parse('https://wa.me/?text=${Uri.encodeComponent(text)}'), mode: LaunchMode.externalApplication),
+                ),
+              ),
+              const Gap(Space.s3),
+              Expanded(
+                child: Btn(
+                  'Copy text',
+                  kind: BtnKind.outline,
+                  block: true,
+                  leading: PhosphorIcons.copy(),
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: text));
+                    Navigator.pop(ctx);
+                    toast(context, 'Copied. Paste it anywhere.', icon: PhosphorIcons.copy(PhosphorIconsStyle.fill));
+                  },
+                ),
+              ),
+            ],
           ),
         ],
       ),
-      // Per subject
-      if (subjects.length > 1 || d.a.examCode == 'JAMB') ...[
-        Text('By subject', style: context.t.titleMedium),
-        for (final x in subjects)
-          _SubjectBar(
-            name: d.subjectNames[(x['subject_id'] as num).toInt()] ?? 'Subject',
-            score: (x['score'] as num).toInt(),
-            detail: '${x['correct']}/${x['total']} correct',
-          ),
-      ],
-      // Weak topics
-      if (weak.isNotEmpty) ...[
-        Text('Topics to revise', style: context.t.titleMedium),
-        Card(
-          child: Column(
-            children: [
-              for (final w in weak)
-                ListTile(
-                  leading: Icon(PhosphorIcons.target(PhosphorIconsStyle.fill), color: c.error),
-                  title: Text(w.topic),
-                  subtitle: Text('${w.wrong} of ${w.total} wrong'),
-                ),
-            ],
-          ),
-        ),
-      ],
-      FilledButton.icon(onPressed: () => context.push('/review/${d.a.id}'), icon: Icon(PhosphorIcons.listChecks()), label: const Text('Review answers')),
-      OutlinedButton(onPressed: () => context.go('/test'), child: const Text('Practise another test')),
-    ];
-
-    return Stack(
-      children: [
-        ListView.separated(
-          padding: const EdgeInsets.fromLTRB(Space.s5, Space.s2, Space.s5, Space.s8),
-          itemCount: children.length,
-          separatorBuilder: (_, _) => gap4,
-          itemBuilder: (_, i) =>
-              reduce ? children[i] : children[i].animate(delay: Motion.stagger * i).fadeIn(duration: Motion.base).slideY(begin: .05, curve: Motion.out),
-        ),
-        if (great && !reduce) const IgnorePointer(child: _Confetti()),
-      ],
     );
   }
 }
 
-class _Tile extends StatelessWidget {
-  const _Tile({required this.icon, required this.color, required this.value, required this.label});
-  final IconData icon;
-  final Color color;
+class _Kpi extends StatelessWidget {
+  const _Kpi({required this.value, required this.label});
   final String value, label;
   @override
   Widget build(BuildContext context) => Expanded(
-    child: Container(
+    child: AppCard(
       padding: const EdgeInsets.all(Space.s3),
-      decoration: BoxDecoration(
-        color: context.c.surface,
-        borderRadius: BorderRadius.circular(Radii.lg),
-        border: Border.all(color: context.c.border),
-      ),
       child: Column(
         children: [
-          Icon(icon, color: color, size: 22),
-          gap2,
-          Text(value, style: context.t.titleMedium, maxLines: 1),
-          Text(label, style: context.t.labelSmall?.copyWith(color: context.c.textMuted)),
+          FittedBox(
+            child: Text(value, style: context.ty.h2.copyWith(fontSize: 20, height: 26 / 20).tnum),
+          ),
+          Text(label, style: context.ty.cap.bold.copyWith(fontSize: 11).col(context.c.textMuted)),
         ],
       ),
     ),
   );
 }
 
-class _SubjectBar extends StatelessWidget {
-  const _SubjectBar({required this.name, required this.score, required this.detail});
+class _SubjectScore extends StatelessWidget {
+  const _SubjectScore({required this.name, required this.score, required this.detail, required this.scaled});
   final String name, detail;
   final int score;
+  final bool scaled;
   @override
-  Widget build(BuildContext context) {
-    final c = context.c;
-    final color = score >= 70
-        ? c.success
-        : score >= 50
-        ? c.secondary
-        : c.error;
-    return Semantics(
-      label: '$name: $score out of 100',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(child: Text(name, style: context.t.labelLarge)),
-              Text('$score', style: context.t.labelLarge?.copyWith(color: color)),
-              Text(' /100', style: context.t.bodySmall),
-            ],
-          ),
-          const SizedBox(height: 6),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(Radii.pill),
-            child: LinearProgressIndicator(value: score / 100, minHeight: 10, color: color, backgroundColor: c.surfaceSunken),
-          ),
-          const SizedBox(height: 4),
-          Text(detail, style: context.t.bodySmall?.copyWith(color: c.textMuted)),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Semantics(
+    label: '$name: $score ${scaled ? 'out of 100' : 'percent'}',
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(child: Text(name, style: context.ty.sm.bold)),
+            Text('$detail · ', style: context.ty.cap.col(context.c.textMuted)),
+            Text(scaled ? '$score/100' : '$score%', style: context.ty.sm.bold.tnum),
+          ],
+        ),
+        const SizedBox(height: 6),
+        ProgressBar(score / 100, color: score >= 70 ? context.c.success : null),
+      ],
+    ),
+  );
 }
 
-/// A light, one-shot confetti burst (CustomPainter, no extra package). Skipped when reduce motion is on.
-class _Confetti extends StatefulWidget {
-  const _Confetti();
-  @override
-  State<_Confetti> createState() => _ConfettiState();
-}
-
-class _ConfettiState extends State<_Confetti> with SingleTickerProviderStateMixin {
-  late final _ctl = AnimationController(vsync: this, duration: const Duration(milliseconds: 2200))..forward();
-  final _bits = List.generate(60, (i) {
-    final r = math.Random(i * 7919);
-    return (
-      x: r.nextDouble(),
-      drift: r.nextDouble() - .5,
-      speed: .6 + r.nextDouble() * .6,
-      spin: r.nextDouble() * 6,
-      size: 6 + r.nextDouble() * 6,
-      color: i % 3,
-    );
-  });
-
-  @override
-  void dispose() {
-    _ctl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.c;
-    final colors = [c.accent, c.secondary, c.success];
-    return AnimatedBuilder(
-      animation: _ctl,
-      builder: (_, _) => _ctl.isCompleted ? const SizedBox.shrink() : CustomPaint(size: Size.infinite, painter: _ConfettiPainter(_ctl.value, _bits, colors)),
-    );
-  }
-}
-
-class _ConfettiPainter extends CustomPainter {
-  _ConfettiPainter(this.t, this.bits, this.colors);
-  final double t;
-  final List<({double x, double drift, double speed, double spin, double size, int color})> bits;
-  final List<Color> colors;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final p = Paint();
-    for (final b in bits) {
-      final y = -20 + (size.height + 40) * (t * b.speed);
-      final x = size.width * b.x + b.drift * 80 * t;
-      p.color = colors[b.color].withValues(alpha: (1 - t).clamp(0, 1));
-      canvas.save();
-      canvas.translate(x, y);
-      canvas.rotate(b.spin * t * math.pi);
-      canvas.drawRect(Rect.fromCenter(center: Offset.zero, width: b.size, height: b.size * .5), p);
-      canvas.restore();
-    }
-  }
-
-  @override
-  bool shouldRepaint(_ConfettiPainter old) => old.t != t;
-}
-
-// ---------------------------------------------------------------- review
+// ---------------------------------------------------------------- review (prototype: review)
 enum _Filter { all, wrong, flagged, skipped }
 
+/// One question at a time, filtered (All · Wrong · Flagged · Skipped), with the correct answer, the student's
+/// answer and the explanation.
 class ReviewScreen extends ConsumerStatefulWidget {
   const ReviewScreen({super.key, required this.attemptId});
   final String attemptId;
@@ -370,17 +451,25 @@ class ReviewScreen extends ConsumerStatefulWidget {
 }
 
 class _ReviewScreenState extends ConsumerState<ReviewScreen> {
-  _Filter _f = _Filter.all;
+  _Filter? _f;
+  int _i = 0;
 
   @override
   Widget build(BuildContext context) {
     final v = ref.watch(attemptViewProvider(widget.attemptId));
-    return Scaffold(
-      appBar: AppBar(title: const Text('Review answers')),
-      body: asyncView(v, (d) {
-        bool keep(CachedQuestion q) {
+    return v.when(
+      loading: () => const Scaffold(
+        appBar: TopBar(title: 'Review answers'),
+        body: ListSkeleton(),
+      ),
+      error: (e, _) => Scaffold(
+        appBar: const TopBar(title: 'Review answers'),
+        body: StateView.error(e, onRetry: () => ref.invalidate(attemptViewProvider(widget.attemptId))),
+      ),
+      data: (d) {
+        bool isIn(_Filter f, CachedQuestion q) {
           final a = d.answers[q.id];
-          return switch (_f) {
+          return switch (f) {
             _Filter.all => true,
             _Filter.wrong => a?.choice != null && a!.choice!.toUpperCase() != q.answer,
             _Filter.flagged => a?.flagged == true,
@@ -388,54 +477,92 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
           };
         }
 
-        final shown = [
-          for (var i = 0; i < d.questions.length; i++)
-            if (keep(d.questions[i])) i,
-        ];
-        return Column(
-          children: [
-            SizedBox(
-              height: 52,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: Space.s4, vertical: Space.s2),
-                children: [
-                  for (final (f, label) in [(_Filter.all, 'All'), (_Filter.wrong, 'Wrong'), (_Filter.skipped, 'Not answered'), (_Filter.flagged, 'Flagged')])
-                    Padding(
-                      padding: const EdgeInsets.only(right: Space.s2),
-                      child: ChoiceChip(label: Text(label), selected: _f == f, onSelected: (_) => setState(() => _f = f)),
-                    ),
-                ],
+        final f = _f ?? (d.questions.any((q) => isIn(_Filter.wrong, q)) ? _Filter.wrong : _Filter.all);
+        final list = d.questions.where((q) => isIn(f, q)).toList();
+        final i = _i.clamp(0, list.isEmpty ? 0 : list.length - 1);
+        final q = list.isEmpty ? null : list[i];
+        final c = context.c;
+
+        return Scaffold(
+          appBar: TopBar(
+            title: 'Review answers',
+            subtitle: q == null ? 'Nothing here' : '${AttemptView.shortName(d.subjectNames[q.subjectId] ?? 'Subject')} · ${i + 1} of ${list.length}',
+            lined: true,
+          ),
+          body: Column(
+            children: [
+              Container(
+                color: c.bg,
+                padding: const EdgeInsets.symmetric(horizontal: Space.s4, vertical: 10),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      for (final (k, l) in const [
+                        (_Filter.all, 'All'),
+                        (_Filter.wrong, 'Wrong'),
+                        (_Filter.flagged, 'Flagged'),
+                        (_Filter.skipped, 'Skipped'),
+                      ]) ...[
+                        AppChip(
+                          '$l  ${d.questions.where((x) => isIn(k, x)).length}',
+                          on: k == f,
+                          onTap: () => setState(() {
+                            _f = k;
+                            _i = 0;
+                          }),
+                        ),
+                        const Gap(Space.s2),
+                      ],
+                    ],
+                  ),
+                ),
               ),
-            ),
-            Expanded(
-              child: shown.isEmpty
-                  ? StateView(icon: PhosphorIcons.checks(PhosphorIconsStyle.fill), title: 'Nothing here', message: 'No questions match this filter.')
-                  : ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(Space.s5, Space.s2, Space.s5, Space.s8),
-                      itemCount: shown.length,
-                      separatorBuilder: (_, _) => gap4,
-                      itemBuilder: (_, k) => _ReviewCard(
-                        n: shown[k] + 1,
-                        q: d.questions[shown[k]],
-                        a: d.answers[d.questions[shown[k]].id],
-                        subject: d.subjectNames[d.questions[shown[k]].subjectId],
+              Expanded(
+                child: q == null
+                    ? StateBlock(
+                        icon: PhosphorIcons.checkCircle(PhosphorIconsStyle.fill),
+                        tone: Tone.blue,
+                        title: 'Nothing to review here',
+                        text: 'Pick another filter above.',
+                      )
+                    : _ReviewBody(key: ValueKey(q.id), q: q, a: d.answers[q.id]),
+              ),
+              if (q != null)
+                Container(
+                  padding: EdgeInsets.fromLTRB(Space.s3, Space.s2, Space.s3, Space.s3 + MediaQuery.paddingOf(context).bottom),
+                  decoration: BoxDecoration(
+                    color: c.surface,
+                    border: Border(top: BorderSide(color: c.border)),
+                  ),
+                  child: Row(
+                    children: [
+                      Btn(
+                        'Prev',
+                        kind: BtnKind.outline,
+                        sm: true,
+                        leading: PhosphorIcons.caretLeft(),
+                        onPressed: i == 0 ? null : () => setState(() => _i = i - 1),
                       ),
-                    ),
-            ),
-          ],
+                      Expanded(
+                        child: Text('${i + 1} / ${list.length}', textAlign: TextAlign.center, style: context.ty.cap.tnum.col(c.textMuted)),
+                      ),
+                      Btn('Next', sm: true, icon: PhosphorIcons.caretRight(), onPressed: i >= list.length - 1 ? null : () => setState(() => _i = i + 1)),
+                    ],
+                  ),
+                ),
+            ],
+          ),
         );
-      }, onRetry: () => ref.invalidate(attemptViewProvider(widget.attemptId))),
+      },
     );
   }
 }
 
-class _ReviewCard extends StatelessWidget {
-  const _ReviewCard({required this.n, required this.q, required this.a, this.subject});
-  final int n;
+class _ReviewBody extends StatelessWidget {
+  const _ReviewBody({super.key, required this.q, required this.a});
   final CachedQuestion q;
   final LocalAnswer? a;
-  final String? subject;
 
   @override
   Widget build(BuildContext context) {
@@ -443,98 +570,98 @@ class _ReviewCard extends StatelessWidget {
     final options = Map<String, String>.from(jsonDecode(q.optionsJson) as Map);
     final chose = a?.choice?.toUpperCase();
     final right = chose == q.answer;
-    final (tag, tagBg, tagFg) = chose == null
-        ? ('Not answered', c.surfaceSunken, c.textMuted)
-        : right
-        ? ('Correct', c.successSoft, c.onSuccessSoft)
-        : ('Wrong', c.errorSoft, c.onErrorSoft);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(Space.s4),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    final secs = ((a?.timeMs ?? 0) / 1000).round();
+    final took = chose == null ? 'Not answered' : 'You took ${secs >= 60 ? '${secs ~/ 60}m ${secs % 60}s' : '${secs}s'}';
+    final rm = context.reduceMotion;
+    final body = ListView(
+      padding: const EdgeInsets.fromLTRB(Space.s5, Space.s2, Space.s5, Space.s8),
+      children: [
+        Wrap(
+          spacing: Space.s2,
+          runSpacing: Space.s2,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            Row(
-              children: [
-                Text('Question $n', style: context.t.labelLarge),
-                if (subject != null) Text(' · $subject', style: context.t.bodySmall),
-                const Spacer(),
-                if (a?.flagged == true)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: Icon(PhosphorIcons.flag(PhosphorIconsStyle.fill), size: 16, color: c.flagged),
-                  ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(color: tagBg, borderRadius: BorderRadius.circular(Radii.pill)),
-                  child: Text(
-                    tag,
-                    style: context.t.labelSmall?.copyWith(color: tagFg, fontWeight: FontWeight.w700),
-                  ),
-                ),
-              ],
-            ),
-            if (q.passageTitle != null) ...[gap2, Text('Passage: ${q.passageTitle}', style: context.t.bodySmall?.copyWith(color: c.textMuted))],
-            gap3,
-            MathText(q.body, style: context.t.bodyLarge),
-            if (q.imagePath != null) ...[gap3, QuestionImage(imageKey: q.imagePath!)],
-            gap3,
-            for (final k in options.keys.toList()..sort())
-              Padding(
-                padding: const EdgeInsets.only(bottom: Space.s2),
-                child: Container(
-                  padding: const EdgeInsets.all(Space.s3),
-                  decoration: BoxDecoration(
-                    color: k == q.answer
-                        ? c.successSoft
-                        : k == chose
-                        ? c.errorSoft
-                        : null,
-                    borderRadius: BorderRadius.circular(Radii.sm),
-                    border: Border.all(
-                      color: k == q.answer
-                          ? c.success
-                          : k == chose
-                          ? c.error
-                          : c.border,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Text('$k.', style: context.t.labelLarge),
-                      gap3,
-                      Expanded(child: MathText(options[k]!, style: context.t.bodyMedium)),
-                      if (k == q.answer) Icon(PhosphorIcons.check(PhosphorIconsStyle.bold), size: 18, color: c.success, semanticLabel: 'Correct answer'),
-                      if (k == chose && !right) Icon(PhosphorIcons.x(PhosphorIconsStyle.bold), size: 18, color: c.error, semanticLabel: 'Your answer'),
-                    ],
-                  ),
-                ),
-              ),
-            if ((q.explanation ?? '').isNotEmpty) ...[
-              gap2,
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(Space.s3),
-                decoration: BoxDecoration(color: c.secondarySoft, borderRadius: BorderRadius.circular(Radii.md)),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(PhosphorIcons.lightbulb(PhosphorIconsStyle.fill), size: 16, color: c.onSecondarySoft),
-                        const SizedBox(width: 6),
-                        Text('Explanation', style: context.t.labelLarge?.copyWith(color: c.onSecondarySoft)),
-                      ],
-                    ),
-                    gap2,
-                    MathText(q.explanation!, style: context.t.bodyMedium?.copyWith(color: c.onSecondarySoft)),
-                  ],
-                ),
-              ),
-            ],
+            if (chose == null)
+              Pill('Skipped', kind: BadgeKind.neutral, icon: PhosphorIcons.minusCircle(PhosphorIconsStyle.fill))
+            else if (right)
+              Pill('Correct', kind: BadgeKind.success, icon: PhosphorIcons.checkCircle(PhosphorIconsStyle.fill))
+            else
+              Pill('Wrong', kind: BadgeKind.error, icon: PhosphorIcons.xCircle(PhosphorIconsStyle.fill)),
+            if (a?.flagged == true) Pill('Flagged', kind: BadgeKind.warning, icon: PhosphorIcons.flag(PhosphorIconsStyle.fill)),
+            if ((q.topic ?? '').isNotEmpty) Pill(q.topic!),
+            Text(took, style: context.ty.cap.col(c.textMuted)),
           ],
         ),
-      ),
+        const Gap(Space.s4),
+        if (q.passageBody != null) ...[
+          Container(
+            padding: const EdgeInsets.all(Space.s4),
+            decoration: BoxDecoration(
+              color: c.surfaceAlt,
+              borderRadius: BorderRadius.circular(Radii.md),
+              border: Border.all(color: c.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(PhosphorIcons.article(PhosphorIconsStyle.fill), size: 16),
+                    const SizedBox(width: 6),
+                    Text((q.passageTitle ?? 'Passage').replaceFirst('[SAMPLE] ', ''), style: context.ty.sm.bold),
+                  ],
+                ),
+                const Gap(Space.s2),
+                MathText(q.passageBody!, style: context.ty.body.copyWith(height: 24 / 15)),
+              ],
+            ),
+          ),
+          const Gap(Space.s4),
+        ],
+        MathText(
+          q.body,
+          style: context.ty.body.copyWith(fontSize: TypeScale.question.size, height: TypeScale.question.line / TypeScale.question.size),
+        ),
+        if (q.imagePath != null) ...[const Gap(Space.s3), QuestionImage(imageKey: q.imagePath!)],
+        const Gap(Space.s4),
+        for (final k in options.keys.toList()..sort()) ...[
+          OptionRow(
+            letter: k,
+            text: options[k]!,
+            state: k == q.answer
+                ? OptState.right
+                : k == chose
+                ? OptState.wrong
+                : OptState.none,
+            tag: k == q.answer
+                ? 'Correct answer'
+                : k == chose
+                ? 'Your answer'
+                : null,
+          ),
+          const SizedBox(height: 10),
+        ],
+        if ((q.explanation ?? '').isNotEmpty) ...[
+          const Gap(Space.s3),
+          Container(
+            padding: const EdgeInsets.all(Space.s4),
+            decoration: BoxDecoration(
+              color: c.surfaceAlt,
+              borderRadius: BorderRadius.circular(Radii.md),
+              border: Border.all(color: c.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Explanation', style: context.ty.body.bold),
+                const Gap(Space.s2),
+                MathText(q.explanation!, style: context.ty.body.copyWith(height: 24 / 15)),
+              ],
+            ),
+          ),
+        ],
+      ],
     );
+    return rm ? body : body.animate().fadeIn(duration: Motion.base);
   }
 }

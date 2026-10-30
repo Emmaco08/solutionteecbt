@@ -3,106 +3,117 @@ import 'dart:async';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
-import '../../widgets/phosphor.g.dart';
-
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/api.dart';
 import '../../core/providers.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
+import '../../ui/kit.dart';
+import '../../widgets/phosphor.g.dart';
 import '../onboarding/onboarding_screens.dart';
-import '../shell/shell.dart';
 
 final _emailRe = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]{2,}$');
 final _pwRe = RegExp(r'^(?=.*[A-Za-z])(?=.*\d).{8,72}$');
+final _refRe = RegExp(r'^[A-Z]{2,8}-[A-Z0-9]{4}$');
 
 /// Turns Supabase auth errors into simple English.
 String friendlyAuth(Object e) {
   final m = e is AuthException ? e.message : e.toString();
-  if (RegExp('invalid login', caseSensitive: false).hasMatch(m)) return 'Email or password is not correct.';
+  if (RegExp('invalid login', caseSensitive: false).hasMatch(m)) return 'That email or password is not correct. Try again or reset it.';
   if (RegExp('not confirmed', caseSensitive: false).hasMatch(m)) return 'Confirm your email first. We can send you a new code.';
   if (RegExp('banned', caseSensitive: false).hasMatch(m)) return 'This account has been suspended. Contact support.';
-  if (RegExp('expired|invalid', caseSensitive: false).hasMatch(m)) return 'That code is not right or has expired. Ask for a new one.';
+  if (RegExp('expired|invalid', caseSensitive: false).hasMatch(m)) return 'That code is not right. Check and try again.';
   if (RegExp('rate|too many', caseSensitive: false).hasMatch(m)) return 'Too many tries. Wait a minute and try again.';
   if (RegExp('socket|network|connection|host', caseSensitive: false).hasMatch(m)) return 'No internet connection. Check your data or Wi-Fi.';
   return m;
 }
 
-class _AuthFrame extends StatelessWidget {
-  const _AuthFrame({required this.title, this.subtitle, required this.children, this.back = true});
+/// Auth page layout: app bar with back, `.auth-head` (icon/mark, h1, muted line), then a padded form.
+class _AuthPage extends StatelessWidget {
+  const _AuthPage({required this.title, this.subtitle, this.head, required this.children, this.onBack});
   final String title;
-  final String? subtitle;
+  final Widget? subtitle;
+  final Widget? head;
   final List<Widget> children;
-  final bool back;
+  final VoidCallback? onBack;
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(automaticallyImplyLeading: back),
-    body: SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(Space.s5, 0, Space.s5, Space.s7),
+  Widget build(BuildContext context) {
+    final rm = context.reduceMotion;
+    return Scaffold(
+      appBar: TopBar(onBack: onBack ?? () => context.canPop() ? context.pop() : context.go('/welcome')),
+      body: ListView(
+        padding: EdgeInsets.only(bottom: Space.s6 + MediaQuery.paddingOf(context).bottom),
         children: [
-          Text(title, style: context.t.headlineMedium),
-          if (subtitle != null) ...[gap2, Text(subtitle!, style: context.t.bodyMedium?.copyWith(color: context.c.textMuted))],
-          gap6,
-          ...children,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(Space.s5, Space.s2, Space.s5, Space.s5),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (head != null) ...[head!, const Gap(Space.s3)],
+                Text(title, style: context.ty.h1),
+                if (subtitle != null) ...[const Gap(Space.s2), DefaultTextStyle(style: context.ty.body.col(context.c.textMuted), child: subtitle!)],
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Space.s5),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (var i = 0; i < children.length; i++) ...[
+                  if (i > 0) const Gap(Space.s4),
+                  rm ? children[i] : children[i].animate(delay: Motion.stagger * i).fadeIn(duration: Motion.slow).slideY(begin: .1, curve: Motion.out),
+                ],
+              ],
+            ),
+          ),
         ],
       ),
-    ),
-  );
+    );
+  }
 }
 
-class _ErrorText extends StatelessWidget {
-  const _ErrorText(this.text);
-  final String? text;
+/// Shake the form on a failed submit (`.shake`).
+class _Shake extends StatelessWidget {
+  const _Shake({required this.trigger, required this.child});
+  final int trigger;
+  final Widget child;
   @override
-  Widget build(BuildContext context) => text == null
-      ? const SizedBox.shrink()
-      : Padding(
-          padding: const EdgeInsets.only(top: Space.s3),
-          child: Text(
-            text!,
-            style: context.t.bodyMedium?.copyWith(color: context.c.error, fontWeight: FontWeight.w700),
-            semanticsLabel: 'Error: $text',
+  Widget build(BuildContext context) {
+    if (trigger == 0 || context.reduceMotion) return child;
+    return child.animate(key: ValueKey(trigger)).shakeX(hz: 4, amount: 6, duration: 360.ms);
+  }
+}
+
+Widget _centerLink(BuildContext context, String lead, String link, VoidCallback onTap) => Center(
+  child: Text.rich(
+    TextSpan(
+      style: context.ty.sm.col(context.c.textMuted),
+      children: [
+        TextSpan(text: '$lead '),
+        WidgetSpan(
+          alignment: PlaceholderAlignment.middle,
+          child: InkWell(
+            onTap: onTap,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 44),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Center(widthFactor: 1, child: Text(link, style: context.ty.sm.bold.col(context.c.link))),
+              ),
+            ),
           ),
-        );
-}
-
-class _PasswordField extends StatefulWidget {
-  const _PasswordField({required this.controller, this.label = 'Password', this.newPassword = false});
-  final TextEditingController controller;
-  final String label;
-  final bool newPassword;
-  @override
-  State<_PasswordField> createState() => _PasswordFieldState();
-}
-
-class _PasswordFieldState extends State<_PasswordField> {
-  bool _show = false;
-  @override
-  Widget build(BuildContext context) => TextField(
-    controller: widget.controller,
-    obscureText: !_show,
-    autofillHints: [widget.newPassword ? AutofillHints.newPassword : AutofillHints.password],
-    decoration: InputDecoration(
-      labelText: widget.label,
-      helperText: widget.newPassword ? 'At least 8 characters with letters and numbers' : null,
-      suffixIcon: IconButton(
-        tooltip: _show ? 'Hide password' : 'Show password',
-        icon: Icon(_show ? PhosphorIcons.eyeSlash() : PhosphorIcons.eye()),
-        onPressed: () => setState(() => _show = !_show),
-      ),
+        ),
+      ],
     ),
-  );
-}
+  ),
+);
 
-Widget _busy(bool busy, String label) =>
-    busy ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white)) : Text(label);
-
-// ---------------------------------------------------------------- sign up
+// ---------------------------------------------------------------- sign up (prototype: signup)
 class SignUpScreen extends ConsumerStatefulWidget {
   const SignUpScreen({super.key});
   @override
@@ -110,123 +121,163 @@ class SignUpScreen extends ConsumerStatefulWidget {
 }
 
 class _SignUpScreenState extends ConsumerState<SignUpScreen> {
-  final _name = TextEditingController(), _email = TextEditingController(), _pw = TextEditingController(), _ref = TextEditingController();
-  bool _consent = false, _busyState = false;
-  String? _error;
+  final _email = TextEditingController(), _pw = TextEditingController(), _ref = TextEditingController();
+  bool _agree = false, _busy = false, _refOpen = false, _consentErr = false;
+  String? _emailErr, _pwErr, _refErr, _error;
+  int _shake = 0;
+
+  @override
+  void dispose() {
+    _email.dispose();
+    _pw.dispose();
+    _ref.dispose();
+    super.dispose();
+  }
 
   Future<void> _submit() async {
     final email = _email.text.trim().toLowerCase();
-    setState(
-      () => _error = _name.text.trim().length < 2
-          ? 'Enter your full name.'
-          : !_emailRe.hasMatch(email)
-          ? 'Enter a valid email address.'
-          : !_pwRe.hasMatch(_pw.text)
-          ? 'Use at least 8 characters with letters and numbers.'
-          : !_consent
-          ? 'Please accept the Terms and Privacy Policy to continue.'
-          : null,
-    );
-    if (_error != null) return;
-    setState(() => _busyState = true);
+    final ref = _ref.text.trim().toUpperCase();
+    setState(() {
+      _error = null;
+      _emailErr = _emailRe.hasMatch(email) ? null : 'Enter a valid email, like tolu@gmail.com';
+      _pwErr = _pw.text.length < 8
+          ? 'Password needs at least 8 characters'
+          : _pwRe.hasMatch(_pw.text)
+          ? null
+          : 'Use letters and at least one number';
+      _refErr = ref.isEmpty || _refRe.hasMatch(ref) ? null : 'That referral code does not look right. Check it or leave it empty.';
+      _consentErr = !_agree;
+    });
+    if (_emailErr != null || _pwErr != null || _refErr != null || _consentErr) {
+      setState(() => _shake++);
+      return;
+    }
+    setState(() => _busy = true);
     try {
-      final len = await ref.read(apiProvider).signUp(email: email, password: _pw.text, fullName: _name.text.trim(), referralCode: _ref.text.trim());
+      final len = await this.ref.read(apiProvider).signUp(email: email, password: _pw.text, fullName: '', referralCode: ref);
       if (!mounted) return;
       context.push(
         '/verify',
-        extra: VerifyArgs(email: email, type: OtpType.signup, codeLength: len, password: _pw.text, fullName: _name.text.trim()),
+        extra: VerifyArgs(email: email, type: OtpType.signup, codeLength: len, password: _pw.text),
       );
     } on ApiError catch (e) {
-      setState(() => _error = e.message);
+      setState(() {
+        _error = e.message;
+        _shake++;
+      });
     } finally {
-      if (mounted) setState(() => _busyState = false);
+      if (mounted) setState(() => _busy = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final c = context.c;
-    final link = TextStyle(color: c.link, fontWeight: FontWeight.w700);
-    return _AuthFrame(
+    final link = context.ty.sm.bold.col(c.link);
+    return _AuthPage(
       title: 'Create your account',
-      subtitle: 'Free to start. We will email you a code to confirm.',
+      subtitle: const Text('It takes one minute. We will send a code to your email.'),
+      onBack: () => context.go('/welcome'),
       children: [
-        AutofillGroup(
-          child: Column(
-            children: [
-              TextField(
-                controller: _name,
-                textCapitalization: TextCapitalization.words,
-                autofillHints: const [AutofillHints.name],
-                decoration: const InputDecoration(labelText: 'Full name'),
-              ),
-              gap4,
-              TextField(
-                controller: _email,
-                keyboardType: TextInputType.emailAddress,
-                autofillHints: const [AutofillHints.email],
-                decoration: const InputDecoration(labelText: 'Email'),
-              ),
-              gap4,
-              _PasswordField(controller: _pw, newPassword: true),
-              gap4,
-              TextField(
-                controller: _ref,
-                textCapitalization: TextCapitalization.characters,
-                decoration: const InputDecoration(labelText: 'Referral code (optional)'),
-              ),
-            ],
-          ),
-        ),
-        gap4,
-        // Consent is required (D-019): the button stays usable but explains what is missing.
-        InkWell(
-          borderRadius: BorderRadius.circular(Radii.md),
-          onTap: () => setState(() => _consent = !_consent),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: Space.s2),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        _Shake(
+          trigger: _shake,
+          child: AutofillGroup(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Checkbox(value: _consent, onChanged: (v) => setState(() => _consent = v ?? false)),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: Text.rich(
-                      TextSpan(
-                        style: context.t.bodyMedium,
-                        children: [
-                          const TextSpan(text: 'I agree to the '),
-                          TextSpan(text: 'Terms', style: link, recognizer: TapGestureRecognizer()..onTap = () => context.push('/legal?p=terms')),
-                          const TextSpan(text: ' and '),
-                          TextSpan(text: 'Privacy Policy', style: link, recognizer: TapGestureRecognizer()..onTap = () => context.push('/legal?p=privacy')),
-                          const TextSpan(text: '.'),
-                        ],
-                      ),
-                    ),
-                  ),
+                Field(
+                  label: 'Email address',
+                  hint: 'you@example.com',
+                  icon: PhosphorIcons.envelopeSimple(),
+                  controller: _email,
+                  keyboard: TextInputType.emailAddress,
+                  autofill: const [AutofillHints.email],
+                  action: TextInputAction.next,
+                  error: _emailErr,
+                ),
+                const Gap(Space.s4),
+                Field(
+                  label: 'Password',
+                  hint: 'At least 8 characters',
+                  icon: PhosphorIcons.lockSimple(),
+                  password: true,
+                  controller: _pw,
+                  autofill: const [AutofillHints.newPassword],
+                  help: 'Use 8+ characters with a number.',
+                  error: _pwErr,
                 ),
               ],
             ),
           ),
         ),
-        _ErrorText(_error),
-        gap5,
-        FilledButton(onPressed: _busyState ? null : _submit, child: _busy(_busyState, 'Create account')),
-        gap3,
-        TextButton(onPressed: () => context.go('/login'), child: const Text('I already have an account')),
+        // Referral code (optional, folded like the prototype's <details>)
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            InkWell(
+              onTap: () => setState(() => _refOpen = !_refOpen),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 32),
+                child: Row(
+                  children: [
+                    Icon(PhosphorIcons.gift(), size: 18, color: c.link),
+                    const SizedBox(width: 6),
+                    Text('Have a referral code? ', style: link),
+                    Text('(optional)', style: context.ty.sm.col(c.textMuted)),
+                  ],
+                ),
+              ),
+            ),
+            if (_refOpen) ...[
+              const Gap(Space.s3),
+              Field(
+                label: 'Referral code',
+                hint: 'e.g. TOLU-7K3P',
+                icon: PhosphorIcons.ticket(),
+                controller: _ref,
+                caps: TextCapitalization.characters,
+                maxLength: 12,
+                mono: true,
+                help: 'Your friend gets rewarded when you finish your first practice test.',
+                error: _refErr,
+              ),
+            ],
+          ],
+        ),
+        CheckRow(
+          value: _agree,
+          onChanged: (v) => setState(() {
+            _agree = v;
+            if (v) _consentErr = false;
+          }),
+          error: _consentErr ? 'Please tick the box to agree to the Terms and Privacy Policy.' : null,
+          child: Text.rich(
+            TextSpan(
+              children: [
+                const TextSpan(text: 'I agree to the '),
+                TextSpan(text: 'Terms', style: link, recognizer: TapGestureRecognizer()..onTap = () => context.push('/legal?p=terms')),
+                const TextSpan(text: ' and '),
+                TextSpan(text: 'Privacy Policy', style: link, recognizer: TapGestureRecognizer()..onTap = () => context.push('/legal?p=privacy')),
+                const TextSpan(text: '. If I am under 18, my parent or guardian agrees too.'),
+              ],
+            ),
+          ),
+        ),
+        if (_error != null) InfoBanner(kind: BannerKind.err, child: Text(_error!)),
+        Btn(_busy ? 'Sending code' : 'Create account', block: true, loading: _busy, onPressed: _submit),
+        _centerLink(context, 'Already have an account?', 'Log in', () => context.go('/login')),
       ],
     );
   }
 }
 
-// ---------------------------------------------------------------- verify code
+// ---------------------------------------------------------------- verify email code (prototype: otp)
 class VerifyArgs {
-  const VerifyArgs({required this.email, required this.type, required this.codeLength, this.password, this.fullName});
+  const VerifyArgs({required this.email, required this.type, required this.codeLength, this.password});
   final String email;
-  final OtpType type; // signup or recovery
+  final OtpType type; // signup only (password reset uses the Reset screen)
   final int codeLength;
-  final String? password, fullName;
+  final String? password;
 }
 
 class VerifyCodeScreen extends ConsumerStatefulWidget {
@@ -240,8 +291,8 @@ class _VerifyCodeScreenState extends ConsumerState<VerifyCodeScreen> {
   final _code = TextEditingController();
   final _focus = FocusNode();
   String? _error;
-  bool _busyState = false;
-  int _wait = 60;
+  bool _busy = false, _ok = false;
+  int _wait = 60, _shake = 0;
   Timer? _t;
 
   int get _len => widget.args.codeLength.clamp(6, 10);
@@ -277,47 +328,47 @@ class _VerifyCodeScreenState extends ConsumerState<VerifyCodeScreen> {
   Future<void> _paste() async {
     final d = await Clipboard.getData(Clipboard.kTextPlain);
     final digits = (d?.text ?? '').replaceAll(RegExp(r'\D'), '');
-    if (digits.length >= _len) _code.text = digits.substring(0, _len);
+    if (digits.length < _len) {
+      setState(() => _error = 'Copy the $_len-digit code from the email first, then tap Paste code.');
+      return;
+    }
+    _code.text = digits.substring(0, _len);
   }
 
   Future<void> _verify() async {
-    if (_busyState || _code.text.length != _len) return;
+    if (_busy || _code.text.length != _len) return;
+    _focus.unfocus();
     setState(() {
-      _busyState = true;
+      _busy = true;
       _error = null;
     });
     try {
       await Supabase.instance.client.auth.verifyOTP(email: widget.args.email, token: _code.text, type: widget.args.type);
-      final api = ref.read(apiProvider);
-      if (!mounted) return;
-      if (widget.args.type == OtpType.recovery) {
-        context.go('/reset');
-      } else {
-        api.notify('welcome');
-        context.go('/setup');
-      }
+      ref.read(apiProvider).notify('welcome');
+      setState(() => _ok = true);
+      await Future<void>.delayed(const Duration(milliseconds: 600));
+      if (mounted) context.go('/setup');
     } catch (e) {
       setState(() {
         _error = friendlyAuth(e);
-        _code.clear();
+        _shake++;
       });
-      _focus.requestFocus();
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+      if (mounted) {
+        _code.clear();
+        _focus.requestFocus();
+      }
     } finally {
-      if (mounted) setState(() => _busyState = false);
+      if (mounted) setState(() => _busy = false);
     }
   }
 
   Future<void> _resend() async {
     setState(() => _error = null);
     try {
-      final api = ref.read(apiProvider);
-      if (widget.args.type == OtpType.recovery) {
-        await api.forgotPassword(widget.args.email);
-      } else {
-        await api.signUp(email: widget.args.email, password: widget.args.password!, fullName: widget.args.fullName!);
-      }
+      await ref.read(apiProvider).signUp(email: widget.args.email, password: widget.args.password!, fullName: '');
       _startTimer();
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('New code sent. Check your email.')));
+      if (mounted) toast(context, 'New code sent. Check your inbox and spam folder.', icon: PhosphorIcons.paperPlaneTilt(PhosphorIconsStyle.fill));
     } on ApiError catch (e) {
       setState(() => _error = e.message);
     }
@@ -326,67 +377,117 @@ class _VerifyCodeScreenState extends ConsumerState<VerifyCodeScreen> {
   @override
   Widget build(BuildContext context) {
     final c = context.c;
-    return _AuthFrame(
+    final bad = _error != null && _shake > 0;
+    return _AuthPage(
+      head: IconTile(PhosphorIcons.envelopeSimpleOpen(PhosphorIconsStyle.fill), tone: Tone.blue, size: 56, radius: 16),
       title: 'Check your email',
-      subtitle: 'We sent a $_len-digit code to ${widget.args.email}. It may take a minute; check spam too.',
+      subtitle: Text.rich(
+        TextSpan(
+          children: [
+            TextSpan(text: 'Enter the $_len-digit code we sent to '),
+            TextSpan(text: widget.args.email, style: context.ty.body.bold.col(c.text)),
+            const TextSpan(text: '. It expires in 10 minutes.'),
+          ],
+        ),
+      ),
       children: [
         // One hidden field drives the boxes, so the keyboard, autofill and paste all work.
-        Stack(
-          children: [
-            Opacity(
-              opacity: 0,
-              child: TextField(
-                controller: _code,
-                focusNode: _focus,
-                autofocus: true,
-                maxLength: _len,
-                keyboardType: TextInputType.number,
-                autofillHints: const [AutofillHints.oneTimeCode],
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              ),
-            ),
-            GestureDetector(
-              onTap: () => _focus.requestFocus(),
-              child: Semantics(
-                label: 'Code, ${_code.text.length} of $_len digits entered',
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    for (var i = 0; i < _len; i++)
-                      Container(
-                        width: _len > 6 ? 36 : 46,
-                        height: 56,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: c.surface,
-                          borderRadius: BorderRadius.circular(Radii.md),
-                          border: Border.all(color: i == _code.text.length ? c.secondary : c.borderStrong, width: i == _code.text.length ? 2 : 1.5),
-                        ),
-                        child: Text(i < _code.text.length ? _code.text[i] : '', style: context.t.headlineSmall),
-                      ),
-                  ],
+        _Shake(
+          trigger: _shake,
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: Opacity(
+                  opacity: 0,
+                  child: TextField(
+                    controller: _code,
+                    focusNode: _focus,
+                    autofocus: true,
+                    maxLength: _len,
+                    keyboardType: TextInputType.number,
+                    autofillHints: const [AutofillHints.oneTimeCode],
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  ),
                 ),
               ),
-            ),
-          ],
+              GestureDetector(
+                onTap: () => _focus.requestFocus(),
+                child: Semantics(
+                  label: 'Code, ${_code.text.length} of $_len digits entered',
+                  child: Row(
+                    children: [
+                      for (var i = 0; i < _len; i++) ...[
+                        if (i > 0) const SizedBox(width: 8),
+                        Expanded(
+                          child: AnimatedContainer(
+                            duration: Motion.fast,
+                            height: 58,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: c.surface,
+                              borderRadius: BorderRadius.circular(Radii.md),
+                              border: Border.all(
+                                color: _ok
+                                    ? c.success
+                                    : bad
+                                    ? c.error
+                                    : i < _code.text.length
+                                    ? c.primary
+                                    : i == _code.text.length && _focus.hasFocus
+                                    ? c.secondary
+                                    : c.borderStrong,
+                                width: i <= _code.text.length || _ok || bad ? 2 : 1.5,
+                              ),
+                            ),
+                            child: Text(i < _code.text.length ? _code.text[i] : '', style: context.ty.h1.copyWith(fontSize: _len > 6 ? 20 : 24)),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
-        _ErrorText(_error),
-        gap4,
+        if (_error != null) ErrText(_error!),
+        Btn('Paste code', kind: BtnKind.tonal, block: true, leading: PhosphorIcons.clipboardText(PhosphorIconsStyle.fill), onPressed: _paste),
         Row(
           children: [
-            TextButton.icon(onPressed: _paste, icon: Icon(PhosphorIcons.clipboardText()), label: const Text('Paste code')),
-            const Spacer(),
-            TextButton(onPressed: _wait > 0 ? null : _resend, child: Text(_wait > 0 ? 'Resend in ${_wait}s' : 'Send a new code')),
+            Expanded(
+              child: _wait > 0
+                  ? Text.rich(
+                      TextSpan(
+                        style: context.ty.sm.col(c.textMuted),
+                        children: [
+                          const TextSpan(text: 'Resend code in '),
+                          TextSpan(text: '0:${_wait.toString().padLeft(2, '0')}', style: context.ty.sm.bold.tnum.col(c.text)),
+                        ],
+                      ),
+                    )
+                  : Text("Didn't get it?", style: context.ty.sm.col(c.textMuted)),
+            ),
+            Btn('Resend', kind: BtnKind.ghost, sm: true, onPressed: _wait > 0 ? null : _resend),
           ],
         ),
-        gap4,
-        FilledButton(onPressed: _code.text.length == _len && !_busyState ? _verify : null, child: _busy(_busyState, 'Continue')),
+        InfoBanner(
+          child: Text.rich(
+            TextSpan(
+              children: [
+                const TextSpan(text: 'Copied the code from your email? Tap '),
+                TextSpan(text: 'Paste code', style: context.ty.sm.bold.col(c.onSecondarySoft)),
+                const TextSpan(text: ', or long-press a box and paste. Check your spam folder too.'),
+              ],
+            ),
+          ),
+        ),
+        Btn('Change email address', kind: BtnKind.ghost, onPressed: () => context.canPop() ? context.pop() : context.go('/signup')),
       ],
     );
   }
 }
 
-// ---------------------------------------------------------------- log in
+// ---------------------------------------------------------------- log in (prototype: login)
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
   @override
@@ -395,62 +496,99 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _email = TextEditingController(), _pw = TextEditingController();
-  String? _error;
-  bool _busyState = false;
+  String? _emailErr, _pwErr;
+  bool _busy = false;
+  int _shake = 0;
+
+  @override
+  void dispose() {
+    _email.dispose();
+    _pw.dispose();
+    super.dispose();
+  }
 
   Future<void> _login() async {
     final email = _email.text.trim().toLowerCase();
-    if (!_emailRe.hasMatch(email) || _pw.text.isEmpty) return setState(() => _error = 'Enter your email and password.');
     setState(() {
-      _busyState = true;
-      _error = null;
+      _emailErr = _emailRe.hasMatch(email) ? null : 'Enter a valid email, like tolu@gmail.com';
+      _pwErr = _pw.text.isEmpty ? 'Enter your password' : null;
     });
+    if (_emailErr != null || _pwErr != null) return setState(() => _shake++);
+    setState(() => _busy = true);
     try {
       await Supabase.instance.client.auth.signInWithPassword(email: email, password: _pw.text);
       ref.invalidate(profileProvider);
       final next = await nextRoute(ref);
       if (mounted) context.go(next == '/home' ? '/welcome-back' : next);
     } catch (e) {
-      setState(() => _error = friendlyAuth(e));
+      setState(() {
+        _pwErr = friendlyAuth(e);
+        _shake++;
+      });
     } finally {
-      if (mounted) setState(() => _busyState = false);
+      if (mounted) setState(() => _busy = false);
     }
   }
 
   @override
-  Widget build(BuildContext context) => _AuthFrame(
+  Widget build(BuildContext context) => _AuthPage(
+    head: const SizedBox(height: 36, child: Mark(height: 36)),
     title: 'Welcome back',
-    subtitle: 'Log in to continue practising.',
-    back: false,
+    subtitle: const Text('Log in to continue your practice.'),
+    onBack: () => context.go('/welcome'),
     children: [
-      AutofillGroup(
-        child: Column(
-          children: [
-            TextField(
-              controller: _email,
-              keyboardType: TextInputType.emailAddress,
-              autofillHints: const [AutofillHints.email],
-              decoration: const InputDecoration(labelText: 'Email'),
-            ),
-            gap4,
-            _PasswordField(controller: _pw),
-          ],
+      _Shake(
+        trigger: _shake,
+        child: AutofillGroup(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Field(
+                label: 'Email address',
+                hint: 'you@example.com',
+                icon: PhosphorIcons.envelopeSimple(),
+                controller: _email,
+                keyboard: TextInputType.emailAddress,
+                autofill: const [AutofillHints.email],
+                action: TextInputAction.next,
+                error: _emailErr,
+              ),
+              const Gap(Space.s4),
+              Field(
+                label: 'Password',
+                hint: 'Your password',
+                icon: PhosphorIcons.lockSimple(),
+                password: true,
+                controller: _pw,
+                autofill: const [AutofillHints.password],
+                action: TextInputAction.done,
+                onSubmitted: (_) => _login(),
+                error: _pwErr,
+              ),
+            ],
+          ),
         ),
       ),
       Align(
         alignment: Alignment.centerRight,
-        child: TextButton(onPressed: () => context.push('/forgot'), child: const Text('Forgot password?')),
+        child: InkWell(
+          onTap: () => context.push('/forgot'),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 44),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Center(widthFactor: 1, child: Text('Forgot password?', style: context.ty.sm.bold.col(context.c.link))),
+            ),
+          ),
+        ),
       ),
-      _ErrorText(_error),
-      gap4,
-      FilledButton(onPressed: _busyState ? null : _login, child: _busy(_busyState, 'Log in')),
-      gap3,
-      OutlinedButton(onPressed: () => context.go('/signup'), child: const Text('Create an account')),
+      Btn('Log in', block: true, loading: _busy, onPressed: _login),
+      _centerLink(context, 'New here?', 'Create an account', () => context.go('/signup')),
     ],
   );
 }
 
-// ---------------------------------------------------------------- forgot / new password
+// ---------------------------------------------------------------- forgot + reset (prototype: forgot, reset)
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
   @override
@@ -460,90 +598,143 @@ class ForgotPasswordScreen extends ConsumerStatefulWidget {
 class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   final _email = TextEditingController();
   String? _error;
-  bool _busyState = false;
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _email.dispose();
+    super.dispose();
+  }
 
   Future<void> _send() async {
     final email = _email.text.trim().toLowerCase();
-    if (!_emailRe.hasMatch(email)) return setState(() => _error = 'Enter a valid email address.');
+    if (!_emailRe.hasMatch(email)) return setState(() => _error = 'Enter a valid email, like tolu@gmail.com');
     setState(() {
-      _busyState = true;
+      _busy = true;
       _error = null;
     });
     try {
       final len = await ref.read(apiProvider).forgotPassword(email);
       if (mounted) {
-        context.push(
-          '/verify',
-          extra: VerifyArgs(email: email, type: OtpType.recovery, codeLength: len),
-        );
+        context.push('/reset', extra: ResetArgs(email: email, codeLength: len));
       }
     } on ApiError catch (e) {
       setState(() => _error = e.message);
     } finally {
-      if (mounted) setState(() => _busyState = false);
+      if (mounted) setState(() => _busy = false);
     }
   }
 
   @override
-  Widget build(BuildContext context) => _AuthFrame(
+  Widget build(BuildContext context) => _AuthPage(
+    head: IconTile(PhosphorIcons.key(PhosphorIconsStyle.fill), tone: Tone.gold, size: 56, radius: 16),
     title: 'Reset your password',
-    subtitle: 'Enter your email. If it has an account, we will send you a code.',
+    subtitle: const Text('Enter your email. We will send you a code to set a new password.'),
     children: [
-      TextField(
+      Field(
+        label: 'Email address',
+        hint: 'you@example.com',
+        icon: PhosphorIcons.envelopeSimple(),
         controller: _email,
-        keyboardType: TextInputType.emailAddress,
-        autofillHints: const [AutofillHints.email],
-        decoration: const InputDecoration(labelText: 'Email'),
+        keyboard: TextInputType.emailAddress,
+        autofill: const [AutofillHints.email],
+        action: TextInputAction.done,
+        onSubmitted: (_) => _send(),
+        error: _error,
       ),
-      _ErrorText(_error),
-      gap5,
-      FilledButton(onPressed: _busyState ? null : _send, child: _busy(_busyState, 'Send code')),
+      Btn('Send reset code', block: true, loading: _busy, onPressed: _send),
     ],
   );
 }
 
+class ResetArgs {
+  const ResetArgs({required this.email, required this.codeLength});
+  final String email;
+  final int codeLength;
+}
+
+/// Code from the email + new password + confirm, on one screen (prototype: reset).
 class NewPasswordScreen extends ConsumerStatefulWidget {
-  const NewPasswordScreen({super.key});
+  const NewPasswordScreen({super.key, this.args});
+  final ResetArgs? args;
   @override
   ConsumerState<NewPasswordScreen> createState() => _NewPasswordScreenState();
 }
 
 class _NewPasswordScreenState extends ConsumerState<NewPasswordScreen> {
-  final _pw = TextEditingController(), _pw2 = TextEditingController();
-  String? _error;
-  bool _busyState = false;
+  final _code = TextEditingController(), _pw = TextEditingController(), _pw2 = TextEditingController();
+  String? _codeErr, _pwErr, _pw2Err;
+  bool _busy = false;
+
+  int get _len => (widget.args?.codeLength ?? 6).clamp(6, 10);
+
+  @override
+  void dispose() {
+    _code.dispose();
+    _pw.dispose();
+    _pw2.dispose();
+    super.dispose();
+  }
 
   Future<void> _save() async {
-    if (!_pwRe.hasMatch(_pw.text)) return setState(() => _error = 'Use at least 8 characters with letters and numbers.');
-    if (_pw.text != _pw2.text) return setState(() => _error = 'The two passwords are different.');
+    final args = widget.args;
+    final signedIn = Supabase.instance.client.auth.currentSession != null;
     setState(() {
-      _busyState = true;
-      _error = null;
+      _codeErr = signedIn || _code.text.trim().length == _len ? null : 'Enter the $_len-digit code from the email';
+      _pwErr = _pwRe.hasMatch(_pw.text) ? null : 'Use 8+ characters with a number.';
+      _pw2Err = _pw.text == _pw2.text ? null : 'The two passwords are different.';
     });
+    if (_codeErr != null || _pwErr != null || _pw2Err != null) return;
+    setState(() => _busy = true);
     try {
+      if (!signedIn && args != null) {
+        await Supabase.instance.client.auth.verifyOTP(email: args.email, token: _code.text.trim(), type: OtpType.recovery);
+      }
       await Supabase.instance.client.auth.updateUser(UserAttributes(password: _pw.text));
       ref.read(apiProvider).notify('password_changed');
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password changed.')));
+      toast(context, 'Password updated. You are logged in.');
       context.go(await nextRoute(ref));
     } catch (e) {
-      setState(() => _error = friendlyAuth(e));
+      final m = friendlyAuth(e);
+      setState(() => m.contains('code') ? _codeErr = m : _pwErr = m);
     } finally {
-      if (mounted) setState(() => _busyState = false);
+      if (mounted) setState(() => _busy = false);
     }
   }
 
   @override
-  Widget build(BuildContext context) => _AuthFrame(
-    title: 'Choose a new password',
-    back: false,
-    children: [
-      _PasswordField(controller: _pw, label: 'New password', newPassword: true),
-      gap4,
-      _PasswordField(controller: _pw2, label: 'Type it again'),
-      _ErrorText(_error),
-      gap5,
-      FilledButton(onPressed: _busyState ? null : _save, child: _busy(_busyState, 'Save password')),
-    ],
-  );
+  Widget build(BuildContext context) {
+    final needsCode = Supabase.instance.client.auth.currentSession == null;
+    return _AuthPage(
+      title: 'Create a new password',
+      subtitle: Text(needsCode ? 'Enter the code from your email and your new password.' : 'Choose your new password.'),
+      children: [
+        if (needsCode)
+          Field(
+            label: '$_len-digit code',
+            hint: '0' * _len,
+            icon: PhosphorIcons.hash(),
+            controller: _code,
+            keyboard: TextInputType.number,
+            autofill: const [AutofillHints.oneTimeCode],
+            maxLength: _len,
+            formatters: [FilteringTextInputFormatter.digitsOnly],
+            error: _codeErr,
+          ),
+        Field(
+          label: 'New password',
+          hint: 'At least 8 characters',
+          icon: PhosphorIcons.lockSimple(),
+          password: true,
+          controller: _pw,
+          autofill: const [AutofillHints.newPassword],
+          help: 'Use 8+ characters with a number.',
+          error: _pwErr,
+        ),
+        Field(label: 'Confirm new password', hint: 'Type it again', icon: PhosphorIcons.lockSimple(), password: true, controller: _pw2, error: _pw2Err),
+        Btn('Save new password', block: true, loading: _busy, onPressed: _save),
+      ],
+    );
+  }
 }

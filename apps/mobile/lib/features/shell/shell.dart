@@ -9,8 +9,9 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/config.dart';
 import '../../core/providers.dart';
 import '../../data/tests_repo.dart';
+import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
-import '../../widgets/states.dart';
+import '../../ui/kit.dart';
 
 /// Branch order in router.dart: home, study, test, ai, me.
 const _branchOf = {'home': 0, 'study': 1, 'test': 2, 'ai_chat': 3, 'profile': 4};
@@ -74,20 +75,13 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
 
     return Scaffold(
       body: widget.shell,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: current < 0 ? 0 : current,
-        onDestinationSelected: (i) {
+      bottomNavigationBar: _BottomNav(
+        items: [for (final t in items) (type: t['type'] as String, title: t['title'] as String)],
+        current: current < 0 ? 0 : current,
+        onTap: (i) {
           final b = _branchOf[items[i]['type']]!;
           widget.shell.goBranch(b, initialLocation: b == widget.shell.currentIndex);
         },
-        destinations: [
-          for (final t in items)
-            NavigationDestination(
-              icon: Icon(tabIcon(t['type'] as String, false)),
-              selectedIcon: Icon(tabIcon(t['type'] as String, true)),
-              label: t['title'] as String,
-            ),
-        ],
       ),
     );
   }
@@ -98,11 +92,13 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
     if (m is Map && m['enabled'] == true) {
       return Scaffold(
         body: SafeArea(
-          child: StateView(
-            icon: PhosphorIcons.wrench(PhosphorIconsStyle.fill),
-            tone: 'gold',
-            title: 'We are improving SolutionTee',
-            message: (m['message'] as String?) ?? 'Please check back soon. Tests you downloaded still work offline.',
+          child: Center(
+            child: StateBlock(
+              icon: PhosphorIcons.wrench(PhosphorIconsStyle.fill),
+              tone: Tone.gold,
+              title: 'We are improving SolutionTee',
+              text: (m['message'] as String?) ?? 'Please check back soon. Tests you downloaded still work offline.',
+            ),
           ),
         ),
       );
@@ -111,14 +107,16 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
     if (v is Map && v['force'] == true && _older(Config.appVersion, (v['android'] as String?) ?? '0.0.0')) {
       return Scaffold(
         body: SafeArea(
-          child: StateView(
-            icon: PhosphorIcons.arrowCircleUp(PhosphorIconsStyle.fill),
-            tone: 'navy',
-            title: 'Please update SolutionTee',
-            message: 'This version is too old. Update to keep practising with the latest questions.',
-            action: FilledButton(
-              onPressed: () => launchUrl(Uri.parse('https://play.google.com/store/apps/details?id=com.solutiontee.cbt'), mode: LaunchMode.externalApplication),
-              child: const Text('Update now'),
+          child: Center(
+            child: StateBlock(
+              icon: PhosphorIcons.arrowCircleUp(PhosphorIconsStyle.fill),
+              title: 'Please update SolutionTee',
+              text: 'This version is too old. Update to keep practising with the latest questions.',
+              action: Btn(
+                'Update now',
+                onPressed: () =>
+                    launchUrl(Uri.parse('https://play.google.com/store/apps/details?id=com.solutiontee.cbt'), mode: LaunchMode.externalApplication),
+              ),
             ),
           ),
         ),
@@ -138,6 +136,62 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
   }
 }
 
+/// Bottom navigation (`.bnav`): surface, top border, the active icon in a gold-soft pill, bold 11 px labels.
+class _BottomNav extends StatelessWidget {
+  const _BottomNav({required this.items, required this.current, required this.onTap});
+  final List<({String type, String title})> items;
+  final int current;
+  final ValueChanged<int> onTap;
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    return Container(
+      height: Sizes.bottomNav + MediaQuery.paddingOf(context).bottom,
+      padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
+      decoration: BoxDecoration(
+        color: c.surface,
+        border: Border(top: BorderSide(color: c.border)),
+      ),
+      child: Row(
+        children: [
+          for (var i = 0; i < items.length; i++)
+            Expanded(
+              child: Semantics(
+                selected: i == current,
+                button: true,
+                label: items[i].title,
+                child: InkWell(
+                  onTap: () => onTap(i),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      AnimatedContainer(
+                        duration: Motion.base,
+                        curve: Motion.out,
+                        width: 56,
+                        height: 30,
+                        decoration: BoxDecoration(color: i == current ? c.accentSoft : Colors.transparent, borderRadius: BorderRadius.circular(99)),
+                        child: Icon(tabIcon(items[i].type, i == current), size: 22, color: i == current ? c.onAccentSoft : c.textSubtle),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        items[i].title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.ty.cap.bold.copyWith(fontSize: 11, letterSpacing: 0).col(i == current ? c.text : c.textSubtle),
+                        semanticsLabel: '',
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Study and AI tutor arrive in Phase 4.
 class ComingSoonScreen extends StatelessWidget {
   const ComingSoonScreen({super.key, required this.kind});
@@ -146,23 +200,26 @@ class ComingSoonScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final ai = kind == 'ai';
     return Scaffold(
-      appBar: AppBar(title: Text(ai ? 'SolutionTee AI' : 'Study')),
-      body: StateView(
-        icon: ai ? PhosphorIcons.sparkle(PhosphorIconsStyle.fill) : PhosphorIcons.bookOpenText(PhosphorIconsStyle.fill),
-        tone: ai ? 'gold' : 'blue',
-        title: ai ? 'Your AI tutor is coming soon' : 'Study is coming soon',
-        message: ai
-            ? 'Ask any question and get step-by-step explanations, like a good teacher.'
-            : 'Past questions with answers, video solutions, lesson notes and novels will be here.',
-        action: OutlinedButton(onPressed: () => context.go('/test'), child: const Text('Practise a test now')),
+      appBar: TopBar(
+        showBack: false,
+        center: Padding(
+          padding: const EdgeInsets.only(left: Space.s3),
+          child: Text(ai ? 'SolutionTee AI' : 'Study', style: context.ty.h2),
+        ),
+      ),
+      body: Center(
+        child: SingleChildScrollView(
+          child: StateBlock(
+            icon: ai ? PhosphorIcons.sparkle(PhosphorIconsStyle.fill) : PhosphorIcons.bookOpenText(PhosphorIconsStyle.fill),
+            tone: ai ? Tone.gold : Tone.blue,
+            title: ai ? 'Your AI tutor is coming soon' : 'Study is coming soon',
+            text: ai
+                ? 'Ask any question and get step-by-step explanations, like a patient teacher.'
+                : 'Past questions with answers, video solutions, lesson notes and novels will be here.',
+            action: Btn('Practise a test now', onPressed: () => context.go('/test')),
+          ),
+        ),
       ),
     );
   }
 }
-
-/// Spacing helper used across screens.
-const gap2 = SizedBox(height: Space.s2, width: Space.s2);
-const gap3 = SizedBox(height: Space.s3, width: Space.s3);
-const gap4 = SizedBox(height: Space.s4, width: Space.s4);
-const gap5 = SizedBox(height: Space.s5, width: Space.s5);
-const gap6 = SizedBox(height: Space.s6, width: Space.s6);

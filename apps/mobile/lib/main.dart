@@ -23,10 +23,5 @@ Future<void> main() async {
   final db = AppDb();
   final settings = await loadSettings(db);
 
-  runApp(
-    ProviderScope(
-      overrides: [dbProvider.overrideWithValue(db)],
-      child: SolutionTeeApp(initialSettings: settings),
-    ),
-  );
+  runApp(ProviderScope(overrides: [dbProvider.overrideWithValue(db), initialSettingsProvider.overrideWithValue(settings)], child: const SolutionTeeApp()));
 }

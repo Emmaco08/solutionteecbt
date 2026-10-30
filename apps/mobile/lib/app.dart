@@ -5,22 +5,11 @@ import 'core/providers.dart';
 import 'router.dart';
 import 'theme/theme.dart';
 
-class SolutionTeeApp extends ConsumerStatefulWidget {
-  const SolutionTeeApp({super.key, required this.initialSettings});
-  final AppSettings initialSettings;
-  @override
-  ConsumerState<SolutionTeeApp> createState() => _SolutionTeeAppState();
-}
-
-class _SolutionTeeAppState extends ConsumerState<SolutionTeeApp> {
-  @override
-  void initState() {
-    super.initState();
-    ref.read(settingsProvider.notifier).hydrate(widget.initialSettings);
-  }
+class SolutionTeeApp extends ConsumerWidget {
+  const SolutionTeeApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
     final router = ref.watch(routerProvider);
     return MaterialApp.router(

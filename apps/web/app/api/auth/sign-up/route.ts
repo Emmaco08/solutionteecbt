@@ -9,13 +9,14 @@ import { allowSend, clientIp, json, EMAIL_RULE, PASSWORD_RULE } from "@/lib/auth
 const Body = z.object({
   email: z.string().trim().toLowerCase().regex(EMAIL_RULE, "Enter a valid email address").max(254),
   password: z.string().regex(PASSWORD_RULE, "Use at least 8 characters with letters and numbers"),
-  fullName: z.string().trim().min(2, "Enter your full name").max(120),
+  // The app asks for the name in profile setup (prototype order); the website may send it here.
+  fullName: z.string().trim().max(120).optional().default(""),
   consent: z.literal(true, { message: "Please accept the Terms and Privacy Policy" }),
   referralCode: z.string().trim().max(32).optional(),
 });
 
 /**
- * POST /api/auth/sign-up  { email, password, fullName, consent: true, referralCode? }
+ * POST /api/auth/sign-up  { email, password, fullName?, consent: true, referralCode? }
  * Creates the account (unconfirmed) and emails a one-time code. Calling it again before the code is used
  * sends a fresh code (the old one stops working). The app then calls supabase.auth.verifyOtp({ email, token, type: "signup" }).
  */
@@ -43,7 +44,7 @@ export async function POST(req: Request) {
 
   const { data, error } = await svc.auth.admin.generateLink({
     type: "signup", email, password,
-    options: { data: { full_name: fullName, referral_code: referralCode || null, terms_accepted_at: new Date().toISOString() } },
+    options: { data: { full_name: fullName || null, referral_code: referralCode || null, terms_accepted_at: new Date().toISOString() } },
   });
   if (error) {
     if (/already been registered|already exists/i.test(error.message))

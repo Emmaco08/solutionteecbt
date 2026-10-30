@@ -5,21 +5,118 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../widgets/phosphor.g.dart';
-
 import '../../core/providers.dart';
 import '../../data/db.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
+import '../../ui/kit.dart';
 import '../../widgets/exam_logo.dart';
+import '../../widgets/phosphor.g.dart';
 import '../../widgets/states.dart';
-import '../shell/shell.dart';
+import '../cbt/exam_clock.dart';
+import '../news/news_screens.dart';
 
-/// The unfinished test on this phone (if any), for the "Continue" card.
+/// The unfinished test on this phone (if any), for the "Continue your test" card.
 final unfinishedProvider = FutureProvider<LocalAttempt?>((ref) => ref.watch(dbProvider).unfinishedAttempt());
 
-class HomeScreen extends ConsumerWidget {
-  const HomeScreen({super.key});
+/// Answers saved so far in the unfinished test.
+final unfinishedAnsweredProvider = FutureProvider.family<int, String>((ref, id) async {
+  final rows = await ref.watch(dbProvider).answersFor(id);
+  return rows.where((r) => r.choice != null).length;
+});
+
+/// Daily goal (questions answered today), the practice streak and this week's practice days, from tests on this phone.
+class PracticeStats {
+  const PracticeStats({required this.today, required this.streak, required this.week});
+  final int today, streak;
+  final Set<int> week; // 0 = Monday
+  static const dailyGoal = 20;
+}
+
+final practiceStatsProvider = FutureProvider<PracticeStats>((ref) async {
+  final list = await ref.watch(dbProvider).finishedAttempts();
+  ref.watch(unfinishedProvider);
+  DateTime day(DateTime d) => DateTime(d.year, d.month, d.day);
+  final now = DateTime.now(), today = day(now);
+  final days = <DateTime>{};
+  var answeredToday = 0;
+  for (final a in list) {
+    final d = day(a.submittedAt!.toLocal());
+    days.add(d);
+    if (d == today) {
+      final s = a.clientScoreJson == null ? null : jsonDecode(a.clientScoreJson!) as Map<String, dynamic>;
+      answeredToday += (s?['answered'] as num?)?.toInt() ?? 0;
+    }
+  }
+  var streak = 0;
+  var cur = days.contains(today) ? today : today.subtract(const Duration(days: 1));
+  while (days.contains(cur)) {
+    streak++;
+    cur = cur.subtract(const Duration(days: 1));
+  }
+  final monday = today.subtract(Duration(days: now.weekday - 1));
+  final week = {
+    for (final d in days)
+      if (!d.isBefore(monday)) d.difference(monday).inDays,
+  };
+  return PracticeStats(today: answeredToday, streak: streak, week: week);
+});
+final practiceWeekProvider = FutureProvider<Set<int>>((ref) async => (await ref.watch(practiceStatsProvider.future)).week);
+final practiceStreakProvider = FutureProvider<int>((ref) async => (await ref.watch(practiceStatsProvider.future)).streak);
+
+/// Home (prototype: home).
+class HomeScreen extends ConsumerStatefulWidget {
+  const HomeScreen({super.key, this.tour = false});
+  final bool tour;
+  @override
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  final _startKey = GlobalKey(), _upgradeKey = GlobalKey();
+  OverlayEntry? _tour;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.tour) Future.delayed(const Duration(milliseconds: 450), _startTour);
+  }
+
+  @override
+  void didUpdateWidget(HomeScreen old) {
+    super.didUpdateWidget(old);
+    if (widget.tour && !old.tour) Future.delayed(const Duration(milliseconds: 450), _startTour);
+  }
+
+  @override
+  void dispose() {
+    _tour?.remove();
+    super.dispose();
+  }
+
+  /// Coach marks over the whole screen (bottom tabs included), on the root overlay.
+  void _startTour() {
+    if (!mounted || _tour != null) return;
+    final premium = ref.read(myPlanProvider).value?['tier'] == 'premium';
+    _tour = OverlayEntry(
+      builder: (ctx) => TourOverlay(
+        steps: [
+          TourStep(target: () => _rectOf(_startKey), title: 'Start a test here', text: 'Tap JAMB, WAEC or NECO to start a timed CBT practice.'),
+          TourStep(target: () => _navRect(ctx, 1), title: 'Study anytime', text: 'Past questions, video solutions, lesson notes, novels and syllabuses.'),
+          TourStep(target: () => _navRect(ctx, 2), title: 'All test modes', text: 'Full exam, single subject, topic drills, quick tests and practice by year.'),
+          TourStep(target: () => _navRect(ctx, 3), title: 'Ask SolutionTee AI', text: 'Get step-by-step help on any question.'),
+          if (!premium) TourStep(target: () => _rectOf(_upgradeKey), title: 'Unlock everything', text: 'Go Premium for all years and all exams.'),
+        ],
+        onDone: () {
+          _tour?.remove();
+          _tour = null;
+          ref.read(settingsProvider.notifier).update((s) => s.copyWith(toured: true));
+          if (mounted) toast(context, 'Tour finished. Replay it any time from Me, then Help.', icon: PhosphorIcons.flagCheckered(PhosphorIconsStyle.fill));
+        },
+      ),
+    );
+    Overlay.of(context, rootOverlay: true).insert(_tour!);
+  }
 
   String _greeting() {
     final h = DateTime.now().hour;
@@ -30,275 +127,496 @@ class HomeScreen extends ConsumerWidget {
         : 'Good evening';
   }
 
+  Future<void> _refresh() async {
+    ref.invalidate(examsProvider);
+    ref.invalidate(myPlanProvider);
+    ref.invalidate(newsProvider);
+    ref.invalidate(openYearsProvider);
+    ref.invalidate(unfinishedProvider);
+    await ref.read(examsProvider.future).catchError((_) => <Map<String, dynamic>>[]);
+  }
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final c = context.c;
     final profile = ref.watch(profileProvider).value;
-    final name = ((profile?['full_name'] as String?) ?? '').split(' ').first;
-    final plan = ref.watch(myPlanProvider).value;
-    final premium = plan?['tier'] == 'premium';
+    final name = (profile?['full_name'] as String?) ?? '';
+    final first = name.split(' ').first;
+    final premium = ref.watch(myPlanProvider).value?['tier'] == 'premium';
     final exams = ref.watch(examsProvider);
     final unfinished = ref.watch(unfinishedProvider).value;
     final news = ref.watch(newsProvider).value ?? const [];
+    final stats = ref.watch(practiceStatsProvider).value ?? const PracticeStats(today: 0, streak: 0, week: {});
+    final open = ref.watch(openYearsProvider).value;
+    final rm = context.reduceMotion;
 
-    Future<void> refresh() async {
-      ref.invalidate(examsProvider);
-      ref.invalidate(myPlanProvider);
-      ref.invalidate(newsProvider);
-      ref.invalidate(openYearsProvider);
-      ref.invalidate(unfinishedProvider);
-      await ref.read(examsProvider.future).catchError((_) => <Map<String, dynamic>>[]);
-    }
-
+    final goalLeft = (PracticeStats.dailyGoal - stats.today).clamp(0, PracticeStats.dailyGoal);
     final sections = <Widget>[
-      // Greeting
-      Row(
+      // Daily goal strip
+      Container(
+        padding: const EdgeInsets.fromLTRB(Space.s3, Space.s2, Space.s2, Space.s2),
+        decoration: BoxDecoration(
+          color: c.surface,
+          borderRadius: BorderRadius.circular(Radii.lg),
+          border: Border.all(color: c.border),
+        ),
+        child: Row(
+          children: [
+            Ring(value: stats.today / PracticeStats.dailyGoal, size: 44),
+            const Gap(Space.s3),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Today: ${stats.today} of ${PracticeStats.dailyGoal} questions', style: context.ty.sm.bold),
+                  Text(
+                    goalLeft == 0
+                        ? 'Goal reached. Great work!'
+                        : stats.streak > 0
+                        ? '$goalLeft more keeps your ${stats.streak}-day streak'
+                        : 'Answer $goalLeft questions to start a streak',
+                    style: context.ty.cap.col(c.textMuted),
+                  ),
+                ],
+              ),
+            ),
+            Btn('Practise', kind: BtnKind.tonal, sm: true, onPressed: () => context.push('/test/setup?exam=JAMB&mode=quick')),
+          ],
+        ),
+      ),
+      if (unfinished != null) ContinueCard(a: unfinished),
+      Column(
+        key: _startKey,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          const SectTitle('Start a CBT practice'),
+          asyncView(
+            exams,
+            (list) => Column(
               children: [
-                Text(_greeting(), style: context.t.bodyMedium?.copyWith(color: c.textMuted)),
-                Text(name.isEmpty ? 'Welcome' : name, style: context.t.headlineMedium),
+                for (final e in list) ...[
+                  ExamCard(
+                    code: e['code'] as String,
+                    name: e['name'] as String,
+                    meta: examMeta(e),
+                    locked: open != null && open.any((y) => y['exam_id'] == e['id']) && !open.any((y) => y['exam_id'] == e['id'] && y['cbt_open'] == true),
+                  ),
+                  const Gap(Space.s2),
+                ],
               ],
             ),
+            loading: Column(
+              children: [
+                for (var i = 0; i < 3; i++) ...[const Skeleton(height: 76, radius: Radii.lg), const Gap(Space.s2)],
+              ],
+            ),
+            onRetry: _refresh,
           ),
-          _PlanBadge(premium: premium),
         ],
       ),
-      if (unfinished != null) _ContinueCard(a: unfinished),
-      Text('Start a CBT practice', style: context.t.titleMedium),
-      asyncView(
-        exams,
-        (list) => Column(
+      if (news.isNotEmpty)
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            for (final e in list) ...[_ExamCard(code: e['code'] as String, name: e['name'] as String, config: (e['exam_configs'] as Map?) ?? const {}), gap3],
+            SectTitle('News', action: 'See all', onAction: () => context.push('/news')),
+            SizedBox(
+              height: 272,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                clipBehavior: Clip.none,
+                itemCount: news.length.clamp(0, 4),
+                separatorBuilder: (_, _) => const Gap(Space.s3),
+                itemBuilder: (_, i) => SizedBox(
+                  width: MediaQuery.sizeOf(context).width * .82 - Space.s5,
+                  child: NewsTile(n: news[i]),
+                ),
+              ),
+            ),
           ],
         ),
-        loading: Column(
-          children: [
-            for (var i = 0; i < 3; i++) ...[const Skeleton(height: 84, radius: Radii.lg), gap3],
-          ],
-        ),
-        onRetry: refresh,
-      ),
-      if (news.isNotEmpty) ...[
-        Text('News', style: context.t.titleMedium),
-        SizedBox(
-          height: 132,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: news.length,
-            separatorBuilder: (_, _) => gap3,
-            itemBuilder: (_, i) => _NewsCard(n: news[i]),
-          ),
-        ),
-      ],
-      if (!premium) _UpgradeCard(),
+      if (!premium) UpgradeBanner(key: _upgradeKey),
     ];
 
     return Scaffold(
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: refresh,
-          child: ListView.separated(
-            padding: const EdgeInsets.fromLTRB(Space.s5, Space.s4, Space.s5, Space.s8),
-            itemCount: sections.length,
-            separatorBuilder: (_, _) => gap5,
-            itemBuilder: (_, i) => context.reduceMotion
-                ? sections[i]
-                : sections[i].animate(delay: Motion.stagger * i).fadeIn(duration: Motion.base).slideY(begin: .06, curve: Motion.out),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PlanBadge extends StatelessWidget {
-  const _PlanBadge({required this.premium});
-  final bool premium;
-  @override
-  Widget build(BuildContext context) {
-    final c = context.c;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: Space.s3, vertical: 6),
-      decoration: BoxDecoration(color: premium ? c.accent : c.surfaceSunken, borderRadius: BorderRadius.circular(Radii.pill)),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(premium ? PhosphorIcons.crown(PhosphorIconsStyle.fill) : PhosphorIcons.user(), size: 16, color: premium ? c.onAccent : c.textMuted),
-          const SizedBox(width: 6),
-          Text(
-            premium ? 'Premium' : 'Free plan',
-            style: context.t.labelSmall?.copyWith(fontWeight: FontWeight.w700, color: premium ? c.onAccent : c.textMuted),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ContinueCard extends StatelessWidget {
-  const _ContinueCard({required this.a});
-  final LocalAttempt a;
-  @override
-  Widget build(BuildContext context) {
-    final c = context.c;
-    final cfg = jsonDecode(a.configJson) as Map<String, dynamic>;
-    final total = (jsonDecode(a.questionIdsJson) as List).length;
-    return Material(
-      color: c.primary,
-      borderRadius: BorderRadius.circular(Radii.lg),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(Radii.lg),
-        onTap: () => context.push('/cbt/${a.id}'),
-        child: Padding(
-          padding: const EdgeInsets.all(Space.s4),
-          child: Row(
+          onRefresh: _refresh,
+          child: ListView(
+            padding: const EdgeInsets.only(bottom: Space.s8),
             children: [
-              Icon(PhosphorIcons.playCircle(PhosphorIconsStyle.fill), color: c.accent, size: 40),
-              gap4,
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              // Home head: avatar, greeting, name, streak
+              Padding(
+                padding: const EdgeInsets.fromLTRB(Space.s5, Space.s2, Space.s5, Space.s3),
+                child: Row(
                   children: [
-                    Text('Continue your test', style: context.t.titleMedium?.copyWith(color: c.onPrimary)),
-                    Text(
-                      '${(cfg['title'] as String?)?.isNotEmpty == true ? cfg['title'] : a.examCode} · question ${a.currentIndex + 1} of $total',
-                      style: context.t.bodySmall?.copyWith(color: c.onPrimary.withValues(alpha: .8)),
+                    Semantics(
+                      button: true,
+                      label: 'Open my profile',
+                      child: GestureDetector(onTap: () => context.go('/me'), child: Avatar(name)),
+                    ),
+                    const Gap(Space.s3),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('${_greeting()},', style: context.ty.cap.col(c.textMuted)),
+                          Text(first.isEmpty ? 'Student' : first, style: context.ty.h3),
+                        ],
+                      ),
+                    ),
+                    Semantics(
+                      label: '${stats.streak}-day streak',
+                      child: Container(
+                        height: 36,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(color: c.accentSoft, borderRadius: BorderRadius.circular(99)),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(PhosphorIcons.fire(PhosphorIconsStyle.fill), size: 18, color: Palette.gold500),
+                            const SizedBox(width: 4),
+                            Text('${stats.streak}', style: context.ty.label.bold.tnum.col(c.onAccentSoft)),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                 ),
               ),
-              Icon(PhosphorIcons.caretRight(), color: c.onPrimary),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ExamCard extends StatelessWidget {
-  const _ExamCard({required this.code, required this.name, required this.config});
-  final String code, name;
-  final Map config;
-  @override
-  Widget build(BuildContext context) {
-    final c = context.c;
-    final sub = code == 'JAMB'
-        ? '${config['subjects_per_candidate'] ?? 4} subjects · ${config['total_minutes'] ?? 120} mins · scored /${config['score_scale'] ?? 400}'
-        : 'Objective papers by subject and year';
-    return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(Radii.lg),
-        onTap: () => context.push('/test/setup?exam=$code'),
-        child: Padding(
-          padding: const EdgeInsets.all(Space.s4),
-          child: Row(
-            children: [
-              ExamLogo(code, size: 52),
-              gap4,
-              Expanded(
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Space.s5),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(name, style: context.t.titleMedium),
-                    Text(sub, style: context.t.bodySmall),
+                    for (var i = 0; i < sections.length; i++) ...[
+                      if (i > 0) const Gap(Space.s5),
+                      rm ? sections[i] : sections[i].animate(delay: Motion.stagger * i).fadeIn(duration: Motion.slow).slideY(begin: .06, curve: Motion.out),
+                    ],
                   ],
                 ),
               ),
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(color: c.primary, shape: BoxShape.circle),
-                child: Icon(PhosphorIcons.play(PhosphorIconsStyle.fill), color: c.onPrimary, size: 20),
-              ),
             ],
           ),
         ),
       ),
     );
   }
+
+  Rect? _rectOf(GlobalKey k) {
+    final box = k.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.attached) return null;
+    return box.localToGlobal(Offset.zero) & box.size;
+  }
+
+  /// Bottom-nav tab rectangle (5 equal tabs above the bottom inset).
+  Rect _navRect(BuildContext context, int i) {
+    final size = MediaQuery.sizeOf(context);
+    final w = size.width / 5;
+    return Rect.fromLTWH(w * i + 6, size.height - Sizes.bottomNav + 6, w - 12, Sizes.bottomNav - 12);
+  }
 }
 
-class _NewsCard extends StatelessWidget {
-  const _NewsCard({required this.n});
-  final Map<String, dynamic> n;
+/// "4 subjects · 180 questions · 2 hrs" for JAMB, "Objective papers by subject" otherwise (from exam_configs).
+String examMeta(Map<String, dynamic> e) {
+  final cfg = (e['exam_configs'] as Map?) ?? const {};
+  if (e['code'] == 'JAMB') {
+    final mins = (cfg['total_minutes'] as num?)?.toInt() ?? 120;
+    final q = (cfg['total_questions'] as num?)?.toInt() ?? 180;
+    return '${cfg['subjects_per_candidate'] ?? 4} subjects · $q questions · ${mins % 60 == 0 ? '${mins ~/ 60} hrs' : '$mins mins'}';
+  }
+  return 'Objective papers by subject';
+}
+
+/// Progress ring (`.ring`): accent stroke on a sunken track.
+class Ring extends StatelessWidget {
+  const Ring({super.key, required this.value, this.size = 64, this.stroke, this.label, this.color, this.track});
+  final double value, size;
+  final double? stroke;
+  final Widget? label;
+  final Color? color, track;
   @override
-  Widget build(BuildContext context) {
-    final c = context.c;
-    return SizedBox(
-      width: 260,
-      child: Card(
-        child: InkWell(
-          borderRadius: BorderRadius.circular(Radii.lg),
-          onTap: () => showModalBottomSheet<void>(
-            context: context,
-            isScrollControlled: true,
-            builder: (_) => DraggableScrollableSheet(
-              expand: false,
-              initialChildSize: .7,
-              builder: (_, sc) => ListView(
-                controller: sc,
-                padding: const EdgeInsets.all(Space.s5),
-                children: [
-                  Text(n['title'] as String, style: context.t.headlineSmall),
-                  gap3,
-                  Text((n['body'] as String?) ?? (n['summary'] as String?) ?? '', style: context.t.bodyLarge),
-                ],
-              ),
+  Widget build(BuildContext context) => SizedBox(
+    width: size,
+    height: size,
+    child: Stack(
+      alignment: Alignment.center,
+      children: [
+        SizedBox.expand(
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: value.clamp(0, 1)),
+            duration: context.reduceMotion ? Duration.zero : const Duration(milliseconds: 900),
+            curve: Motion.out,
+            builder: (_, v, _) => CircularProgressIndicator(
+              value: v,
+              strokeWidth: stroke ?? size * 3.6 / 36,
+              color: color ?? context.c.accent,
+              backgroundColor: track ?? context.c.surfaceSunken,
+              strokeCap: StrokeCap.round,
             ),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(Space.s4),
+        ),
+        ?label,
+      ],
+    ),
+  );
+}
+
+/// "Continue your test" card (prototype `ST.unfinishedCard`).
+class ContinueCard extends ConsumerWidget {
+  const ContinueCard({super.key, required this.a});
+  final LocalAttempt a;
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cfg = jsonDecode(a.configJson) as Map<String, dynamic>;
+    final total = (jsonDecode(a.questionIdsJson) as List).length;
+    final done = ref.watch(unfinishedAnsweredProvider(a.id)).value ?? 0;
+    final left = a.limitSeconds == 0 ? null : Duration(seconds: a.limitSeconds) - Duration(milliseconds: a.usedMs);
+    final title = (cfg['title'] as String?)?.isNotEmpty == true ? cfg['title'] as String : a.examCode;
+    return AppCard(
+      onTap: () => context.push('/cbt/${a.id}'),
+      child: Row(
+        children: [
+          IconTile(PhosphorIcons.clockCounterClockwise(PhosphorIconsStyle.fill), tone: Tone.blue, size: 44, radius: 12, iconSize: 22),
+          const Gap(Space.s3),
+          Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(
-                  children: [
-                    Icon(PhosphorIcons.newspaper(PhosphorIconsStyle.fill), size: 18, color: c.secondary),
-                    const SizedBox(width: 6),
-                    if (n['is_pinned'] == true)
-                      Text(
-                        'Pinned',
-                        style: context.t.labelSmall?.copyWith(color: c.onAccentSoft, fontWeight: FontWeight.w700),
-                      ),
-                  ],
+                Text('Continue your test', style: context.ty.sm.bold),
+                Text(
+                  '$title · $done of $total answered${left == null ? '' : ' · ${ExamClock.format(left)} left'}',
+                  style: context.ty.cap.col(context.c.textMuted),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                gap2,
-                Text(n['title'] as String, maxLines: 2, overflow: TextOverflow.ellipsis, style: context.t.labelLarge),
-                const Spacer(),
-                Text((n['summary'] as String?) ?? '', maxLines: 2, overflow: TextOverflow.ellipsis, style: context.t.bodySmall),
+                const Gap(Space.s2),
+                ProgressBar(total == 0 ? 0 : done / total),
               ],
             ),
           ),
+          const Gap(Space.s2),
+          Icon(PhosphorIcons.caretRight(), size: 20, color: context.c.text),
+        ],
+      ),
+    );
+  }
+}
+
+/// Exam card (`.exam-card`): logo, title, meta, navy play circle (or a Premium badge when locked).
+class ExamCard extends StatelessWidget {
+  const ExamCard({super.key, required this.code, required this.name, required this.meta, this.locked = false});
+  final String code, name, meta;
+  final bool locked;
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    return AppCard(
+      padding: const EdgeInsets.symmetric(horizontal: Space.s4, vertical: Space.s3),
+      onTap: locked
+          ? () => toast(context, 'Premium opens every exam and year. Payments are coming soon.', icon: PhosphorIcons.crownSimple(PhosphorIconsStyle.fill))
+          : () => context.push('/test/setup?exam=$code'),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 76 - 24),
+        child: Row(
+          children: [
+            ExamLogo(code),
+            const Gap(Space.s3),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(name, style: context.ty.body.bold),
+                  Text(meta, style: context.ty.cap.col(c.textMuted)),
+                ],
+              ),
+            ),
+            locked
+                ? Pill('Premium', kind: BadgeKind.neutral, icon: PhosphorIcons.lockSimple(PhosphorIconsStyle.fill))
+                : Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(color: c.primary, shape: BoxShape.circle),
+                    child: Icon(PhosphorIcons.play(PhosphorIconsStyle.fill), size: 18, color: c.onPrimary),
+                  ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _UpgradeCard extends StatelessWidget {
+/// Navy upgrade banner with a gold crown tile (`.upgrade-banner`). Free plan only.
+class UpgradeBanner extends StatelessWidget {
+  const UpgradeBanner({super.key, this.title = 'Get every year and every lesson', this.text = 'Videos, notes, novels, offline downloads and more AI help.'});
+  final String title, text;
+  @override
+  Widget build(BuildContext context) => ClipRRect(
+    borderRadius: BorderRadius.circular(Radii.lg),
+    child: Container(
+      color: Palette.navy900,
+      child: Stack(
+        children: [
+          Positioned(
+            right: -40,
+            top: -40,
+            child: Container(
+              width: 140,
+              height: 140,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(colors: [Color.fromRGBO(242, 178, 51, .35), Color.fromRGBO(242, 178, 51, 0)], stops: [0, .7]),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(Space.s4),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(color: Palette.gold400, borderRadius: BorderRadius.circular(12)),
+                  child: Icon(PhosphorIcons.crownSimple(PhosphorIconsStyle.fill), size: 24, color: Palette.navy900),
+                ),
+                const Gap(Space.s3),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title, style: context.ty.body.bold.col(const Color(0xFFF4F7FC))),
+                      Text(text, style: context.ty.sm.col(const Color(0xFFAFC0DD))),
+                    ],
+                  ),
+                ),
+                const Gap(Space.s2),
+                Btn(
+                  'Upgrade',
+                  kind: BtnKind.accent,
+                  sm: true,
+                  onPressed: () => toast(context, 'Premium payments are coming soon.', icon: PhosphorIcons.crownSimple(PhosphorIconsStyle.fill)),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+// ---------------------------------------------------------------- guided tour (prototype: tour)
+class TourStep {
+  const TourStep({required this.target, required this.title, required this.text});
+  final Rect? Function() target;
+  final String title, text;
+}
+
+/// Coach marks: a spotlight hole with a gold ring and a tip card (Skip tour / Next / Done).
+class TourOverlay extends StatefulWidget {
+  const TourOverlay({super.key, required this.steps, required this.onDone});
+  final List<TourStep> steps;
+  final VoidCallback onDone;
+  @override
+  State<TourOverlay> createState() => _TourOverlayState();
+}
+
+class _TourOverlayState extends State<TourOverlay> {
+  int _k = 0;
+
   @override
   Widget build(BuildContext context) {
+    final steps = widget.steps;
+    var rect = steps[_k].target();
+    if (rect == null) {
+      // Skip steps that are not on screen.
+      WidgetsBinding.instance.addPostFrameCallback((_) => _k < steps.length - 1 ? setState(() => _k++) : widget.onDone());
+      return const SizedBox.shrink();
+    }
+    rect = rect.inflate(6);
+    final size = MediaQuery.sizeOf(context);
+    final below = rect.center.dy < size.height / 2;
     final c = context.c;
-    return Container(
-      padding: const EdgeInsets.all(Space.s4),
-      decoration: BoxDecoration(color: c.accentSoft, borderRadius: BorderRadius.circular(Radii.lg)),
-      child: Row(
+    return Material(
+      type: MaterialType.transparency,
+      child: Stack(
         children: [
-          Icon(PhosphorIcons.crown(PhosphorIconsStyle.fill), color: c.onAccentSoft, size: 32),
-          gap4,
-          Expanded(
-            child: Text(
-              'Premium opens every year, video solutions, notes and more AI help. Coming soon in the app.',
-              style: context.t.bodyMedium?.copyWith(color: c.onAccentSoft),
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: () {},
+              child: CustomPaint(painter: _HolePainter(rect, c.scrim)),
+            ),
+          ),
+          AnimatedPositioned(
+            duration: Motion.slow,
+            curve: Motion.out,
+            left: rect.left - 6,
+            top: rect.top - 6,
+            width: rect.width + 12,
+            height: rect.height + 12,
+            child: IgnorePointer(
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Palette.gold400, width: 2),
+                ),
+              ),
+            ),
+          ),
+          AnimatedPositioned(
+            duration: Motion.slow,
+            curve: Motion.out,
+            left: 20,
+            right: 20,
+            top: below ? rect.bottom + 22 : null,
+            bottom: below ? null : size.height - rect.top + 22,
+            child: Container(
+              padding: const EdgeInsets.all(Space.s4),
+              decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(Radii.lg), boxShadow: context.shadow(4)),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(child: Text('STEP ${_k + 1} OF ${steps.length}', style: context.ty.over)),
+                      Btn('Skip tour', kind: BtnKind.ghost, sm: true, onPressed: widget.onDone),
+                    ],
+                  ),
+                  const Gap(Space.s2),
+                  Text(steps[_k].title, style: context.ty.h3),
+                  const Gap(Space.s2),
+                  Text(steps[_k].text, style: context.ty.sm.col(c.textMuted)),
+                  const Gap(Space.s4),
+                  Row(
+                    children: [
+                      Dots(count: steps.length, index: _k),
+                      const Spacer(),
+                      Btn(_k == steps.length - 1 ? 'Done' : 'Next', sm: true, onPressed: () => _k == steps.length - 1 ? widget.onDone() : setState(() => _k++)),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ],
       ),
     );
   }
+}
+
+class _HolePainter extends CustomPainter {
+  _HolePainter(this.hole, this.scrim);
+  final Rect hole;
+  final Color scrim;
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = Path()
+      ..addRect(Offset.zero & size)
+      ..addRRect(RRect.fromRectAndRadius(hole, const Radius.circular(16)))
+      ..fillType = PathFillType.evenOdd;
+    canvas.drawPath(p, Paint()..color = scrim);
+  }
+
+  @override
+  bool shouldRepaint(_HolePainter old) => old.hole != hole || old.scrim != scrim;
 }

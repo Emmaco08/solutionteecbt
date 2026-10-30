@@ -273,3 +273,19 @@ The owner's `.env.local` has a single `R2_BUCKET`. The code stores question imag
 - **Fonts.** Plus Jakarta Sans 500/700 is converted to TTF from the prototype's woff2 files. The latin and latin-ext subsets are merged, so ₦ is included. Licence: OFL.
 - **Legal pages in the app link to the website** (one source of truth). The lawyer's approved text will live at solutiontee.com/terms and /privacy.
 - **Log out wipes the phone's test data.** It also clears cached questions and attempts. Synced attempts stay in the account.
+
+**D-052 · 2026-10-30 · The app copies the approved prototype screen by screen**
+The owner asked for the app to look exactly like the Phase 1 design.
+- **Component kit.** `apps/mobile/lib/ui/kit.dart` holds Flutter versions of the prototype's CSS components, with the same names and sizes: `.btn` variants, `.icon-btn`, `.appbar`, `.footer-cta`, `.card`, `.list-item`, `.badge`, `.chip`, `.field`/`.input`, `.check` consent, `.seg`, `.switch`, `.bar`, `.steps`, `.ob-dots`, `.banner`, `.state`, `.art-disc`, `.mini`, the mark, the avatar, sheets, dialogs and toasts. Shadows come from `design/tokens.json` (generated `Shadows`).
+- **Screens ported from the prototype source** (`prototype/js/screens-*.js`): splash, welcome, 6 onboarding slides (admin text, prototype art by `animation` key), sign up, log in, email code, forgot and reset (code plus new password on one screen), 3-step setup (about you, exams and target, JAMB subjects), welcome-new, welcome-back, home (goal strip, continue card, exam cards, news, upgrade banner, guided tour), Test hub, Test setup (mode switch, subjects, topics, year chips, summary card), CBT (top bar with timer and Submit, subject tabs with counts, collapsible passage, A–E option rows, palette sheet with legend, calculator sheet, submit summary, time-up dialog), Results (navy hero, ring, KPIs, score by subject, topics to practise, share), Review (one question at a time with filters), Me, history, settings, help (FAQ accordions), Terms, Privacy and About (prototype draft text with the "Draft, lawyer review" banner), and delete account.
+- **Exam-body logos** are cropped on screen using the prototype's measured boxes. The files are never edited.
+- **Checked side by side.** `test_preview/preview_test.dart` renders 17 screens in light and dark mode to PNG. They were compared with headless-Chrome screenshots of the prototype at 390×844.
+- **Left out on purpose (no fake content):**
+  - Challenges, Question of the day and "More for you" on Home, and badges and redeem code on Me: their features come in later phases.
+  - The Notifications switches in Settings: push notifications come later.
+  - Google sign-in: shown only once a Google OAuth client is set up.
+  - Sample prices: Upgrade says "Premium payments are coming soon".
+- **Behaviour taken from the prototype:**
+  - Starting a new test **submits** the unfinished one as it is, so its score counts, instead of deleting it.
+  - The quick test is 20 questions mixed across your subjects, in 15 minutes.
+  - Sign-up asks only for email and password. The name is asked in setup step 1, so the API's `fullName` is now optional.

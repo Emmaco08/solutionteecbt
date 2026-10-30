@@ -21,16 +21,20 @@ class TestRequest {
     required this.examCode,
     required this.subjectIds,
     this.year,
-    this.topic,
+    this.topics = const [],
+    this.count = 20,
+    this.limitMinutes,
     this.timed = true,
     this.title = '',
   });
   final TestMode mode;
   final int examId;
   final String examCode;
-  final List<int> subjectIds; // full JAMB: English + 3
+  final List<int> subjectIds; // full JAMB: English + 3; quick: the student's subjects (mixed)
   final int? year; // null = pick an open year for each subject
-  final String? topic;
+  final List<String> topics; // topic drill
+  final int count; // topic drill / quick test size
+  final int? limitMinutes; // fixed time (quick, topic); otherwise minutes per question
   final bool timed;
   final String title;
 }
@@ -148,24 +152,31 @@ class TestsRepo {
           pool.sort((a, b) => (a.number ?? 999).compareTo(b.number ?? 999));
           if (r.mode != TestMode.year) pool = pool.take(countFor(sid)).toList();
         case TestMode.quick:
+          // Mixed: an even share from each subject, from a random open year.
           final y = years[_rnd.nextInt(years.length)];
           pool = (await paper(r.examId, sid, y))..shuffle(_rnd);
-          pool = pool.take(20).toList();
+          pool = pool.take((r.count / r.subjectIds.length).ceil()).toList();
         case TestMode.topic:
           pool = [];
-          for (final y in years.take(4)) {
-            pool.addAll((await paper(r.examId, sid, y)).where((q) => q.topic == r.topic));
-            if (pool.length >= 20) break;
+          for (final y in r.year != null ? [r.year!] : years) {
+            pool.addAll((await paper(r.examId, sid, y)).where((q) => r.topics.contains(q.topic)));
+            if (pool.length >= r.count * 2) break;
           }
-          pool = (pool..shuffle(_rnd)).take(20).toList();
+          pool = (pool..shuffle(_rnd)).take(r.count).toList();
       }
       picked.addAll(pool);
     }
-    if (picked.isEmpty) throw ApiError('No questions found for this choice yet.');
+    if (r.mode == TestMode.quick) {
+      picked.shuffle(_rnd);
+      if (picked.length > r.count) picked.removeRange(r.count, picked.length);
+    }
+    if (picked.isEmpty) {
+      throw ApiError(r.mode == TestMode.topic ? 'No questions for these topics yet. Try other topics.' : 'No questions found for this choice yet.');
+    }
 
     // Keep passage groups together in the order shown.
     final ids = [for (final q in picked) q.id];
-    final limit = r.timed ? (picked.length * minutesPerQuestion * 60).round() : 0;
+    final limit = !r.timed ? 0 : (r.limitMinutes != null ? r.limitMinutes! * 60 : (picked.length * minutesPerQuestion * 60).round());
     final id = const Uuid().v4();
     await _db
         .into(_db.localAttempts)
@@ -175,14 +186,23 @@ class TestsRepo {
             examId: r.examId,
             examCode: r.examCode,
             mode: r.mode.name,
-            configJson: jsonEncode({'subjects': r.subjectIds, 'year': r.year, 'topic': r.topic, 'timed': r.timed, 'title': r.title}),
+            configJson: jsonEncode({'subjects': r.subjectIds, 'year': r.year, 'topics': r.topics, 'timed': r.timed, 'title': r.title}),
             questionIdsJson: jsonEncode(ids),
             limitSeconds: limit,
             startedAt: DateTime.now(),
           ),
         );
-    // A new test replaces any unfinished one (the student chose "fresh" over "continue").
-    await (_db.delete(_db.localAttempts)..where((a) => a.submittedAt.isNull() & a.id.equals(id).not())).go();
+    // Only one unfinished test at a time: the old one is submitted as it is, so its score still counts
+    // (prototype test-setup). One with no answers is simply removed.
+    final others = await (_db.select(_db.localAttempts)..where((a) => a.submittedAt.isNull() & a.id.equals(id).not())).get();
+    for (final o in others) {
+      final answered = (await _db.answersFor(o.id)).any((x) => x.choice != null);
+      if (answered) {
+        await submit(o.id, usedMs: o.usedMs);
+      } else {
+        await (_db.delete(_db.localAttempts)..where((a) => a.id.equals(o.id))).go();
+      }
+    }
     return id;
   }
 

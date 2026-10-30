@@ -5,7 +5,7 @@ SolutionTee sends every account email itself, through Brevo, with our own templa
 Base URL: the website (`http://localhost:3000` in development, `https://solutiontee.com` later). All bodies are JSON.
 
 ## Sign up
-1. `POST /api/auth/sign-up` with `{ email, password, fullName, consent: true, referralCode? }`
+1. `POST /api/auth/sign-up` with `{ email, password, fullName?, consent: true, referralCode? }` (the app collects the name in profile setup)
    - Password: 8–72 characters, with letters and numbers. `consent` must be `true` (Terms + Privacy).
    - `200 { ok, codeLength, message }`: a one-time code was emailed (from noreply@mail.solutiontee.com).
    - `409`: the email already has an account. For an account still waiting for its code, a resend only works with the same password.

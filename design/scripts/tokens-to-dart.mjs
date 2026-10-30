@@ -22,6 +22,15 @@ const roleValues = (obj) =>
     .filter(([, v]) => typeof v === 'string' && (v.startsWith('#') || v.startsWith('rgba')))
     .map(([k, v]) => `    ${camel(k)}: ${color(v)},`).join('\n');
 
+
+// "0 4px 12px -2px rgba(11,31,68,0.10), 0 2px 4px rgba(...)" -> [BoxShadow(...), ...]
+const shadows = (css) => css === 'none' ? '<BoxShadow>[]' : '[' + css.split(/,(?![^(]*\))/).map((part) => {
+  const rgba = part.match(/rgba\([^)]*\)/)[0];
+  const n = part.replace(rgba, '').trim().split(/\s+/).map((x) => parseFloat(x));
+  const [x, y, blur, spread = 0] = n;
+  return `BoxShadow(offset: Offset(${dbl(x)}, ${dbl(y)}), blurRadius: ${dbl(blur)}, spreadRadius: ${dbl(spread)}, color: ${color(rgba)})`;
+}).join(', ') + ']';
+
 let palette = '';
 for (const [name, scale] of Object.entries(t.color.palette))
   for (const [step, hex] of Object.entries(scale)) palette += `  static const ${name}${step} = ${color(hex)};\n`;
@@ -47,6 +56,12 @@ ${roleValues(t.color.light)}
   static const dark = AppColors(
 ${roleValues(t.color.dark)}
   );
+}
+
+/// Elevation (CSS box-shadows from the prototype), per theme.
+abstract final class Shadows {
+${Object.entries(t.elevation.light).map(([k, v]) => `  static const light${k} = ${shadows(v)};`).join('\n')}
+${Object.entries(t.elevation.dark).map(([k, v]) => `  static const dark${k} = ${shadows(v)};`).join('\n')}
 }
 
 /// 8-pt spacing scale.

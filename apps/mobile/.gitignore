@@ -31,3 +31,4 @@ ios/Flutter/flutter_export_environment.sh
 .env
 .env.*
 !.env.example
+test_preview/out/

@@ -15,6 +15,7 @@ import 'package:solutiontee_cbt/features/auth/auth_screens.dart';
 import 'package:solutiontee_cbt/features/cbt/cbt_screen.dart';
 import 'package:solutiontee_cbt/features/onboarding/onboarding_screens.dart';
 import 'package:solutiontee_cbt/theme/theme.dart';
+import 'package:solutiontee_cbt/widgets/exam_logo.dart';
 
 /// Records sign-ups instead of calling the website.
 class FakeApi extends WebApi {
@@ -50,11 +51,11 @@ Widget app(Widget home, {List overrides = const [], Map<String, Widget> routes =
 void main() {
   testWidgets('onboarding welcome shows the exam bodies, both actions and the disclaimer', (t) async {
     await t.pumpWidget(app(const WelcomeScreen()));
-    await t.pumpAndSettle();
+    await t.pump(const Duration(seconds: 1)); // the icon floats forever, so no pumpAndSettle
     expect(find.text('Get started'), findsOneWidget);
     expect(find.text('I already have an account'), findsOneWidget);
     expect(find.text(Config.disclaimer), findsOneWidget);
-    expect(find.bySemanticsLabel(RegExp('JAMB|WAEC|NECO')), findsWidgets);
+    expect(find.byType(ExamLogo), findsNWidgets(3));
   });
 
   testWidgets('sign-up needs consent before anything is sent', (t) async {
@@ -62,16 +63,16 @@ void main() {
     await t.pumpWidget(app(const SignUpScreen(), overrides: [apiProvider.overrideWithValue(api)], routes: {'/verify': const Text('VERIFY')}));
     await t.pumpAndSettle();
 
-    await t.enterText(find.widgetWithText(TextField, 'Full name'), 'Ada Obi');
-    await t.enterText(find.widgetWithText(TextField, 'Email'), 'ada@example.com');
-    await t.enterText(find.byType(TextField).at(2), 'secret123');
+    await t.enterText(find.byType(TextField).at(0), 'ada@example.com');
+    await t.enterText(find.byType(TextField).at(1), 'secret123');
     await t.ensureVisible(find.text('Create account'));
     await t.tap(find.text('Create account'));
     await t.pumpAndSettle();
-    expect(find.text('Please accept the Terms and Privacy Policy to continue.'), findsOneWidget);
+    expect(find.text('Please tick the box to agree to the Terms and Privacy Policy.'), findsOneWidget);
     expect(api.calls, isEmpty);
 
     await t.tap(find.byType(Checkbox));
+    await t.pumpAndSettle();
     await t.tap(find.text('Create account'));
     await t.pumpAndSettle();
     expect(api.calls, ['ada@example.com']);
@@ -125,6 +126,7 @@ void main() {
         ],
       ),
       testsRepoProvider.overrideWith((ref) => OfflineRepo(ref)),
+      profileProvider.overrideWith((_) async => {'full_name': 'Ada Obi'}),
     ];
 
     testWidgets('answers are saved at once, flags work, and submitting marks the test', (t) async {
@@ -143,7 +145,8 @@ void main() {
       });
       await t.pump(const Duration(milliseconds: 500));
       expect(find.text('Question body 1'), findsOneWidget);
-      expect(find.text('Question 1'), findsOneWidget);
+      expect(find.text('Question 1 of 3', findRichText: true), findsOneWidget);
+      expect(find.text('Ada Obi'), findsOneWidget);
 
       // Choose B (correct), saved to SQLite straight away.
       await t.tap(find.text('Bravo'));
@@ -153,7 +156,7 @@ void main() {
       expect(saved!.single.choice, 'B');
 
       // Flag, then go to question 2.
-      await t.tap(find.byTooltip('Flag for review'));
+      await t.tap(find.byTooltip('Flag question'));
       await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
       await t.pump();
       expect(find.text('Flagged'), findsOneWidget);
@@ -163,10 +166,10 @@ void main() {
       expect(find.text('Question body 2'), findsOneWidget);
 
       // Submit from the header and confirm.
-      await t.tap(find.widgetWithText(FilledButton, 'Submit').first);
+      await t.tap(find.text('Submit').first);
       await t.pump();
       await t.pump(const Duration(milliseconds: 400));
-      expect(find.text('Submit your test?'), findsOneWidget);
+      expect(find.text('Submit your exam?'), findsOneWidget);
       await t.tap(find.text('Submit now'));
       await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
       await t.pump(const Duration(milliseconds: 400));

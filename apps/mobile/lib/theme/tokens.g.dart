@@ -244,6 +244,29 @@ class AppColors {
   );
 }
 
+/// Elevation (CSS box-shadows from the prototype), per theme.
+abstract final class Shadows {
+  static const light0 = <BoxShadow>[];
+  static const light1 = [
+    BoxShadow(offset: Offset(0.0, 1.0), blurRadius: 2.0, spreadRadius: 0.0, color: Color.fromRGBO(11, 31, 68, 0.06)),
+    BoxShadow(offset: Offset(0.0, 1.0), blurRadius: 1.0, spreadRadius: 0.0, color: Color.fromRGBO(11, 31, 68, 0.04)),
+  ];
+  static const light2 = [
+    BoxShadow(offset: Offset(0.0, 4.0), blurRadius: 12.0, spreadRadius: -2.0, color: Color.fromRGBO(11, 31, 68, 0.1)),
+    BoxShadow(offset: Offset(0.0, 2.0), blurRadius: 4.0, spreadRadius: 0.0, color: Color.fromRGBO(11, 31, 68, 0.04)),
+  ];
+  static const light3 = [
+    BoxShadow(offset: Offset(0.0, 12.0), blurRadius: 28.0, spreadRadius: -6.0, color: Color.fromRGBO(11, 31, 68, 0.18)),
+    BoxShadow(offset: Offset(0.0, 4.0), blurRadius: 8.0, spreadRadius: 0.0, color: Color.fromRGBO(11, 31, 68, 0.06)),
+  ];
+  static const light4 = [BoxShadow(offset: Offset(0.0, 24.0), blurRadius: 48.0, spreadRadius: -12.0, color: Color.fromRGBO(11, 31, 68, 0.28))];
+  static const dark0 = <BoxShadow>[];
+  static const dark1 = [BoxShadow(offset: Offset(0.0, 1.0), blurRadius: 2.0, spreadRadius: 0.0, color: Color.fromRGBO(0, 0, 0, 0.4))];
+  static const dark2 = [BoxShadow(offset: Offset(0.0, 4.0), blurRadius: 12.0, spreadRadius: -2.0, color: Color.fromRGBO(0, 0, 0, 0.5))];
+  static const dark3 = [BoxShadow(offset: Offset(0.0, 12.0), blurRadius: 28.0, spreadRadius: -6.0, color: Color.fromRGBO(0, 0, 0, 0.6))];
+  static const dark4 = [BoxShadow(offset: Offset(0.0, 24.0), blurRadius: 48.0, spreadRadius: -12.0, color: Color.fromRGBO(0, 0, 0, 0.7))];
+}
+
 /// 8-pt spacing scale.
 abstract final class Space {
   static const double s0 = 0;

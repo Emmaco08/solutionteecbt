@@ -7,20 +7,18 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../widgets/phosphor.g.dart';
-
 import '../../core/providers.dart';
 import '../../core/secure_screen.dart';
 import '../../data/db.dart';
 import '../../data/tests_repo.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
+import '../../ui/kit.dart';
 import '../../widgets/exam_logo.dart';
 import '../../widgets/math_text.dart';
+import '../../widgets/phosphor.g.dart';
 import '../../widgets/question_image.dart';
-import '../../widgets/states.dart';
 import '../home/home_screen.dart';
-import '../shell/shell.dart';
 import 'calculator.dart';
 import 'exam_clock.dart';
 
@@ -30,7 +28,9 @@ class _Q {
   final Map<String, String> options;
 }
 
-/// The CBT exam screen. Every tap is saved to SQLite at once, so the test survives the app being killed.
+/// CBT exam screen (prototype: cbt). JAMB-style: top bar (logo, name, test, timer, Submit), subject tabs,
+/// collapsible passage, question + options A–E, bottom bar (Prev · calculator · palette · flag · Next).
+/// Every tap is saved to SQLite at once, so the test survives the app being killed.
 class CbtScreen extends ConsumerStatefulWidget {
   const CbtScreen({super.key, required this.attemptId});
   final String attemptId;
@@ -48,8 +48,7 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
   late ExamClock _clock;
   Timer? _tick;
   DateTime _shownAt = DateTime.now();
-  bool _passageOpen = true;
-  bool _submitting = false;
+  bool _passageOpen = true, _submitting = false, _timeUpShown = false;
   Object? _error;
 
   AppDb get _db => ref.read(dbProvider);
@@ -72,9 +71,11 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
       }
       final ids = (jsonDecode(a.questionIdsJson) as List).cast<String>();
       final rows = await _db.questionsByIds(ids);
+      var resumed = false;
       for (final x in await _db.answersFor(a.id)) {
         if (x.choice != null) _answers[x.questionId] = x.choice!;
         if (x.flagged) _flags.add(x.questionId);
+        resumed = true;
       }
       final subjects = await ref.read(subjectsProvider.future).catchError((_) => <Map<String, dynamic>>[]);
       for (final s in subjects) {
@@ -90,6 +91,14 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
         _i = a.currentIndex.clamp(0, _qs.isEmpty ? 0 : _qs.length - 1);
         _shownAt = DateTime.now();
       });
+      if (mounted) {
+        toast(
+          context,
+          resumed ? 'Welcome back. We saved your answers.' : 'New test started. Good luck!',
+          icon: resumed ? PhosphorIcons.cloudCheck(PhosphorIconsStyle.fill) : PhosphorIcons.playCircle(PhosphorIconsStyle.fill),
+          above: 72,
+        );
+      }
       _tick = Timer.periodic(const Duration(seconds: 1), (_) {
         if (!mounted) return;
         if (_clock.expired && !_submitting) {
@@ -114,7 +123,7 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
   @override
   void didChangeAppLifecycleState(AppLifecycleState s) {
     if (_a == null) return;
-    if (s == AppLifecycleState.paused || s == AppLifecycleState.inactive || s == AppLifecycleState.detached) {
+    if (s == AppLifecycleState.paused || s == AppLifecycleState.hidden || s == AppLifecycleState.detached) {
       _saveProgress(pause: true);
     } else if (s == AppLifecycleState.resumed) {
       _clock.start();
@@ -171,149 +180,294 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
       // Answers are already saved on the phone; let the student try again.
       if (!mounted) return;
       setState(() => _submitting = false);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not submit. Please try again.')));
+      toast(context, 'Could not submit. Please try again.', icon: PhosphorIcons.warningCircle(PhosphorIconsStyle.fill), above: 72);
       return;
     }
     ref.invalidate(unfinishedProvider);
+    ref.invalidate(practiceStatsProvider);
     if (!mounted) return;
     if (auto) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Time is up. Your test was submitted.')));
+      await _timeUp();
+      if (!mounted) return;
     }
     context.pushReplacement('/results/${widget.attemptId}');
   }
 
-  Future<bool?> _confirmSubmit() {
-    final answered = _answers.length, flagged = _flags.length, left = _qs.length - answered;
-    return showModalBottomSheet<bool>(
+  /// "Time is up" (sticky): answers were saved and submitted automatically.
+  Future<void> _timeUp() async {
+    if (_timeUpShown) return;
+    _timeUpShown = true;
+    Navigator.of(context).popUntil((r) => r is! PopupRoute);
+    await showDialog<void>(
       context: context,
-      isScrollControlled: true,
-      builder: (ctx) => SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(Space.s5, 0, Space.s5, Space.s6),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text('Submit your test?', style: ctx.t.headlineSmall),
-            gap4,
-            Row(
+      barrierDismissible: false,
+      builder: (ctx) => PopScope(
+        canPop: false,
+        child: Dialog(
+          backgroundColor: ctx.c.surface,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Radii.xl)),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(Space.s5, Space.s6, Space.s5, Space.s5),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                _Stat(label: 'Answered', value: '$answered', color: ctx.c.answered),
-                gap3,
-                _Stat(label: 'Not answered', value: '$left', color: ctx.c.textMuted),
-                gap3,
-                _Stat(label: 'Flagged', value: '$flagged', color: ctx.c.flagged),
+                IconTile(PhosphorIcons.alarm(PhosphorIconsStyle.fill), tone: Tone.red, size: 60, radius: 18),
+                const Gap(Space.s3),
+                Text('Time is up', style: ctx.ty.h2),
+                const Gap(Space.s3),
+                Text('Your answers were saved and submitted automatically.', style: ctx.ty.sm.col(ctx.c.textMuted), textAlign: TextAlign.center),
+                const Gap(Space.s3),
+                Btn('See my results', block: true, onPressed: () => Navigator.pop(ctx)),
               ],
             ),
-            if (left > 0) ...[
-              gap4,
-              Text('You still have $left unanswered question${left == 1 ? '' : 's'}. Unanswered questions count as wrong.', style: ctx.t.bodyMedium),
-            ],
-            gap5,
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Submit now')),
-            gap3,
-            OutlinedButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep going')),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  void _openPalette() {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (ctx) => DraggableScrollableSheet(
-        expand: false,
-        initialChildSize: .6,
-        maxChildSize: .9,
-        builder: (_, sc) {
-          final c = ctx.c;
-          return ListView(
-            controller: sc,
-            padding: const EdgeInsets.fromLTRB(Space.s5, 0, Space.s5, Space.s6),
+  ({int a, int f, int u, int total}) _counts(int subjectId) {
+    final qs = _qs.where((q) => q.row.subjectId == subjectId);
+    final a = qs.where((q) => _answers.containsKey(q.row.id)).length;
+    final f = qs.where((q) => _flags.contains(q.row.id)).length;
+    return (a: a, f: f, u: qs.length - a, total: qs.length);
+  }
+
+  List<int> get _subjectIds {
+    final ids = <int>[];
+    for (final q in _qs) {
+      if (!ids.contains(q.row.subjectId)) ids.add(q.row.subjectId);
+    }
+    return ids;
+  }
+
+  String _short(int sid) {
+    final n = _subjectNames[sid] ?? 'Subject';
+    return n == 'Use of English' ? 'English' : n;
+  }
+
+  Future<bool?> _confirmSubmit() {
+    final c = context.c;
+    final unanswered = _qs.length - _answers.length;
+    return showAppDialog<bool>(
+      context,
+      icon: PhosphorIcons.paperPlaneTilt(PhosphorIconsStyle.fill),
+      tone: Tone.red,
+      title: 'Submit your exam?',
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text.rich(
+            TextSpan(
+              style: context.ty.sm.col(c.textMuted),
+              children: [
+                if (_clock.timed) ...[
+                  const TextSpan(text: 'You still have '),
+                  TextSpan(text: ExamClock.format(_clock.left), style: context.ty.sm.bold.col(c.text)),
+                  const TextSpan(text: ' left and '),
+                ] else
+                  const TextSpan(text: 'You have '),
+                TextSpan(text: '$unanswered unanswered', style: context.ty.sm.bold.col(unanswered > 0 ? c.error : c.text)),
+                const TextSpan(text: ' questions. You cannot change answers after you submit.'),
+              ],
+            ),
+          ),
+          const Gap(Space.s3),
+          AppCard(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            child: Column(
+              children: [
+                _SumRow(cells: const ['Subject', 'Done', 'Left', 'Flag'], header: true),
+                for (final s in _subjectIds)
+                  Builder(
+                    builder: (context) {
+                      final n = _counts(s);
+                      return _SumRow(cells: [_short(s), '${n.a}', '${n.u}', '${n.f}'], colors: [null, c.success, n.u > 0 ? c.error : null, c.warning]);
+                    },
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        Builder(
+          builder: (ctx) => Row(
             children: [
-              Row(
-                children: [
-                  Text('All questions', style: ctx.t.titleMedium),
-                  const Spacer(),
-                  Text('${_answers.length} answered · ${_qs.length - _answers.length} left', style: ctx.t.bodySmall),
-                ],
+              Expanded(
+                child: Btn('Keep working', kind: BtnKind.outline, block: true, onPressed: () => Navigator.pop(ctx, false)),
               ),
-              gap3,
-              Wrap(
-                spacing: Space.s4,
-                runSpacing: Space.s2,
-                children: [
-                  _Legend(color: c.answered, label: 'Answered'),
-                  _Legend(color: c.unanswered, label: 'Not answered', outline: true),
-                  _Legend(color: c.flagged, label: 'Flagged'),
-                  _Legend(color: c.current, label: 'Current', outline: true),
-                ],
-              ),
-              gap4,
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: 52, mainAxisSpacing: 8, crossAxisSpacing: 8),
-                itemCount: _qs.length,
-                itemBuilder: (_, i) {
-                  final id = _qs[i].row.id;
-                  final answered = _answers.containsKey(id), flagged = _flags.contains(id), current = i == _i;
-                  return Semantics(
-                    button: true,
-                    label: 'Question ${i + 1}${answered ? ', answered' : ''}${flagged ? ', flagged' : ''}',
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(Radii.sm),
-                      onTap: () {
-                        Navigator.pop(ctx);
-                        _go(i);
-                      },
-                      child: Container(
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: answered ? c.answered : c.surface,
-                          borderRadius: BorderRadius.circular(Radii.sm),
-                          border: Border.all(
-                            color: current
-                                ? c.current
-                                : flagged
-                                ? c.flagged
-                                : c.unanswered,
-                            width: current || flagged ? 2.5 : 1.5,
-                          ),
-                        ),
-                        child: Text('${i + 1}', style: ctx.t.labelLarge?.copyWith(color: answered ? Colors.white : c.text)),
-                      ),
-                    ),
-                  );
-                },
-              ),
-              gap5,
-              OutlinedButton(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  _submit();
-                },
-                child: const Text('Submit test'),
+              const Gap(Space.s3),
+              Expanded(
+                child: Btn('Submit now', kind: BtnKind.danger, block: true, onPressed: () => Navigator.pop(ctx, true)),
               ),
             ],
-          );
-        },
-      ),
+          ),
+        ),
+      ],
     );
   }
 
+  void _openPalette() {
+    final sid = _qs[_i].row.subjectId;
+    final idx = [
+      for (var i = 0; i < _qs.length; i++)
+        if (_qs[i].row.subjectId == sid) i,
+    ];
+    final n = _counts(sid);
+    showSheet<void>(
+      context,
+      builder: (ctx) {
+        final c = ctx.c;
+        Widget legend(Color? fill, Color? ring, String label, {bool dot = false}) => Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 12,
+              height: 12,
+              decoration: BoxDecoration(
+                color: fill,
+                borderRadius: BorderRadius.circular(dot ? 6 : 4),
+                border: ring == null ? null : Border.all(color: ring, width: 2),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(label, style: ctx.ty.cap.col(c.textMuted)),
+          ],
+        );
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(child: Text(_short(sid), style: ctx.ty.h3)),
+                Text('${n.a} answered · ${n.u} left', style: ctx.ty.sm.tnum.col(c.textMuted)),
+              ],
+            ),
+            const Gap(Space.s3),
+            Wrap(
+              spacing: 14,
+              runSpacing: 6,
+              children: [
+                legend(c.answered, null, 'Answered'),
+                legend(null, c.unanswered, 'Not answered'),
+                legend(c.flagged, null, 'Flagged', dot: true),
+                legend(null, c.current, 'Current'),
+              ],
+            ),
+            const Gap(Space.s4),
+            GridView.count(
+              crossAxisCount: 8,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 7,
+              crossAxisSpacing: 7,
+              children: [
+                for (var k = 0; k < idx.length; k++)
+                  Builder(
+                    builder: (context) {
+                      final q = _qs[idx[k]].row.id;
+                      final ans = _answers.containsKey(q), flag = _flags.contains(q), cur = idx[k] == _i;
+                      return Semantics(
+                        button: true,
+                        label: 'Question ${k + 1}${ans ? ', answered' : ''}${flag ? ', flagged' : ''}',
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            _go(idx[k]);
+                          },
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Container(
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: ans ? c.answered : c.surface,
+                                  borderRadius: BorderRadius.circular(9),
+                                  border: cur
+                                      ? Border.all(color: c.current, width: 2.5)
+                                      : ans
+                                      ? null
+                                      : Border.all(color: c.unanswered, width: 1.5),
+                                ),
+                                child: Text('${k + 1}', style: ctx.ty.sm.bold.tnum.col(ans ? Colors.white : (cur ? c.text : c.textMuted))),
+                              ),
+                              if (flag)
+                                Positioned(
+                                  top: -3,
+                                  right: -3,
+                                  child: Container(
+                                    width: 10,
+                                    height: 10,
+                                    decoration: BoxDecoration(
+                                      color: c.flagged,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: c.surface, width: 2),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+              ],
+            ),
+            const Gap(Space.s6),
+            Btn(
+              'Submit exam',
+              kind: BtnKind.outline,
+              block: true,
+              onPressed: () {
+                Navigator.pop(ctx);
+                _submit();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _timerInfo() => showSheet<void>(
+    context,
+    builder: (ctx) => Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text.rich(
+          TextSpan(
+            style: ctx.ty.h3,
+            children: [
+              const TextSpan(text: 'Time left: '),
+              TextSpan(text: ExamClock.format(_clock.left), style: ctx.ty.h3.tnum),
+            ],
+          ),
+        ),
+        const Gap(Space.s2),
+        Text(
+          'The timer turns amber at 10 minutes and red at 5 minutes. When it reaches zero, your exam submits automatically. '
+          'If your phone dies, you continue from where you stopped. The timer pauses while the app is closed.',
+          style: ctx.ty.sm.col(ctx.c.textMuted),
+        ),
+      ],
+    ),
+  );
+
   Future<bool> _confirmLeave() async {
-    final leave = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Leave the test?'),
-        content: const Text('Your answers are saved. You can continue from Home later. The timer pauses while you are away.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Stay')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Leave')),
-        ],
-      ),
+    final leave = await showAppDialog<bool>(
+      context,
+      icon: PhosphorIcons.signOut(PhosphorIconsStyle.fill),
+      tone: Tone.blue,
+      title: 'Leave the test?',
+      body: 'Your answers are saved. Continue from Home later. The timer pauses while you are away.',
+      actions: [
+        Builder(builder: (ctx) => Btn('Stay', block: true, onPressed: () => Navigator.pop(ctx, false))),
+        Builder(
+          builder: (ctx) => Btn('Leave', kind: BtnKind.ghost, onPressed: () => Navigator.pop(ctx, true)),
+        ),
+      ],
     );
     if (leave == true) await _saveProgress(pause: true);
     return leave == true;
@@ -323,35 +477,72 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
   Widget build(BuildContext context) {
     if (_error != null) {
       return Scaffold(
-        appBar: AppBar(),
-        body: StateView.error(
-          _error!,
-          onRetry: () {
-            setState(() => _error = null);
-            _load();
-          },
+        appBar: const TopBar(),
+        body: StateBlock(
+          icon: PhosphorIcons.warningCircle(PhosphorIconsStyle.fill),
+          tone: Tone.red,
+          title: 'Something went wrong',
+          text: _error.toString().replaceFirst('Exception: ', ''),
+          action: Btn(
+            'Try again',
+            kind: BtnKind.outline,
+            onPressed: () {
+              setState(() => _error = null);
+              _load();
+            },
+          ),
         ),
       );
     }
     if (_a == null || _qs.isEmpty) return const Scaffold(body: Center(child: CircularProgressIndicator()));
     final c = context.c;
     final q = _qs[_i];
-    final subjectIds = <int>[];
-    for (final x in _qs) {
-      if (!subjectIds.contains(x.row.subjectId)) subjectIds.add(x.row.subjectId);
-    }
-    final firstOf = {for (final s in subjectIds) s: _qs.indexWhere((x) => x.row.subjectId == s)};
-    final countOf = {for (final s in subjectIds) s: _qs.where((x) => x.row.subjectId == s).length};
-    final indexInSubject = _i - firstOf[q.row.subjectId]! + 1;
+    final sids = _subjectIds;
+    final firstOf = {for (final s in sids) s: _qs.indexWhere((x) => x.row.subjectId == s)};
+    final nInSubject = _i - firstOf[q.row.subjectId]! + 1;
+    final total = _counts(q.row.subjectId).total;
     final last = _i == _qs.length - 1;
     final warn = _clock.warning;
-    final timerBg = warn == 2
-        ? c.error
-        : warn == 1
-        ? c.warning
-        : c.secondarySoft;
-    final timerFg = warn == 0 ? c.onSecondarySoft : Colors.white;
+    final (timerBg, timerFg) = switch (warn) {
+      2 => (c.error, Colors.white),
+      1 => (c.warningSoft, c.onWarningSoft),
+      _ => (c.primarySoft, c.onPrimarySoft),
+    };
     final chosen = _answers[q.row.id];
+    final flagged = _flags.contains(q.row.id);
+    final name = (ref.watch(profileProvider).value?['full_name'] as String?) ?? 'Candidate';
+    final title = ((jsonDecode(_a!.configJson) as Map)['title'] as String?) ?? _a!.examCode;
+    final rm = context.reduceMotion;
+    // Passage: questions that share it, numbered within the subject.
+    final passageNums = q.row.passageId == null
+        ? const <int>[]
+        : [
+            for (var i = 0; i < _qs.length; i++)
+              if (_qs[i].row.passageId == q.row.passageId) i - firstOf[_qs[i].row.subjectId]! + 1,
+          ];
+
+    Widget timer = Semantics(
+      button: true,
+      label: 'Time left ${ExamClock.format(_clock.left)}',
+      child: GestureDetector(
+        onTap: _timerInfo,
+        child: AnimatedContainer(
+          duration: Motion.base,
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(color: timerBg, borderRadius: BorderRadius.circular(99)),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(PhosphorIcons.timer(PhosphorIconsStyle.fill), size: 18, color: timerFg),
+              const SizedBox(width: 6),
+              Text(ExamClock.format(_clock.left), style: context.ty.timer.col(timerFg)),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (warn == 2 && !rm) timer = timer.animate(onPlay: (a) => a.repeat(reverse: true)).scaleXY(end: 1.06, duration: 500.ms, curve: Motion.standard);
 
     return PopScope(
       canPop: false,
@@ -361,182 +552,257 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
       },
       child: Scaffold(
         body: SafeArea(
+          bottom: false,
           child: Column(
             children: [
-              // Header: logo, test name, timer, submit
-              Padding(
-                padding: const EdgeInsets.fromLTRB(Space.s4, Space.s2, Space.s4, Space.s2),
+              // Top bar: logo, candidate + test, timer, Submit
+              Container(
+                padding: const EdgeInsets.fromLTRB(Space.s4, Space.s2, Space.s3, Space.s2),
+                decoration: BoxDecoration(
+                  color: c.surface,
+                  border: Border(bottom: BorderSide(color: c.border)),
+                ),
                 child: Row(
                   children: [
-                    ExamLogo(_a!.examCode, size: 36),
-                    gap3,
+                    ExamLogo(_a!.examCode, size: LogoSize.sm),
+                    const Gap(Space.s2),
                     Expanded(
-                      child: Text(
-                        (jsonDecode(_a!.configJson) as Map)['title'] as String? ?? _a!.examCode,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: context.t.labelLarge,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            name,
+                            style: context.ty.sm.bold.copyWith(fontSize: 14, height: 18 / 14),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(title, style: context.ty.cap.copyWith(fontSize: 11).col(c.textMuted), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        ],
                       ),
                     ),
-                    if (_clock.timed)
-                      AnimatedContainer(
-                        duration: Motion.base,
-                        padding: const EdgeInsets.symmetric(horizontal: Space.s3, vertical: 6),
-                        decoration: BoxDecoration(color: timerBg, borderRadius: BorderRadius.circular(Radii.pill)),
-                        child: Semantics(
-                          label: 'Time left ${ExamClock.format(_clock.left)}',
-                          child: Row(
-                            children: [
-                              Icon(PhosphorIcons.timer(PhosphorIconsStyle.fill), size: 16, color: timerFg),
-                              const SizedBox(width: 4),
-                              Text(
-                                ExamClock.format(_clock.left),
-                                style: context.t.labelLarge?.copyWith(color: timerFg, fontFeatures: const [FontFeature.tabularFigures()]),
-                              ),
-                            ],
-                          ),
+                    if (_clock.timed) ...[timer, const Gap(Space.s2)],
+                    Pressable(
+                      onTap: _submitting ? null : () => _submit(),
+                      borderRadius: BorderRadius.circular(99),
+                      child: Ink(
+                        height: 36,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(color: c.error, borderRadius: BorderRadius.circular(99)),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(PhosphorIcons.paperPlaneTilt(PhosphorIconsStyle.fill), size: 16, color: Colors.white),
+                            const SizedBox(width: 6),
+                            Text('Submit', style: context.ty.sm.bold.col(Colors.white)),
+                          ],
                         ),
                       ),
-                    gap2,
-                    FilledButton(
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size(48, 40),
-                        padding: const EdgeInsets.symmetric(horizontal: Space.s3),
-                      ),
-                      onPressed: _submitting ? null : () => _submit(),
-                      child: const Text('Submit'),
                     ),
                   ],
                 ),
               ),
-              // Subject tabs (full JAMB)
-              if (subjectIds.length > 1)
-                SizedBox(
-                  height: 44,
+              // Subject tabs with answered/total
+              if (sids.length > 1)
+                Container(
+                  height: 54,
+                  decoration: BoxDecoration(
+                    color: c.surface,
+                    border: Border(bottom: BorderSide(color: c.border)),
+                  ),
                   child: ListView(
                     scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: Space.s4),
+                    padding: const EdgeInsets.symmetric(horizontal: Space.s3, vertical: Space.s2),
                     children: [
-                      for (final s in subjectIds)
+                      for (final s in sids)
                         Padding(
-                          padding: const EdgeInsets.only(right: Space.s2),
-                          child: ChoiceChip(
-                            label: Text(
-                              '${_subjectNames[s] ?? 'Subject'} · ${_qs.where((x) => x.row.subjectId == s && _answers.containsKey(x.row.id)).length}/${countOf[s]}',
-                            ),
-                            selected: q.row.subjectId == s,
-                            onSelected: (_) => _go(firstOf[s]!),
+                          padding: const EdgeInsets.only(right: 6),
+                          child: Builder(
+                            builder: (context) {
+                              final on = q.row.subjectId == s;
+                              final n = _counts(s);
+                              return Semantics(
+                                selected: on,
+                                button: true,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(10),
+                                  onTap: () => _go(firstOf[s]!),
+                                  child: AnimatedContainer(
+                                    duration: Motion.fast,
+                                    height: 38,
+                                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                                    decoration: BoxDecoration(color: on ? c.primary : Colors.transparent, borderRadius: BorderRadius.circular(10)),
+                                    child: Row(
+                                      children: [
+                                        Text(_short(s), style: context.ty.sm.bold.col(on ? c.onPrimary : c.textMuted)),
+                                        const SizedBox(width: 6),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                          decoration: BoxDecoration(
+                                            color: on ? Colors.white.withValues(alpha: .18) : c.surfaceSunken,
+                                            borderRadius: BorderRadius.circular(99),
+                                          ),
+                                          child: Text(
+                                            '${n.a}/${n.total}',
+                                            style: context.ty.cap.copyWith(fontSize: 11).tnum.col(on ? c.onPrimary : c.textMuted),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
                           ),
                         ),
                     ],
                   ),
                 ),
-              Divider(color: c.border),
+              // Passage (collapsible)
+              if (q.row.passageBody != null)
+                AnimatedContainer(
+                  duration: Motion.base,
+                  curve: Motion.out,
+                  constraints: BoxConstraints(maxHeight: _passageOpen ? MediaQuery.sizeOf(context).height * .42 : 48),
+                  decoration: BoxDecoration(
+                    color: c.surfaceAlt,
+                    border: Border(bottom: BorderSide(color: c.border)),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      InkWell(
+                        onTap: () => setState(() => _passageOpen = !_passageOpen),
+                        child: SizedBox(
+                          height: 48,
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(Space.s4, 0, Space.s3, 0),
+                            child: Row(
+                              children: [
+                                Icon(PhosphorIcons.article(PhosphorIconsStyle.fill), size: 18, color: c.text),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    passageNums.length > 1
+                                        ? 'Read the passage and answer questions ${passageNums.first} to ${passageNums.last}'
+                                        : 'Read the passage',
+                                    style: context.ty.sm.bold,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                AnimatedRotation(turns: _passageOpen ? 0 : .5, duration: Motion.base, child: Icon(PhosphorIcons.caretUp(), size: 18)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (_passageOpen)
+                        Flexible(
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.fromLTRB(Space.s4, 0, Space.s4, Space.s4),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (q.row.passageTitle != null) ...[
+                                  Text(q.row.passageTitle!.replaceFirst('[SAMPLE] ', ''), style: context.ty.sm.bold),
+                                  const Gap(Space.s2),
+                                ],
+                                MathText(q.row.passageBody!, style: context.ty.body.copyWith(height: 24 / 15)),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              // Question area
               Expanded(
                 child: ListView(
                   key: ValueKey(_i),
-                  padding: const EdgeInsets.fromLTRB(Space.s5, Space.s3, Space.s5, Space.s6),
+                  padding: const EdgeInsets.fromLTRB(Space.s4, Space.s4, Space.s4, Space.s6),
                   children: [
-                    if (q.row.passageBody != null) ...[
-                      Container(
-                        decoration: BoxDecoration(
-                          color: c.surfaceAlt,
-                          borderRadius: BorderRadius.circular(Radii.md),
-                          border: Border.all(color: c.border),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            InkWell(
-                              onTap: () => setState(() => _passageOpen = !_passageOpen),
-                              child: Padding(
-                                padding: const EdgeInsets.all(Space.s3),
-                                child: Row(
-                                  children: [
-                                    Icon(PhosphorIcons.article(PhosphorIconsStyle.fill), size: 18, color: c.secondary),
-                                    gap2,
-                                    Expanded(child: Text(q.row.passageTitle ?? 'Read the passage', style: context.t.labelLarge)),
-                                    Icon(_passageOpen ? PhosphorIcons.caretUp() : PhosphorIcons.caretDown(), size: 18),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            if (_passageOpen)
-                              ConstrainedBox(
-                                constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * .32),
-                                child: SingleChildScrollView(
-                                  padding: const EdgeInsets.fromLTRB(Space.s3, 0, Space.s3, Space.s3),
-                                  child: Text(q.row.passageBody!, style: context.t.bodyMedium?.copyWith(height: 1.6)),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                      gap4,
-                    ],
                     Row(
                       children: [
-                        Text('Question $indexInSubject', style: context.t.labelLarge),
-                        Text(' of ${countOf[q.row.subjectId]}', style: context.t.bodySmall),
-                        const Spacer(),
-                        if (_flags.contains(q.row.id))
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(color: c.warningSoft, borderRadius: BorderRadius.circular(Radii.pill)),
-                            child: Text(
-                              'Flagged',
-                              style: context.t.labelSmall?.copyWith(color: c.onWarningSoft, fontWeight: FontWeight.w700),
-                            ),
+                        Text.rich(
+                          TextSpan(
+                            style: context.ty.label,
+                            children: [
+                              const TextSpan(text: 'Question '),
+                              TextSpan(text: '$nInSubject', style: context.ty.label.tnum),
+                              TextSpan(
+                                text: ' of $total',
+                                style: context.ty.label.copyWith(fontWeight: FontWeight.w500).col(c.textMuted),
+                              ),
+                            ],
                           ),
+                        ),
+                        const Spacer(),
+                        flagged
+                            ? Pill('Flagged', kind: BadgeKind.warning, icon: PhosphorIcons.flag(PhosphorIconsStyle.fill))
+                            : Text(_short(q.row.subjectId), style: context.ty.cap.col(c.textMuted)),
                       ],
                     ),
-                    gap3,
-                    MathText(
-                      q.row.body,
-                      style: context.t.bodyLarge?.copyWith(fontSize: TypeScale.question.size, height: TypeScale.question.line / TypeScale.question.size),
-                    ),
-                    if (q.row.imagePath != null) ...[gap3, QuestionImage(imageKey: q.row.imagePath!)],
-                    gap5,
-                    for (final k in q.options.keys.toList()..sort())
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: Space.s3),
-                        child: _OptionTile(letter: k, text: q.options[k]!, selected: chosen == k, onTap: () => _choose(k)),
+                    const Gap(Space.s3),
+                    _swap(
+                      rm,
+                      MathText(
+                        q.row.body,
+                        style: context.ty.body.copyWith(fontSize: TypeScale.question.size, height: TypeScale.question.line / TypeScale.question.size),
                       ),
-                  ].animate(interval: context.reduceMotion ? 0.ms : 30.ms).fadeIn(duration: context.reduceMotion ? 1.ms : Motion.fast),
+                    ),
+                    if (q.row.imagePath != null) ...[const Gap(Space.s3), QuestionImage(imageKey: q.row.imagePath!)],
+                    const Gap(Space.s5),
+                    Semantics(
+                      container: true,
+                      label: 'Options',
+                      child: Column(
+                        children: [
+                          for (final k in q.options.keys.toList()..sort()) ...[
+                            OptionRow(letter: k, text: q.options[k]!, state: chosen == k ? OptState.selected : OptState.none, onTap: () => _choose(k)),
+                            const SizedBox(height: 10),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              // Bottom bar: previous · calculator · palette · flag · next
+              // Bottom bar: Prev · calculator · palette · flag · Next/Submit
               Container(
-                padding: const EdgeInsets.fromLTRB(Space.s3, Space.s2, Space.s3, Space.s2),
+                padding: EdgeInsets.fromLTRB(Space.s3, Space.s2, Space.s3, Space.s3 + MediaQuery.paddingOf(context).bottom),
                 decoration: BoxDecoration(
                   color: c.surface,
                   border: Border(top: BorderSide(color: c.border)),
                 ),
                 child: Row(
                   children: [
-                    OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(minimumSize: const Size(0, 48)),
-                      onPressed: _i == 0 ? null : () => _go(_i - 1),
-                      icon: Icon(PhosphorIcons.caretLeft(), size: 18),
-                      label: const Text('Prev'),
-                    ),
-                    const Spacer(),
-                    IconButton(tooltip: 'Calculator', icon: Icon(PhosphorIcons.calculator()), onPressed: () => showCalculator(context)),
-                    IconButton(tooltip: 'All questions', icon: Icon(PhosphorIcons.squaresFour()), onPressed: _openPalette),
-                    IconButton(
-                      tooltip: _flags.contains(q.row.id) ? 'Remove flag' : 'Flag for review',
-                      icon: Icon(
-                        PhosphorIcons.flag(_flags.contains(q.row.id) ? PhosphorIconsStyle.fill : PhosphorIconsStyle.regular),
-                        color: _flags.contains(q.row.id) ? c.flagged : null,
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Btn('Prev', kind: BtnKind.outline, sm: true, leading: PhosphorIcons.caretLeft(), onPressed: _i == 0 ? null : () => _go(_i - 1)),
                       ),
+                    ),
+                    IconBtn(PhosphorIcons.calculator(), label: 'Calculator', onPressed: () => showCalculator(context)),
+                    IconBtn(PhosphorIcons.squaresFour(), label: 'Question palette', onPressed: _openPalette),
+                    IconBtn(
+                      PhosphorIcons.flag(flagged ? PhosphorIconsStyle.fill : PhosphorIconsStyle.regular),
+                      label: flagged ? 'Remove flag' : 'Flag question',
+                      color: flagged ? c.warning : null,
                       onPressed: _toggleFlag,
                     ),
-                    const Spacer(),
-                    FilledButton.icon(
-                      style: FilledButton.styleFrom(minimumSize: const Size(0, 48), backgroundColor: last ? c.error : c.primary),
-                      onPressed: _submitting ? null : () => last ? _submit() : _go(_i + 1),
-                      icon: Icon(last ? PhosphorIcons.paperPlaneTilt(PhosphorIconsStyle.fill) : PhosphorIcons.caretRight(), size: 18),
-                      label: Text(last ? 'Submit' : 'Next'),
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: last
+                            ? Btn(
+                                'Submit',
+                                kind: BtnKind.danger,
+                                sm: true,
+                                leading: PhosphorIcons.paperPlaneTilt(PhosphorIconsStyle.fill),
+                                onPressed: _submitting ? null : () => _submit(),
+                              )
+                            : Btn('Next', sm: true, icon: PhosphorIcons.caretRight(), onPressed: () => _go(_i + 1)),
+                      ),
                     ),
                   ],
                 ),
@@ -547,49 +813,63 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
       ),
     );
   }
+
+  Widget _swap(bool rm, Widget w) => rm ? w : w.animate(key: ValueKey(_i)).fadeIn(duration: Motion.base).slideX(begin: .05, curve: Motion.out);
 }
 
-class _OptionTile extends StatelessWidget {
-  const _OptionTile({required this.letter, required this.text, required this.selected, required this.onTap});
+enum OptState { none, selected, right, wrong }
+
+/// Option row (`.opt`, `.opt.sel|right|wrong`): 36 key tile + text, optional tag on the right.
+class OptionRow extends StatelessWidget {
+  const OptionRow({super.key, required this.letter, required this.text, this.state = OptState.none, this.onTap, this.tag});
   final String letter, text;
-  final bool selected;
-  final VoidCallback onTap;
+  final OptState state;
+  final VoidCallback? onTap;
+  final String? tag;
   @override
   Widget build(BuildContext context) {
     final c = context.c;
+    final (bg, ring, keyBg, keyFg, width) = switch (state) {
+      OptState.selected => (c.secondarySoft, c.secondary, c.secondary, Colors.white, 2.0),
+      OptState.right => (c.successSoft, c.success, c.success, Colors.white, 2.0),
+      OptState.wrong => (c.errorSoft, c.error, c.error, Colors.white, 2.0),
+      OptState.none => (c.surface, c.border, c.surfaceSunken, c.textMuted, 1.5),
+    };
+    final tagColor = state == OptState.right ? c.onSuccessSoft : c.onErrorSoft;
     return Semantics(
       inMutuallyExclusiveGroup: true,
-      checked: selected,
-      button: true,
+      checked: state == OptState.selected,
+      button: onTap != null,
       label: 'Option $letter',
-      child: Material(
-        color: selected ? c.secondarySoft : c.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(Radii.md),
-          side: BorderSide(color: selected ? c.secondary : c.border, width: selected ? 2 : 1),
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(Radii.md),
-          onTap: onTap,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: Sizes.tapMin + 8),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: Space.s3, vertical: Space.s3),
-              child: Row(
-                children: [
-                  AnimatedContainer(
-                    duration: Motion.fast,
-                    width: 32,
-                    height: 32,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(color: selected ? c.secondary : c.surfaceSunken, borderRadius: BorderRadius.circular(Radii.sm)),
-                    child: Text(letter, style: context.t.labelLarge?.copyWith(color: selected ? Colors.white : c.text)),
-                  ),
-                  gap3,
-                  Expanded(child: MathText(text, style: context.t.bodyLarge)),
-                ],
+      child: Pressable(
+        onTap: onTap,
+        scale: .985,
+        borderRadius: BorderRadius.circular(Radii.md),
+        child: AnimatedContainer(
+          duration: Motion.fast,
+          constraints: const BoxConstraints(minHeight: 56),
+          padding: const EdgeInsets.fromLTRB(10, 10, 14, 10),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(Radii.md),
+            border: Border.all(color: ring, width: width),
+          ),
+          child: Row(
+            children: [
+              AnimatedContainer(
+                duration: Motion.fast,
+                width: 36,
+                height: 36,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(color: keyBg, borderRadius: BorderRadius.circular(10)),
+                child: Text(letter, style: context.ty.body.bold.col(keyFg)),
               ),
-            ),
+              const Gap(Space.s3),
+              Expanded(
+                child: MathText(text, style: context.ty.body.copyWith(fontSize: 16, height: 23 / 16)),
+              ),
+              if (tag != null) ...[const Gap(Space.s2), Text(tag!, style: context.ty.cap.bold.copyWith(fontSize: 11).col(tagColor))],
+            ],
           ),
         ),
       ),
@@ -597,45 +877,36 @@ class _OptionTile extends StatelessWidget {
   }
 }
 
-class _Stat extends StatelessWidget {
-  const _Stat({required this.label, required this.value, required this.color});
-  final String label, value;
-  final Color color;
+/// A row in the submit summary (`.sum-row`): subject, then three centred counts.
+class _SumRow extends StatelessWidget {
+  const _SumRow({required this.cells, this.header = false, this.colors = const []});
+  final List<String> cells;
+  final bool header;
+  final List<Color?> colors;
   @override
-  Widget build(BuildContext context) => Expanded(
-    child: Container(
-      padding: const EdgeInsets.all(Space.s3),
-      decoration: BoxDecoration(color: context.c.surfaceAlt, borderRadius: BorderRadius.circular(Radii.md)),
-      child: Column(
+  Widget build(BuildContext context) {
+    final base = header ? context.ty.cap.col(context.c.textMuted) : context.ty.sm;
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        border: header ? null : Border(top: BorderSide(color: context.c.border)),
+      ),
+      child: Row(
         children: [
-          Text(value, style: context.t.headlineSmall?.copyWith(color: color)),
-          Text(label, style: context.t.labelSmall),
+          Expanded(
+            child: Text(cells[0], style: header ? base : base.bold, maxLines: 1, overflow: TextOverflow.ellipsis),
+          ),
+          for (var i = 1; i < cells.length; i++)
+            SizedBox(
+              width: 56,
+              child: Text(
+                cells[i],
+                textAlign: TextAlign.center,
+                style: header ? base : base.bold.tnum.copyWith(color: i < colors.length ? colors[i] : null),
+              ),
+            ),
         ],
       ),
-    ),
-  );
-}
-
-class _Legend extends StatelessWidget {
-  const _Legend({required this.color, required this.label, this.outline = false});
-  final Color color;
-  final String label;
-  final bool outline;
-  @override
-  Widget build(BuildContext context) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Container(
-        width: 14,
-        height: 14,
-        decoration: BoxDecoration(
-          color: outline ? null : color,
-          borderRadius: BorderRadius.circular(4),
-          border: outline ? Border.all(color: color, width: 2) : null,
-        ),
-      ),
-      const SizedBox(width: 6),
-      Text(label, style: context.t.labelSmall),
-    ],
-  );
+    );
+  }
 }

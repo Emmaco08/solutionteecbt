@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'features/auth/auth_screens.dart';
 import 'features/cbt/cbt_screen.dart';
 import 'features/home/home_screen.dart';
+import 'features/news/news_screens.dart';
 import 'features/onboarding/onboarding_screens.dart';
 import 'features/profile/profile_screens.dart';
 import 'features/results/results_screens.dart';
@@ -43,7 +44,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, s) => VerifyCodeScreen(args: s.extra as VerifyArgs),
       ),
       GoRoute(path: '/forgot', builder: (_, _) => const ForgotPasswordScreen()),
-      GoRoute(path: '/reset', builder: (_, _) => const NewPasswordScreen()),
+      GoRoute(
+        path: '/reset',
+        builder: (_, s) => NewPasswordScreen(args: s.extra as ResetArgs?),
+      ),
       GoRoute(path: '/setup', builder: (_, _) => const SetupScreen()),
       GoRoute(path: '/welcome-new', builder: (_, _) => const WelcomeNewScreen()),
       GoRoute(path: '/welcome-back', builder: (_, _) => const WelcomeBackScreen()),
@@ -51,7 +55,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, _, shell) => AppShell(shell: shell),
         branches: [
           StatefulShellBranch(
-            routes: [GoRoute(path: '/home', builder: (_, _) => const HomeScreen())],
+            routes: [
+              GoRoute(
+                path: '/home',
+                builder: (_, s) => HomeScreen(tour: s.uri.queryParameters['tour'] == '1'),
+              ),
+            ],
           ),
           StatefulShellBranch(
             routes: [
@@ -79,7 +88,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/test/setup',
-        builder: (_, s) => TestSetupScreen(examCode: s.uri.queryParameters['exam'] ?? 'JAMB'),
+        builder: (_, s) => TestSetupScreen(examCode: s.uri.queryParameters['exam'] ?? 'JAMB', mode: s.uri.queryParameters['mode']),
       ),
       GoRoute(
         path: '/cbt/:id',
@@ -101,6 +110,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, s) => LegalScreen(page: s.uri.queryParameters['p'] ?? 'about'),
       ),
       GoRoute(path: '/delete-account', builder: (_, _) => const DeleteAccountScreen()),
+      GoRoute(path: '/subjects', builder: (_, _) => const SetupScreen(subjectsOnly: true)),
+      GoRoute(path: '/edit-profile', builder: (_, _) => const EditProfileScreen()),
+      GoRoute(path: '/news', builder: (_, _) => const NewsListScreen()),
+      GoRoute(
+        path: '/news/:id',
+        builder: (_, s) => NewsDetailScreen(id: s.pathParameters['id']!),
+      ),
     ],
   );
 });
