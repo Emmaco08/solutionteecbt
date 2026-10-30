@@ -36,3 +36,5 @@ export const requireStaff = cache(async (allowed?: StaffRole[]): Promise<Staff> 
 
 export const canEditContent = (r: StaffRole) => r === "super_admin" || r === "admin" || r === "editor";
 export const canManage = (r: StaffRole) => r === "super_admin" || r === "admin";
+/** Study content (notes, videos, novels, documents): teachers may edit too. */
+export const canEditStudy = (r: StaffRole) => r === "super_admin" || r === "admin" || r === "editor" || r === "teacher";

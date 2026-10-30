@@ -21,8 +21,8 @@ async function presign(method: "GET" | "PUT", key: string, seconds: number, cont
 
 /** Upload link valid for 10 minutes. */
 export const presignPut = (key: string, contentType: string) => presign("PUT", key, 600, contentType);
-/** Read link valid for R2_SIGNED_URL_TTL seconds (default 300). */
-export const presignGet = (key: string) => presign("GET", key, env.r2.signedUrlTtl);
+/** Read link valid for R2_SIGNED_URL_TTL seconds (default 300), or [seconds] (videos stream in ranges, so they need longer). */
+export const presignGet = (key: string, seconds = env.r2.signedUrlTtl) => presign("GET", key, seconds);
 
 export const ALLOWED_TYPES: Record<string, string> = {
   "image/webp": "webp", "image/png": "png", "image/jpeg": "jpg", "image/svg+xml": "svg",

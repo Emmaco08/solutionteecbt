@@ -1,5 +1,6 @@
-// Generated from the Supabase dev project (solutiontee-dev) on 2026-10-26. Do not edit by hand.
+// Generated from the Supabase dev project (solutiontee-dev) on 2026-10-30. Do not edit by hand.
 // Regenerate after schema changes (Supabase MCP generate_typescript_types or `supabase gen types`).
+// One hand fix to keep after regenerating: email_send_allowed p_ip_hash is `string | null` (the generator cannot express a nullable argument).
 export type Json =
   | string
   | number
@@ -100,6 +101,104 @@ export type Database = {
         }
         Relationships: []
       }
+      attempt_answers: {
+        Row: {
+          attempt_id: string
+          choice: string | null
+          flagged: boolean
+          is_correct: boolean
+          question_id: string
+          time_ms: number | null
+        }
+        Insert: {
+          attempt_id: string
+          choice?: string | null
+          flagged?: boolean
+          is_correct?: boolean
+          question_id: string
+          time_ms?: number | null
+        }
+        Update: {
+          attempt_id?: string
+          choice?: string | null
+          flagged?: boolean
+          is_correct?: boolean
+          question_id?: string
+          time_ms?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attempt_answers_attempt_id_fkey"
+            columns: ["attempt_id"]
+            isOneToOne: false
+            referencedRelation: "attempts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attempt_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      attempts: {
+        Row: {
+          client_score: Json | null
+          config: Json
+          exam_id: number
+          id: string
+          mode: string
+          question_ids: string[]
+          server_score: Json
+          started_at: string
+          status: Database["public"]["Enums"]["attempt_status"]
+          submitted_at: string
+          synced_at: string
+          time_used_s: number
+          user_id: string
+        }
+        Insert: {
+          client_score?: Json | null
+          config?: Json
+          exam_id: number
+          id: string
+          mode: string
+          question_ids: string[]
+          server_score: Json
+          started_at: string
+          status?: Database["public"]["Enums"]["attempt_status"]
+          submitted_at: string
+          synced_at?: string
+          time_used_s: number
+          user_id: string
+        }
+        Update: {
+          client_score?: Json | null
+          config?: Json
+          exam_id?: number
+          id?: string
+          mode?: string
+          question_ids?: string[]
+          server_score?: Json
+          started_at?: string
+          status?: Database["public"]["Enums"]["attempt_status"]
+          submitted_at?: string
+          synced_at?: string
+          time_used_s?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attempts_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exam_bodies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_log: {
         Row: {
           action: string
@@ -130,6 +229,30 @@ export type Database = {
           id?: never
           row_id?: string | null
           table_name?: string
+        }
+        Relationships: []
+      }
+      bookmarks: {
+        Row: {
+          created_at: string
+          kind: string
+          label: string | null
+          ref: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          kind: string
+          label?: string | null
+          ref: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          kind?: string
+          label?: string | null
+          ref?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -734,6 +857,136 @@ export type Database = {
         }
         Relationships: []
       }
+      study_items: {
+        Row: {
+          body: string | null
+          created_at: string
+          created_by: string | null
+          data: Json
+          deleted_at: string | null
+          exam_id: number | null
+          files: Json
+          id: string
+          is_free: boolean
+          kind: string
+          question_id: string | null
+          sort: number
+          status: Database["public"]["Enums"]["content_status"]
+          subject_id: number | null
+          subtitle: string | null
+          title: string
+          topic_id: number | null
+          updated_at: string
+          updated_by: string | null
+          year: number | null
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          created_by?: string | null
+          data?: Json
+          deleted_at?: string | null
+          exam_id?: number | null
+          files?: Json
+          id?: string
+          is_free?: boolean
+          kind: string
+          question_id?: string | null
+          sort?: number
+          status?: Database["public"]["Enums"]["content_status"]
+          subject_id?: number | null
+          subtitle?: string | null
+          title: string
+          topic_id?: number | null
+          updated_at?: string
+          updated_by?: string | null
+          year?: number | null
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          created_by?: string | null
+          data?: Json
+          deleted_at?: string | null
+          exam_id?: number | null
+          files?: Json
+          id?: string
+          is_free?: boolean
+          kind?: string
+          question_id?: string | null
+          sort?: number
+          status?: Database["public"]["Enums"]["content_status"]
+          subject_id?: number | null
+          subtitle?: string | null
+          title?: string
+          topic_id?: number | null
+          updated_at?: string
+          updated_by?: string | null
+          year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_items_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exam_bodies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "study_items_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "study_items_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "study_items_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      study_progress: {
+        Row: {
+          item_id: string
+          position: Json
+          progress: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          item_id: string
+          position?: Json
+          progress?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          item_id?: string
+          position?: Json
+          progress?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_progress_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "study_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subjects: {
         Row: {
           code: string
@@ -800,6 +1053,18 @@ export type Database = {
     }
     Functions: {
       admin_dashboard: { Args: never; Returns: Json }
+      admin_list_staff: {
+        Args: never
+        Returns: {
+          created_at: string
+          email: string
+          full_name: string
+          has_2fa: boolean
+          last_sign_in_at: string
+          role: Database["public"]["Enums"]["staff_role"]
+          user_id: string
+        }[]
+      }
       admin_list_users: {
         Args: { p_limit?: number; p_offset?: number; p_search?: string }
         Returns: {
@@ -817,32 +1082,29 @@ export type Database = {
           total: number
         }[]
       }
-      admin_year_counts: {
-        Args: { p_exam: number }
-        Returns: { subject_id: number; year: number; total: number; published: number }[]
-      }
-      admin_list_staff: {
-        Args: never
-        Returns: {
-          user_id: string
-          email: string
-          full_name: string | null
-          role: Database["public"]["Enums"]["staff_role"]
-          created_at: string
-          last_sign_in_at: string | null
-          has_2fa: boolean
-        }[]
-      }
-      admin_user_detail: { Args: { p_user: string }; Returns: Json }
-      email_send_allowed: { Args: { p_kind: string; p_email_hash: string; p_ip_hash: string | null }; Returns: string }
-      email_sent_last_24h: { Args: never; Returns: number }
-      auth_user_status: { Args: { p_email: string }; Returns: string }
       admin_set_ban: {
         Args: { p_banned: boolean; p_reason?: string; p_user: string }
         Returns: undefined
       }
+      admin_user_detail: { Args: { p_user: string }; Returns: Json }
+      admin_year_counts: {
+        Args: { p_exam: number }
+        Returns: {
+          published: number
+          subject_id: number
+          total: number
+          year: number
+        }[]
+      }
+      auth_user_status: { Args: { p_email: string }; Returns: string }
       can_upload_images: { Args: never; Returns: boolean }
       can_view_question_image: { Args: { p_key: string }; Returns: boolean }
+      can_view_study_file: { Args: { p_key: string }; Returns: boolean }
+      email_send_allowed: {
+        Args: { p_email_hash: string; p_ip_hash: string | null; p_kind: string }
+        Returns: string
+      }
+      email_sent_last_24h: { Args: never; Returns: number }
       fetch_questions: {
         Args: {
           p_exam: number
@@ -889,9 +1151,35 @@ export type Database = {
         }
         Returns: number
       }
+      study_catalog: {
+        Args: { p_kind: string; p_subject?: number }
+        Returns: {
+          exam_id: number
+          id: string
+          is_free: boolean
+          kind: string
+          locked: boolean
+          meta: Json
+          question_id: string
+          sort: number
+          subject_id: number
+          subtitle: string
+          title: string
+          topic: string
+          topic_id: number
+          year: number
+        }[]
+      }
+      study_file_key: {
+        Args: { p_file: string; p_id: string }
+        Returns: string
+      }
+      study_item: { Args: { p_id: string }; Returns: Json }
+      submit_attempt: { Args: { p: Json }; Returns: Json }
       undo_import: { Args: { p_batch: string }; Returns: number }
     }
     Enums: {
+      attempt_status: "submitted" | "abandoned"
       content_status: "draft" | "review" | "published"
       difficulty: "easy" | "medium" | "hard"
       entitlement_source:
@@ -915,23 +1203,132 @@ type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
-  T extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"]),
-> = (DefaultSchema["Tables"] & DefaultSchema["Views"])[T] extends { Row: infer R } ? R : never
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
 
-export type TablesInsert<T extends keyof DefaultSchema["Tables"]> =
-  DefaultSchema["Tables"][T] extends { Insert: infer I } ? I : never
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
 
-export type TablesUpdate<T extends keyof DefaultSchema["Tables"]> =
-  DefaultSchema["Tables"][T] extends { Update: infer U } ? U : never
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
 
-export type Enums<T extends keyof DefaultSchema["Enums"]> = DefaultSchema["Enums"][T]
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never) = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never) = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
 
 export const Constants = {
   public: {
     Enums: {
+      attempt_status: ["submitted", "abandoned"],
       content_status: ["draft", "review", "published"],
       difficulty: ["easy", "medium", "hard"],
-      entitlement_source: ["manual", "paystack", "play", "code", "referral", "prize"],
+      entitlement_source: [
+        "manual",
+        "paystack",
+        "play",
+        "code",
+        "referral",
+        "prize",
+      ],
       staff_role: ["super_admin", "admin", "editor", "teacher"],
       year_status: ["draft", "published"],
     },
