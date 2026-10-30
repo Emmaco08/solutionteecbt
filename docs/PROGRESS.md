@@ -65,7 +65,8 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started · `[!]` blocked on
 - [x] Tests: scoring, exam clock, calculator, widget tests (onboarding, sign-up consent, CBT answer/flag/submit): 18/18 pass. `flutter analyze` clean
 - [x] Dev sample papers (`supabase/seed/dev-sample-questions.sql`, `[SAMPLE]`, dev project only)
 - [x] Debug APK builds on the laptop (2026-10-29, first build ~40 min because of downloads; later builds reuse the cache)
-- [ ] Run on the owner's phone over USB and walk through the test plan
+- [x] App matches the approved prototype screen by screen (D-052); checked side by side in light and dark
+- [x] Run on the owner's Samsung Galaxy A16 (Android 16) over USB: sign-up with email code, setup, tour, Home, CBT test, results, review, Me, log out. Owner: "the test i did is perfect"; fixed on device: start-up crash, code-screen crash, reversed lists, sign-up loop, tour targets, log-out wipe, welcome circles, State required
 - [ ] Owner approval: `APP CORE APPROVED`
 
 ## Phase 4 — Study, premium, payments, AI  (approval: `PREMIUM APPROVED`)
