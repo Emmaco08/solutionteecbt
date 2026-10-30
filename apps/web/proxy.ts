@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 // Pages under /admin that work without a session.
-const PUBLIC_ADMIN = ["/admin/login", "/admin/accept"];
+const PUBLIC_ADMIN = ["/admin/login", "/admin/accept", "/admin/forgot"];
 
 /** Refreshes the Supabase session cookie on every admin request and sends signed-out visitors to the login page.
     This is only the first gate: the admin layout re-checks staff role and 2-step login, and RLS checks every query. */

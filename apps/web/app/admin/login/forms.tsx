@@ -1,5 +1,6 @@
 "use client";
 import { useActionState, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeSlash, SpinnerGap } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
@@ -60,7 +61,7 @@ export function LoginForm({ notice, next }: { notice?: string; next: string }) {
       <Button type="submit" disabled={busy} className="h-12 w-full text-[15px]">
         {busy ? <SpinnerGap className="animate-spin" size={18} /> : null} Log in
       </Button>
-      <p className="text-center text-xs text-muted-foreground">Forgot your password? Ask a super admin to send a reset link.</p>
+      <p className="text-center text-sm"><Link href="/admin/forgot" className="font-bold text-link">Forgot your password?</Link></p>
     </form>
   );
 }
