@@ -130,6 +130,7 @@ class AppDb extends _$AppDb {
     await delete(localAnswers).go();
     await delete(localAttempts).go();
     await delete(cachedQuestions).go();
-    await delete(kvCache).go();
+    // Keep this phone's own settings (theme, reduce motion, data saver); drop every cached account answer.
+    await (delete(kvCache)..where((t) => t.key.equals('settings').not())).go();
   });
 }

@@ -150,22 +150,27 @@ final newsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) {
 });
 
 /// Published years with lock status for this student (server decides).
+/// The signed-in session. The stream's first value arrives a moment after start-up, so fall back to the
+/// session Supabase already restored from secure storage (otherwise start-up thinks nobody is logged in).
+Session? currentSession(Ref ref) => ref.watch(sessionProvider).value ?? Supabase.instance.client.auth.currentSession;
+
+/// Per-account cache key, so one account's cached data never shows for another on a shared phone.
+String _mine(Ref ref, String key) => '$key:${currentSession(ref)?.user.id ?? 'anon'}';
+
 final openYearsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) {
-  ref.watch(sessionProvider);
-  return cached(ref, 'open_years', (s) => s.rpc('my_open_years'), rows);
+  return cached(ref, _mine(ref, 'open_years'), (s) => s.rpc('my_open_years'), rows);
 });
 
 final myPlanProvider = FutureProvider<Map<String, dynamic>>((ref) {
-  ref.watch(sessionProvider);
-  return cached(ref, 'my_plan', (s) => s.rpc('my_plan'), (j) => Map<String, dynamic>.from(j as Map));
+  return cached(ref, _mine(ref, 'my_plan'), (s) => s.rpc('my_plan'), (j) => Map<String, dynamic>.from(j as Map));
 });
 
 final profileProvider = FutureProvider<Map<String, dynamic>?>((ref) async {
-  final session = ref.watch(sessionProvider).value;
+  final session = currentSession(ref);
   if (session == null) return null;
   return cached(
     ref,
-    'profile',
+    'profile:${session.user.id}',
     (s) => s.from('profiles').select().eq('id', session.user.id).maybeSingle(),
     (j) => j == null ? null : Map<String, dynamic>.from(j as Map),
   );
