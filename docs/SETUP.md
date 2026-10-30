@@ -326,3 +326,21 @@ They are not real past questions. Remove them once real questions are imported. 
 **Still yours to do:**
 - **OTP length.** In Supabase → Authentication → Providers → Email, set *Email OTP length* to 6 and *expiry* to 600 seconds. The app already works with 8-digit codes.
 - **App icon.** Provide a 512×512 PNG icon (Play Store and launcher). The app still shows Flutter's default launcher icon until then.
+
+## 9. Phase 4: accounts to prepare (do them when convenient)
+
+**NVIDIA API key (needed for milestone 4B, the AI tutor)**
+1. Go to build.nvidia.com and sign in or create a free account.
+2. Open any model page, click **Get API Key**, then **Generate Key**. The key starts with `nvapi-`.
+3. Put it in `apps/web/.env.local` as `NVIDIA_API_KEY=nvapi-...`. Never paste it in chat.
+4. Later I will ask you to run one command that stores it as a Supabase Edge Function secret.
+
+**Firebase (needed for milestone 4D, push notifications)**
+1. Go to console.firebase.google.com, then **Add project**. Name it `SolutionTee CBT`; Analytics is optional.
+2. Click **Add app**, then **Android**, with package name `com.solutiontee.cbt`.
+3. Download `google-services.json` and save it as `apps/mobile/android/app/google-services.json`. This file is ignored by git.
+4. Go to Project settings → Service accounts → **Generate new private key**. Save the JSON as `apps/web/.secrets/firebase-admin.json` (also ignored by git). Never paste it in chat.
+
+**Google Play Console (needed for the `play` build, milestone 4C)**
+- A Play Console developer account (one-off $25) for SolutionTee.
+- Payments can be tested with Paystack (test keys already set) until then.

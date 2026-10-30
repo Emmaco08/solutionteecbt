@@ -289,3 +289,8 @@ The owner asked for the app to look exactly like the Phase 1 design.
   - Starting a new test **submits** the unfinished one as it is, so its score counts, instead of deleting it.
   - The quick test is 20 questions mixed across your subjects, in 15 minutes.
   - Sign-up asks only for email and password. The name is asked in setup step 1, so the API's `fullName` is now optional.
+
+**D-053 · 2026-10-30 · Phase 4 scope and video hosting (owner)**
+- **Videos** (video solutions and topic lessons) are stored in the private Cloudflare R2 bucket under `v/…`. The admin uploads a 360p and a 720p MP4 version. The app plays them only through short signed links issued after the server's Premium check (the same pattern as question images, D-045). The 360p version is used when data saver is on.
+- **Phase 4 includes the owner's extras** as the last milestone (4E): challenges with cash prizes and anti-cheat, referrals, leaderboard, question of the day and the winners wall. They come after Study and Premium (4A), the AI tutor (4B), payments (4C), and notifications and the dashboard (4D).
+- **Prices stay SAMPLE** (Monthly ₦1,500, 3 Months ₦3,500, Exam Season ₦6,000) until the owner changes them in Admin → Plans. Paystack works in test mode until launch.
