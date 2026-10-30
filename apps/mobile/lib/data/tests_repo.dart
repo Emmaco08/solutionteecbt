@@ -49,8 +49,9 @@ class TestsRepo {
   final _rnd = Random();
 
   /// Fetches one paper (exam + subject + year) through the server's plan check and caches it.
+  /// [mode] is 'cbt' (tests) or 'pq' (Study: past questions with answers); each has its own year rule.
   /// Falls back to the cache when offline. Throws a friendly [ApiError] when locked.
-  Future<List<CachedQuestion>> paper(int examId, int subjectId, int year) async {
+  Future<List<CachedQuestion>> paper(int examId, int subjectId, int year, {String mode = 'cbt'}) async {
     try {
       final all = <Map<String, dynamic>>[];
       for (var offset = 0; offset < 500; offset += 100) {
@@ -58,7 +59,7 @@ class TestsRepo {
             await _sb
                     .rpc(
                       'fetch_questions',
-                      params: {'p_exam': examId, 'p_subject': subjectId, 'p_year': year, 'p_mode': 'cbt', 'p_limit': 100, 'p_offset': offset},
+                      params: {'p_exam': examId, 'p_subject': subjectId, 'p_year': year, 'p_mode': mode, 'p_limit': 100, 'p_offset': offset},
                     )
                     .timeout(const Duration(seconds: 20))
                 as List;

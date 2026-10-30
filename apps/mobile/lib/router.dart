@@ -14,6 +14,13 @@ import 'features/profile/profile_screens.dart';
 import 'features/results/results_screens.dart';
 import 'features/setup/setup_screen.dart';
 import 'features/shell/shell.dart';
+import 'features/study/doc_screens.dart';
+import 'features/study/downloads_screen.dart';
+import 'features/study/note_screens.dart';
+import 'features/study/novel_screens.dart';
+import 'features/study/pq_screens.dart';
+import 'features/study/study_hub.dart';
+import 'features/study/video_screens.dart';
 import 'features/test/test_screens.dart';
 
 /// Screens anyone can open without an account.
@@ -68,12 +75,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             ],
           ),
           StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/study',
-                builder: (_, _) => const ComingSoonScreen(kind: 'study'),
-              ),
-            ],
+            routes: [GoRoute(path: '/study', builder: (_, _) => const StudyScreen())],
           ),
           StatefulShellBranch(
             routes: [GoRoute(path: '/test', builder: (_, _) => const TestHubScreen())],
@@ -118,6 +120,46 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/subjects', builder: (_, _) => const SetupScreen(subjectsOnly: true)),
       GoRoute(path: '/edit-profile', builder: (_, _) => const EditProfileScreen()),
       GoRoute(path: '/news', builder: (_, _) => const NewsListScreen()),
+      // Study (Phase 4A). The server decides what is open; these screens only show it.
+      GoRoute(
+        path: '/study/pq',
+        builder: (_, s) => PqBrowseScreen(subjectId: int.tryParse(s.uri.queryParameters['subject'] ?? '')),
+      ),
+      GoRoute(
+        path: '/study/pq/:exam/:subject/:year',
+        builder: (_, s) => PqStudyScreen(
+          examId: int.parse(s.pathParameters['exam']!),
+          subjectId: int.parse(s.pathParameters['subject']!),
+          year: int.parse(s.pathParameters['year']!),
+          questionId: s.uri.queryParameters['q'],
+        ),
+      ),
+      GoRoute(
+        path: '/study/videos',
+        builder: (_, s) => VideoListScreen(kind: s.uri.queryParameters['kind'] == 'lesson' ? 'lesson' : 'video_solution'),
+      ),
+      GoRoute(
+        path: '/study/video/:id',
+        builder: (_, s) => VideoPlayerScreen(id: s.pathParameters['id']!),
+      ),
+      GoRoute(path: '/study/notes', builder: (_, _) => const NotesListScreen()),
+      GoRoute(
+        path: '/study/note/:id',
+        builder: (_, s) => NoteScreen(id: s.pathParameters['id']!),
+      ),
+      GoRoute(path: '/study/novels', builder: (_, _) => const NovelsScreen()),
+      GoRoute(
+        path: '/study/novel/:id',
+        builder: (_, s) => NovelScreen(id: s.pathParameters['id']!),
+      ),
+      GoRoute(path: '/study/docs', builder: (_, _) => const DocsScreen()),
+      GoRoute(
+        path: '/study/doc/:id',
+        builder: (_, s) => DocScreen(id: s.pathParameters['id']!),
+      ),
+      GoRoute(path: '/study/bookmarks', builder: (_, _) => const BookmarksScreen()),
+      GoRoute(path: '/study/search', builder: (_, _) => const StudySearchScreen()),
+      GoRoute(path: '/downloads', builder: (_, _) => const DownloadsScreen()),
       GoRoute(
         path: '/news/:id',
         builder: (_, s) => NewsDetailScreen(id: s.pathParameters['id']!),

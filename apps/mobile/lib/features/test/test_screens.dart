@@ -18,6 +18,7 @@ import '../../widgets/states.dart';
 import '../cbt/exam_clock.dart';
 import '../home/home_screen.dart';
 import '../setup/setup_screen.dart';
+import '../premium/paywall.dart';
 
 /// Test tab (prototype: test): navy "Full JAMB simulation" hero, practice modes, other exams, offline note.
 class TestHubScreen extends ConsumerWidget {
@@ -144,13 +145,7 @@ class TestHubScreen extends ConsumerWidget {
                       final locked = y.all > 0 && y.open == 0;
                       return AppCard(
                         padding: const EdgeInsets.symmetric(horizontal: Space.s4, vertical: Space.s3),
-                        onTap: locked
-                            ? () => toast(
-                                context,
-                                'Premium opens every exam and year. Payments are coming soon.',
-                                icon: PhosphorIcons.crownSimple(PhosphorIconsStyle.fill),
-                              )
-                            : () => context.push('/test/setup?exam=$b'),
+                        onTap: locked ? () => showPaywall(context, reason: b) : () => context.push('/test/setup?exam=$b'),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -411,8 +406,7 @@ class _TestSetupScreenState extends ConsumerState<TestSetupScreen> {
                     'More years',
                     on: false,
                     icon: PhosphorIcons.lockSimple(PhosphorIconsStyle.fill),
-                    onTap: () =>
-                        toast(context, 'Premium opens every year. Payments are coming soon.', icon: PhosphorIcons.crownSimple(PhosphorIconsStyle.fill)),
+                    onTap: () => showPaywall(context, reason: 'years'),
                   ),
                 ],
               ],

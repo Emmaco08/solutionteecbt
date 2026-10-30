@@ -294,3 +294,30 @@ The owner asked for the app to look exactly like the Phase 1 design.
 - **Videos** (video solutions and topic lessons) are stored in the private Cloudflare R2 bucket under `v/…`. The admin uploads a 360p and a 720p MP4 version. The app plays them only through short signed links issued after the server's Premium check (the same pattern as question images, D-045). The 360p version is used when data saver is on.
 - **Phase 4 includes the owner's extras** as the last milestone (4E): challenges with cash prizes and anti-cheat, referrals, leaderboard, question of the day and the winners wall. They come after Study and Premium (4A), the AI tutor (4B), payments (4C), and notifications and the dashboard (4D).
 - **Prices stay SAMPLE** (Monthly ₦1,500, 3 Months ₦3,500, Exam Season ₦6,000) until the owner changes them in Admin → Plans. Paystack works in test mode until launch.
+
+**D-054 · 2026-10-30 · Study tab: how content reaches the phone**
+- **The server decides everything.**
+  - `study_catalog` lists titles with a `locked` flag and never the content.
+  - `study_item` returns content only when the plan allows it.
+  - Video and PDF links come from `/api/study/file` after `study_file_key` runs as the student.
+  - The app only draws locks. The Free vs Premium rules (`access_rules`, public) are used to draw section locks and to write the paywall benefits.
+- **Locked means gone.** If the server answers "locked" for an item the phone saved earlier (for example after Premium ends), the saved copy is deleted, not shown. Saved copies are used only when the server cannot be reached.
+- **Premium videos block screenshots and screen recording** (`FLAG_SECURE`, the same switch the CBT screen uses). Free items do not.
+- **PDFs are opened in memory** from a short signed link and are not written to storage. Video links last 3 hours so a long lesson never stops part-way.
+- **Data saver** plays 360p. Otherwise the app plays 720p when the admin uploaded it. Both can be switched in the player.
+- **Notes use a small text format** that teachers can type in the admin box:
+  - `#` and `##` for headings
+  - `-` for lists
+  - `>` for an exam-tip box
+  - `**bold**`
+  - `$…$` and `$$…$$` for maths
+
+  Tables are not supported yet.
+- **Bookmarks:**
+  - Questions are saved as `exam/subject/year/questionId`, so a bookmark opens that question in study mode.
+  - Items are saved as `kind:id`.
+- **Progress** ("Continue learning") stores the title and kind with the row. A student cannot read `study_items` directly, so the row carries what the list needs.
+- **Downloads (for now)** lists the past papers saved on the phone (tests and study mode save them as you open them) and can remove them. Saving videos and PDFs for offline use is still to do. Each saved file would need an expiry check when Premium ends.
+- **The paywall** reads plans and prices from the `plans` table (shown as SAMPLE PRICES). "Continue" says payments open in the next update; milestone 4C connects it to checkout.
+- **The novel "Quizzes" tab from the prototype is left out** until there are chapter quizzes to show (no fake content).
+

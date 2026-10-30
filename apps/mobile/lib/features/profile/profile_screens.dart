@@ -210,7 +210,7 @@ class ProfileScreen extends ConsumerWidget {
                       ),
                     )
                   else
-                    const UpgradeBanner(title: 'Upgrade to Premium', text: 'Premium payments are coming soon.'),
+                    const UpgradeBanner(title: 'Upgrade to Premium', text: 'Every year, videos, notes, novels and more AI help.'),
                   GridView.count(
                     crossAxisCount: 2,
                     shrinkWrap: true,

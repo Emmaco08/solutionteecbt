@@ -71,5 +71,12 @@ class WebApi {
     return d['url'] as String;
   }
 
+  /// A short-lived link to one file of a study item (360 / 720 video, pdf, cover). The server checks the
+  /// student's plan first; a locked item comes back as status 403.
+  Future<String> studyFile(String id, String file) async {
+    final d = await _post('/api/study/file', {'id': id, 'file': file}, auth: true);
+    return d['url'] as String;
+  }
+
   Future<void> deleteAccount() => _post('/api/account/delete', {'confirm': 'DELETE'}, auth: true);
 }

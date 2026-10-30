@@ -11,19 +11,16 @@ import '../../widgets/phosphor.g.dart';
 import '../../widgets/states.dart';
 
 /// Category → cover gradient + icon (prototype `news-cover c-navy|c-blue|c-gold|c-green`).
+/// Categories are the admin's: update, exam, app, tips.
 ({List<Color> g, Color fg, IconData icon, String label}) newsLook(String? category) => switch (category) {
-  'jamb' || 'registration' => (
+  'exam' => (
     g: const [Palette.navy900, Palette.blue700],
     fg: Colors.white,
     icon: PhosphorIcons.identificationCard(PhosphorIconsStyle.fill),
-    label: 'JAMB registration',
+    label: 'Exam news',
   ),
-  'questions' ||
-  'new_questions' => (g: const [Palette.blue700, Palette.blue400], fg: Colors.white, icon: PhosphorIcons.exam(PhosphorIconsStyle.fill), label: 'New questions'),
-  'class' ||
-  'classes' => (g: const [Palette.gold600, Palette.gold300], fg: Palette.navy900, icon: PhosphorIcons.videoCamera(PhosphorIconsStyle.fill), label: 'Classes'),
-  'tips' ||
-  'exam_tips' => (g: const [Palette.green700, Palette.green500], fg: Colors.white, icon: PhosphorIcons.lightbulb(PhosphorIconsStyle.fill), label: 'Exam tips'),
+  'app' => (g: const [Palette.blue700, Palette.blue400], fg: Colors.white, icon: PhosphorIcons.deviceMobile(PhosphorIconsStyle.fill), label: 'App news'),
+  'tips' => (g: const [Palette.green700, Palette.green500], fg: Colors.white, icon: PhosphorIcons.lightbulb(PhosphorIconsStyle.fill), label: 'Study tips'),
   _ => (g: const [Palette.navy900, Palette.blue700], fg: Colors.white, icon: PhosphorIcons.newspaper(PhosphorIconsStyle.fill), label: 'Update'),
 };
 

@@ -18,7 +18,15 @@ import 'package:solutiontee_cbt/features/home/home_screen.dart';
 import 'package:solutiontee_cbt/features/onboarding/onboarding_screens.dart';
 import 'package:solutiontee_cbt/features/profile/profile_screens.dart';
 import 'package:solutiontee_cbt/features/results/results_screens.dart';
+import 'package:solutiontee_cbt/data/study_repo.dart';
+import 'package:solutiontee_cbt/features/premium/paywall.dart';
 import 'package:solutiontee_cbt/features/setup/setup_screen.dart';
+import 'package:solutiontee_cbt/features/study/doc_screens.dart';
+import 'package:solutiontee_cbt/features/study/note_screens.dart';
+import 'package:solutiontee_cbt/features/study/novel_screens.dart';
+import 'package:solutiontee_cbt/features/study/pq_screens.dart';
+import 'package:solutiontee_cbt/features/study/study_hub.dart';
+import 'package:solutiontee_cbt/features/study/video_screens.dart';
 import 'package:solutiontee_cbt/features/test/test_screens.dart';
 import 'package:solutiontee_cbt/theme/theme.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show OtpType;
@@ -41,6 +49,14 @@ Future<void> loadFonts() async {
   await load('PlusJakartaSans', ['assets/fonts/PlusJakartaSans-Medium.ttf', 'assets/fonts/PlusJakartaSans-Bold.ttf']);
   await load('PhosphorRegular', ['assets/fonts/Phosphor-Regular.ttf']);
   await load('PhosphorFill', ['assets/fonts/Phosphor-Fill.ttf']);
+  // KaTeX fonts from flutter_math_fork, so formulas render instead of boxes.
+  const k = 'packages/flutter_math_fork/lib/katex_fonts/fonts';
+  await load('packages/flutter_math_fork/KaTeX_Main', ['$k/KaTeX_Main-Regular.ttf', '$k/KaTeX_Main-Italic.ttf', '$k/KaTeX_Main-Bold.ttf']);
+  await load('packages/flutter_math_fork/KaTeX_Math', ['$k/KaTeX_Math-Italic.ttf']);
+  await load('packages/flutter_math_fork/KaTeX_AMS', ['$k/KaTeX_AMS-Regular.ttf']);
+  for (final n in [1, 2, 3, 4]) {
+    await load('packages/flutter_math_fork/KaTeX_Size$n', ['$k/KaTeX_Size$n-Regular.ttf']);
+  }
 }
 
 const exams = [
@@ -80,6 +96,155 @@ const profile = {
   'jamb_subjects': ['eng', 'mth', 'phy', 'chm'],
   'target_score': 290,
 };
+
+// ---- Study (same shapes as public.study_catalog / public.study_item)
+Map<String, dynamic> cat(
+  String id,
+  String kind,
+  String title,
+  int subject, {
+  bool locked = true,
+  Map<String, dynamic> meta = const {},
+  String? subtitle,
+  String? topic,
+}) => {
+  'id': id,
+  'kind': kind,
+  'title': title,
+  'subtitle': subtitle,
+  'subject_id': subject,
+  'topic': topic,
+  'meta': meta,
+  'locked': locked,
+  'is_free': !locked,
+  'question_id': null,
+};
+final catalog = <String, List<Map<String, dynamic>>>{
+  'video_solution': [
+    cat('v1', 'video_solution', 'JAMB 2002 Chemistry Q14', 4, topic: 'Mole concept', meta: {'duration_s': 278}),
+    cat('v2', 'video_solution', 'JAMB 2001 Physics Q3', 3, topic: 'Motion', meta: {'duration_s': 372}),
+    cat('v3', 'video_solution', 'JAMB 2015 Maths Q22', 2, topic: 'Probability', meta: {'duration_s': 425}),
+  ],
+  'lesson': [
+    cat('l1', 'lesson', 'Quadratic equations', 2, subtitle: 'Factorisation and the formula', meta: {'duration_s': 745}),
+  ],
+  'note': [
+    cat('n1', 'note', 'Indices and logarithms', 2, locked: false, subtitle: 'Laws and worked examples', meta: {'minutes': 4}),
+    cat('n2', 'note', 'Quadratic equations', 2, subtitle: 'The formula and the discriminant', meta: {'minutes': 8}),
+    cat('n3', 'note', 'Motion', 3, subtitle: 'Equations of motion', meta: {'minutes': 5}),
+  ],
+  'novel': [
+    cat('b1', 'novel', '[SAMPLE] The Lion and the Jewel', 8, meta: {'author': 'Wole Soyinka', 'chapters': 3}),
+    cat('b2', 'novel', 'Prose text', 8, meta: {'author': 'WAEC prose'}),
+    cat('b3', 'novel', 'Drama text', 8, meta: {'author': 'WAEC drama'}),
+    cat('b4', 'novel', 'Poetry', 8, meta: {'author': 'Selected poems'}),
+  ],
+  'doc': [
+    cat('d1', 'doc', 'JAMB brochure 2027', 1, locked: false, subtitle: 'Course requirements', meta: {'pages': 120}),
+    cat('d2', 'doc', 'JAMB syllabus: Mathematics', 2, locked: false, meta: {'pages': 24}),
+    cat('d3', 'doc', 'JAMB syllabus: Physics', 3, meta: {'pages': 22}),
+    cat('d4', 'doc', 'WAEC syllabus: Mathematics', 2, meta: {'pages': 18}),
+  ],
+};
+const noteBody =
+    '# The quadratic formula\n\nA quadratic equation has the form \$ax^2 + bx + c = 0\$, where \$a \\neq 0\$. Use this when it does not factorise easily:\n\n'
+    '\$\$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}\$\$\n\n'
+    '> **Exam tip.** Check the discriminant \$b^2 - 4ac\$ first. If it is negative, there are no real roots.\n\n'
+    '## Sum and product of roots\n\n- \$\\alpha + \\beta = -\\frac{b}{a}\$\n- \$\\alpha\\beta = \\frac{c}{a}\$';
+final items = <String, Map<String, dynamic>>{
+  'n2': {'id': 'n2', 'kind': 'note', 'title': 'Quadratic equations', 'subject_id': 2, 'body': noteBody, 'files': {}, 'data': {}, 'is_free': false},
+  'b1': {
+    'id': 'b1',
+    'kind': 'novel',
+    'title': '[SAMPLE] The Lion and the Jewel',
+    'subject_id': 8,
+    'body': 'Sidi, the village belle of Ilujinle, is courted by Lakunle the schoolteacher and by Baroka the old Bale.',
+    'files': {},
+    'is_free': false,
+    'data': {
+      'author': 'Wole Soyinka',
+      'chapters': [
+        {'title': 'Morning', 'summary': 'Lakunle tries to win Sidi.'},
+        {'title': 'Noon', 'summary': 'Sidi sees her pictures in a magazine.'},
+        {'title': 'Night', 'summary': 'Baroka outwits Sidi.'},
+      ],
+      'themes': [
+        {'title': 'Tradition and modernity', 'text': 'Baroka stands for the old ways and Lakunle for foreign ideas.'},
+      ],
+      'characters': [
+        {'name': 'Sidi', 'text': 'The village belle.'},
+      ],
+    },
+  },
+  'v1': {
+    'id': 'v1',
+    'kind': 'video_solution',
+    'title': 'JAMB 2002 Chemistry Q14',
+    'subtitle': 'Mrs. Okonkwo',
+    'subject_id': 4,
+    'files': {},
+    'data': {'duration_s': 278},
+    'is_free': false,
+  },
+};
+const rulesSeed = {
+  'free': {
+    'ai': 3,
+    'pq': 2,
+    'jamb': 3,
+    'neco': 3,
+    'waec': 3,
+    'notes': false,
+    'novels': false,
+    'videos': false,
+    'lessons': false,
+    'offline': false,
+    'syllabus': 2,
+  },
+  'premium': {
+    'ai': 100,
+    'pq': 'all',
+    'jamb': 'all',
+    'neco': 'all',
+    'waec': 'all',
+    'notes': true,
+    'novels': true,
+    'videos': true,
+    'lessons': true,
+    'offline': true,
+    'syllabus': 'all',
+  },
+};
+const plansSeed = [
+  {'id': 1, 'code': 'monthly', 'name': 'Monthly', 'description': 'SAMPLE price. Billed once. No auto-renew.', 'price_kobo': 150000, 'duration_days': 30},
+  {'id': 2, 'code': 'three_months', 'name': '3 Months', 'description': 'SAMPLE price. Save ₦1,000.', 'price_kobo': 350000, 'duration_days': 90},
+  {
+    'id': 3,
+    'code': 'exam_season',
+    'name': 'Exam Season',
+    'description': 'SAMPLE price. Covers JAMB, WAEC and NECO 2027.',
+    'price_kobo': 600000,
+    'ends_on': '2027-07-31',
+  },
+];
+
+/// Opens the paywall over the past-questions screen (as in the prototype's `paywall` screen).
+class _PaywallDemo extends StatefulWidget {
+  const _PaywallDemo();
+  @override
+  State<_PaywallDemo> createState() => _PaywallDemoState();
+}
+
+class _PaywallDemoState extends State<_PaywallDemo> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => showPaywall(context, reason: 'JAMB 2004'));
+  }
+
+  @override
+  Widget build(BuildContext context) => const PqBrowseScreen();
+}
 
 Future<AppDb> seededDb() async {
   final db = AppDb(NativeDatabase.memory());
@@ -193,6 +358,30 @@ void main() {
     onboardingProvider.overrideWith((_) async => <Map<String, dynamic>>[]),
     topicsProvider.overrideWith((_) async => <Map<String, dynamic>>[]),
     testsRepoProvider.overrideWith((ref) => OfflineRepo(ref)),
+    studyCatalogProvider.overrideWith((ref, kind) async => catalog[kind] ?? const []),
+    studyItemProvider.overrideWith((ref, id) async => items[id]!),
+    accessRulesProvider.overrideWith((_) async => rulesSeed.map((k, v) => MapEntry(k, Map<String, dynamic>.from(v)))),
+    plansProvider.overrideWith((_) async => [for (final p in plansSeed) Map<String, dynamic>.from(p)]),
+    bookmarksProvider.overrideWith(
+      (_) async => [
+        {'kind': 'question', 'ref': '1/2/2001/q2_1', 'label': 'JAMB 2001 Mathematics Q7'},
+        {'kind': 'item', 'ref': 'note:n2', 'label': 'Quadratic equations'},
+      ],
+    ),
+    studyProgressProvider.overrideWith(
+      (_) async => [
+        {
+          'item_id': 'n2',
+          'progress': .64,
+          'position': {'kind': 'note', 'title': 'Quadratic equations', 'subject_id': 2},
+        },
+        {
+          'item_id': 'v1',
+          'progress': .32,
+          'position': {'kind': 'video_solution', 'title': 'JAMB 2002 Chemistry Q14', 'subject_id': 4},
+        },
+      ],
+    ),
   ];
 
   final screens = <String, Widget Function()>{
@@ -215,6 +404,18 @@ void main() {
     'me': () => const ProfileScreen(),
     'settings': () => const SettingsScreen(),
     'help': () => const HelpScreen(),
+    'study': () => const StudyScreen(),
+    'pq': () => const PqBrowseScreen(),
+    'pq_study': () => const PqStudyScreen(examId: 1, subjectId: 2, year: 2001),
+    'paywall': () => const _PaywallDemo(),
+    'videos': () => const VideoListScreen(kind: 'video_solution'),
+    'video': () => const VideoPlayerScreen(id: 'v1'),
+    'notes': () => const NotesListScreen(),
+    'note': () => const NoteScreen(id: 'n2'),
+    'novels': () => const NovelsScreen(),
+    'novel': () => const NovelScreen(id: 'b1'),
+    'docs': () => const DocsScreen(),
+    'bookmarks': () => const BookmarksScreen(),
   };
 
   for (final dark in [false, true]) {

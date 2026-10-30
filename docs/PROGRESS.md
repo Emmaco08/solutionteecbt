@@ -70,7 +70,20 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started · `[!]` blocked on
 - [x] Owner approval: `APP CORE APPROVED` (2026-10-30)
 
 ## Phase 4 — Study, premium, payments, AI  (approval: `PREMIUM APPROVED`)
-- [ ] Not started
+Plan: `docs/plans/phase-4.md`.
+- **4A Study + Premium gating**
+  - [x] Database: `study_items`, `study_catalog` / `study_item` / `study_file_key` (server decides Free vs Premium), bookmarks, study progress. RLS tests 21/21 (`supabase/tests/study.test.sql`)
+  - [x] Website: `/api/study/file` (signed R2 link only after the plan check), uploads for videos (`v/`), PDFs (`d/`) and covers (`s/`)
+  - [x] Admin: Study content (list by kind, add/edit form per kind, video and PDF upload with progress, maths preview, novel chapters, soft delete). Teachers may edit. `next build` passes. Not yet clicked through by the owner (needs the owner's 2-step login)
+  - [x] App: Study hub (sections from the admin), past questions browse + study mode, video solutions / lessons + player, lesson notes + reader, novels + detail, syllabus & brochure + PDF viewer, bookmarks, search, Downloads (saved past papers), paywall sheet (benefits from the Free vs Premium rules, SAMPLE prices)
+  - [x] Tests: `flutter analyze` clean, 23/23 tests (4 new: paywall benefits, prices, paywall sheet, note renderer); light/dark renders of 12 Study screens
+  - [x] [SAMPLE] study items in the dev database (`supabase/seed/dev-sample-study.sql`)
+  - [ ] Phone walk-through
+  - [ ] Saving videos and PDFs on the phone for offline use (Downloads lists saved past papers for now)
+- [ ] 4B AI tutor (needs the owner's NVIDIA key)
+- [ ] 4C Payments (Paystack test keys, Play Console)
+- [ ] 4D Push notifications + Me dashboard (needs Firebase)
+- [ ] 4E Challenges, referrals, leaderboard, question of the day, winners wall
 
 ## Phase 5 — Website, classes, community  (approval: `WEBSITE APPROVED`)
 - [ ] Not started

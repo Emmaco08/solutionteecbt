@@ -77,6 +77,7 @@ class AppDb extends _$AppDb {
   Future<String?> kvGet(String key) async => (await (select(kvCache)..where((t) => t.key.equals(key))).getSingleOrNull())?.value;
   Future<void> kvSet(String key, String value) =>
       into(kvCache).insertOnConflictUpdate(KvCacheCompanion.insert(key: key, value: value, updatedAt: Value(DateTime.now())));
+  Future<void> kvDelete(String key) => (delete(kvCache)..where((t) => t.key.equals(key))).go();
 
   // ---- attempts
   Future<LocalAttempt?> unfinishedAttempt() =>

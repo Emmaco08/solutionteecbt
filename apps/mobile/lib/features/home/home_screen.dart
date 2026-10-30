@@ -16,6 +16,7 @@ import '../../widgets/states.dart';
 import '../cbt/exam_clock.dart';
 import '../news/news_screens.dart';
 import '../shell/shell.dart';
+import '../premium/paywall.dart';
 
 /// The unfinished test on this phone (if any), for the "Continue your test" card.
 final unfinishedProvider = FutureProvider<LocalAttempt?>((ref) => ref.watch(dbProvider).unfinishedAttempt());
@@ -421,9 +422,7 @@ class ExamCard extends StatelessWidget {
     final c = context.c;
     return AppCard(
       padding: const EdgeInsets.symmetric(horizontal: Space.s4, vertical: Space.s3),
-      onTap: locked
-          ? () => toast(context, 'Premium opens every exam and year. Payments are coming soon.', icon: PhosphorIcons.crownSimple(PhosphorIconsStyle.fill))
-          : () => context.push('/test/setup?exam=$code'),
+      onTap: locked ? () => showPaywall(context, reason: code) : () => context.push('/test/setup?exam=$code'),
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: 76 - 24),
         child: Row(
@@ -498,12 +497,7 @@ class UpgradeBanner extends StatelessWidget {
                   ),
                 ),
                 const Gap(Space.s2),
-                Btn(
-                  'Upgrade',
-                  kind: BtnKind.accent,
-                  sm: true,
-                  onPressed: () => toast(context, 'Premium payments are coming soon.', icon: PhosphorIcons.crownSimple(PhosphorIconsStyle.fill)),
-                ),
+                Btn('Upgrade', kind: BtnKind.accent, sm: true, onPressed: () => showPaywall(context)),
               ],
             ),
           ),

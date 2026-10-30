@@ -4,10 +4,13 @@ import 'package:flutter_math_fork/flutter_math.dart';
 /// Text with LaTeX: `$...$` inline and `$$...$$` on its own line (KaTeX syntax).
 /// A formula that fails to parse is shown as plain source in a highlighted box instead of crashing.
 class MathText extends StatelessWidget {
-  const MathText(this.text, {super.key, this.style, this.textAlign = TextAlign.start});
+  const MathText(this.text, {super.key, this.style, this.textAlign = TextAlign.start, this.bold = false});
   final String text;
   final TextStyle? style;
   final TextAlign textAlign;
+
+  /// Also turn `**bold**` into bold text (lesson notes).
+  final bool bold;
 
   static final _re = RegExp(r'(\$\$[\s\S]+?\$\$|(?<!\\)\$[^$\n]+?(?<!\\)\$)');
 
@@ -17,7 +20,7 @@ class MathText extends StatelessWidget {
     final spans = <InlineSpan>[];
     var last = 0;
     for (final m in _re.allMatches(text)) {
-      if (m.start > last) spans.add(TextSpan(text: _unescape(text.substring(last, m.start))));
+      if (m.start > last) spans.addAll(_plain(text.substring(last, m.start)));
       final raw = m.group(0)!;
       final display = raw.startsWith(r'$$');
       final tex = raw.substring(display ? 2 : 1, raw.length - (display ? 2 : 1));
@@ -48,7 +51,7 @@ class MathText extends StatelessWidget {
       );
       last = m.end;
     }
-    if (last < text.length) spans.add(TextSpan(text: _unescape(text.substring(last))));
+    if (last < text.length) spans.addAll(_plain(text.substring(last)));
     return Text.rich(
       TextSpan(style: base, children: spans),
       textAlign: textAlign,
@@ -56,4 +59,17 @@ class MathText extends StatelessWidget {
   }
 
   static String _unescape(String s) => s.replaceAll(r'\$', r'$');
+
+  List<InlineSpan> _plain(String s) {
+    if (!bold || !s.contains('**')) return [TextSpan(text: _unescape(s))];
+    final parts = s.split('**');
+    return [
+      for (var i = 0; i < parts.length; i++)
+        if (parts[i].isNotEmpty)
+          TextSpan(
+            text: _unescape(parts[i]),
+            style: i.isOdd ? const TextStyle(fontWeight: FontWeight.w700) : null,
+          ),
+    ];
+  }
 }
