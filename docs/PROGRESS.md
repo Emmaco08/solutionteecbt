@@ -67,7 +67,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started · `[!]` blocked on
 - [x] Debug APK builds on the laptop (2026-10-29, first build ~40 min because of downloads; later builds reuse the cache)
 - [x] App matches the approved prototype screen by screen (D-052); checked side by side in light and dark
 - [x] Run on the owner's Samsung Galaxy A16 (Android 16) over USB: sign-up with email code, setup, tour, Home, CBT test, results, review, Me, log out. Owner: "the test i did is perfect"; fixed on device: start-up crash, code-screen crash, reversed lists, sign-up loop, tour targets, log-out wipe, welcome circles, State required
-- [ ] Owner approval: `APP CORE APPROVED`
+- [x] Owner approval: `APP CORE APPROVED` (2026-10-30)
 
 ## Phase 4 — Study, premium, payments, AI  (approval: `PREMIUM APPROVED`)
 - [ ] Not started
