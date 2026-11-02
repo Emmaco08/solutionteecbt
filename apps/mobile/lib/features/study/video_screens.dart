@@ -188,7 +188,6 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     final resume = at ?? Duration(seconds: (pos['seconds'] as num?)?.toInt() ?? 0);
     if (resume > Duration.zero && resume < ctl.value.duration - const Duration(seconds: 5)) await ctl.seekTo(resume);
     await ctl.setPlaybackSpeed(_speed);
-    ctl.addListener(_tick);
     if (!mounted) {
       await ctl.dispose();
       return;
@@ -204,10 +203,6 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     _saver = Timer.periodic(const Duration(seconds: 15), (_) => _save());
   }
 
-  void _tick() {
-    if (mounted) setState(() {});
-  }
-
   void _save() {
     final c = _ctl, item = _item;
     if (c == null || item == null || !c.value.isInitialized) return;
@@ -220,7 +215,6 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
   void dispose() {
     _save();
     _saver?.cancel();
-    _ctl?.removeListener(_tick);
     _ctl?.dispose();
     if (_secured) SecureScreen.off();
     super.dispose();
@@ -386,7 +380,11 @@ class _Player extends StatelessWidget {
         ],
       );
     }
-    final v = c.value;
+    // Only the player redraws as the video plays (not the whole screen).
+    return ValueListenableBuilder<VideoPlayerValue>(valueListenable: c, builder: (context, v, _) => _live(context, c, v));
+  }
+
+  Widget _live(BuildContext context, VideoPlayerController c, VideoPlayerValue v) {
     final total = v.duration.inMilliseconds;
     final frac = total == 0 ? 0.0 : v.position.inMilliseconds / total;
     return AspectRatio(

@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/api.dart';
 import '../../data/study_repo.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
 import '../../ui/kit.dart';
+import 'note_screens.dart' show NoteBody;
 import '../../widgets/phosphor.g.dart';
 import '../../widgets/states.dart';
 import '../premium/paywall.dart';
@@ -259,6 +261,15 @@ class _NovelScreenState extends ConsumerState<NovelScreen> {
                     ),
                   ],
                 ),
+                if ((it['files'] as Map?)?['pdf'] == true) ...[
+                  const Gap(Space.s4),
+                  Btn(
+                    'Read the book',
+                    block: true,
+                    leading: PhosphorIcons.bookOpenText(PhosphorIconsStyle.fill),
+                    onPressed: () => context.push('/study/doc/${widget.id}'),
+                  ),
+                ],
                 const Gap(Space.s5),
                 Seg<String>(
                   value: _tab,
@@ -314,7 +325,12 @@ class _NovelScreenState extends ConsumerState<NovelScreen> {
                         ],
                       ),
                   ],
-                  _ => [Text('${it['body'] ?? 'A summary will be added soon.'}', style: context.ty.body.copyWith(height: 26 / 15))],
+                  _ => [
+                    if ('${it['body'] ?? ''}'.trim().isEmpty)
+                      Text('A summary will be added soon.', style: context.ty.sm.col(c.textMuted))
+                    else
+                      NoteBody(text: '${it['body']}'),
+                  ],
                 },
               ],
             ),

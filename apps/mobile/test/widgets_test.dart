@@ -62,7 +62,13 @@ void main() {
     final api = FakeApi();
     final signupDb = AppDb(NativeDatabase.memory());
     addTearDown(signupDb.close);
-    await t.pumpWidget(app(const SignUpScreen(), overrides: [apiProvider.overrideWithValue(api), dbProvider.overrideWithValue(signupDb)], routes: {'/verify': const Text('VERIFY')}));
+    await t.pumpWidget(
+      app(
+        const SignUpScreen(),
+        overrides: [apiProvider.overrideWithValue(api), dbProvider.overrideWithValue(signupDb)],
+        routes: {'/verify': const Text('VERIFY')},
+      ),
+    );
     await t.pumpAndSettle();
 
     await t.enterText(find.byType(TextField).at(0), 'ada@example.com');

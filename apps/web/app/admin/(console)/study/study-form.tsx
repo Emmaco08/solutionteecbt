@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { FileUpload } from "@/components/admin/file-upload";
 import { ImageUpload } from "@/components/admin/image-upload";
-import { MathText } from "@/components/admin/math-text";
+import { NoteEditor } from "@/components/admin/note-editor";
 import { inputCls } from "@/components/admin/row-form";
 import { deleteStudy, saveStudy } from "./actions";
 import { KIND_INFO, type StudyKind, type StudyState } from "./kinds";
@@ -32,7 +32,6 @@ export function StudyForm({ item: it, exams, subjects, topics, canDelete }: { it
   const [state, action, saving] = useActionState<StudyState, FormData>(saveStudy, {});
   const [pending, start] = useTransition();
   const [subject, setSubject] = useState(it.subject_id ? String(it.subject_id) : "");
-  const [body, setBody] = useState(it.body ?? "");
   const data = it.data ?? {};
   const files = it.files ?? {};
   const sizes = (files.sizes ?? {}) as Record<string, number>;
@@ -67,17 +66,18 @@ export function StudyForm({ item: it, exams, subjects, topics, canDelete }: { it
         {k === "note" || k === "novel" ? (
           <div className="space-y-1.5">
             <Label htmlFor="body">{k === "note" ? "Note" : "Summary of the novel"}</Label>
-            <textarea id="body" name="body" value={body} onChange={(e) => setBody(e.target.value)} rows={k === "note" ? 16 : 8} className={area} />
-            {k === "note" && body ? (
-              <div className="rounded-xl border bg-surface-alt p-4 text-sm leading-6"><b className="mb-1 block text-xs uppercase text-muted-foreground">Preview</b>
-                {body.split(/\n{2,}/).map((p, i) => <p key={i} className="mb-2 whitespace-pre-line"><MathText text={p} /></p>)}</div>
-            ) : null}
+            <NoteEditor name="body" defaultValue={it.body} rows={k === "note" ? 20 : 10} />
           </div>
         ) : <input type="hidden" name="body" value="" />}
 
         {k === "novel" ? (
           <>
             <div className="space-y-1.5"><Label htmlFor="author">Author</Label><input id="author" name="author" defaultValue={(data.author as string) ?? ""} className={inputCls} /></div>
+            <div className="space-y-2">
+              <Label>The original book (PDF, optional)</Label>
+              <FileUpload name="pdf" kind="pdf" label="Book PDF" defaultKey={files.pdf as string | undefined} defaultSize={sizes.pdf} />
+              <p className="text-xs text-muted-foreground">Students open it with &quot;Read the book&quot; in the app. Upload only books you have the right to share (for example with the publisher&apos;s permission).</p>
+            </div>
             <div className="space-y-2">
               <Label>Chapters</Label>
               <input type="hidden" name="chapters" value={JSON.stringify(chapters.filter((c) => c.title.trim()))} />

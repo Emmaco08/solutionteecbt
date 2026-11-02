@@ -60,6 +60,9 @@ export async function saveStudy(_p: StudyState, form: FormData): Promise<StudySt
     if (v.status === "published" && !files.pdf) return { error: "Upload the PDF before publishing." };
   }
   if (v.kind === "novel") {
+    // The original book as a PDF (optional): students read it in the app's PDF reader.
+    if (key(v.pdf, "d")) { files.pdf = v.pdf; if (v.pdf_size) sizes.pdf = v.pdf_size; }
+    if (v.pdf_pages ?? v.pages) data.pages = v.pages ?? v.pdf_pages;
     data.author = v.author;
     data.themes = pairs(v.themes, "title", "text");
     data.characters = pairs(v.characters, "name", "text");

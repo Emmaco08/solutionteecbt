@@ -82,7 +82,7 @@ class _DocScreenState extends ConsumerState<DocScreen> {
   PdfControllerPinch? _pdf;
   Object? _error;
   bool _topics = false, _noFile = false;
-  int _page = 1;
+  final _page = ValueNotifier<int>(1);
 
   @override
   void initState() {
@@ -119,6 +119,7 @@ class _DocScreenState extends ConsumerState<DocScreen> {
   @override
   void dispose() {
     _pdf?.dispose();
+    _page.dispose();
     super.dispose();
   }
 
@@ -147,8 +148,8 @@ class _DocScreenState extends ConsumerState<DocScreen> {
                 child: StateBlock(
                   icon: PhosphorIcons.lockSimple(PhosphorIconsStyle.fill),
                   tone: Tone.gold,
-                  title: 'This document is Premium',
-                  text: 'Your plan includes some documents. Go Premium to open every syllabus.',
+                  title: 'This is part of Premium',
+                  text: 'Go Premium to open every syllabus, brochure and book.',
                   action: Btn(
                     'See Premium plans',
                     kind: BtnKind.accent,
@@ -170,12 +171,17 @@ class _DocScreenState extends ConsumerState<DocScreen> {
                   ),
                   child: Row(
                     children: [
-                      SizedBox(
-                        width: 220,
-                        child: Seg<bool>(value: _topics, items: const [(false, 'PDF'), (true, 'Topic list')], onChanged: (v) => setState(() => _topics = v)),
-                      ),
+                      if (topics.isNotEmpty)
+                        SizedBox(
+                          width: 220,
+                          child: Seg<bool>(value: _topics, items: const [(false, 'PDF'), (true, 'Topic list')], onChanged: (v) => setState(() => _topics = v)),
+                        ),
                       const Spacer(),
-                      if (pages != null) Text('Page $_page / $pages', style: context.ty.cap.tnum.col(c.textMuted)),
+                      if (pages != null)
+                        ValueListenableBuilder<int>(
+                          valueListenable: _page,
+                          builder: (context, p, _) => Text('Page $p / $pages', style: context.ty.cap.tnum.col(c.textMuted)),
+                        ),
                     ],
                   ),
                 ),
@@ -241,7 +247,7 @@ class _DocScreenState extends ConsumerState<DocScreen> {
                           color: c.surfaceSunken,
                           child: PdfViewPinch(
                             controller: _pdf!,
-                            onPageChanged: (p) => setState(() => _page = p),
+                            onPageChanged: (p) => _page.value = p,
                             backgroundDecoration: BoxDecoration(color: c.surfaceSunken),
                           ),
                         ),

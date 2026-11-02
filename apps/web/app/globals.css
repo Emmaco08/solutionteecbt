@@ -124,3 +124,25 @@
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; }
 }
+
+/* Lesson-note preview in the admin (matches the app's note reader: 16/27 body, 19/26 headings, gold tip box). */
+.note-preview { font-size: 16px; line-height: 27px; }
+.note-preview h1, .note-preview h2 { font-size: 19px; line-height: 26px; font-weight: 700; margin: 24px 0 8px; }
+.note-preview h3, .note-preview h4 { font-size: 17px; line-height: 24px; font-weight: 700; margin: 16px 0 8px; }
+.note-preview > div > :first-child { margin-top: 0; }
+.note-preview p { margin: 0 0 12px; }
+.note-preview ul, .note-preview ol { margin: 0 0 12px; padding-left: 22px; }
+.note-preview ul { list-style: disc; }
+.note-preview ol { list-style: decimal; }
+.note-preview li + li { margin-top: 6px; }
+.note-preview blockquote { margin: 16px 0; padding: 12px 16px; border-radius: 12px; background: var(--c-accent-soft); color: var(--c-on-accent-soft); font-size: 15px; line-height: 23px; }
+.note-preview blockquote p:last-child { margin: 0; }
+.note-preview table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 12px 0; }
+.note-preview th, .note-preview td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--c-border); }
+.note-preview th { background: var(--c-surface-sunken); font-weight: 700; }
+.note-preview img { max-width: 100%; border-radius: 12px; margin: 8px 0; }
+.note-preview code { font-size: 13px; background: var(--c-surface-sunken); padding: 1px 5px; border-radius: 6px; }
+.note-preview pre { background: var(--c-surface-sunken); padding: 12px; border-radius: 12px; overflow: auto; margin: 0 0 12px; }
+.note-preview pre code { background: none; padding: 0; }
+.note-preview hr { margin: 20px 0; border-color: var(--c-border); }
+.note-preview .katex-display { overflow-x: auto; overflow-y: hidden; padding: 4px 0; }

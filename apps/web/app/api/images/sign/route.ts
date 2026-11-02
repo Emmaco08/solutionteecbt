@@ -4,13 +4,14 @@ import { env, hasR2 } from "@/lib/env";
 import { presignGet } from "@/lib/r2";
 import { json } from "@/lib/auth-email";
 
-const Body = z.object({ key: z.string().min(3).max(300).regex(/^(q|public\/news)\/[A-Za-z0-9/_.-]+$/) });
+const Body = z.object({ key: z.string().min(3).max(300).regex(/^(q|n|public\/news)\/[A-Za-z0-9/_.-]+$/) });
 
 /**
  * POST /api/images/sign  { key: "q/jamb/2001/mth/7.webp" | "public/news/…" }   Authorization: Bearer <access token>
  * Returns a short-lived read link for a question image, only when the student may see that question
  * (public.can_view_question_image runs as the student, so the plan and year rules apply). D-045.
  * News pictures are signed when a news post the student can read (RLS: published, due) uses that key.
+ * Note pictures (n/…) are signed when a study item the student can open uses that key (can_view_note_image).
  */
 export async function POST(req: Request) {
   if (!hasR2()) return json({ error: "Images are not available right now." }, 503);
@@ -26,7 +27,9 @@ export async function POST(req: Request) {
   const key = parsed.data.key;
   const { data: ok, error } = key.startsWith("public/news/")
     ? await asUser.from("news_posts").select("id").eq("image_path", key).limit(1).then((r) => ({ data: Boolean(r.data?.length), error: r.error }))
-    : await asUser.rpc("can_view_question_image", { p_key: key });
+    : key.startsWith("n/")
+      ? await asUser.rpc("can_view_note_image", { p_key: key })
+      : await asUser.rpc("can_view_question_image", { p_key: key });
   if (error) return json({ error: "Please log in again." }, 401);
   if (!ok) return json({ error: "This image is locked." }, 403);
 

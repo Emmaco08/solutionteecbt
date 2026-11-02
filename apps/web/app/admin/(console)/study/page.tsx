@@ -17,22 +17,45 @@ export default function Page({ searchParams }: PageProps<"/admin/study">) {
   return <Suspense fallback={<PageSkeleton rows={6} />}><StudyList searchParams={searchParams} /></Suspense>;
 }
 
+const PAGE = 50;
+
 async function StudyList({ searchParams }: { searchParams: PageProps<"/admin/study">["searchParams"] }) {
   const staff = await requireStaff();
   const sp = await searchParams;
   const kind: StudyKind = (KINDS as readonly string[]).includes(String(sp.kind)) ? (sp.kind as StudyKind) : "video_solution";
+  const q = typeof sp.q === "string" ? sp.q.trim().slice(0, 80) : "";
+  const subject = Number(sp.subject) || null;
+  const status = ["draft", "review", "published"].includes(String(sp.status)) ? String(sp.status) : "";
+  const page = Math.max(1, Number(sp.page) || 1);
   const supabase = await createClient();
-  const [list, counts] = await Promise.all([
-    supabase.from("study_items").select("id, title, subtitle, year, is_free, status, files, updated_at, exam_bodies(code), subjects(name)")
-      .eq("kind", kind).is("deleted_at", null).order("sort", { ascending: true }).order("updated_at", { ascending: false }).limit(300),
-    supabase.from("study_items").select("kind").is("deleted_at", null).limit(5000),
+
+  let query = supabase.from("study_items").select("id, title, subtitle, year, is_free, status, files, updated_at, exam_bodies(code), subjects(name)", { count: "exact" })
+    .eq("kind", kind).is("deleted_at", null);
+  if (q) query = query.ilike("title", `%${q.replace(/[%_\\]/g, (c) => `\\${c}`)}%`);
+  if (subject) query = query.eq("subject_id", subject);
+  if (status) query = query.eq("status", status as "draft" | "review" | "published");
+  const [list, subjects, ...counts] = await Promise.all([
+    query.order("sort", { ascending: true }).order("updated_at", { ascending: false }).range((page - 1) * PAGE, page * PAGE - 1),
+    supabase.from("subjects").select("id, name").order("sort"),
+    ...KINDS.map((k) => supabase.from("study_items").select("id", { count: "exact", head: true }).eq("kind", k).is("deleted_at", null)),
   ]);
   if (list.error) return <ErrorState message={list.error.message} />;
-  const n = (k: string) => (counts.data ?? []).filter((r) => r.kind === k).length;
+  const n = (k: string) => counts[KINDS.indexOf(k as StudyKind)]?.count ?? 0;
+  const total = list.count ?? 0;
+  const pages = Math.max(1, Math.ceil(total / PAGE));
+  const link = (over: Record<string, string | number | null>) => {
+    const u = new URLSearchParams({ kind, ...(q ? { q } : {}), ...(subject ? { subject: String(subject) } : {}), ...(status ? { status } : {}), page: String(page) });
+    for (const [k, v] of Object.entries(over)) {
+      if (v === null || v === "") u.delete(k);
+      else u.set(k, String(v));
+    }
+    return `/admin/study?${u}`;
+  };
   const editable = canEditStudy(staff.role);
   const info = KIND_INFO[kind];
   const Icon = ICONS[kind];
   const add = editable ? <Link href={`/admin/study/new?kind=${kind}`} className={buttonVariants()}><Plus size={18} weight="bold" /> Add {info.one}</Link> : null;
+  const sel = "h-10 rounded-xl border border-input bg-card px-3 text-sm";
 
   return (
     <>
@@ -45,6 +68,18 @@ async function StudyList({ searchParams }: { searchParams: PageProps<"/admin/stu
           </Link>
         ))}
       </div>
+      <form className="mb-4 flex flex-wrap gap-2" action="/admin/study">
+        <input type="hidden" name="kind" value={kind} />
+        <input name="q" defaultValue={q} placeholder={`Search ${info.label.toLowerCase()} by title`} aria-label="Search by title" className={`${sel} min-w-[220px] flex-1`} />
+        <select name="subject" defaultValue={subject ?? ""} aria-label="Subject" className={sel}>
+          <option value="">All subjects</option>{(subjects.data ?? []).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+        </select>
+        <select name="status" defaultValue={status} aria-label="Status" className={sel}>
+          <option value="">Any status</option><option value="published">Published</option><option value="review">In review</option><option value="draft">Draft</option>
+        </select>
+        <button type="submit" className={buttonVariants({ variant: "outline" })}>Filter</button>
+        {q || subject || status ? <Link href={`/admin/study?kind=${kind}`} className={buttonVariants({ variant: "ghost" })}>Clear</Link> : null}
+      </form>
       {sp.saved ? <p role="status" className="mb-4 rounded-xl bg-success-soft px-4 py-2.5 text-sm text-on-success-soft">Saved.</p> : null}
       {list.data.length ? (
         <div className="divide-y overflow-hidden rounded-2xl border bg-card">
@@ -66,10 +101,20 @@ async function StudyList({ searchParams }: { searchParams: PageProps<"/admin/stu
               </Link>
             );
           })}
+          <div className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
+            <span className="text-muted-foreground">{(page - 1) * PAGE + 1}–{Math.min(page * PAGE, total)} of {total.toLocaleString()}</span>
+            <span className="flex gap-2">
+              {page > 1 ? <Link href={link({ page: page - 1 })} className={buttonVariants({ variant: "outline", size: "sm" })}>Previous</Link> : null}
+              <span className="self-center text-muted-foreground">Page {page} of {pages}</span>
+              {page < pages ? <Link href={link({ page: page + 1 })} className={buttonVariants({ variant: "outline", size: "sm" })}>Next</Link> : null}
+            </span>
+          </div>
         </div>
       ) : (
         <div className="rounded-2xl border bg-card">
-          <EmptyState icon={<Books />} title={`No ${info.label.toLowerCase()} yet`} action={add}>{info.hint}</EmptyState>
+          {q || subject || status
+            ? <EmptyState icon={<Books />} title="Nothing matches" action={<Link href={`/admin/study?kind=${kind}`} className={buttonVariants({ variant: "outline" })}>Clear the filters</Link>}>Try another word or subject.</EmptyState>
+            : <EmptyState icon={<Books />} title={`No ${info.label.toLowerCase()} yet`} action={add}>{info.hint}</EmptyState>}
         </div>
       )}
     </>

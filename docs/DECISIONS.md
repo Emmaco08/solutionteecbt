@@ -330,3 +330,16 @@ The owner asked to run the admin from Vercel instead of the laptop.
 - **R2 CORS** must list the Vercel address (SETUP §10.1). The R2 key only has object read/write, so the owner sets CORS in the Cloudflare dashboard.
 - **Admin password reset** is now self-service at /admin/forgot: an emailed code, then a new password, then the authenticator step as always.
 
+**D-056 · 2026-11-02 · Notes in Markdown with pictures, novel PDFs, speed fixes**
+- **Notes are Markdown** (GitHub style: headings, bold and italics, bullet and numbered lists, tables, `>` tip boxes, pictures) plus `$…$` / `$$…$$` maths. Maths is taken out before Markdown runs, so `_` and `*` inside formulas stay maths. Admin preview (`lib/markdown.ts`, marked + KaTeX) and app (`note_markdown.dart`, markdown + flutter_math_fork) follow the same rule. Old notes still render, because their `#`, `-` and `>` lines are already Markdown.
+- **Pictures in notes** are uploaded from the editor into the private bucket under `n/…`. The app gets a short signed link from `/api/images/sign` only when `can_view_note_image` finds a published study item the student can open whose text uses that picture. Raw HTML in a note is shown as text and never run.
+- **Novels can carry the original book as a PDF** (`files.pdf`, same plan check as documents). It opens in the app's PDF reader from "Read the book". The admin form reminds editors to upload only books they have the right to share.
+- **Speed.**
+  - Cause of the slow maths notes: every scroll tick redrew the whole note (to move the progress bar), which rebuilt every formula.
+  - Fix: the note is now parsed once and drawn lazily block by block, and scrolling only redraws the 3 px progress bar.
+  - The video player redraws only itself while playing, not the whole screen.
+  - The notes list (360+ notes) is built lazily.
+  - The PDF page counter no longer rebuilds the viewer.
+  - Speed should be judged on a **release** build: debug builds (what `flutter run` installs by default) are several times slower, especially with maths.
+- **Admin Study list** pages 50 at a time with search, subject and status filters (it used to stop at 300).
+
