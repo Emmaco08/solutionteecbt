@@ -17,6 +17,7 @@ import '../../widgets/phosphor.g.dart';
 import '../../widgets/question_image.dart';
 import '../../widgets/states.dart';
 import '../cbt/cbt_screen.dart' show OptionRow, OptState;
+import '../ai/ai_screen.dart' show askAiAbout;
 import '../premium/paywall.dart';
 import 'study_widgets.dart';
 
@@ -407,7 +408,7 @@ class _StudyQuestion extends ConsumerWidget {
                 kind: BtnKind.outline,
                 sm: true,
                 leading: PhosphorIcons.sparkle(PhosphorIconsStyle.fill),
-                onPressed: () => toast(context, 'The AI tutor arrives in the next update.', icon: PhosphorIcons.sparkle(PhosphorIconsStyle.fill), above: 64),
+                onPressed: () => askAiAbout(context, questionId: q.id, label: '${q.year} question ${q.number ?? ''}'.trim()),
               ),
             ),
           ],

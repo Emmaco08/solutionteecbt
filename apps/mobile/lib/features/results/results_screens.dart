@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../ai/ai_screen.dart' show askAiAbout;
 import '../../core/providers.dart';
 import '../../data/db.dart';
 import '../../data/tests_repo.dart';
@@ -660,6 +661,14 @@ class _ReviewBody extends StatelessWidget {
             ),
           ),
         ],
+        const Gap(Space.s3),
+        Btn(
+          'Ask SolutionTee AI to explain',
+          kind: BtnKind.outline,
+          block: true,
+          leading: PhosphorIcons.sparkle(PhosphorIconsStyle.fill),
+          onPressed: () => askAiAbout(context, questionId: q.id, label: '${q.year} question ${q.number ?? ''}'.trim()),
+        ),
       ],
     );
     return rm ? body : body.animate().fadeIn(duration: Motion.base);

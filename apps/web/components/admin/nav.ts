@@ -41,6 +41,7 @@ export const NAV: NavGroup[] = [
       { href: "/admin/access", label: "Free vs Premium", icon: "Scales", roles: ADMINS },
       { href: "/admin/onboarding", label: "Onboarding", icon: "DeviceMobile", roles: ADMINS },
       { href: "/admin/tabs", label: "Tabs manager", icon: "Layout", roles: ADMINS },
+      { href: "/admin/ai", label: "AI tutor", icon: "Sparkle", roles: ADMINS },
       { href: "/admin/settings", label: "Flags & settings", icon: "ToggleRight", roles: ADMINS },
       { href: "/admin/leaderboard", label: "Leaderboard", icon: "Ranking", soon: "Phase 4" },
     ],

@@ -1,4 +1,4 @@
-// Generated from the Supabase dev project (solutiontee-dev) on 2026-10-30. Do not edit by hand.
+// Generated from the Supabase dev project (solutiontee-dev) on 2026-11-02. Do not edit by hand.
 // Regenerate after schema changes (Supabase MCP generate_typescript_types or `supabase gen types`).
 // One hand fix to keep after regenerating: email_send_allowed p_ip_hash is `string | null` (the generator cannot express a nullable argument).
 export type Json =
@@ -35,6 +35,343 @@ export type Database = {
           tier?: string
           updated_at?: string
           updated_by?: string | null
+        }
+        Relationships: []
+      }
+      ai_cache: {
+        Row: {
+          answer: string
+          created_at: string
+          hits: number
+          key: string
+          model: string | null
+        }
+        Insert: {
+          answer: string
+          created_at?: string
+          hits?: number
+          key: string
+          model?: string | null
+        }
+        Update: {
+          answer?: string
+          created_at?: string
+          hits?: number
+          key?: string
+          model?: string | null
+        }
+        Relationships: []
+      }
+      ai_calls: {
+        Row: {
+          at: string
+          error: string | null
+          id: number
+          model: string | null
+          ms: number | null
+          ok: boolean
+          provider: string | null
+          purpose: string | null
+        }
+        Insert: {
+          at?: string
+          error?: string | null
+          id?: never
+          model?: string | null
+          ms?: number | null
+          ok: boolean
+          provider?: string | null
+          purpose?: string | null
+        }
+        Update: {
+          at?: string
+          error?: string | null
+          id?: never
+          model?: string | null
+          ms?: number | null
+          ok?: boolean
+          provider?: string | null
+          purpose?: string | null
+        }
+        Relationships: []
+      }
+      ai_chats: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          id: string
+          subject_id: number | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          subject_id?: number | null
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          subject_id?: number | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_chats_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_chunks: {
+        Row: {
+          content: string
+          created_at: string
+          embedding: string
+          id: number
+          source: string
+          source_id: string
+          subject_id: number | null
+          title: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          embedding: string
+          id?: never
+          source: string
+          source_id: string
+          subject_id?: number | null
+          title?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          embedding?: string
+          id?: never
+          source?: string
+          source_id?: string
+          subject_id?: number | null
+          title?: string | null
+        }
+        Relationships: []
+      }
+      ai_messages: {
+        Row: {
+          chat_id: string
+          content: string
+          created_at: string
+          flag_reason: string | null
+          flagged_at: string | null
+          has_image: boolean
+          hint: boolean
+          id: string
+          model: string | null
+          ms: number | null
+          provider: string | null
+          question_id: string | null
+          role: string
+          user_id: string
+        }
+        Insert: {
+          chat_id: string
+          content?: string
+          created_at?: string
+          flag_reason?: string | null
+          flagged_at?: string | null
+          has_image?: boolean
+          hint?: boolean
+          id?: string
+          model?: string | null
+          ms?: number | null
+          provider?: string | null
+          question_id?: string | null
+          role: string
+          user_id: string
+        }
+        Update: {
+          chat_id?: string
+          content?: string
+          created_at?: string
+          flag_reason?: string | null
+          flagged_at?: string | null
+          has_image?: boolean
+          hint?: boolean
+          id?: string
+          model?: string | null
+          ms?: number | null
+          provider?: string | null
+          question_id?: string | null
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_messages_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: false
+            referencedRelation: "ai_chats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_messages_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_models: {
+        Row: {
+          created_at: string
+          dimensions: number | null
+          enabled: boolean
+          id: string
+          label: string | null
+          max_tokens: number
+          model: string
+          params: Json
+          priority: number
+          provider_id: string
+          purpose: string
+          temperature: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          dimensions?: number | null
+          enabled?: boolean
+          id?: string
+          label?: string | null
+          max_tokens?: number
+          model: string
+          params?: Json
+          priority?: number
+          provider_id: string
+          purpose: string
+          temperature?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          dimensions?: number | null
+          enabled?: boolean
+          id?: string
+          label?: string | null
+          max_tokens?: number
+          model?: string
+          params?: Json
+          priority?: number
+          provider_id?: string
+          purpose?: string
+          temperature?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_models_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "ai_providers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_prompts: {
+        Row: {
+          active: boolean
+          body: string
+          created_at: string
+          created_by: string | null
+          id: number
+          notes: string | null
+          version: number
+        }
+        Insert: {
+          active?: boolean
+          body: string
+          created_at?: string
+          created_by?: string | null
+          id?: never
+          notes?: string | null
+          version: number
+        }
+        Update: {
+          active?: boolean
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          id?: never
+          notes?: string | null
+          version?: number
+        }
+        Relationships: []
+      }
+      ai_providers: {
+        Row: {
+          base_url: string
+          created_at: string
+          enabled: boolean
+          id: string
+          key_hint: string | null
+          key_secret: string | null
+          name: string
+          notes: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          base_url: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          key_hint?: string | null
+          key_secret?: string | null
+          name: string
+          notes?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          base_url?: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          key_hint?: string | null
+          key_secret?: string | null
+          name?: string
+          notes?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      ai_usage: {
+        Row: {
+          day: string
+          used: number
+          user_id: string
+        }
+        Insert: {
+          day: string
+          used?: number
+          user_id: string
+        }
+        Update: {
+          day?: string
+          used?: number
+          user_id?: string
         }
         Relationships: []
       }
@@ -1052,6 +1389,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_ai_health: { Args: never; Returns: Json }
       admin_dashboard: { Args: never; Returns: Json }
       admin_list_staff: {
         Args: never
@@ -1082,6 +1420,10 @@ export type Database = {
           total: number
         }[]
       }
+      admin_set_ai_key: {
+        Args: { p_key: string; p_provider: string }
+        Returns: string
+      }
       admin_set_ban: {
         Args: { p_banned: boolean; p_reason?: string; p_user: string }
         Returns: undefined
@@ -1096,10 +1438,34 @@ export type Database = {
           year: number
         }[]
       }
+      ai_chunk_sources: {
+        Args: { p_source: string }
+        Returns: {
+          indexed_at: string
+          source_id: string
+        }[]
+      }
+      ai_config: { Args: never; Returns: Json }
+      ai_flag: {
+        Args: { p_message: string; p_reason: string }
+        Returns: undefined
+      }
+      ai_match: {
+        Args: { p_count?: number; p_embedding: string; p_subject?: number }
+        Returns: {
+          content: string
+          similarity: number
+          title: string
+        }[]
+      }
+      ai_provider_key: { Args: { p_provider: string }; Returns: string }
+      ai_quota: { Args: never; Returns: Json }
+      ai_refund: { Args: { p_uid: string }; Returns: undefined }
+      ai_take: { Args: { p_uid: string }; Returns: number }
       auth_user_status: { Args: { p_email: string }; Returns: string }
       can_upload_images: { Args: never; Returns: boolean }
-      can_view_question_image: { Args: { p_key: string }; Returns: boolean }
       can_view_note_image: { Args: { p_key: string }; Returns: boolean }
+      can_view_question_image: { Args: { p_key: string }; Returns: boolean }
       can_view_study_file: { Args: { p_key: string }; Returns: boolean }
       email_send_allowed: {
         Args: { p_email_hash: string; p_ip_hash: string | null; p_kind: string }

@@ -22,9 +22,14 @@ class NoteDoc {
   static const _open = '', _close = '';
   static final _token = RegExp('$_open(\\d+)$_close');
 
+  /// AI models often write `\[ … \]` and `\( … \)` instead of `$$ … $$` and `$ … $`; both are accepted.
+  static String normalizeMath(String s) => s
+      .replaceAllMapped(RegExp(r'(?<!\\)\\\[([\s\S]+?)(?<!\\)\\\]'), (m) => '\$\$${m[1]}\$\$')
+      .replaceAllMapped(RegExp(r'(?<!\\)\\\(([\s\S]+?)(?<!\\)\\\)'), (m) => '\$${m[1]!.trim()}\$');
+
   factory NoteDoc.parse(String text) {
     final maths = <String>[];
-    final src = text.replaceAll('\r\n', '\n').replaceAllMapped(_math, (m) {
+    final src = normalizeMath(text.replaceAll('\r\n', '\n')).replaceAllMapped(_math, (m) {
       maths.add(m.group(0)!);
       return '$_open${maths.length - 1}$_close';
     });

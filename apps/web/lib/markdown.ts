@@ -16,7 +16,11 @@ const TOKEN = (i: number) => `@@MATH${i}@@`;
 export function renderMarkdown(text: string, imageUrl: (key: string) => string): string {
   if (!text) return "";
   const maths: string[] = [];
-  const src = text.replace(MATH, (raw) => {
+  // AI models often write \[ … \] and \( … \) instead of $$ … $$ and $ … $; both are accepted (same as the app).
+  const normal = text
+    .replace(/(?<!\\)\\\[([\s\S]+?)(?<!\\)\\\]/g, (_, m: string) => "$$" + m + "$$")
+    .replace(/(?<!\\)\\\(([\s\S]+?)(?<!\\)\\\)/g, (_, m: string) => "$" + m.trim() + "$");
+  const src = normal.replace(MATH, (raw) => {
     const display = raw.startsWith("$$");
     const tex = raw.slice(display ? 2 : 1, display ? -2 : -1);
     let html: string;

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'features/ai/ai_screen.dart';
 import 'features/auth/auth_screens.dart';
 import 'features/cbt/cbt_screen.dart';
 import 'features/home/home_screen.dart';
@@ -84,7 +85,8 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/ai',
-                builder: (_, _) => const ComingSoonScreen(kind: 'ai'),
+                builder: (_, s) =>
+                    AiScreen(chatId: s.uri.queryParameters['chat'], questionId: s.uri.queryParameters['q'], questionLabel: s.uri.queryParameters['label']),
               ),
             ],
           ),
@@ -160,6 +162,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/study/bookmarks', builder: (_, _) => const BookmarksScreen()),
       GoRoute(path: '/study/search', builder: (_, _) => const StudySearchScreen()),
       GoRoute(path: '/downloads', builder: (_, _) => const DownloadsScreen()),
+      GoRoute(path: '/ai/history', builder: (_, _) => const AiHistoryScreen()),
       GoRoute(
         path: '/news/:id',
         builder: (_, s) => NewsDetailScreen(id: s.pathParameters['id']!),
