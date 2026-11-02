@@ -366,3 +366,34 @@ The owner asked to run the admin from Vercel instead of the laptop.
   - A video marked "Free for everyone" plays for all students; the rest need Premium (`study_open`).
   - Notes and novels still follow the Free vs Premium section rules.
 
+**D-058 · 2026-11-03 · AI tutor: providers, keys and models are managed in the admin (owner)**
+- **Providers are any OpenAI-compatible API** (`/chat/completions`, `/models`, `/embeddings`).
+  - NVIDIA is the main one; Dahl (inference.dahl.global) is the backup.
+  - Admins add providers, change keys and add or reorder models in Admin → AI tutor. There is no code change and no redeploy.
+- **Keys** go straight into Supabase Vault through `admin_set_ai_key` (admins with 2-step only). Only the last 4 characters are shown again.
+  - Keys are read only by the Edge Functions (`ai_config`, service role) and by the admin "Test" button on the website server.
+  - The owner shared the first keys in chat. They were stored the same way and must be replaced before launch.
+- **One priority list per purpose:**
+  - Text questions (`chat`), photo questions (`vision`) and knowledge (`embed`).
+  - A photo is sent only to vision models. Dahl's models cannot read pictures.
+  - The order came from live tests (`supabase/seed/ai-model-order-2026-11-02.sql`). The admin can reorder at any time.
+- **Speed rules in `ai-chat`:**
+  - A model must start replying within 20 s (35 s for photos) and start writing the answer within 25 s (45 s), even while it is thinking.
+  - After that it may go on while something arrives every 30 s. The whole request stays under the server's time limit.
+  - The next model takes over on 404/429/5xx, silence or too much thinking. "Thinking…" shows in the app meanwhile.
+  - Once part of an answer is shown, there is no switch, so two models' answers are never mixed.
+- **Thinking is hidden:** `<think>…</think>` and `reasoning_content` never reach students.
+  - Some models need a larger max tokens because their thinking counts against it.
+  - Optional "extra settings" JSON per model is merged into the request (for provider switches such as turning thinking off).
+- **Quota is used up atomically in Postgres before calling a model** (`ai_take`):
+  - Free and Premium limits come from the Free vs Premium rules (`ai`), and the day is Africa/Lagos.
+  - 6 questions a minute at most.
+  - The prompt is refunded when every model fails.
+- **Knowledge (RAG):**
+  - Published notes are split into about 1,200-character pieces and embedded with NVIDIA `nemotron-3.5-embed-1b` (768 dimensions) into pgvector.
+  - The 4 closest pieces (similarity > 0.35, same subject first) are added to the system prompt.
+  - Rebuilt from Admin → AI tutor → Knowledge, which also catches notes added or edited later.
+- **Maths:** models often write `\( \)` and `\[ \]`. The app and the admin preview accept both, as well as `$ $` and `$$ $$`.
+- **Photos** are shrunk on the phone (max 1280 px, JPEG about 72%), sent with that one message only, and not stored. The saved message notes that a photo was sent.
+- **Cache:** "Explain this question" answers from Review/Study are cached per question and hint mode, and still count as a prompt.
+

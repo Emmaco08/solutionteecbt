@@ -376,3 +376,18 @@ Uploads go straight from the browser to R2. The bucket must allow the admin's we
 ```
 3. To check it from the laptop: `node scripts/r2-cors.mjs` in `apps/web` (the R2 key has no permission to read bucket settings, so a 403 there is normal; the upload test is the real check).
 
+## 11. AI tutor (2026-11-03)
+Everything is in **Admin → AI tutor** (https://admin.solutiontee.com/admin/ai), for super admins and admins.
+1. **Replace the test keys** that were shared in chat:
+   - **NVIDIA:** https://build.nvidia.com → your account → API keys → create a new key, then delete the old one.
+   - **Dahl:** https://inference.dahl.global/account → create a new key, then delete the old one.
+   - In the admin, under **Providers**, press **Change key** on each and paste the new key, then press **Test**.
+2. **Dahl tokens:** on the Dahl account page, allocate your free tokens to the key. Without them the key answers "tokens exhausted" (402) and NVIDIA keeps answering alone.
+3. **Knowledge:** under **Knowledge from your notes**, press **Add new and edited notes** once now. Press it again after adding many notes, so the tutor uses them.
+4. **Models:**
+   - **Add one:** pick the provider, press **Load model list**, choose a model, set **Used for** (text, photo or knowledge), save, then press **Test** on the new row.
+   - **Order:** a lower number is tried first.
+   - **Photos:** only put models that can read pictures under **Photo questions**.
+5. **Limits:** the daily prompts (Free 3, Premium 100) are in **Free vs Premium** ("AI tutor prompts").
+6. **Before launch:** check that NVIDIA's and Dahl's terms allow production use for SolutionTee, and plan paid capacity if usage grows (NVIDIA's free API is about 40 requests a minute per key).
+

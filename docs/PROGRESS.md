@@ -79,8 +79,16 @@ Plan: `docs/plans/phase-4.md`.
   - [x] Tests: `flutter analyze` clean, 23/23 tests (4 new: paywall benefits, prices, paywall sheet, note renderer); light/dark renders of 12 Study screens
   - [x] [SAMPLE] study items in the dev database (`supabase/seed/dev-sample-study.sql`)
   - [ ] Phone walk-through
+  - [x] Video thumbnails, full video player, per-video locks, Markdown notes with pictures, novel PDFs, faster notes (D-056, D-057)
   - [ ] Saving videos and PDFs on the phone for offline use (Downloads lists saved past papers for now)
-- [ ] 4B AI tutor (needs the owner's NVIDIA key)
+- **4B AI tutor** (plan: `docs/plans/phase-4b.md`)
+  - [x] Database: providers and models managed in the admin, keys in Supabase Vault (only the last 4 characters shown), versioned system prompt, own chats and messages, Lagos-day quota (Free 3, Premium 100, 6 a minute), health log, answer cache, pgvector knowledge. Tests 28/28 (`supabase/tests/ai.test.sql`)
+  - [x] Edge Function `ai-chat`: streams answers; photos go to image models only; falls back to the next model when one is busy or slow; hides model "thinking"; finds matching notes; gives the prompt back when every model fails. Live: text 1.8 s to first words / 4 s total, photo 3.7 s / 4.7 s
+  - [x] Edge Function `ai-index`: builds knowledge from published notes (admins, 2-step)
+  - [x] Admin → AI tutor: providers and keys, models (order, purpose, settings, Test), prompt versions, knowledge rebuild, 24 h health, answers marked wrong. Live at admin.solutiontee.com
+  - [x] App AI tab: streaming chat in the prototype design, photo questions, hint mode, subjects, copy, report, quota chip and countdown, past chats, "Ask AI" from Study and Review. 28/28 app tests, analyzer clean
+  - [ ] Owner: press "Add new and edited notes" in Admin → AI tutor → Knowledge (builds the knowledge from the 360 notes)
+  - [ ] Phone walk-through
 - [ ] 4C Payments (Paystack test keys, Play Console)
 - [ ] 4D Push notifications + Me dashboard (needs Firebase)
 - [ ] 4E Challenges, referrals, leaderboard, question of the day, winners wall
