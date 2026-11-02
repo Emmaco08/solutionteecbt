@@ -139,7 +139,7 @@ final newsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) {
     'news',
     (s) => s
         .from('news_posts')
-        .select('id, title, summary, body, category, link_type, link_target, is_pinned, publish_at')
+        .select('id, title, summary, body, category, link_type, link_target, image_path, is_pinned, publish_at')
         .eq('status', 'published')
         .lte('publish_at', DateTime.now().toUtc().toIso8601String())
         .order('is_pinned', ascending: false)

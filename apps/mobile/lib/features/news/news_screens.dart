@@ -8,6 +8,7 @@ import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
 import '../../ui/kit.dart';
 import '../../widgets/phosphor.g.dart';
+import '../../widgets/question_image.dart';
 import '../../widgets/states.dart';
 
 /// Category → cover gradient + icon (prototype `news-cover c-navy|c-blue|c-gold|c-green`).
@@ -33,14 +34,18 @@ String newsDate(Map<String, dynamic> n) {
 
 int readMins(Map<String, dynamic> n) => (((n['body'] as String?) ?? '').split(RegExp(r'\s+')).length / 200).ceil().clamp(1, 30);
 
-class NewsCover extends StatelessWidget {
+/// News cover: the admin's picture when there is one (signed link, skipped with data saver), drawn over
+/// the category gradient so the gradient shows while it loads or if it fails.
+class NewsCover extends ConsumerWidget {
   const NewsCover({super.key, required this.n, this.aspect = 16 / 8, this.iconSize = 64, this.thumb = false});
   final Map<String, dynamic> n;
   final double aspect, iconSize;
   final bool thumb;
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final look = newsLook(n['category'] as String?);
+    final key = n['image_path'] as String?;
+    final url = key == null || ref.watch(settingsProvider).dataSaver ? null : ref.watch(signedImageProvider(key)).value;
     final cover = Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(colors: look.g, begin: Alignment.topLeft, end: Alignment.bottomRight),
@@ -61,6 +66,16 @@ class NewsCover extends StatelessWidget {
               ),
             ),
           Icon(look.icon, size: thumb ? 30 : iconSize, color: look.fg.withValues(alpha: .9)),
+          if (url != null)
+            Positioned.fill(
+              child: Image.network(
+                url,
+                fit: BoxFit.cover,
+                semanticLabel: '${n['title'] ?? 'News'} picture',
+                frameBuilder: (_, child, frame, sync) => sync ? child : AnimatedOpacity(opacity: frame == null ? 0 : 1, duration: Motion.base, child: child),
+                errorBuilder: (_, _, _) => const SizedBox.shrink(),
+              ),
+            ),
         ],
       ),
     );
