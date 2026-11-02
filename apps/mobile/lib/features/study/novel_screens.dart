@@ -80,7 +80,12 @@ class NovelsScreen extends ConsumerWidget {
                             children: [
                               Stack(
                                 children: [
-                                  BookCover(title: '${n['title']}', index: i + 1),
+                                  BookCover(
+                                    title: '${n['title']}',
+                                    index: i + 1,
+                                    coverKey: (n['meta'] as Map?)?['cover'] as String?,
+                                    itemId: n['id'] as String,
+                                  ),
                                   if (n['locked'] == true) const Positioned(top: 6, right: 6, child: TileLock()),
                                 ],
                               ),
@@ -117,7 +122,7 @@ class _Featured extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            BookCover(title: '${n['title']}', width: 96),
+            BookCover(title: '${n['title']}', width: 96, coverKey: meta['cover'] as String?, itemId: n['id'] as String),
             const Gap(Space.s4),
             Expanded(
               child: Column(
@@ -244,7 +249,12 @@ class _NovelScreenState extends ConsumerState<NovelScreen> {
               children: [
                 Row(
                   children: [
-                    BookCover(title: '${it['title']}', width: 88),
+                    BookCover(
+                      title: '${it['title']}',
+                      width: 88,
+                      coverKey: (firstOr(ref.watch(studyCatalogProvider('novel')).value, (n) => n['id'] == widget.id)['meta'] as Map?)?['cover'] as String?,
+                      itemId: widget.id,
+                    ),
                     const Gap(Space.s4),
                     Expanded(
                       child: Column(

@@ -1099,6 +1099,7 @@ export type Database = {
       auth_user_status: { Args: { p_email: string }; Returns: string }
       can_upload_images: { Args: never; Returns: boolean }
       can_view_question_image: { Args: { p_key: string }; Returns: boolean }
+      can_view_note_image: { Args: { p_key: string }; Returns: boolean }
       can_view_study_file: { Args: { p_key: string }; Returns: boolean }
       email_send_allowed: {
         Args: { p_email_hash: string; p_ip_hash: string | null; p_kind: string }
@@ -1170,6 +1171,7 @@ export type Database = {
           year: number
         }[]
       }
+      study_cover_key: { Args: { p_id: string }; Returns: string }
       study_file_key: {
         Args: { p_file: string; p_id: string }
         Returns: string

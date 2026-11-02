@@ -104,8 +104,10 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
                     builder: (context) {
                       final key = s['key'] as String;
                       final feature = studyFeature[key];
-                      // Documents have free items, so the tile never locks; the list shows which ones are Premium.
-                      final locked = feature != null && key != 'doc' && !featureOn(ref, feature);
+                      // Videos and documents are always open to browse (owner, D-057): every student sees the whole
+                      // list, and each Premium item carries its own lock. Notes and novels lock as a section.
+                      const browse = {'doc', 'video_solution', 'lesson'};
+                      final locked = feature != null && !browse.contains(key) && !featureOn(ref, feature);
                       final caption = key == 'doc' && syllabus != null && syllabus != 'all' ? '$syllabus free on your plan' : '${s['subtitle'] ?? ''}';
                       final tile = StudyTile(
                         icon: sectionIcon('${s['icon']}'),

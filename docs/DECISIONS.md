@@ -343,3 +343,26 @@ The owner asked to run the admin from Vercel instead of the laptop.
   - Speed should be judged on a **release** build: debug builds (what `flutter run` installs by default) are several times slower, especially with maths.
 - **Admin Study list** pages 50 at a time with search, subject and status filters (it used to stop at 300).
 
+**D-057 · 2026-11-02 · Video thumbnails, video player, per-video locks (owner)**
+- **Thumbnails.** When a video is uploaded, the admin takes a frame from it (about a third of the way in, max 3 s), saves it as a 640 px WebP under `s/…` and uses it as the item's cover, unless a picture was chosen by hand. Videos uploaded before this can get one with "Make thumbnail". Novels and documents keep their uploaded covers.
+- **Covers and thumbnails are teasers:** students see them on lists also for Premium items (`study_cover_key`, no plan check). The catalog says which items have one (`meta.cover`).
+- **The app keeps pictures on the phone.** Covers, thumbnails and news pictures are downloaded once through a short signed link and kept in the cache folder by R2 key, so lists never download the same picture twice. Pictures inside notes are not kept (they are Premium content).
+- **Fast-start videos.** Before upload the admin moves the MP4 index (`moov`) to the front when it sits at the end, so a phone can start playing while downloading. This runs in the browser without loading the whole video into memory.
+- **Player** (study_player.dart, on video_player / ExoPlayer, no heavy video library, so the app stays small):
+  - double-tap the left or right side for −/+10 s (taps add up)
+  - hold for 2×, speeds 0.5×–2×
+  - fullscreen in landscape (immersive)
+  - seek bar shading the downloaded part
+  - controls hide on their own
+  - resume where you stopped
+  - the screen stays awake while playing
+- **Bad network:**
+  - Starts in 360p on mobile data or with data saver, 720p on Wi-Fi when it exists.
+  - Two stalls of 2.5 s or more within 45 s on HD switch to 360p by themselves, at the same spot.
+  - A dropped connection shows "Try again", which gets a fresh link and carries on.
+  - Real adaptive streaming (HLS) would need server-side transcoding (e.g. Cloudflare Stream, paid). Not used for now.
+- **Videos are locked per video:**
+  - The Video solutions and Topic lessons sections are always open, so every student sees every video.
+  - A video marked "Free for everyone" plays for all students; the rest need Premium (`study_open`).
+  - Notes and novels still follow the Free vs Premium section rules.
+

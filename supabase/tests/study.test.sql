@@ -33,7 +33,7 @@ insert into auth.users (id, email, aud, role) values
 insert into public.entitlements (user_id, plan_id, source, reason, starts_at, expires_at)
 select '00000000-0000-4000-8000-0000000000c2', id, 'manual', 'test grant', now() - interval '1 day', now() + interval '30 days' from public.plans where code = 'monthly';
 
--- Free plan: notes allowed (free items only), videos not allowed at all
+-- Free plan: notes allowed (free items only); the videos section is off, but videos are locked per video (D-057)
 update public.access_rules set rules = rules || '{"notes": true, "videos": false, "syllabus": 2}' where tier = 'free';
 
 create table tests.i (k text primary key, id uuid);
@@ -55,12 +55,13 @@ select tests.check((select count(*) from public.study_items) = 0, 'students cann
 select tests.check((select count(*) from public.study_catalog('note') where title like 'TST%') = 2, 'catalogue lists published notes only (no drafts)');
 select tests.check((select not locked from public.study_catalog('note') where title = 'TST free note'), 'Free: free note open');
 select tests.check((select locked from public.study_catalog('note') where title = 'TST premium note'), 'Free: premium note locked');
-select tests.check((select locked from public.study_catalog('video_solution') where title = 'TST free video'), 'Free: videos off in the Free plan, even free ones');
+select tests.check(not (select locked from public.study_catalog('video_solution') where title = 'TST free video'), 'Free: a video marked free plays for everyone (per-video lock)');
+select tests.check((select locked from public.study_catalog('video_solution') where title = 'TST premium video'), 'Free: a Premium video stays locked');
 select tests.check((select public.study_item((select id from tests.i where k = 'free_note')) ->> 'body') = 'Free body', 'Free: can open free note');
 select tests.throws($q$ select public.study_item((select id from tests.i where k = 'premium_note')) $q$, 'P0001', 'locked', 'Free: premium note raises locked');
 select tests.throws($q$ select public.study_item((select id from tests.i where k = 'draft_note')) $q$, 'P0002', 'not_found', 'drafts are not found');
 select tests.check(not public.can_view_study_file('v/tst/prem-360.mp4'), 'Free: cannot get a link to a premium video file');
-select tests.check(not public.can_view_study_file('v/tst/free-360.mp4'), 'Free: cannot get a link to a video when videos are off');
+select tests.check(public.can_view_study_file('v/tst/free-360.mp4'), 'Free: can get a link to a free video');
 select tests.throws($q$ select public.study_file_key((select id from tests.i where k = 'premium_video'), '720') $q$, 'P0001', 'locked', 'Free: no file key for a premium video');
 select tests.check(not public.can_view_study_file('v/does/not/exist.mp4'), 'unknown keys are never signed');
 

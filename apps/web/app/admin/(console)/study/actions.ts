@@ -24,7 +24,7 @@ const Item = z.object({
   status: z.enum(["draft", "review", "published"]),
   // files (keys come from our own upload endpoint)
   f360: opt, f360_size: num, f360_duration: num, f360_duration_old: num, f720: opt, f720_size: num,
-  pdf: opt, pdf_size: num, pdf_pages: num, pages: num, cover: opt,
+  pdf: opt, pdf_size: num, pdf_pages: num, pages: num, cover: opt, f360_poster: opt, f720_poster: opt,
   // structured text
   author: opt, topics: opt, themes: opt, characters: opt, chapters: opt,
 });
@@ -72,7 +72,9 @@ export async function saveStudy(_p: StudyState, form: FormData): Promise<StudySt
       return { error: "The chapters could not be read. Try again." };
     }
   }
-  if (key(v.cover, "s")) files.cover = v.cover;
+  // A picture chosen by hand wins; otherwise the preview picture taken from the uploaded video.
+  const cover = key(v.cover, "s") ?? key(v.f360_poster, "s") ?? key(v.f720_poster, "s");
+  if (cover) files.cover = cover;
   if (Object.keys(sizes).length) files.sizes = sizes;
 
   const row = {

@@ -127,15 +127,17 @@ export function StudyForm({ item: it, exams, subjects, topics, canDelete }: { it
         {k !== "novel" ? (
           <div className="space-y-1.5"><Label htmlFor="year">Year</Label><input id="year" name="year" type="number" min={1978} max={2100} defaultValue={it.year ?? ""} className={inputCls} /></div>
         ) : <input type="hidden" name="year" value="" />}
-        {k === "novel" || k === "doc" || k === "lesson" ? (
-          <div className="space-y-1.5"><Label>Cover picture</Label><ImageUpload name="cover" kind="cover" defaultKey={files.cover as string | undefined} /></div>
-        ) : <input type="hidden" name="cover" value="" />}
+        <div className="space-y-1.5">
+          <Label>{isVideo ? "Thumbnail" : "Cover picture"}</Label>
+          <ImageUpload name="cover" kind="cover" defaultKey={files.cover as string | undefined} />
+          {isVideo ? <p className="text-xs text-muted-foreground">Taken from the video automatically when you upload it. Add a picture here to use your own.</p> : null}
+        </div>
         <div className="space-y-1.5"><Label htmlFor="sort">Order (small numbers first)</Label><input id="sort" name="sort" type="number" defaultValue={it.sort ?? 0} className={inputCls} /></div>
         <div className="space-y-1.5"><Label htmlFor="status">Status</Label>
           <select id="status" name="status" defaultValue={it.status ?? "draft"} className={inputCls}>
             <option value="draft">Draft</option><option value="review">In review</option><option value="published">Published</option>
           </select></div>
-        <label className="flex items-center justify-between gap-3 text-sm"><span>Free for everyone<span className="block text-xs text-muted-foreground">Off = Premium only. Free users also need this section on in Free vs Premium.</span></span><Switch name="is_free" defaultChecked={it.is_free} /></label>
+        <label className="flex items-center justify-between gap-3 text-sm"><span>Free for everyone<span className="block text-xs text-muted-foreground">{isVideo ? "Off = Premium only. On = every student can watch this video." : "Off = Premium only. Free users also need this section on in Free vs Premium."}</span></span><Switch name="is_free" defaultChecked={it.is_free} /></label>
         {state.error ? <p role="alert" className="rounded-xl bg-error-soft px-3 py-2 text-sm text-on-error-soft">{state.error}</p> : null}
         <div className="flex gap-2">
           <Button type="submit" disabled={saving} className="grow">{saving ? <SpinnerGap size={16} className="animate-spin" /> : null} Save</Button>

@@ -8,7 +8,7 @@ import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
 import '../../ui/kit.dart';
 import '../../widgets/phosphor.g.dart';
-import '../../widgets/question_image.dart';
+import '../../widgets/r2_image.dart';
 import '../../widgets/states.dart';
 
 /// Category → cover gradient + icon (prototype `news-cover c-navy|c-blue|c-gold|c-green`).
@@ -45,7 +45,7 @@ class NewsCover extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final look = newsLook(n['category'] as String?);
     final key = n['image_path'] as String?;
-    final url = key == null || ref.watch(settingsProvider).dataSaver ? null : ref.watch(signedImageProvider(key)).value;
+    final show = key != null && !ref.watch(settingsProvider).dataSaver;
     final cover = Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(colors: look.g, begin: Alignment.topLeft, end: Alignment.bottomRight),
@@ -66,15 +66,9 @@ class NewsCover extends ConsumerWidget {
               ),
             ),
           Icon(look.icon, size: thumb ? 30 : iconSize, color: look.fg.withValues(alpha: .9)),
-          if (url != null)
+          if (show)
             Positioned.fill(
-              child: Image.network(
-                url,
-                fit: BoxFit.cover,
-                semanticLabel: '${n['title'] ?? 'News'} picture',
-                frameBuilder: (_, child, frame, sync) => sync ? child : AnimatedOpacity(opacity: frame == null ? 0 : 1, duration: Motion.base, child: child),
-                errorBuilder: (_, _, _) => const SizedBox.shrink(),
-              ),
+              child: R2Image(imageKey: key, semanticLabel: '${n['title'] ?? 'News'} picture', decodeWidth: thumb ? 200 : 900),
             ),
         ],
       ),

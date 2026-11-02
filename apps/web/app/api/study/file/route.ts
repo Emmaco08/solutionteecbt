@@ -25,7 +25,10 @@ export async function POST(req: Request) {
     global: { headers: { Authorization: `Bearer ${token}` } },
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const { data: key, error } = await asUser.rpc("study_file_key", { p_id: parsed.data.id, p_file: parsed.data.file });
+  // Covers and video preview pictures are teasers shown on lists (also for Premium items): no plan check (D-057).
+  const { data: key, error } = parsed.data.file === "cover"
+    ? await asUser.rpc("study_cover_key", { p_id: parsed.data.id })
+    : await asUser.rpc("study_file_key", { p_id: parsed.data.id, p_file: parsed.data.file });
   if (error) {
     if (/locked/.test(error.message)) return json({ error: "This is part of Premium.", code: "locked" }, 403);
     if (/not_found/.test(error.message)) return json({ error: "This is no longer available." }, 404);

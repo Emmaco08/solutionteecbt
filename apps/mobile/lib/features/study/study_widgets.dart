@@ -9,6 +9,7 @@ import '../../theme/tokens.g.dart';
 import '../../ui/kit.dart';
 import '../../ui/subject_icons.dart';
 import '../../widgets/phosphor.g.dart';
+import '../../widgets/r2_image.dart';
 import '../premium/paywall.dart';
 
 /// Where each kind of study item opens.
@@ -127,8 +128,24 @@ const _thumbs = [
 
 /// Video thumbnail (`.thumb.th-1…4`): gradient, faint subject icon, play (or lock) button, duration.
 class VideoThumb extends StatelessWidget {
-  const VideoThumb({super.key, required this.index, required this.subjectIcon, this.duration, this.locked = false, this.radius = Radii.md, this.big = false});
+  const VideoThumb({
+    super.key,
+    required this.index,
+    required this.subjectIcon,
+    this.duration,
+    this.locked = false,
+    this.radius = Radii.md,
+    this.big = false,
+    this.coverKey,
+    this.itemId,
+    this.hd = false,
+    this.showPlay = true,
+  });
   final int index;
+
+  /// The video's own thumbnail (R2 key from the catalog's meta.cover), drawn over the gradient once loaded.
+  final String? coverKey, itemId;
+  final bool hd, showPlay;
   final IconData subjectIcon;
   final String? duration;
   final bool locked, big;
@@ -148,16 +165,34 @@ class VideoThumb extends StatelessWidget {
           alignment: Alignment.center,
           children: [
             Positioned(left: 10, top: 8, child: Icon(subjectIcon, size: 64, color: Colors.white.withValues(alpha: .18))),
-            Container(
-              width: big ? 60 : 44,
-              height: big ? 60 : 44,
-              decoration: BoxDecoration(color: Colors.white.withValues(alpha: .92), shape: BoxShape.circle, boxShadow: context.shadow(2)),
-              child: Icon(
-                locked ? PhosphorIcons.lockSimple(PhosphorIconsStyle.fill) : PhosphorIcons.play(PhosphorIconsStyle.fill),
-                size: big ? 26 : 20,
-                color: Palette.navy900,
+            if (coverKey != null && itemId != null) ...[
+              Positioned.fill(
+                child: R2Image(imageKey: coverKey!, itemId: itemId),
               ),
-            ),
+              // Soft shade so the play button and labels stay readable on bright thumbnails.
+              const Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Color(0x1A000000), Color(0x00000000), Color(0x59000000)],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+            if (showPlay)
+              Container(
+                width: big ? 60 : 44,
+                height: big ? 60 : 44,
+                decoration: BoxDecoration(color: Colors.white.withValues(alpha: .92), shape: BoxShape.circle, boxShadow: context.shadow(2)),
+                child: Icon(
+                  locked ? PhosphorIcons.lockSimple(PhosphorIconsStyle.fill) : PhosphorIcons.play(PhosphorIconsStyle.fill),
+                  size: big ? 26 : 20,
+                  color: Palette.navy900,
+                ),
+              ),
             if (duration != null && duration!.isNotEmpty)
               Positioned(
                 right: 8,
@@ -166,6 +201,16 @@ class VideoThumb extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(color: const Color(0xC706132B), borderRadius: BorderRadius.circular(6)),
                   child: Text(duration!, style: context.ty.cap.bold.col(Colors.white).copyWith(fontSize: 11)),
+                ),
+              ),
+            if (hd)
+              Positioned(
+                left: 8,
+                bottom: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(color: const Color(0xC706132B), borderRadius: BorderRadius.circular(6)),
+                  child: Text('HD', style: context.ty.cap.bold.col(Colors.white).copyWith(fontSize: 11)),
                 ),
               ),
             if (locked)
@@ -189,10 +234,13 @@ const _covers = [
 
 /// Book cover (`.cover.c1…3`): 3:4 gradient with the title at the bottom.
 class BookCover extends StatelessWidget {
-  const BookCover({super.key, required this.title, this.index = 0, this.width});
+  const BookCover({super.key, required this.title, this.index = 0, this.width, this.coverKey, this.itemId});
   final String title;
   final int index;
   final double? width;
+
+  /// The book's real cover from the admin (catalog meta.cover); the gradient with the title shows until it loads.
+  final String? coverKey, itemId;
   @override
   Widget build(BuildContext context) {
     final g = _covers[index % _covers.length];
@@ -202,18 +250,29 @@ class BookCover extends StatelessWidget {
       child: AspectRatio(
         aspectRatio: 3 / 4,
         child: Container(
-          padding: const EdgeInsets.all(12),
-          alignment: Alignment.bottomLeft,
+          clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
             boxShadow: context.shadow(2),
             gradient: LinearGradient(colors: g, begin: const Alignment(-.4, -1), end: const Alignment(.4, 1)),
           ),
-          child: Text(
-            title.replaceFirst('[SAMPLE] ', ''),
-            style: context.ty.sm.bold.col(fg).copyWith(height: 18 / 14),
-            maxLines: 4,
-            overflow: TextOverflow.ellipsis,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Align(
+                  alignment: Alignment.bottomLeft,
+                  child: Text(
+                    title.replaceFirst('[SAMPLE] ', ''),
+                    style: context.ty.sm.bold.col(fg).copyWith(height: 18 / 14),
+                    maxLines: 4,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
+              if (coverKey != null && itemId != null) R2Image(imageKey: coverKey!, itemId: itemId, decodeWidth: 480, semanticLabel: '$title cover'),
+            ],
           ),
         ),
       ),
