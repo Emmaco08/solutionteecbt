@@ -347,7 +347,7 @@ They are not real past questions. Remove them once real questions are imported. 
 
 ## 10. The website on Vercel (2026-10-30)
 The website (admin, sign-up codes, file links) runs on Vercel, so you can use the admin from any computer or phone.
-- **Address:** https://solutiontee-cbt.vercel.app/admin. Your own domain (for example admin.solutiontee.com) can be added later in *Vercel → Project → Settings → Domains*.
+- **Address:** https://admin.solutiontee.com/admin (your domain, added in *Vercel → Project → Settings → Domains*). https://solutiontee-cbt.vercel.app also works. The app calls the website at admin.solutiontee.com.
 - **Account:** Vercel team `solution-tee`, project `solutiontee-cbt`. The project builds `apps/web`.
 - **Keys:** copied from `apps/web/.env.local` into *Vercel → Project → Settings → Environment Variables* (Production and Preview). If you change a key, change it in both places and redeploy.
 - **Deploy again** (from `C:\solutiontee-cbt`): `npx vercel@65.8.0 deploy --prod`. Only the website and `packages/shared` are uploaded (`.vercelignore`).

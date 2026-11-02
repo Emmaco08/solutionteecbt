@@ -7,7 +7,7 @@ abstract final class Config {
 
   /// Website API (sign-up codes, password reset, signed file links). The hosted website on Vercel (D-055).
   /// To test against the laptop instead: --dart-define=API_BASE=http://localhost:3000 and `adb reverse tcp:3000 tcp:3000`.
-  static const apiBase = String.fromEnvironment('API_BASE', defaultValue: 'https://solutiontee-cbt.vercel.app');
+  static const apiBase = String.fromEnvironment('API_BASE', defaultValue: 'https://admin.solutiontee.com');
 
   static const appVersion = String.fromEnvironment('APP_VERSION', defaultValue: '1.0.0');
   static const disclaimer = 'SolutionTee CBT is an independent exam-practice platform and is not affiliated with or endorsed by JAMB, WAEC or NECO.';
