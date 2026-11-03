@@ -1,0 +1,129 @@
+"use server";
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import { requireStaff } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
+import { friendlyError, type ActionResult } from "@/lib/result";
+
+const editors = () => requireStaff(["super_admin", "admin", "editor"]);
+const lagos = (v: string) => new Date(`${v}:00+01:00`); // form times are Lagos time (WAT, UTC+1 all year)
+const uuid = /^[0-9a-f-]{36}$/;
+
+const Ch = z.object({
+  id: z.string().optional(),
+  title: z.string().trim().min(3, "Title is too short").max(80),
+  subtitle: z.string().trim().max(160),
+  kind: z.enum(["cash", "event", "practice"]),
+  icon: z.enum(["trophy", "function", "atom", "book-open-text", "flask", "globe", "lightning", "star"]),
+  exam_code: z.enum(["", "JAMB", "WAEC", "NECO"]),
+  starts: z.string().min(10, "Choose when it starts"),
+  ends: z.string().min(10, "Choose when it ends"),
+  seconds: z.coerce.number().int().min(10).max(300),
+  p1: z.coerce.number().int().min(0).max(10_000_000), p2: z.coerce.number().int().min(0).max(10_000_000), p3: z.coerce.number().int().min(0).max(10_000_000),
+  reward_text: z.string().trim().max(160),
+  premium_days: z.coerce.number().int().min(0).max(366),
+  premium_top: z.coerce.number().int().min(0).max(100),
+  allowed_exits: z.coerce.number().int().min(0).max(3),
+  published: z.boolean(),
+});
+
+/** Create or update a challenge. Returns its id. */
+export async function saveChallenge(form: FormData): Promise<ActionResult<{ id: string }>> {
+  await editors();
+  const p = Ch.safeParse({ ...Object.fromEntries(form), published: form.get("published") === "on" });
+  if (!p.success) return { ok: false, error: p.error.issues[0]?.message ?? "Check the challenge" };
+  const c = p.data;
+  const starts = lagos(c.starts), ends = lagos(c.ends);
+  if (Number.isNaN(starts.getTime()) || Number.isNaN(ends.getTime())) return { ok: false, error: "Choose valid times" };
+  if (ends <= starts) return { ok: false, error: "It must end after it starts" };
+  const prizes = [c.p1, c.p2, c.p3].filter((x) => x > 0);
+  if (c.kind === "cash" && !prizes.length) return { ok: false, error: "A cash challenge needs at least a 1st prize" };
+  const row = {
+    title: c.title, subtitle: c.subtitle || null, kind: c.kind, icon: c.icon, exam_code: c.exam_code || null,
+    starts_at: starts.toISOString(), ends_at: ends.toISOString(), seconds_per_question: c.seconds,
+    prizes: c.kind === "practice" ? [] : prizes, reward_text: c.reward_text || null,
+    premium_days: c.premium_days, premium_top: c.premium_top, allowed_exits: c.allowed_exits, published: c.published,
+  };
+  const supabase = await createClient();
+  const r = c.id && uuid.test(c.id)
+    ? await supabase.from("challenges").update(row).eq("id", c.id).is("closed_at", null).select("id").single()
+    : await supabase.from("challenges").insert(row).select("id").single();
+  if (r.error) return { ok: false, error: friendlyError(r.error) };
+  revalidatePath("/admin/challenges");
+  return { ok: true, data: { id: r.data.id }, message: "Saved." };
+}
+
+const Q = z.object({
+  challenge_id: z.string().regex(uuid),
+  body: z.string().trim().min(3, "Write the question").max(4000),
+  A: z.string().trim().min(1, "Write option A").max(500), B: z.string().trim().min(1, "Write option B").max(500),
+  C: z.string().trim().min(1, "Write option C").max(500), D: z.string().trim().min(1, "Write option D").max(500),
+  answer: z.enum(["A", "B", "C", "D"], { message: "Choose the correct answer" }),
+  explanation: z.string().trim().max(8000),
+});
+
+/** A new question written for this challenge (D-029: cash challenges use new questions, not searchable past ones). */
+export async function addQuestion(form: FormData): Promise<ActionResult> {
+  await editors();
+  const p = Q.safeParse(Object.fromEntries(form));
+  if (!p.success) return { ok: false, error: p.error.issues[0]?.message ?? "Check the question" };
+  const q = p.data;
+  const supabase = await createClient();
+  const { count } = await supabase.from("challenge_questions").select("id", { count: "exact", head: true }).eq("challenge_id", q.challenge_id);
+  const { error } = await supabase.from("challenge_questions").insert({
+    challenge_id: q.challenge_id, position: (count ?? 0) + 1, body: q.body,
+    options: { A: q.A, B: q.B, C: q.C, D: q.D }, answer: q.answer, explanation: q.explanation || null,
+  });
+  if (error) return { ok: false, error: friendlyError(error) };
+  revalidatePath(`/admin/challenges/${q.challenge_id}`);
+  return { ok: true, message: "Question added." };
+}
+
+/** Copies a Free-year past question into the challenge (only Free years, so nothing locked reaches Free students). */
+export async function addFromBank(challengeId: string, questionId: string): Promise<ActionResult> {
+  await editors();
+  if (!uuid.test(challengeId) || !uuid.test(questionId)) return { ok: false, error: "Choose a question" };
+  const supabase = await createClient();
+  const { data: free } = await supabase.rpc("admin_question_is_free", { p_id: questionId });
+  const { data: q, error } = await supabase.from("questions").select("id, body, options, answer, explanation, passage_id").eq("id", questionId).single();
+  if (error || !q) return { ok: false, error: "Question not found" };
+  if (!free) return { ok: false, error: "Use a question from a year Free students can open, or write a new one." };
+  const { count } = await supabase.from("challenge_questions").select("id", { count: "exact", head: true }).eq("challenge_id", challengeId);
+  const opts = q.options as Record<string, string>;
+  const { error: e2 } = await supabase.from("challenge_questions").insert({
+    challenge_id: challengeId, position: (count ?? 0) + 1, body: q.body, options: { A: opts.A, B: opts.B, C: opts.C, D: opts.D },
+    answer: q.answer === "E" ? "A" : q.answer, explanation: q.explanation, source_question_id: q.id,
+  });
+  if (e2) return { ok: false, error: friendlyError(e2) };
+  revalidatePath(`/admin/challenges/${challengeId}`);
+  return { ok: true, message: "Question added." };
+}
+
+export async function removeQuestion(challengeId: string, id: string): Promise<ActionResult> {
+  await editors();
+  const supabase = await createClient();
+  const { data: started } = await supabase.from("challenge_entries").select("id").eq("challenge_id", challengeId).limit(1);
+  if (started?.length) return { ok: false, error: "Students have started this challenge, so its questions cannot change." };
+  const { error } = await supabase.from("challenge_questions").delete().eq("id", id).eq("challenge_id", challengeId);
+  if (error) return { ok: false, error: friendlyError(error) };
+  revalidatePath(`/admin/challenges/${challengeId}`);
+  return { ok: true, message: "Removed." };
+}
+
+export async function closeNow(id: string): Promise<ActionResult> {
+  await editors();
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_challenge_close", { p_id: id });
+  if (error) return { ok: false, error: friendlyError(error) };
+  revalidatePath(`/admin/challenges/${id}`);
+  return { ok: true, message: "Closed. Winners are saved and told." };
+}
+
+export async function reviewEntry(challengeId: string, entryId: string, decision: "ok" | "dq" | "reinstate"): Promise<ActionResult> {
+  await requireStaff(["super_admin", "admin"]);
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_challenge_review", { p_entry: entryId, p_decision: decision });
+  if (error) return { ok: false, error: friendlyError(error) };
+  revalidatePath(`/admin/challenges/${challengeId}`);
+  return { ok: true, message: decision === "dq" ? "Disqualified. The ranking was updated." : decision === "reinstate" ? "Reinstated." : "Marked as fair." };
+}

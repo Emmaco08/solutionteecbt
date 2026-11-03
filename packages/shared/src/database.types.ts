@@ -590,6 +590,245 @@ export type Database = {
         }
         Relationships: []
       }
+      challenge_answers: {
+        Row: {
+          answered_at: string
+          choice: string | null
+          correct: boolean
+          entry_id: string
+          question_id: string
+          time_ms: number
+        }
+        Insert: {
+          answered_at?: string
+          choice?: string | null
+          correct?: boolean
+          entry_id: string
+          question_id: string
+          time_ms: number
+        }
+        Update: {
+          answered_at?: string
+          choice?: string | null
+          correct?: boolean
+          entry_id?: string
+          question_id?: string
+          time_ms?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_answers_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "challenge_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "challenge_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "challenge_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      challenge_entries: {
+        Row: {
+          challenge_id: string
+          current: number
+          device_flags: string[]
+          device_hash: string | null
+          dq_reason: string | null
+          exits: number
+          finished_at: string | null
+          flags: string[]
+          id: string
+          premium_given: boolean
+          prize: number | null
+          question_order: string[]
+          rank: number | null
+          review: string | null
+          score: number
+          served_at: string | null
+          started_at: string
+          status: string
+          time_ms: number
+          user_id: string
+        }
+        Insert: {
+          challenge_id: string
+          current?: number
+          device_flags?: string[]
+          device_hash?: string | null
+          dq_reason?: string | null
+          exits?: number
+          finished_at?: string | null
+          flags?: string[]
+          id?: string
+          premium_given?: boolean
+          prize?: number | null
+          question_order: string[]
+          rank?: number | null
+          review?: string | null
+          score?: number
+          served_at?: string | null
+          started_at?: string
+          status?: string
+          time_ms?: number
+          user_id: string
+        }
+        Update: {
+          challenge_id?: string
+          current?: number
+          device_flags?: string[]
+          device_hash?: string | null
+          dq_reason?: string | null
+          exits?: number
+          finished_at?: string | null
+          flags?: string[]
+          id?: string
+          premium_given?: boolean
+          prize?: number | null
+          question_order?: string[]
+          rank?: number | null
+          review?: string | null
+          score?: number
+          served_at?: string | null
+          started_at?: string
+          status?: string
+          time_ms?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_entries_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      challenge_questions: {
+        Row: {
+          answer: string
+          body: string
+          challenge_id: string
+          created_at: string
+          explanation: string | null
+          id: string
+          options: Json
+          position: number
+          source_question_id: string | null
+        }
+        Insert: {
+          answer: string
+          body: string
+          challenge_id: string
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          options: Json
+          position?: number
+          source_question_id?: string | null
+        }
+        Update: {
+          answer?: string
+          body?: string
+          challenge_id?: string
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          options?: Json
+          position?: number
+          source_question_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_questions_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "challenges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "challenge_questions_source_question_id_fkey"
+            columns: ["source_question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      challenges: {
+        Row: {
+          allowed_exits: number
+          announced_at: string | null
+          closed_at: string | null
+          created_at: string
+          created_by: string | null
+          ends_at: string
+          exam_code: string | null
+          icon: string
+          id: string
+          kind: string
+          premium_days: number
+          premium_top: number
+          prizes: number[]
+          published: boolean
+          reward_text: string | null
+          seconds_per_question: number
+          starts_at: string
+          subtitle: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          allowed_exits?: number
+          announced_at?: string | null
+          closed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          ends_at: string
+          exam_code?: string | null
+          icon?: string
+          id?: string
+          kind?: string
+          premium_days?: number
+          premium_top?: number
+          prizes?: number[]
+          published?: boolean
+          reward_text?: string | null
+          seconds_per_question?: number
+          starts_at: string
+          subtitle?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          allowed_exits?: number
+          announced_at?: string | null
+          closed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          ends_at?: string
+          exam_code?: string | null
+          icon?: string
+          id?: string
+          kind?: string
+          premium_days?: number
+          premium_top?: number
+          prizes?: number[]
+          published?: boolean
+          reward_text?: string | null
+          seconds_per_question?: number
+          starts_at?: string
+          subtitle?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       entitlements: {
         Row: {
           created_at: string
@@ -1309,6 +1548,68 @@ export type Database = {
         }
         Relationships: []
       }
+      prize_claims: {
+        Row: {
+          account_name: string
+          account_number: string
+          admin_note: string | null
+          adult: boolean
+          amount: number
+          bank_name: string
+          created_at: string
+          entry_id: string
+          guardian_name: string | null
+          guardian_phone: string | null
+          id: string
+          paid_at: string | null
+          paid_by: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          account_name: string
+          account_number: string
+          admin_note?: string | null
+          adult: boolean
+          amount: number
+          bank_name: string
+          created_at?: string
+          entry_id: string
+          guardian_name?: string | null
+          guardian_phone?: string | null
+          id?: string
+          paid_at?: string | null
+          paid_by?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          account_name?: string
+          account_number?: string
+          admin_note?: string | null
+          adult?: boolean
+          amount?: number
+          bank_name?: string
+          created_at?: string
+          entry_id?: string
+          guardian_name?: string | null
+          guardian_phone?: string | null
+          id?: string
+          paid_at?: string | null
+          paid_by?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prize_claims_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: true
+            referencedRelation: "challenge_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_path: string | null
@@ -1321,6 +1622,7 @@ export type Database = {
           jamb_subjects: string[]
           phone: string | null
           school: string | null
+          show_photo_on_leaderboard: boolean
           state: string | null
           target_exams: string[]
           target_score: number | null
@@ -1337,6 +1639,7 @@ export type Database = {
           jamb_subjects?: string[]
           phone?: string | null
           school?: string | null
+          show_photo_on_leaderboard?: boolean
           state?: string | null
           target_exams?: string[]
           target_score?: number | null
@@ -1353,6 +1656,7 @@ export type Database = {
           jamb_subjects?: string[]
           phone?: string | null
           school?: string | null
+          show_photo_on_leaderboard?: boolean
           state?: string | null
           target_exams?: string[]
           target_score?: number | null
@@ -1903,6 +2207,59 @@ export type Database = {
           },
         ]
       }
+      winners_wall: {
+        Row: {
+          amount: number
+          challenge_title: string
+          claim_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          note: string | null
+          place: string
+          published: boolean
+          receipt_path: string | null
+          state: string | null
+        }
+        Insert: {
+          amount: number
+          challenge_title: string
+          claim_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          note?: string | null
+          place: string
+          published?: boolean
+          receipt_path?: string | null
+          state?: string | null
+        }
+        Update: {
+          amount?: number
+          challenge_title?: string
+          claim_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          note?: string | null
+          place?: string
+          published?: boolean
+          receipt_path?: string | null
+          state?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "winners_wall_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: true
+            referencedRelation: "prize_claims"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -1919,6 +2276,12 @@ export type Database = {
           code: string
           used: number
         }[]
+      }
+      admin_challenge_close: { Args: { p_id: string }; Returns: Json }
+      admin_challenge_entries: { Args: { p_id: string }; Returns: Json }
+      admin_challenge_review: {
+        Args: { p_decision: string; p_entry: string }
+        Returns: Json
       }
       admin_codes: { Args: never; Returns: Json }
       admin_create_code_batch: {
@@ -1983,6 +2346,8 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_question_is_free: { Args: { p_id: string }; Returns: boolean }
+      admin_prize_claims: { Args: never; Returns: Json }
       admin_qotd_candidates: {
         Args: { p_limit?: number; p_search?: string; p_subject?: number }
         Returns: Json
@@ -2046,11 +2411,26 @@ export type Database = {
       am_money_admin: { Args: never; Returns: boolean }
       am_notifier: { Args: never; Returns: boolean }
       auth_user_status: { Args: { p_email: string }; Returns: string }
-      can_view_avatar: { Args: { p_key: string }; Returns: boolean }
       can_upload_images: { Args: never; Returns: boolean }
+      can_view_avatar: { Args: { p_key: string }; Returns: boolean }
       can_view_note_image: { Args: { p_key: string }; Returns: boolean }
       can_view_question_image: { Args: { p_key: string }; Returns: boolean }
       can_view_study_file: { Args: { p_key: string }; Returns: boolean }
+      challenge_answer: {
+        Args: { p_choice: string; p_entry: string; p_question: string }
+        Returns: Json
+      }
+      challenge_detail: { Args: { p_id: string }; Returns: Json }
+      challenge_exit: {
+        Args: { p_entry: string; p_reason?: string }
+        Returns: Json
+      }
+      challenge_result: { Args: { p_id: string }; Returns: Json }
+      challenge_start: {
+        Args: { p_device?: string; p_device_flags?: string[]; p_id: string }
+        Returns: Json
+      }
+      challenges_list: { Args: never; Returns: Json }
       email_send_allowed: {
         Args: { p_email_hash: string; p_ip_hash: string | null; p_kind: string }
         Returns: string
@@ -2123,6 +2503,7 @@ export type Database = {
         }[]
       }
       my_plan: { Args: never; Returns: Json }
+      my_winnings: { Args: never; Returns: Json }
       pay_note: {
         Args: {
           p_data?: Json
@@ -2177,6 +2558,18 @@ export type Database = {
         }
         Returns: Json
       }
+      prize_claim: {
+        Args: {
+          p_account_name: string
+          p_account_number: string
+          p_adult: boolean
+          p_bank: string
+          p_guardian_name?: string
+          p_guardian_phone?: string
+          p_id: string
+        }
+        Returns: Json
+      }
       push_cron_ok: { Args: { p_token: string }; Returns: boolean }
       push_done: {
         Args: { p_error: string; p_id: string; p_sent: number }
@@ -2225,6 +2618,7 @@ export type Database = {
       study_item: { Args: { p_id: string }; Returns: Json }
       submit_attempt: { Args: { p: Json }; Returns: Json }
       undo_import: { Args: { p_batch: string }; Returns: number }
+      winners_wall_list: { Args: never; Returns: Json }
     }
     Enums: {
       attempt_status: "submitted" | "abandoned"
