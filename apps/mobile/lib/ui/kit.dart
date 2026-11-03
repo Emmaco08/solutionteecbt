@@ -1088,9 +1088,12 @@ class AppIconArt extends StatelessWidget {
 
 /// Avatar (`.avatar`): initials on gold, sizes 44 / lg 72 / xl.
 class Avatar extends StatelessWidget {
-  const Avatar(this.name, {super.key, this.size = 44});
+  const Avatar(this.name, {super.key, this.size = 44, this.photo});
   final String name;
   final double size;
+
+  /// A profile photo drawn over the initials when it has loaded (e.g. an R2Image), D-063.
+  final Widget? photo;
   static String initials(String name) {
     final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
     if (parts.isEmpty) return '?';
@@ -1102,8 +1105,17 @@ class Avatar extends StatelessWidget {
     width: size,
     height: size,
     alignment: Alignment.center,
+    clipBehavior: Clip.antiAlias,
     decoration: BoxDecoration(color: context.c.accent, shape: BoxShape.circle),
-    child: Text(initials(name), style: context.ty.label.bold.copyWith(fontSize: size * .34, height: 1).col(context.c.onAccent)),
+    child: Stack(
+      fit: StackFit.expand,
+      children: [
+        Center(
+          child: Text(initials(name), style: context.ty.label.bold.copyWith(fontSize: size * .34, height: 1).col(context.c.onAccent)),
+        ),
+        ?photo,
+      ],
+    ),
   );
 }
 

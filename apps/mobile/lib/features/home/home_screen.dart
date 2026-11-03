@@ -18,6 +18,7 @@ import '../cbt/exam_clock.dart';
 import '../news/news_screens.dart';
 import '../shell/shell.dart';
 import '../premium/paywall.dart';
+import '../profile/me_extras.dart';
 
 /// The unfinished test on this phone (if any), for the "Continue your test" card.
 final unfinishedProvider = FutureProvider<LocalAttempt?>((ref) => ref.watch(dbProvider).unfinishedAttempt());
@@ -259,7 +260,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     Semantics(
                       button: true,
                       label: 'Open my profile',
-                      child: GestureDetector(onTap: () => context.go('/me'), child: Avatar(name)),
+                      child: GestureDetector(onTap: () => context.go('/me'), child: MyAvatar(name)),
                     ),
                     const Gap(Space.s3),
                     Expanded(

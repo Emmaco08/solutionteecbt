@@ -71,6 +71,12 @@ class WebApi {
     return d['url'] as String;
   }
 
+  /// A 10-minute upload link for the student's profile photo: returns (key, url). D-063.
+  Future<(String, String)> avatarUploadLink(int size) async {
+    final d = await _post('/api/account/avatar', {'contentType': 'image/jpeg', 'size': size}, auth: true);
+    return (d['key'] as String, d['url'] as String);
+  }
+
   /// A short-lived link to one file of a study item (360 / 720 video, pdf, cover). The server checks the
   /// student's plan first; a locked item comes back as status 403.
   Future<String> studyFile(String id, String file) async {

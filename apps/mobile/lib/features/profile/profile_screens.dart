@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/config.dart';
 import '../../core/providers.dart';
 import '../../core/push.dart';
+import '../../data/ai_repo.dart';
 import '../../data/db.dart';
 import '../../data/notifications_repo.dart';
 import '../../theme/theme.dart';
@@ -20,6 +21,7 @@ import '../../widgets/states.dart';
 import '../home/home_screen.dart';
 import '../premium/checkout.dart';
 import '../premium/payments.dart';
+import 'me_extras.dart';
 
 const _supportEmailFallback = 'support@mail.solutiontee.com';
 
@@ -158,7 +160,33 @@ class ProfileScreen extends ConsumerWidget {
                 padding: const EdgeInsets.fromLTRB(Space.s5, Space.s2, Space.s5, Space.s4),
                 child: Row(
                   children: [
-                    Avatar(name, size: 72),
+                    Semantics(
+                      button: true,
+                      label: 'Change profile photo',
+                      child: GestureDetector(
+                        onTap: () => showPhotoSheet(context, ref),
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            MyAvatar(name, size: 72),
+                            Positioned(
+                              right: -2,
+                              bottom: -2,
+                              child: Container(
+                                width: 28,
+                                height: 28,
+                                decoration: BoxDecoration(
+                                  color: c.primary,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: c.bg, width: 2),
+                                ),
+                                child: Icon(PhosphorIcons.camera(PhosphorIconsStyle.fill), size: 14, color: c.onPrimary),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                     const Gap(Space.s4),
                     Expanded(
                       child: Column(
@@ -293,9 +321,22 @@ class ProfileScreen extends ConsumerWidget {
                         ],
                       ),
                     ),
+                  const BadgesSection(),
                   ListCard(
                     children: [
                       ListRow(icon: PhosphorIcons.clockCounterClockwise(PhosphorIconsStyle.fill), title: 'Test history', onTap: () => context.push('/history')),
+                      ListRow(icon: PhosphorIcons.bookmarkSimple(PhosphorIconsStyle.fill), title: 'Bookmarks', onTap: () => context.push('/study/bookmarks')),
+                      ListRow(icon: PhosphorIcons.downloadSimple(PhosphorIconsStyle.fill), title: 'Downloads', onTap: () => context.push('/downloads')),
+                      Consumer(
+                        builder: (context, ref, _) {
+                          final left = ref.watch(aiQuotaProvider).value?['left'];
+                          return ListRow(
+                            icon: PhosphorIcons.sparkle(PhosphorIconsStyle.fill),
+                            title: left == null ? 'AI tutor' : 'AI prompts left today: $left',
+                            onTap: () => context.go('/ai'),
+                          );
+                        },
+                      ),
                       if (showsRedeem(ref))
                         ListRow(icon: PhosphorIcons.ticket(PhosphorIconsStyle.fill), title: 'Redeem a code', onTap: () => showRedeemSheet(context)),
                       ListRow(icon: PhosphorIcons.gearSix(PhosphorIconsStyle.fill), title: 'Settings', onTap: () => context.push('/settings')),
