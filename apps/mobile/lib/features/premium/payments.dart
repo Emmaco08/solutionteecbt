@@ -31,6 +31,9 @@ final featureFlagsProvider = FutureProvider<Map<String, bool>>(
 /// `paystack_in_play_build` (after Google's billing-choice programme covers Nigeria).
 bool usesPaystack(WidgetRef ref) => store == Store.direct || (ref.watch(featureFlagsProvider).value?['paystack_in_play_build'] ?? false);
 
+/// The same, for button handlers and other code outside build (reads, does not watch).
+bool usesPaystackNow(WidgetRef ref) => store == Store.direct || (ref.read(featureFlagsProvider).value?['paystack_in_play_build'] ?? false);
+
 /// "Redeem a code" (free Premium days): always in the direct build; in the Play build only with `codes_in_play_build`.
 bool showsRedeem(WidgetRef ref) => store == Store.direct || (ref.watch(featureFlagsProvider).value?['codes_in_play_build'] ?? false);
 

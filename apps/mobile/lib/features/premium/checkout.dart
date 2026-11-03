@@ -46,7 +46,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> with WidgetsBin
   Timer? _poll;
   int _polls = 0;
 
-  PaymentProvider get _pay => widget.provider ?? ref.read(paymentProvider(usesPaystack(ref)));
+  PaymentProvider get _pay => widget.provider ?? ref.read(paymentProvider(usesPaystackNow(ref)));
 
   @override
   void initState() {
@@ -119,7 +119,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> with WidgetsBin
       case PayPending(:final reference):
         setState(() {
           _reference = reference ?? _reference;
-          _stage = reference == null && !usesPaystack(ref) ? _Stage.waitingGoogle : _Stage.checking;
+          _stage = reference == null && !usesPaystackNow(ref) ? _Stage.waitingGoogle : _Stage.checking;
         });
         if (tapped && _stage == _Stage.checking) {
           toast(context, 'Not confirmed yet. If you have paid, give it a minute.', icon: PhosphorIcons.hourglass(PhosphorIconsStyle.fill));
