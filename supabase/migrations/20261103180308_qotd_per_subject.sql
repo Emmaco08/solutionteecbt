@@ -1,11 +1,11 @@
--- DRAFT, not applied yet (the first try waited for a Supabase confirmation that never came). Apply with MCP, then move to
--- supabase/migrations/<version>_qotd_per_subject.sql.
 -- Owner (D-071): question of the day per subject. Each day every subject can have its own question; each student
 -- gets one of their own JAMB subjects (picked at random per student per day). Admin analysis and a daily notification.
 
 -- ================================================================ schema
 alter table public.qotd add column subject_id smallint references public.subjects (id);
+alter table public.qotd disable trigger qotd_check;
 update public.qotd d set subject_id = q.subject_id from public.questions q where q.id = d.question_id and d.subject_id is null;
+alter table public.qotd enable trigger qotd_check;
 
 alter table public.qotd_answers drop constraint if exists qotd_answers_day_fkey;
 alter table public.qotd_answers add column qotd_id uuid references public.qotd (id) on delete restrict;

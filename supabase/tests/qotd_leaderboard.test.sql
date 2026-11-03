@@ -38,6 +38,8 @@ update public.profiles set full_name = 'Temi', state = 'Lagos', school = 'Test C
 update public.profiles set full_name = 'Fast Finger', state = 'Lagos' where id = '00000000-0000-4000-8000-0000000000f4';
 update public.profiles set full_name = 'Hidden Person', state = 'Lagos', hide_on_leaderboard = true where id = '00000000-0000-4000-8000-0000000000f5';
 update public.profiles set full_name = 'Staff Member', state = 'Lagos' where id = '00000000-0000-4000-8000-0000000000f9';
+-- Everyone takes the first subject (the test questions' subject), so the daily pick is predictable (D-071).
+update public.profiles set jamb_subjects = array[(select code from public.subjects order by id limit 1)] where id::text like '00000000-0000-4000-8000-0000000000f%';
 
 -- The test runs on a pretend "today" far ahead, so the real question of the day is not touched (rolled back).
 create or replace function private.lagos_today() returns date language sql stable set search_path = '' as $f$ select date '2090-06-15' $f$;
@@ -92,10 +94,9 @@ reset role;
 alter table public.qotd disable trigger qotd_check;
 insert into public.qotd (day, question_id) values (private.lagos_today() - 1, (select id from tq where body = 'TSTQ jamb two')),
   (private.lagos_today() - 2, (select id from tq where body = 'TSTQ jamb two')), (private.lagos_today() - 4, (select id from tq where body = 'TSTQ jamb two'));
-insert into public.qotd_answers (user_id, day, choice, correct) values
-  ('00000000-0000-4000-8000-0000000000f1', private.lagos_today() - 1, 'B', true),
-  ('00000000-0000-4000-8000-0000000000f1', private.lagos_today() - 2, 'C', false),
-  ('00000000-0000-4000-8000-0000000000f1', private.lagos_today() - 4, 'B', true);
+insert into public.qotd_answers (user_id, day, qotd_id, choice, correct)
+select '00000000-0000-4000-8000-0000000000f1', d.day, d.id, v.c, v.ok from public.qotd d
+join (values (1, 'B', true), (2, 'C', false), (4, 'B', true)) v(n, c, ok) on d.day = private.lagos_today() - v.n;
 alter table public.qotd enable trigger qotd_check;
 select tests.as_user('00000000-0000-4000-8000-0000000000f1');
 select tests.check((select (public.qotd_today() ->> 'streak')::int) = 3, 'streak: days in a row answered (a missed day ends it)');
@@ -114,10 +115,22 @@ reset role;
 update public.access_rules set rules = jsonb_set(rules, '{jamb}', '"all"') where tier = 'free';
 
 -- automatic pick for an unscheduled day: a published Free-year question without a passage
-create temp table auto as select private.qotd_ensure(private.lagos_today() + 30) as id;
+create temp table auto as select private.qotd_pick(private.lagos_today() + 30, (select id from public.subjects order by id limit 1)) as id;
 select tests.check((select q.status = 'published' and q.passage_id is null and private.tier_year_open('free', q.exam_id, q.year, 'cbt')
-  from auto join public.questions q on q.id = auto.id), 'an unscheduled day gets an automatic Free-year question');
-select tests.check((select source from public.qotd where day = private.lagos_today() + 30) = 'auto', 'and it is saved, so everyone gets the same one');
+  from auto join public.qotd d on d.id = auto.id join public.questions q on q.id = d.question_id), 'an unscheduled day and subject gets an automatic Free-year question');
+select tests.check((select source from public.qotd where id = (select id from auto)) = 'auto', 'and it is saved, so everyone with that subject gets the same one');
+
+-- each student gets a question from one of their own subjects (D-071)
+create temp table s2 as select id, code from public.subjects where id = (select q.subject_id from public.questions q
+  where q.status = 'published' and q.deleted_at is null and q.passage_id is null and q.subject_id <> (select id from public.subjects order by id limit 1)
+    and private.tier_year_open('free', q.exam_id, q.year, 'cbt') limit 1);
+grant select on s2 to authenticated;
+update public.profiles set jamb_subjects = array[(select code from s2)] where id = '00000000-0000-4000-8000-0000000000f4';
+select tests.as_user('00000000-0000-4000-8000-0000000000f4');
+select tests.check((select public.qotd_today() -> 'question' ->> 'subject') = (select name from public.subjects where id = (select id from s2)),
+  'a student with another subject gets a question in their own subject');
+reset role;
+select tests.check((select count(distinct subject_id) from public.qotd where day = private.lagos_today()) >= 2, 'one question per subject per day');
 
 -- ---------------------------------------------------------------- leaderboard
 reset role;
@@ -182,7 +195,7 @@ reset role;
 alter table public.qotd disable trigger qotd_check;
 update public.qotd set question_id = null, custom_subject = 'General knowledge', custom_body = 'TSTOWN Which planet is red?',
   custom_options = '{"A": "Venus", "B": "Mars", "C": "Earth", "D": "Jupiter"}', custom_answer = 'B', custom_explanation = 'Iron oxide.'
-where day = private.lagos_today();
+where day = private.lagos_today() and subject_id = (select id from public.subjects order by id limit 1);
 alter table public.qotd enable trigger qotd_check;
 select tests.throws($q$ insert into public.qotd (day, custom_body, custom_options, custom_answer) values (private.lagos_today() + 3, 'x', '{"A": "1", "B": "2"}', 'A') $q$,
   '23514', null, 'an own question needs options A to D');
@@ -194,7 +207,7 @@ update public.access_rules set rules = jsonb_set(rules, '{jamb}', '0') where tie
 select tests.as_user('00000000-0000-4000-8000-0000000000f5');
 create temp table own1 as select public.qotd_today() as j;
 select tests.check((select j -> 'question' ->> 'body' = 'TSTOWN Which planet is red?' and (j -> 'question' ->> 'own')::boolean
-  and j -> 'question' ->> 'subject' = 'General knowledge' and not (j -> 'question' ? 'answer') from own1),
+  and j -> 'question' ->> 'subject' = (select name from public.subjects order by id limit 1) and not (j -> 'question' ? 'answer') from own1),
   'an own question reaches every student (even when Free years are closed), without the answer');
 select tests.check((select (public.qotd_answer('B') -> 'result' ->> 'correct')::boolean), 'and is marked with the admin''s answer');
 reset role;
@@ -221,6 +234,11 @@ update public.app_settings set value = value || '{"exams": {"JAMB": true, "WAEC"
 select tests.as_user('00000000-0000-4000-8000-0000000000f1');
 select tests.check((select public.leaderboard_for('WAEC') ->> 'exam') = 'JAMB' and (select jsonb_array_length(public.leaderboard_for() -> 'exams')) = 2,
   'the admin can switch one exam''s board off');
+
+select tests.as_user('00000000-0000-4000-8000-0000000000f1');
+select tests.throws($q$ select public.admin_qotd_stats() $q$, '42501', null, 'students cannot see the question of the day analysis');
+select set_config('request.jwt.claims', json_build_object('sub', '00000000-0000-4000-8000-0000000000f9', 'role', 'authenticated', 'aal', 'aal2')::text, true);
+select tests.check((select (public.admin_qotd_stats() -> 'today' ->> 'answers')::int) >= 3, 'staff see how many answered today');
 
 reset role;
 set local role anon;
