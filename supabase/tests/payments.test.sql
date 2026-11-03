@@ -145,7 +145,8 @@ select tests.check((select public.pay_refunded('play', null, 'tok-1', null, '{}'
 reset role;
 select tests.as_user('00000000-0000-4000-8000-0000000000d3');
 select tests.check((select (public.redeem_code('tstweek') ->> 'days')::int) = 7, 'redeem: 7 free days');
-select tests.check((select used_count from public.promo_codes where code = 'TSTWEEK') = 1, 'redeem: use counted');
+select tests.check((select count(*) from public.promo_redemptions where user_id = '00000000-0000-4000-8000-0000000000d3' and days = 7) = 1, 'redeem: own redemption recorded');
+select tests.check((select count(*) from public.promo_codes) = 0, 'redeem: codes stay hidden from students');
 select tests.as_user('00000000-0000-4000-8000-0000000000d2');
 select tests.check((select public.redeem_code('TSTWEEK') ->> 'error') = 'used_up', 'redeem: a one-use code cannot be used by a second student');
 select tests.check((select count(*) from public.payments) = (select count(*) from public.payments where user_id = '00000000-0000-4000-8000-0000000000d2'), 'students read only their own payments');
