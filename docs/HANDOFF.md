@@ -34,7 +34,7 @@ Last updated: 2026-11-03, after commit "test app download page". Read `CLAUDE.md
 What works the same: reading and writing code, plans, docs, migrations, Edge Function code, web code, Dart code, git commits and pushes, and Supabase/Vercel changes **if** those connectors are enabled for the session.
 
 What does not work from the cloud, and what to do instead:
-- **No USB phone:** a cloud session cannot install on the owner's phone or take phone screenshots. Build the APK in the cloud only if Flutter + Android SDK are installed there; otherwise leave building to the laptop and say so.
+- **No USB phone:** a cloud session cannot install on the owner's phone. Instead, pushing a branch with app changes triggers the GitHub workflow `android-apk.yml` (D-060), which builds the APK and puts it on https://admin.solutiontee.com/download?channel=test for the owner to install. Tell the owner when it is ready; check the run's result (analyzer and tests run there too).
 - **No `.env.local`:** the R2 upload script and `vercel` CLI need secrets that are only on the laptop. Do not ask for them in chat. Deploys can happen by the owner later, or by Vercel's Git integration if the owner connects the repo in the Vercel dashboard.
 - Say plainly what was not run or tested (CLAUDE.md "Never fake it").
 - Work on a branch, push it, and tell the owner the branch name so the laptop can pull it later.

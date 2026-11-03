@@ -404,3 +404,22 @@ node scripts/upload-apk.mjs
 ```
 
 The page picks up the new file at once (no website deploy needed). Testers install over the old version and keep their account.
+
+## 13. Automatic app builds on GitHub (2026-11-03)
+
+Add these at **github.com/Emmaco08/solutionteecbt → Settings → Secrets and variables → Actions → New repository secret**. Type them yourself; never paste them in chat.
+
+| Secret name | Where to get the value on the laptop |
+|---|---|
+| `ANDROID_KEYSTORE_BASE64` | PowerShell: `[Convert]::ToBase64String([IO.File]::ReadAllBytes("C:\solutiontee-cbt\apps\mobile\android\app\upload-keystore.jks")) \| Set-Clipboard`, then paste |
+| `ANDROID_KEYSTORE_PASSWORD` | `apps/mobile/android/key.properties`, the `storePassword=` value |
+| `ANDROID_KEY_PASSWORD` | same file, the `keyPassword=` value |
+| `ANDROID_KEY_ALIAS` | `upload` |
+| `R2_ENDPOINT` | `apps/web/.env.local`, the `R2_ENDPOINT=` value |
+| `R2_BUCKET` | `apps/web/.env.local`, `R2_BUCKET=` |
+| `R2_ACCESS_KEY_ID` | `apps/web/.env.local`, `R2_ACCESS_KEY_ID=` |
+| `R2_SECRET_ACCESS_KEY` | `apps/web/.env.local`, `R2_SECRET_ACCESS_KEY=` |
+
+Then on GitHub: **Actions → Android app → Run workflow**. About 10–15 minutes later the new app is at https://admin.solutiontee.com/download (main) or https://admin.solutiontee.com/download?channel=test (other branches).
+
+**Back up the signing key:** copy `upload-keystore.jks` and `key.properties` to a private place (e.g. your own Google Drive). If it is lost, phones cannot update the app without uninstalling.
