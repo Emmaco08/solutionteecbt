@@ -1,15 +1,16 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { DownloadSimple, Pause, Play, Shuffle, SpinnerGap } from "@phosphor-icons/react";
+import { DownloadSimple, Pause, PencilSimple, Play, Shuffle, SpinnerGap, Trash } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { inputCls } from "@/components/admin/row-form";
 import { Pill, naira } from "@/components/admin/ui";
 import { cn } from "@/lib/utils";
-import { batchCodes, createCodes, pauseCodes } from "./actions";
+import { batchCodes, createCodes, deleteCodes, pauseCodes, updateCodes } from "./actions";
 
 export type CodeRow = {
   id: string; batch_id: string | null; codes: number; code: string; kind: "pct" | "amt" | "days"; value: number; plan_ids: number[];
@@ -114,9 +115,14 @@ function download(rows: { code: string; used: number }[], name: string) {
   URL.revokeObjectURL(a.href);
 }
 
+/** A date in Lagos as YYYY-MM-DD, for date inputs. */
+const lagosDay = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("en-CA", { timeZone: "Africa/Lagos" }) : "");
+
 export function CodeRows({ rows, plans }: { rows: CodeRow[]; plans: Plan[] }) {
   const router = useRouter();
   const [pending, start] = useTransition();
+  const [editing, setEditing] = useState<CodeRow | null>(null);
+  const [sure, setSure] = useState<string | null>(null);
   const planNames = (ids: number[]) => (ids?.length ? ids.map((id) => plans.find((p) => p.id === id)?.name ?? "?").join(", ") : "All plans");
   const state = (r: CodeRow): [string, "ok" | "warn" | "neutral"] => {
     if (r.paused) return ["Paused", "warn"];
@@ -125,32 +131,98 @@ export function CodeRows({ rows, plans }: { rows: CodeRow[]; plans: Plan[] }) {
     if (new Date(r.starts_at) > new Date()) return ["Not started", "warn"];
     return ["Active", "ok"];
   };
+  const done = (res: { ok: boolean; error?: string; message?: string }) => {
+    if (res.ok) { toast.success(res.message ?? "Saved"); router.refresh(); } else toast.error(res.error);
+  };
   return (
-    <ul className="divide-y">
-      {rows.map((r) => {
-        const [label, tone] = state(r);
-        return (
-          <li key={r.id} className="flex flex-wrap items-center gap-3 px-5 py-3 text-sm">
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2"><b className="font-mono">{r.code}</b><Pill tone={tone}>{label}</Pill>{r.new_only ? <Pill tone="info">New students</Pill> : null}</div>
-              <span className="block text-muted-foreground">{valueText(r)}{r.kind !== "days" ? ` · ${planNames(r.plan_ids)}` : ""} · {r.used}{r.max_uses !== null ? ` of ${r.max_uses}` : ""} used{r.batch_id ? ` · ${r.codes} codes` : ""}</span>
-              <span className="block text-xs text-muted-foreground">{day(r.starts_at)} to {day(r.ends_at)}{r.note ? ` · ${r.note}` : ""}</span>
-            </div>
-            <div className="flex gap-1">
-              {r.batch_id ? (
-                <Button variant="ghost" size="icon" aria-label="Download codes" disabled={pending} onClick={() => start(async () => {
-                  const res = await batchCodes(r.batch_id!);
-                  if (res.ok) download(res.data ?? [], `${r.code.split("-")[0]}-codes.csv`); else toast.error(res.error);
-                })}><DownloadSimple size={18} /></Button>
-              ) : null}
-              <Button variant="ghost" size="icon" aria-label={r.paused ? "Turn on" : "Pause"} disabled={pending} onClick={() => start(async () => {
-                const res = await pauseCodes(r.id, !r.paused);
-                if (res.ok) { toast.success(res.message ?? "Saved"); router.refresh(); } else toast.error(res.error);
-              })}>{r.paused ? <Play size={18} /> : <Pause size={18} />}</Button>
-            </div>
-          </li>
-        );
-      })}
-    </ul>
+    <>
+      <ul className="divide-y">
+        {rows.map((r) => {
+          const [label, tone] = state(r);
+          return (
+            <li key={r.id} className="flex flex-wrap items-center gap-3 px-5 py-3 text-sm">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2"><b className="font-mono">{r.code}</b><Pill tone={tone}>{label}</Pill>{r.new_only ? <Pill tone="info">New students</Pill> : null}</div>
+                <span className="block text-muted-foreground">{valueText(r)}{r.kind !== "days" ? ` · ${planNames(r.plan_ids)}` : ""} · {r.used}{r.max_uses !== null ? ` of ${r.max_uses}` : ""} used{r.batch_id ? ` · ${r.codes} codes` : ""}</span>
+                <span className="block text-xs text-muted-foreground">{day(r.starts_at)} to {day(r.ends_at)}{r.note ? ` · ${r.note}` : ""}</span>
+              </div>
+              <div className="flex gap-1">
+                <Button variant="ghost" size="icon" aria-label="Edit" disabled={pending} onClick={() => setEditing(r)}><PencilSimple size={18} /></Button>
+                {r.batch_id ? (
+                  <Button variant="ghost" size="icon" aria-label="Download codes" disabled={pending} onClick={() => start(async () => {
+                    const res = await batchCodes(r.batch_id!);
+                    if (res.ok) download(res.data ?? [], `${r.code.split("-")[0]}-codes.csv`); else toast.error(res.error);
+                  })}><DownloadSimple size={18} /></Button>
+                ) : null}
+                <Button variant="ghost" size="icon" aria-label={r.paused ? "Turn on" : "Pause"} disabled={pending} onClick={() => start(async () => done(await pauseCodes(r.id, !r.paused)))}>
+                  {r.paused ? <Play size={18} /> : <Pause size={18} />}
+                </Button>
+                {sure === r.id ? (
+                  <Button variant="destructive" size="sm" disabled={pending} onClick={() => start(async () => { setSure(null); done(await deleteCodes(r.id, r.batch_id)); })}>
+                    {pending ? <SpinnerGap size={14} className="animate-spin" /> : <Trash size={16} />} {r.batch_id ? `Delete all ${r.codes}` : "Delete"}
+                  </Button>
+                ) : (
+                  <Button variant="ghost" size="icon" aria-label="Delete" disabled={pending} onClick={() => { setSure(r.id); setTimeout(() => setSure((s) => (s === r.id ? null : s)), 5000); }}>
+                    <Trash size={18} />
+                  </Button>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      <Sheet open={editing !== null} onOpenChange={(o) => !o && setEditing(null)}>
+        <SheetContent className="w-full overflow-y-auto sm:max-w-[460px]">
+          {editing ? <EditCode row={editing} plans={plans} onDone={() => { setEditing(null); router.refresh(); }} /> : null}
+        </SheetContent>
+      </Sheet>
+    </>
+  );
+}
+
+function EditCode({ row: r, plans, onDone }: { row: CodeRow; plans: Plan[]; onDone: () => void }) {
+  const [picked, setPicked] = useState<number[]>(r.plan_ids ?? []);
+  const [pending, start] = useTransition();
+  const batch = r.batch_id !== null;
+  return (
+    <div className="space-y-5 p-6">
+      <SheetHeader className="p-0">
+        <SheetTitle className="font-mono text-[21px]">{r.code}</SheetTitle>
+        <SheetDescription>
+          {batch ? `Changes apply to all ${r.codes} codes in this batch. ` : ""}Students who already used it keep what they got. The code text and its type ({r.kind === "pct" ? "% off" : r.kind === "amt" ? "₦ off" : "free days"}) stay the same.
+        </SheetDescription>
+      </SheetHeader>
+      <form className="space-y-4" action={(f) => start(async () => {
+        f.set("id", r.id); f.set("kind", r.kind); f.set("batch", batch ? "1" : "0"); f.set("plan_ids", picked.join(","));
+        const res = await updateCodes(f);
+        if (res.ok) { toast.success(res.message ?? "Saved"); onDone(); } else toast.error(res.error);
+      })}>
+        <div className="space-y-1.5"><Label htmlFor="eVal">{r.kind === "pct" ? "Percentage off" : r.kind === "amt" ? "Naira off" : "Free days"}</Label>
+          <input id="eVal" name="value" type="number" min={1} max={r.kind === "pct" ? 100 : r.kind === "days" ? 366 : 1_000_000}
+            defaultValue={r.kind === "amt" ? r.value / 100 : r.value} required className={inputCls} /></div>
+        {r.kind !== "days" ? (
+          <div className="space-y-1.5"><Label>Works on plans</Label>
+            <div className="flex flex-wrap gap-2">{plans.map((p) => {
+              const on = picked.includes(p.id);
+              return <button key={p.id} type="button" aria-pressed={on} onClick={() => setPicked(on ? picked.filter((x) => x !== p.id) : [...picked, p.id])}
+                className={cn("h-9 rounded-full border px-3 text-sm font-bold", on ? "border-primary bg-primary-soft text-foreground" : "text-muted-foreground")}>{p.name}</button>;
+            })}</div>
+            {!picked.length ? <span className="text-xs text-muted-foreground">None picked: works on every plan.</span> : null}
+          </div>
+        ) : null}
+        {batch ? <input type="hidden" name="max_uses" value="" /> : (
+          <div className="space-y-1.5"><Label htmlFor="eMax">Total uses allowed</Label>
+            <input id="eMax" name="max_uses" type="number" min={Math.max(1, r.used)} defaultValue={r.max_uses ?? ""} placeholder="No limit" className={inputCls} />
+            <span className="text-xs text-muted-foreground">Used {r.used} time{r.used === 1 ? "" : "s"} so far. Leave empty for no limit.</span></div>
+        )}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5"><Label htmlFor="eFrom">Starts</Label><input id="eFrom" name="starts" type="date" defaultValue={lagosDay(r.starts_at)} className={inputCls} /></div>
+          <div className="space-y-1.5"><Label htmlFor="eTo">Ends</Label><input id="eTo" name="ends" type="date" defaultValue={lagosDay(r.ends_at)} className={inputCls} /></div>
+        </div>
+        <label className="flex items-center justify-between gap-3 text-sm"><span>Only for students who have never paid</span><Switch name="new_only" defaultChecked={r.new_only} /></label>
+        <div className="space-y-1.5"><Label htmlFor="eNote">Note (only staff see it)</Label><input id="eNote" name="note" maxLength={200} defaultValue={r.note ?? ""} className={inputCls} /></div>
+        <div className="flex justify-end"><Button type="submit" disabled={pending}>{pending ? <SpinnerGap size={16} className="animate-spin" /> : null} Save changes</Button></div>
+      </form>
+    </div>
   );
 }
