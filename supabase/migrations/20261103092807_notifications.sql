@@ -32,6 +32,7 @@ create index notifications_due on public.notifications (scheduled_at) where stat
 create index notifications_user on public.notifications (user_id, created_at desc) where user_id is not null;
 create index notifications_feed on public.notifications (sent_at desc) where status = 'sent';
 create unique index notifications_source on public.notifications (source, source_ref) where source_ref is not null;
+create index notifications_created_by on public.notifications (created_by) where created_by is not null;
 
 create table public.notification_reads (
   user_id uuid not null references auth.users (id) on delete cascade default auth.uid(),
@@ -61,8 +62,11 @@ create index push_tokens_user on public.push_tokens (user_id);
 
 alter table public.news_posts add column notify boolean not null default false;
 
-create trigger notifications_audit after insert or update or delete on public.notifications
-  for each row when (coalesce(new.source, old.source) = 'admin') execute function private.audit_row();
+-- Admin-written messages are audited (automatic ones would flood the log).
+create trigger notifications_audit_ins after insert on public.notifications
+  for each row when (new.source = 'admin') execute function private.audit_row();
+create trigger notifications_audit_upd after update on public.notifications
+  for each row when (new.source = 'admin' and old.status is distinct from new.status) execute function private.audit_row();
 
 -- ------------------------------------------------------------------ RLS
 alter table public.notifications enable row level security;
@@ -136,6 +140,23 @@ end;
 $$;
 revoke all on function public.mark_notifications_read(uuid[]) from public, anon;
 grant execute on function public.mark_notifications_read(uuid[]) to authenticated;
+
+/**
+ * Saves this phone's push token for the signed-in student. A token already saved for another account on the same
+ * phone (after a log-out) moves to this one, so a phone only ever gets one student's messages.
+ */
+create or replace function public.register_push_token(p_token text, p_platform text default 'android', p_version text default null)
+returns void language plpgsql volatile security definer set search_path = '' as $$
+begin
+  if (select auth.uid()) is null then raise exception 'sign in first' using errcode = '42501'; end if;
+  insert into public.push_tokens (token, user_id, platform, app_version)
+  values (p_token, (select auth.uid()), coalesce(p_platform, 'android'), left(p_version, 20))
+  on conflict (token) do update set user_id = excluded.user_id, platform = excluded.platform,
+    app_version = excluded.app_version, last_seen = now();
+end;
+$$;
+revoke all on function public.register_push_token(text, text, text) from public, anon;
+grant execute on function public.register_push_token(text, text, text) to authenticated;
 
 -- ------------------------------------------------------------------ streak and badges
 /** Lagos days on which the student finished at least one test. */
@@ -343,16 +364,17 @@ begin
 end;
 $$;
 
-/** Records the result of one message. p_bad_tokens are removed (FCM said they no longer exist). */
-create or replace function public.push_done(p_id uuid, p_sent integer, p_error text, p_bad_tokens text[] default '{}')
+/**
+ * Records the result of one message. It is always 'sent' (it shows in the app's inbox even when push is off or failed);
+ * p_error notes what went wrong with the push itself. The push function removes tokens FCM rejected.
+ */
+create or replace function public.push_done(p_id uuid, p_sent integer, p_error text)
 returns void language sql volatile security definer set search_path = '' as $$
-  update public.notifications set status = case when p_error is null or p_sent > 0 then 'sent' else 'failed' end,
-    sent_at = now(), sent_count = p_sent, error = left(p_error, 300) where id = p_id;
-  delete from public.push_tokens where token = any (coalesce(p_bad_tokens, '{}'));
+  update public.notifications set status = 'sent', sent_at = now(), sent_count = p_sent, error = left(p_error, 300) where id = p_id;
 $$;
 
-revoke all on function public.push_take_due(integer), public.push_done(uuid, integer, text, text[]) from public, anon, authenticated;
-grant execute on function public.push_take_due(integer), public.push_done(uuid, integer, text, text[]) to service_role;
+revoke all on function public.push_take_due(integer), public.push_done(uuid, integer, text) from public, anon, authenticated;
+grant execute on function public.push_take_due(integer), public.push_done(uuid, integer, text) to service_role;
 revoke all on function private.queue_streak_reminders(), private.streak(uuid), private.practice_days(uuid) from public, anon, authenticated;
 
 /** Is this the cron token? (The push function checks it before running for pg_cron.) */
