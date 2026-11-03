@@ -95,6 +95,7 @@ Plan: `docs/plans/phase-4.md`.
   - [x] Edge Functions deployed: `paystack` (start, check, admin refund), `paystack-webhook` (HMAC-SHA512 + verify), `play-verify`, `play-rtdn`. Helper tests 7/7 (`node --test supabase/functions/_shared/paycrypto.test.mjs`). Live check: unsigned or logged-out calls are refused
   - [x] Admin: Payments (filters, totals, timeline, check again, refund), Redeem codes (shared or unique batches, pause, CSV), Play product ID reminder on Plans. `tsc` clean, `eslint` 0 errors. Not deployed to Vercel yet (needs the laptop)
   - [x] App: checkout, checking payment, success, Redeem a code, paywall → checkout, Google prices in the Play build; `direct` / `play` flavors. `flutter analyze` clean, tests 36/36
+  - [x] Builds compile in the cloud: `direct` release APK 27.5 MB, `play` debug APK. Sent to the owner as a test file (cloud-signed: uninstall the old app first). Not run on a phone yet
   - [!] Owner: Paystack test secret key in Supabase secrets + webhook URL in Paystack (SETUP §13.1)
   - [ ] Live Paystack test payment on the phone (after the key)
   - [!] Google Play: Play Console, products, service account (SETUP §13.3); cannot be tested before that
