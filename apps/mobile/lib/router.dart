@@ -24,6 +24,7 @@ import 'features/study/novel_screens.dart';
 import 'features/study/pq_screens.dart';
 import 'features/study/study_hub.dart';
 import 'features/study/video_screens.dart';
+import 'features/test/leaderboard_screen.dart';
 import 'features/test/test_screens.dart';
 
 /// Screens anyone can open without an account.
@@ -114,6 +115,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, s) => ReviewScreen(attemptId: s.pathParameters['id']!),
       ),
       GoRoute(path: '/history', builder: (_, _) => const HistoryScreen()),
+      GoRoute(path: '/leaderboard', builder: (_, _) => const LeaderboardScreen()),
       GoRoute(path: '/notifications', builder: (_, _) => const NotificationsScreen()),
       GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),
       GoRoute(path: '/help', builder: (_, _) => const HelpScreen()),

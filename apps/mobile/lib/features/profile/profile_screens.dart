@@ -609,6 +609,20 @@ class HistoryScreen extends ConsumerWidget {
 }
 
 // ---------------------------------------------------------------- settings (prototype: settings)
+/// Leaderboard privacy (D-066): saved on the server, which leaves hidden students out of every board.
+Future<void> _setOnLeaderboard(BuildContext context, WidgetRef ref, bool show) async {
+  final sb = ref.read(supabaseProvider);
+  final uid = sb.auth.currentUser?.id;
+  if (uid == null) return;
+  try {
+    await sb.from('profiles').update({'hide_on_leaderboard': !show}).eq('id', uid);
+    ref.invalidate(profileProvider);
+    if (context.mounted) toast(context, show ? 'You will appear on leaderboards' : 'You are hidden from leaderboards');
+  } catch (_) {
+    if (context.mounted) toast(context, 'Could not save. Check your internet and try again.');
+  }
+}
+
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
   @override
@@ -679,6 +693,17 @@ class SettingsScreen extends ConsumerWidget {
               ],
             ),
             const _NotificationSwitches(),
+            ListCard(
+              children: [
+                toggle(
+                  PhosphorIcons.ranking(PhosphorIconsStyle.fill),
+                  'Show me on leaderboards',
+                  'Only your first name and an initial are shown.',
+                  ref.watch(profileProvider).value?['hide_on_leaderboard'] != true,
+                  (v) => _setOnLeaderboard(context, ref, v),
+                ),
+              ],
+            ),
             ListCard(
               children: [
                 ListRow(icon: PhosphorIcons.books(PhosphorIconsStyle.fill), title: 'Change JAMB subjects', onTap: () => context.push('/subjects')),

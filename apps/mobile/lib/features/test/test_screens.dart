@@ -19,6 +19,7 @@ import '../cbt/exam_clock.dart';
 import '../home/home_screen.dart';
 import '../setup/setup_screen.dart';
 import '../premium/paywall.dart';
+import 'leaderboard_screen.dart';
 
 /// Test tab (prototype: test): navy "Full JAMB simulation" hero, practice modes, other exams, offline note.
 class TestHubScreen extends ConsumerWidget {
@@ -171,6 +172,7 @@ class TestHubScreen extends ConsumerWidget {
           ),
         ],
       ),
+      if (ref.watch(leaderboardOnProvider).value == true) const LeaderboardEntry(),
       modeCard(
         PhosphorIcons.cloudArrowDown(PhosphorIconsStyle.fill),
         Tone.navy,

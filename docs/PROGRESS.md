@@ -108,7 +108,7 @@ Plan: `docs/plans/phase-4.md`.
   - [x] **Owner approved: "4D ok" (2026-11-03)**
 - [x] Real app icon from `brand/favicon.svg`; /download updated automatically by GitHub after every app change (D-065)
 - **4E Challenges, referrals, leaderboard, question of the day, winners wall** (plan: `docs/plans/phase-4e.md`, three parts)
-  - [ ] 4E1 Question of the day + leaderboard
+  - [~] 4E1 Question of the day + leaderboard (D-066): database + tests **32/32**; admin pages (Question of the day, Leaderboard); app card on Home, Leaderboard screen, Settings switch; app tests 48/48, analyzer clean. Waiting for owner check (`4E1 ok`)
   - [ ] 4E2 Challenges & events, fair play, prize claims, winners wall
   - [ ] 4E3 Referrals, one account per person, bans
 

@@ -19,6 +19,7 @@ import '../news/news_screens.dart';
 import '../shell/shell.dart';
 import '../premium/paywall.dart';
 import '../profile/me_extras.dart';
+import 'qotd_card.dart';
 
 /// The unfinished test on this phone (if any), for the "Continue your test" card.
 final unfinishedProvider = FutureProvider<LocalAttempt?>((ref) => ref.watch(dbProvider).unfinishedAttempt());
@@ -141,6 +142,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ref.invalidate(newsProvider);
     ref.invalidate(openYearsProvider);
     ref.invalidate(unfinishedProvider);
+    ref.invalidate(qotdProvider);
     await ref.read(examsProvider.future).catchError((_) => <Map<String, dynamic>>[]);
   }
 
@@ -222,6 +224,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ],
       ),
+      if (ref.watch(qotdProvider).isLoading || ref.watch(qotdProvider).value?.question != null) const QotdCard(),
       if (news.isNotEmpty)
         Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
