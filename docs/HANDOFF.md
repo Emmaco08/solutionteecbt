@@ -1,6 +1,6 @@
 # Handoff: where the build is (read this first in a new or cloud session)
 
-Last updated: 2026-11-03, after milestone 4C (payments) on branch `claude/clever-gates-rdt2wx`. Read `CLAUDE.md`, then this file, then `docs/PROGRESS.md`, `docs/DECISIONS.md` (D-001 to D-061), `docs/SETUP.md` and `docs/plans/phase-4*.md`.
+Last updated: 2026-11-03, after milestone 4C (payments) on branch `claude/clever-gates-rdt2wx`. Read `CLAUDE.md`, then this file, then `docs/PROGRESS.md`, `docs/DECISIONS.md` (D-001 to D-063), `docs/SETUP.md` and `docs/plans/phase-4*.md`.
 
 ## Where we are
 
@@ -10,7 +10,8 @@ Last updated: 2026-11-03, after milestone 4C (payments) on branch `claude/clever
   - **4B AI tutor:** NVIDIA primary, Dahl backup, providers/keys/models/prompts managed in Admin → AI tutor; keys in Supabase Vault; `ai-chat` and `ai-index` Edge Functions; app AI tab with streaming, photos, hint mode, history and quota. DB tests 28/28 (ai) and 22/22 (study); app tests 28/28.
   - **Test APK page:** https://admin.solutiontee.com/download (D-059).
   - **4C Payments** (built, test payment on the phone worked 2026-11-03; waiting for the owner.s review): Paystack and Google Play, server-verified, idempotent, redeem codes, admin Payments and Codes, app checkout; `direct` / `play` flavors (D-061). Branch `claude/clever-gates-rdt2wx`, not merged.
-- Next milestones, in order: **4D** push (FCM) + Me dashboard, **4E** challenges, referrals, leaderboard, question of the day, winners wall. Then the Phase 4 report and STOP for `PREMIUM APPROVED`.
+  - **4D Notifications + Me dashboard** (built on the branch, waiting for the owner's review and Firebase, D-063).
+- Next milestones, in order: **4E** challenges, referrals, leaderboard, question of the day, winners wall. Then the Phase 4 report and STOP for `PREMIUM APPROVED`.
 - Waiting on the owner: press "Add new and edited notes" in Admin → AI tutor → Knowledge; rotate the NVIDIA and Dahl keys (they were pasted in chat for testing); a Play Console account for 4C (SETUP §14.3); link the Emmaco08 GitHub login to the Vercel account so website deploys are accepted; Firebase project for 4D.
 
 ## Live systems

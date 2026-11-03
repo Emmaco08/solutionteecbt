@@ -461,3 +461,30 @@ Admin → **Redeem codes**: make a shared code (e.g. `LOYOLA20`, 20% off) or a b
    `https://mxeemubacnmcmmmzteax.supabase.co/functions/v1/play-rtdn?token=<a long random password you make up>`.
    Put the same random password in Supabase secrets as `PLAY_RTDN_TOKEN`. Then in Play Console *Monetisation setup* enter the topic name and press *Send test notification*.
 6. Add your testers as **licence testers** in Play Console (*Settings → Licence testing*) so test purchases are free.
+
+## 15. Push notifications with Firebase (milestone 4D, 2026-11-03)
+
+Everything else in 4D works without this: messages still appear on the app's Notifications screen. Firebase is only for messages that pop up on the phone. **Never paste keys or the JSON files in chat.**
+
+### 15.1 Create the Firebase project (free, about 5 minutes)
+1. Open https://console.firebase.google.com → **Create a project** → name it **SolutionTee CBT** → Google Analytics: you can turn it off → **Create**.
+2. On the project page, press the **Android** icon (Add app):
+   - Android package name: `com.solutiontee.cbt`
+   - App nickname: `SolutionTee CBT`
+   - Press **Register app**, then **Download google-services.json**. Keep the file; skip the other steps (they are already done in the code).
+
+### 15.2 Give the app its Firebase file (`google-services.json`)
+- **On the laptop:** save it as `apps/mobile/android/app/google-services.json` (git ignores it). The next `flutter build apk` includes push.
+- **For automatic builds on GitHub (when the Android workflow is set up):** GitHub → the repository → **Settings → Secrets and variables → Actions → New repository secret**: name `GOOGLE_SERVICES_JSON`, value = the whole file (open it in a text app, copy everything). The workflow writes it to the same path before building.
+
+### 15.3 Let the server send messages
+1. Firebase console → ⚙️ **Project settings → Service accounts → Generate new private key → Generate key**. A JSON file downloads.
+2. Supabase → https://supabase.com/dashboard/project/mxeemubacnmcmmmzteax/functions/secrets → **Add new secret**: name `FIREBASE_SERVICE_ACCOUNT`, value = the whole content of that file. Save.
+3. Delete the downloaded key file from your phone or laptop Downloads afterwards (Supabase keeps it safely).
+
+### 15.4 Test it
+1. Install an app build that includes `google-services.json`, log in, finish one test, and allow notifications when asked.
+2. Admin → **Content → Notifications** → write a message → Who gets it: **Only my test phones** (your staff account must be logged in on the phone) → **Send**. It should arrive within a few seconds; tapping it opens the screen you chose.
+3. In the app: Me → Settings → Notifications → switch **Announcements** off → send another announcement → it should not pop up (it still appears on the Notifications screen).
+
+**Streak reminders** go out once a day at 7 pm Lagos time to students who have a streak of 2 or more days and have not practised that day. To change the hour or turn them off, ask me (setting `push` in the database; an admin switch can follow).

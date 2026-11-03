@@ -98,7 +98,13 @@ Plan: `docs/plans/phase-4.md`.
   - [x] Builds compile in the cloud: `direct` release APK 27.5 MB, `play` debug APK. Sent to the owner as a test file (cloud-signed: uninstall the old app first). Not run on a phone yet
   - [x] Owner set the Paystack test key and webhook; **test payment on the phone worked** (3 Months, card): webhook signature OK → verified with Paystack → Premium given once
   - [!] Google Play: Play Console, products, service account (SETUP §14.3); cannot be tested before that
-- [~] 4D Push notifications + Me dashboard (plan: `docs/plans/phase-4d.md`; needs Firebase)
+- **4D Notifications + Me dashboard** (plan: `docs/plans/phase-4d.md`, D-063)
+  - [x] Database: inbox, push tokens, topic switches, automatic messages (news, new years, Premium, daily streak), badges, dashboard; pg_cron every 5 minutes. Tests **30/30** (`supabase/tests/notifications.test.sql`)
+  - [x] Edge Function `push` deployed (FCM HTTP v1, topics per plan, dead tokens removed); the schedule reaches it every 5 minutes (checked). Message tests 3/3
+  - [x] Admin: Notifications (write, who gets it, link, now or later, history, cancel), news "Send as a notification". `tsc` clean, `eslint` 0 errors. **Not deployed yet** (live deploy waits for the owner's OK)
+  - [x] App: Notifications screen, bell with unread count, Settings switches, push service (off without Firebase), permission after the first test, Me badges, Bookmarks/Downloads/AI rows, profile photo. `flutter analyze` clean, tests 41/41
+  - [!] Owner: Firebase project, `google-services.json`, `FIREBASE_SERVICE_ACCOUNT` (SETUP §15)
+  - [ ] Phone test of a real push (after Firebase)
 - [ ] 4E Challenges, referrals, leaderboard, question of the day, winners wall
 
 ## Phase 5 — Website, classes, community  (approval: `WEBSITE APPROVED`)
