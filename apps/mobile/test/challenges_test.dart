@@ -329,4 +329,12 @@ void main() {
     expect(find.textContaining('Screenshots are not allowed in challenges'), findsOneWidget);
     expect(api.exits, isEmpty);
   });
+
+  test('the app-wide screenshot message stays quiet where a screen has its own', () {
+    expect(DeviceEvents.ownMessage('/cbt/abc'), isTrue);
+    expect(DeviceEvents.ownMessage('/challenges/abc/play'), isTrue);
+    expect(DeviceEvents.ownMessage('/test/challenges/abc/review'), isTrue);
+    expect(DeviceEvents.ownMessage('/home'), isFalse);
+    expect(DeviceEvents.ownMessage('/test/challenges/abc/result'), isFalse);
+  });
 }

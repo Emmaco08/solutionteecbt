@@ -2,8 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/services.dart';
 
-/// Blocks screenshots and screen recording (Android FLAG_SECURE) while a test, a challenge or a challenge review is
-/// open. Implemented in android/app/src/main/kotlin/.../MainActivity.kt.
+/// Screenshots and screen recording are blocked in the whole app (Android FLAG_SECURE, set when the app opens; owner,
+/// D-076). `on`/`off` are kept for the screens that need it most, but Android never turns it off.
+/// Implemented in android/app/src/main/kotlin/.../MainActivity.kt.
 abstract final class SecureScreen {
   static const _ch = MethodChannel('solutiontee/secure');
   static Future<void> on() => _call(true);
@@ -26,6 +27,9 @@ abstract final class SecureScreen {
 
 /// Messages from Android on `solutiontee/device`: focus, multiWindow, screenshot, recording. One handler, many listeners.
 abstract final class DeviceEvents {
+  /// Screens that show their own screenshot message (the app-wide one stays quiet there).
+  static bool ownMessage(String path) => path.startsWith('/cbt/') || path.endsWith('/play') || path.endsWith('/review');
+
   static const ch = MethodChannel('solutiontee/device');
   static final _c = StreamController<MethodCall>.broadcast();
   static bool _hooked = false;

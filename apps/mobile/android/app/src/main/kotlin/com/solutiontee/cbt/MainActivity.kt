@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.provider.Settings
 import android.view.WindowManager
 import io.flutter.embedding.android.FlutterActivity
@@ -27,6 +28,13 @@ class MainActivity : FlutterActivity() {
         } else {
             null
         }
+    }
+
+    // Owner (D-076): screenshots and screen recording are blocked in the whole app, on every Android version.
+    // Set before anything is drawn, so even the first frame and the recent-apps preview are protected.
+    override fun onCreate(savedInstanceState: Bundle?) {
+        window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
+        super.onCreate(savedInstanceState)
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -88,14 +96,11 @@ class MainActivity : FlutterActivity() {
                 }
             }
         }
-        // Blocks screenshots and screen recording while a test is open (lib/core/secure_screen.dart).
+        // Screenshots and screen recording are blocked in the whole app (lib/core/secure_screen.dart).
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "solutiontee/secure").setMethodCallHandler { call, result ->
             if (call.method == "set") {
-                if (call.arguments == true) {
-                    window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
-                } else {
-                    window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
-                }
+                // The whole app stays protected (D-076): screens may ask for it, but never turn it off.
+                window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
                 result.success(null)
             } else {
                 result.notImplemented()

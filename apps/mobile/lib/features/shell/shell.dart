@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -10,6 +13,7 @@ import '../../core/nav.dart';
 import '../../core/config.dart';
 import '../../core/providers.dart';
 import '../../core/push.dart';
+import '../../core/secure_screen.dart';
 import '../../data/tests_repo.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
@@ -61,6 +65,20 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
       billing.start();
     }
     Future.microtask(_startPush);
+    // Screenshots are blocked in the whole app (D-076); on Android 14+ we can say why.
+    _secure = SecureScreen.watch(onScreenshot: _screenshotTried);
+  }
+
+  StreamSubscription<MethodCall>? _secure;
+
+  void _screenshotTried() {
+    if (!mounted) return;
+    String path = '';
+    try {
+      path = GoRouter.of(context).routerDelegate.currentConfiguration.uri.path;
+    } catch (_) {}
+    if (DeviceEvents.ownMessage(path)) return;
+    toast(context, 'Screenshots are turned off in SolutionTee CBT to protect our questions.', icon: PhosphorIcons.cameraSlash(PhosphorIconsStyle.fill));
   }
 
   /// Push (4D, D-063): save this phone's token, match topics to the switches and plan, and open tapped messages.
@@ -92,6 +110,7 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _secure?.cancel();
     super.dispose();
   }
 
