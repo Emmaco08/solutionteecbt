@@ -28,6 +28,10 @@ insert into auth.users (id, email, aud, role, created_at, email_confirmed_at) va
   ('00000000-0000-4000-8000-0000000000fa', 'a@f.test', 'authenticated', 'authenticated', now(), now());
 update public.profiles set full_name = 'Tolu Referrer' where id = '00000000-0000-4000-8000-0000000000f0';
 insert into public.staff (user_id, role) values ('00000000-0000-4000-8000-0000000000fa', 'admin');
+-- The test uses the default rules (the live ones may differ; everything is rolled back).
+select set_config('request.jwt.claims', json_build_object('sub', '00000000-0000-4000-8000-0000000000fa', 'role', 'authenticated', 'aal', 'aal2')::text, true);
+select public.admin_referral_settings('{"enabled": true, "pct_per_friend": 10, "max_pct": 100, "count_on": "test", "cash_every": 30, "cash_naira": 5000, "monthly_cap": 20}');
+reset role;
 select tests.as_user('00000000-0000-4000-8000-0000000000f0');
 create temp table my as select public.my_referrals() as j;
 select tests.check((select j ->> 'code' from my) ~ '^TOLU-[A-Z2-9]{4}$', 'the student gets a code made from their name', (select j ->> 'code' from my));
