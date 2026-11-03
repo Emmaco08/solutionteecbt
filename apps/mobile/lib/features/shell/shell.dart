@@ -13,6 +13,7 @@ import '../../data/tests_repo.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
 import '../../ui/kit.dart';
+import '../notifications/turn_on_sheet.dart';
 import '../premium/payments.dart';
 
 /// Branch order in router.dart: home, study, test, ai, me.
@@ -62,7 +63,8 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
   }
 
   /// Push (4D, D-063): save this phone's token, match topics to the switches and plan, and open tapped messages.
-  /// The permission question comes only after the student has finished a test, and only once.
+  /// Like a normal app (owner, D-064): every time the app opens while notifications are off, it asks again:
+  /// Android's own box while Android still shows it, then our "Turn on notifications" sheet.
   Future<void> _startPush() async {
     final push = ref.read(pushProvider);
     push.onOpen = (route) {
@@ -73,11 +75,17 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
     };
     final premium = await ref.read(myPlanProvider.future).then((p) => p['tier'] == 'premium').catchError((_) => false);
     await push.register(premium: premium);
+    if (push.askedThisRun) return;
+    push.askedThisRun = true;
+    await Future<void>.delayed(const Duration(milliseconds: 1200)); // let Home appear first
+    if (!mounted) return;
     final db = ref.read(dbProvider);
-    if (await db.kvGet('push_asked') == null && (await db.finishedAttempts()).isNotEmpty) {
-      await db.kvSet('push_asked', DateTime.now().toIso8601String());
-      await push.askPermission();
-    }
+    final allowed = await push.ensureAllowed(
+      timesAsked: () async => int.tryParse(await db.kvGet('push_sys_asked') ?? '') ?? 0,
+      setTimesAsked: (n) => db.kvSet('push_sys_asked', '$n'),
+    );
+    ref.invalidate(notificationsOnProvider);
+    if (!allowed && mounted) await showTurnOnNotifications(context, ref);
   }
 
   @override
@@ -88,7 +96,11 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState s) {
-    if (s == AppLifecycleState.resumed) ref.read(testsRepoProvider).syncPending();
+    if (s == AppLifecycleState.resumed) {
+      ref.read(testsRepoProvider).syncPending();
+      // Back from the phone's settings: notifications may be on now.
+      ref.invalidate(notificationsOnProvider);
+    }
   }
 
   @override

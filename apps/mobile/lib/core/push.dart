@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -100,11 +101,51 @@ class PushService {
     } catch (_) {}
   }
 
-  /// Asks Android 13+ for permission to show notifications. Returns whether they are allowed.
-  Future<bool> askPermission() async {
-    if (!await init()) return false;
-    final s = await FirebaseMessaging.instance.requestPermission();
-    return s.authorizationStatus == AuthorizationStatus.authorized || s.authorizationStatus == AuthorizationStatus.provisional;
+  static const _ch = MethodChannel('solutiontee/notify');
+
+  /// Whether this app may show notifications on the phone right now (Android's own switch for the app).
+  Future<bool> enabled() async {
+    try {
+      return await _ch.invokeMethod<bool>('enabled') ?? true;
+    } catch (_) {
+      return true; // tests and other platforms
+    }
+  }
+
+  /// Opens the phone's notification settings for SolutionTee.
+  Future<void> openSettings() async {
+    try {
+      await _ch.invokeMethod<bool>('openSettings');
+    } catch (_) {}
+  }
+
+  Future<int> _sdk() async {
+    try {
+      return await _ch.invokeMethod<int>('sdk') ?? 0;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  /// Asked already in this app run (the app asks once per opening, D-064).
+  bool askedThisRun = false;
+
+  /// Like a normal app: while notifications are off, every opening of the app asks again.
+  /// Android 13+ shows its own "Allow notifications?" box (it stops showing it after two "Don't allow"),
+  /// so we ask Android while it still shows the box. Returns true when notifications are on; false means the
+  /// caller should show our own "Turn on notifications" sheet, which opens the phone's settings.
+  Future<bool> ensureAllowed({required Future<int> Function() timesAsked, required Future<void> Function(int) setTimesAsked}) async {
+    if (await enabled()) return true;
+    if (!await init()) return true; // push is not set up in this build: do not nag
+    if (await _sdk() >= 33) {
+      final n = await timesAsked();
+      if (n < 2) {
+        await setTimesAsked(n + 1);
+        await FirebaseMessaging.instance.requestPermission();
+        if (await enabled()) return true;
+      }
+    }
+    return false;
   }
 
   /// On log-out: this phone stops getting the old account's messages.

@@ -444,3 +444,9 @@ The owner asked to run the admin from Vercel instead of the laptop.
 - **Me dashboard:** the 8 badges of the approved design, worked out on the server (`my_badges`: 7-day streak, First 250+ in a JAMB mock, Speedster = 20+ answers under 30 s each with 70% right, 100 correct, Score 300, Night owl = a test finished 10 pm–4 am, Bookworm = 5 lessons read to 90%, Full mock = 90% of a full mock answered); rows for Bookmarks, Downloads and "AI prompts left today".
 - **Profile photo:** picked or taken on the phone, shrunk to 512 px JPEG (about 40 KB; JPEG instead of WebP because the phone's picker makes JPEG without an extra package), uploaded with a 10-minute link from `/api/account/avatar` to the private bucket under `a/<user id>/`, and shown through `/api/images/sign`, which signs only the student's own photo for now. Old photos are not deleted from R2 yet.
 - **Not in the prototype on purpose:** the "My classes", "Invite friends", "My winnings" and "Winners wall" rows on Me (Phase 5 / 4E).
+
+**D-064 · 2026-11-03 · Ask for notifications every time the app opens while they are off (owner)**
+- Replaces "ask once after the first test" (D-063). Every app opening (once per run, 1.2 s after Home appears) checks Android's own switch for the app (`areNotificationsEnabled`, MethodChannel `solutiontee/notify`).
+- While notifications are off: on Android 13+ the app shows Android's own "Allow notifications?" box, at most twice (Android stops showing it after two "Don't allow"); after that, and on older Android, it shows our "Turn on notifications" sheet whose button opens the phone's notification settings for SolutionTee. "Not now" closes it until the next opening.
+- Settings → Notifications shows "Notifications are off on this phone" with a Turn on button. Coming back from the phone's settings re-checks.
+- Builds without Firebase never ask (push is off there).

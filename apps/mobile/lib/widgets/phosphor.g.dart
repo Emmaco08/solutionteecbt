@@ -36,6 +36,8 @@ abstract final class PhosphorIcons {
       s == PhosphorIconsStyle.regular ? const IconData(0xe5e8, fontFamily: 'PhosphorRegular') : const IconData(0xe5e8, fontFamily: 'PhosphorFill');
   static IconData bellSimple([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe0d0, fontFamily: 'PhosphorRegular') : const IconData(0xe0d0, fontFamily: 'PhosphorFill');
+  static IconData bellSlash([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
+      s == PhosphorIconsStyle.regular ? const IconData(0xe0d4, fontFamily: 'PhosphorRegular') : const IconData(0xe0d4, fontFamily: 'PhosphorFill');
   static IconData bookBookmark([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe0e4, fontFamily: 'PhosphorRegular') : const IconData(0xe0e4, fontFamily: 'PhosphorFill');
   static IconData bookOpen([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>

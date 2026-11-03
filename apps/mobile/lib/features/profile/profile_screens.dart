@@ -21,6 +21,7 @@ import '../../widgets/states.dart';
 import '../home/home_screen.dart';
 import '../premium/checkout.dart';
 import '../premium/payments.dart';
+import '../notifications/turn_on_sheet.dart';
 import 'me_extras.dart';
 
 const _supportEmailFallback = 'support@mail.solutiontee.com';
@@ -1079,6 +1080,7 @@ class _NotificationSwitches extends ConsumerWidget {
       children: [
         Text('Notifications', style: context.ty.label),
         const Gap(Space.s2),
+        const NotificationsOffBanner(),
         ListCard(
           children: [
             for (final (topic, title, sub) in notificationTopics)
