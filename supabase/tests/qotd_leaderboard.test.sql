@@ -39,6 +39,9 @@ update public.profiles set full_name = 'Fast Finger', state = 'Lagos' where id =
 update public.profiles set full_name = 'Hidden Person', state = 'Lagos', hide_on_leaderboard = true where id = '00000000-0000-4000-8000-0000000000f5';
 update public.profiles set full_name = 'Staff Member', state = 'Lagos' where id = '00000000-0000-4000-8000-0000000000f9';
 
+-- The test runs on a pretend "today" far ahead, so the real question of the day is not touched (rolled back).
+create or replace function private.lagos_today() returns date language sql stable set search_path = '' as $f$ select date '2090-06-15' $f$;
+
 -- Free can open every JAMB year in this test; WAEC is closed for Free.
 update public.access_rules set rules = jsonb_set(jsonb_set(rules, '{jamb}', '"all"'), '{waec}', '0') where tier = 'free';
 
@@ -117,8 +120,10 @@ select tests.check((select q.status = 'published' and q.passage_id is null and p
 select tests.check((select source from public.qotd where day = private.lagos_today() + 30) = 'auto', 'and it is saved, so everyone gets the same one');
 
 -- ---------------------------------------------------------------- leaderboard
+reset role;
+update public.app_settings set value = '{"on": false}' where key = 'leaderboard';
 select tests.as_user('00000000-0000-4000-8000-0000000000f1');
-select tests.check((public.leaderboard() ->> 'on')::boolean = false, 'leaderboard is off by default');
+select tests.check((public.leaderboard() ->> 'on')::boolean = false, 'leaderboard off: nothing shown');
 reset role;
 update public.app_settings set value = '{"on": true, "past_seasons": [], "min_mocks": 1, "names": "first-initial"}' where key = 'leaderboard';
 
@@ -171,6 +176,51 @@ where key = 'leaderboard';
 select tests.as_user('00000000-0000-4000-8000-0000000000f1');
 select tests.check((select public.leaderboard(private.jamb_season(now()) - 1) -> 'best' ->> 'school') = 'Test College', 'a past season shows its best student');
 select tests.check((select jsonb_array_length(public.leaderboard() -> 'seasons')) = 2, 'seasons: this one and the chosen past one');
+
+-- ---------------------------------------------------------------- the admin's own question (D-068)
+reset role;
+alter table public.qotd disable trigger qotd_check;
+update public.qotd set question_id = null, custom_subject = 'General knowledge', custom_body = 'TSTOWN Which planet is red?',
+  custom_options = '{"A": "Venus", "B": "Mars", "C": "Earth", "D": "Jupiter"}', custom_answer = 'B', custom_explanation = 'Iron oxide.'
+where day = private.lagos_today();
+alter table public.qotd enable trigger qotd_check;
+select tests.throws($q$ insert into public.qotd (day, custom_body, custom_options, custom_answer) values (private.lagos_today() + 3, 'x', '{"A": "1", "B": "2"}', 'A') $q$,
+  '23514', null, 'an own question needs options A to D');
+select tests.throws($q$ insert into public.qotd (day, custom_body, custom_options, custom_answer) values (private.lagos_today() + 3, 'x', '{"A": "1", "B": "2", "C": "3", "D": "4"}', 'E') $q$,
+  '23514', null, 'the answer must be one of the options');
+insert into public.qotd (day, custom_body, custom_options, custom_answer) values (private.lagos_today() + 3, 'TSTOWN later', '{"A": "1", "B": "2", "C": "3", "D": "4"}', 'C');
+select tests.check(exists (select 1 from public.qotd where day = private.lagos_today() + 3 and question_id is null), 'staff can write their own question for a day');
+update public.access_rules set rules = jsonb_set(rules, '{jamb}', '0') where tier = 'free';
+select tests.as_user('00000000-0000-4000-8000-0000000000f5');
+create temp table own1 as select public.qotd_today() as j;
+select tests.check((select j -> 'question' ->> 'body' = 'TSTOWN Which planet is red?' and (j -> 'question' ->> 'own')::boolean
+  and j -> 'question' ->> 'subject' = 'General knowledge' and not (j -> 'question' ? 'answer') from own1),
+  'an own question reaches every student (even when Free years are closed), without the answer');
+select tests.check((select (public.qotd_answer('B') -> 'result' ->> 'correct')::boolean), 'and is marked with the admin''s answer');
+reset role;
+update public.access_rules set rules = jsonb_set(rules, '{jamb}', '"all"') where tier = 'free';
+
+-- ---------------------------------------------------------------- WAEC and NECO boards (one per subject, out of 100)
+insert into public.attempts (id, user_id, exam_id, mode, question_ids, started_at, submitted_at, time_used_s, server_score)
+select gen_random_uuid(), v.u::uuid, (select id from public.exam_bodies where code = 'WAEC'), 'subject', array[gen_random_uuid()],
+       now() - interval '3 hours', now() - interval '2 hours', v.t,
+       jsonb_build_object('questions', v.q, 'answered', v.q, 'correct', 30, 'total', v.s, 'max', 100,
+         'subjects', jsonb_build_array(jsonb_build_object('subject_id', (select id from public.subjects order by id limit 1), 'score', v.s)))
+from (values ('00000000-0000-4000-8000-0000000000f1', 70, 3000, 50), ('00000000-0000-4000-8000-0000000000f2', 85, 2400, 50),
+             ('00000000-0000-4000-8000-0000000000f3', 99, 120, 50), ('00000000-0000-4000-8000-0000000000f4', 90, 2000, 10)) v(u, s, t, q);
+select tests.as_user('00000000-0000-4000-8000-0000000000f1');
+create temp table w1 as select public.leaderboard_for('WAEC', null, 'ng', (select id from public.subjects order by id limit 1)) as j;
+select tests.check((select j ->> 'exam' = 'WAEC' and (j ->> 'max')::int = 100 and jsonb_array_length(j -> 'exams') = 3 from w1), 'WAEC board: out of 100, all three exams listed');
+select tests.check((select array_agg(e ->> 'name' order by (e ->> 'rank')::int) from w1, jsonb_array_elements(j -> 'top') e) = array['Abdullahi M.', 'Chiamaka O.'],
+  'WAEC subject board: too fast and too-short papers are left out, best score first');
+select tests.check((select (j -> 'top' -> 0 ->> 'score')::int from w1) = 85, 'WAEC scores are the subject paper out of 100');
+select tests.check((select jsonb_array_length(public.leaderboard_for('NECO') -> 'top')) = 0, 'NECO board is separate');
+select tests.check((select public.leaderboard() ->> 'exam') = 'JAMB', 'the old call still gives the JAMB board');
+reset role;
+update public.app_settings set value = value || '{"exams": {"JAMB": true, "WAEC": false, "NECO": true}}' where key = 'leaderboard';
+select tests.as_user('00000000-0000-4000-8000-0000000000f1');
+select tests.check((select public.leaderboard_for('WAEC') ->> 'exam') = 'JAMB' and (select jsonb_array_length(public.leaderboard_for() -> 'exams')) = 2,
+  'the admin can switch one exam''s board off');
 
 reset role;
 set local role anon;
