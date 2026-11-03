@@ -1,11 +1,9 @@
-import 'dart:convert';
-
-import 'package:crypto/crypto.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/providers.dart';
+
+export '../../core/device.dart' show DeviceCheck, DeviceIds;
 
 /// Challenges & events (milestone 4E2, D-028 to D-030, D-070). The server sends one question at a time, marks and
 /// times every answer, counts exits and ranks. The phone only shows what it is given.
@@ -136,26 +134,3 @@ final winningsProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) 
 final winnersWallProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   return cached(ref, 'winners_wall', (s) => s.rpc('winners_wall_list'), (j) => Map<String, dynamic>.from(j as Map));
 });
-
-/// The phone's id (hashed, never sent raw) and what the phone noticed (emulator, split screen) — fair play only.
-abstract final class DeviceCheck {
-  static const ch = MethodChannel('solutiontee/device');
-
-  static Future<String?> hashedId() async {
-    try {
-      final raw = await ch.invokeMethod<String>('id');
-      if (raw == null || raw.isEmpty) return null;
-      return sha256.convert(utf8.encode('solutiontee:$raw')).toString();
-    } catch (_) {
-      return null;
-    }
-  }
-
-  static Future<List<String>> flags() async {
-    try {
-      return [for (final f in await ch.invokeMethod<List<Object?>>('flags') ?? const []) '$f'];
-    } catch (_) {
-      return const [];
-    }
-  }
-}

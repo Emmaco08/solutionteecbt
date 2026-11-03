@@ -57,5 +57,19 @@
             <action android:name="android.intent.action.SENDTO"/>
             <data android:scheme="mailto"/>
         </intent>
+        <!-- Fraud checks (D-079): known app cloners, only to note that one is installed. -->
+        <package android:name="com.lbe.parallel.intl"/>
+        <package android:name="com.parallel.space.lite"/>
+        <package android:name="com.parallel.space.pro"/>
+        <package android:name="com.excelliance.dualaid"/>
+        <package android:name="com.ludashi.dualspace"/>
+        <package android:name="com.applisto.appcloner"/>
+        <package android:name="com.oasisfeng.island"/>
+        <package android:name="net.typeblog.shelter"/>
+        <package android:name="com.dualspace.multispace.android"/>
+        <package android:name="com.jumobile.multiapp"/>
+        <package android:name="multi.parallel.dualspace.cloner"/>
+        <package android:name="com.polestar.multiaccount"/>
+        <package android:name="com.parallel.space.clone"/>
     </queries>
 </manifest>

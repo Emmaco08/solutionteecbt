@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
+import android.media.MediaDrm
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -12,6 +13,7 @@ import android.view.WindowManager
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import java.util.UUID
 import java.util.function.Consumer
 
 class MainActivity : FlutterActivity() {
@@ -78,6 +80,45 @@ class MainActivity : FlutterActivity() {
             Build.MODEL.contains("Android SDK built for") || Build.HARDWARE.contains("goldfish") || Build.HARDWARE.contains("ranchu") ||
             Build.PRODUCT.contains("sdk") || Build.MANUFACTURER.contains("Genymotion")
 
+    // One account per phone (D-079). The Widevine id is the same for every app copy and every user on the phone
+    // (dual apps, cloners, work profiles); the Android ID differs per copy. A factory reset changes both.
+    private fun drmId(): String? {
+        var drm: MediaDrm? = null
+        return try {
+            drm = MediaDrm(UUID.fromString("edef8ba9-79d6-4ace-a3c8-27dcd51d21ed"))
+            drm.getPropertyByteArray(MediaDrm.PROPERTY_DEVICE_UNIQUE_ID).joinToString("") { "%02x".format(it) }
+        } catch (e: Exception) {
+            null
+        } finally {
+            try {
+                if (Build.VERSION.SDK_INT >= 28) drm?.close() else @Suppress("DEPRECATION") drm?.release()
+            } catch (e: Exception) {
+            }
+        }
+    }
+
+    private val cloners = listOf(
+        "com.lbe.parallel.intl", "com.parallel.space.lite", "com.parallel.space.pro", "com.excelliance.dualaid", "com.ludashi.dualspace", "com.applisto.appcloner", "com.oasisfeng.island", "net.typeblog.shelter", "com.dualspace.multispace.android", "com.jumobile.multiapp", "multi.parallel.dualspace.cloner", "com.polestar.multiaccount", "com.parallel.space.clone",
+    )
+
+    /** "clone:…" means this copy of the app runs as a dual app, in a cloner, or as another Android user: blocked. */
+    private fun phoneFlags(): List<String> {
+        val f = mutableListOf<String>()
+        if (android.os.Process.myUid() / 100000 != 0) f.add("clone:second-user")
+        val dir = filesDir.absolutePath
+        if (!(dir.contains("/user/0/$packageName") || dir.startsWith("/data/data/$packageName"))) f.add("clone:data-dir")
+        if (packageName != "com.solutiontee.cbt") f.add("clone:package")
+        for (p in cloners) {
+            try {
+                packageManager.getPackageInfo(p, 0)
+                f.add("cloner-installed:$p")
+            } catch (e: Exception) {
+            }
+        }
+        if (looksLikeEmulator()) f.add("emulator")
+        return f
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         // Phone id (hashed in Dart) and fair-play signals (lib/features/compete/device.dart).
@@ -85,6 +126,13 @@ class MainActivity : FlutterActivity() {
             ch.setMethodCallHandler { call, result ->
                 when (call.method) {
                     "id" -> result.success(Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID) ?: "")
+                    "ids" -> result.success(
+                        mapOf(
+                            "drm" to drmId(),
+                            "android" to (Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID) ?: ""),
+                            "flags" to phoneFlags(),
+                        ),
+                    )
                     "flags" -> {
                         val flags = mutableListOf<String>()
                         if (looksLikeEmulator()) flags.add("Emulator")

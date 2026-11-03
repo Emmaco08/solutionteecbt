@@ -20,7 +20,7 @@ import '../onboarding/onboarding_screens.dart';
 
 final _emailRe = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]{2,}$');
 final _pwRe = RegExp(r'^(?=.*[A-Za-z])(?=.*\d).{8,72}$');
-final _refRe = RegExp(r'^[A-Z]{2,8}-[A-Z0-9]{4}$');
+final _refRe = RegExp(r'^[A-Z]{2,20}-[A-Z0-9]{4}$');
 
 /// Turns Supabase auth errors into simple English.
 String friendlyAuth(Object e) {
@@ -237,7 +237,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                 icon: PhosphorIcons.ticket(),
                 controller: _ref,
                 caps: TextCapitalization.characters,
-                maxLength: 12,
+                maxLength: 25,
                 mono: true,
                 help: 'Your friend gets rewarded when you finish your first practice test.',
                 error: _refErr,

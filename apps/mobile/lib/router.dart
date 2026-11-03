@@ -32,7 +32,20 @@ import 'features/test/leaderboard_screen.dart';
 import 'features/test/test_screens.dart';
 
 /// Screens anyone can open without an account.
-const _public = {'/splash', '/welcome', '/onboarding', '/login', '/signup', '/verify', '/forgot', '/reset', '/legal'};
+const _public = {
+  '/splash',
+  '/welcome',
+  '/onboarding',
+  '/login',
+  '/signup',
+  '/verify',
+  '/forgot',
+  '/reset',
+  '/legal',
+  '/phone-banned',
+  '/clone-blocked',
+  '/help',
+};
 
 final routerProvider = Provider<GoRouter>((ref) {
   final auth = Supabase.instance.client.auth;
@@ -183,6 +196,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       // 4E3 (D-078): shown instead of the app; no tabs, no back.
       GoRoute(path: '/banned', builder: (_, _) => const BannedScreen()),
       GoRoute(path: '/phone-taken', builder: (_, _) => const PhoneTakenScreen()),
+      GoRoute(path: '/phone-banned', builder: (_, _) => const PhoneBannedScreen()),
+      GoRoute(path: '/clone-blocked', builder: (_, _) => const CloneBlockedScreen()),
       GoRoute(path: '/winners-wall', redirect: (_, _) => '/test/winners-wall'),
       GoRoute(path: '/notifications', builder: (_, _) => const NotificationsScreen()),
       GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),

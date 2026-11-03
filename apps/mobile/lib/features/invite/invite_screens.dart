@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/device.dart';
 import '../../core/nav.dart';
 import '../../core/providers.dart';
 import '../../theme/theme.dart';
@@ -402,7 +403,7 @@ class _EnterCodeState extends ConsumerState<_EnterCode> {
 
   Future<void> _apply() async {
     final code = _code.text.trim().toUpperCase();
-    if (!RegExp(r'^[A-Z]{2,8}-[A-Z0-9]{4}$').hasMatch(code)) return setState(() => _err = 'That code does not look right. It looks like TOLU-7K3P.');
+    if (!RegExp(r'^[A-Z]{2,20}-[A-Z0-9]{4}$').hasMatch(code)) return setState(() => _err = 'That code does not look right. It looks like TOLU-7K3P.');
     setState(() {
       _busy = true;
       _err = null;
@@ -587,6 +588,172 @@ class PhoneTakenScreen extends ConsumerWidget {
             const Gap(Space.s4),
             Btn('Log in with another account', block: true, onPressed: () => signOutAndWipe(ref)),
             const Gap(Space.s2),
+            Btn('Contact support', kind: BtnKind.outline, block: true, onPressed: () => context.push('/help')),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+/// This phone is banned (D-079): no account can be made or used on it. The person can send one appeal with an
+/// email to reply to — no account needed.
+class PhoneBannedScreen extends ConsumerStatefulWidget {
+  const PhoneBannedScreen({super.key});
+  @override
+  ConsumerState<PhoneBannedScreen> createState() => _PhoneBannedScreenState();
+}
+
+class _PhoneBannedScreenState extends ConsumerState<PhoneBannedScreen> {
+  final _email = TextEditingController(), _reason = TextEditingController();
+  Map<String, dynamic>? _status;
+  bool _busy = false, _sent = false;
+  String? _err;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _email.dispose();
+    _reason.dispose();
+    super.dispose();
+  }
+
+  Future<List<String?>> _ids() async => (await DeviceCheck.ids()).list;
+
+  Future<void> _load() async {
+    try {
+      final j = await Supabase.instance.client.rpc('device_status', params: {'p_ids': await _ids()}).timeout(const Duration(seconds: 10));
+      if (mounted) setState(() => _status = Map<String, dynamic>.from(j as Map));
+    } catch (_) {}
+  }
+
+  Future<void> _appeal() async {
+    setState(() {
+      _busy = true;
+      _err = null;
+    });
+    try {
+      await Supabase.instance.client.rpc('device_appeal', params: {'p_ids': await _ids(), 'p_email': _email.text.trim(), 'p_reason': _reason.text.trim()});
+      setState(() => _sent = true);
+      await _load();
+    } on PostgrestException catch (e) {
+      setState(() => _err = challengeError(e));
+    } catch (_) {
+      setState(() => _err = 'Could not send. Check your internet and try again.');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    var signedIn = false;
+    try {
+      signedIn = Supabase.instance.client.auth.currentSession != null;
+    } catch (_) {}
+    final reason = _status?['reason'] ?? ref.watch(accountStatusProvider)?['phone_ban_reason'];
+    final appeal = _status?['appeal'] is Map ? Map<String, dynamic>.from(_status!['appeal'] as Map) : null;
+    final waiting = _sent || appeal?['status'] == 'pending';
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
+        body: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.all(Space.s5),
+            children: [
+              const Gap(Space.s6),
+              StateBlock(
+                icon: PhosphorIcons.prohibit(PhosphorIconsStyle.fill),
+                tone: Tone.red,
+                title: 'This phone is banned',
+                text: '${reason ?? 'This phone broke the rules.'} No account can be created or used on this phone.',
+              ),
+              const Gap(Space.s4),
+              if (waiting)
+                InfoBanner(icon: PhosphorIcons.scales(PhosphorIconsStyle.fill), child: const Text('We have your appeal. We will reply by email.'))
+              else if (appeal?['status'] == 'rejected')
+                InfoBanner(
+                  kind: BannerKind.warn,
+                  icon: PhosphorIcons.scales(PhosphorIconsStyle.fill),
+                  child: Text('Your last appeal was not accepted.${(appeal?['note'] ?? '').toString().isEmpty ? '' : ' ${appeal!['note']}'}'),
+                ),
+              if (!waiting) ...[
+                const Gap(Space.s3),
+                Text('Think this is a mistake?', style: context.ty.body.bold),
+                Text('Send an appeal. Tell us who uses this phone and what happened.', style: context.ty.cap.col(c.textMuted)),
+                const Gap(Space.s2),
+                TextField(
+                  controller: _email,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(labelText: 'Your email (we reply here)'),
+                ),
+                const Gap(Space.s2),
+                TextField(
+                  controller: _reason,
+                  minLines: 4,
+                  maxLines: 8,
+                  maxLength: 2000,
+                  decoration: InputDecoration(hintText: 'Explain what happened', errorText: _err),
+                ),
+                Btn('Send appeal', block: true, loading: _busy, onPressed: _busy ? null : _appeal),
+              ],
+              const Gap(Space.s4),
+              Btn('Contact support', kind: BtnKind.outline, block: true, onPressed: () => context.push('/help')),
+              if (signedIn) ...[const Gap(Space.s2), Btn('Log out', kind: BtnKind.ghost, block: true, onPressed: () => signOutAndWipe(ref))],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// This copy of the app runs as a dual app, inside an app cloner, or as another Android user (D-079).
+class CloneBlockedScreen extends StatelessWidget {
+  const CloneBlockedScreen({super.key});
+  @override
+  Widget build(BuildContext context) => PopScope(
+    canPop: false,
+    child: Scaffold(
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(Space.s5),
+          children: [
+            const Gap(Space.s6),
+            StateBlock(
+              icon: PhosphorIcons.copy(PhosphorIconsStyle.fill),
+              tone: Tone.gold,
+              title: 'Use the original app',
+              text:
+                  'This copy of SolutionTee CBT is running as a dual app, inside an app cloner or in a second profile. '
+                  'That is not allowed, so rewards and prizes stay fair.',
+            ),
+            const Gap(Space.s4),
+            AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('How to fix it', style: context.ty.sm.bold),
+                  const Gap(Space.s2),
+                  for (final t in [
+                    'Close this copy and remove it (Settings → Apps → Dual apps, or uninstall it from the cloner app).',
+                    'Open SolutionTee CBT from your home screen, the app you installed from our website or the Play Store.',
+                    'One account per phone. Sharing with a brother or sister? Contact support.',
+                  ])
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Text('• $t', style: context.ty.cap.col(context.c.textMuted)),
+                    ),
+                ],
+              ),
+            ),
+            const Gap(Space.s4),
             Btn('Contact support', kind: BtnKind.outline, block: true, onPressed: () => context.push('/help')),
           ],
         ),

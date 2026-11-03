@@ -8,6 +8,7 @@ import 'package:lottie/lottie.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/config.dart';
+import '../../core/device.dart';
 import '../../core/providers.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
@@ -23,6 +24,17 @@ import '../../ui/subject_icons.dart';
 /// Logged out: Welcome every time (prototype: splash → welcome), or back to the email code if the app was
 /// closed while the student was fetching it.
 Future<String> nextRoute(WidgetRef ref) async {
+  // D-079: a cloned / dual copy of the app, or a banned phone, never reaches sign-in.
+  final ids = await DeviceCheck.ids();
+  if (ids.clone) return '/clone-blocked';
+  if (ids.any) {
+    try {
+      final st = await Supabase.instance.client.rpc('device_status', params: {'p_ids': ids.list}).timeout(const Duration(seconds: 6));
+      if (st is Map && st['banned'] == true) return '/phone-banned';
+    } catch (_) {
+      // Offline: the server checks again at sign-up and sign-in.
+    }
+  }
   final session = Supabase.instance.client.auth.currentSession;
   if (session == null) {
     final pending = await VerifyArgs.restore(ref.read(dbProvider));

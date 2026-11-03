@@ -13,6 +13,8 @@ const Body = z.object({
   fullName: z.string().trim().max(120).optional().default(""),
   consent: z.literal(true, { message: "Please accept the Terms and Privacy Policy" }),
   referralCode: z.string().trim().max(32).optional(),
+  // D-079: the phone's hashed ids; sign-up is refused on a banned phone.
+  deviceIds: z.array(z.string().regex(/^[0-9a-f]{64}$/)).max(2).optional(),
 });
 
 /**
@@ -27,6 +29,13 @@ export async function POST(req: Request) {
   const { email, password, fullName, referralCode } = parsed.data;
 
   const svc = await createServiceClient();
+  if (parsed.data.deviceIds?.length) {
+    const { data: phone } = await svc.rpc("device_status", { p_ids: parsed.data.deviceIds });
+    if ((phone as { banned?: boolean } | null)?.banned) {
+      await svc.from("device_events").insert({ device_hash: parsed.data.deviceIds[0], kind: "banned_phone_signup", detail: email });
+      return json({ error: "This phone is banned from SolutionTee CBT, so no account can be created on it. You can send an appeal in the app." }, 403);
+    }
+  }
   const { data: status } = await svc.rpc("auth_user_status", { p_email: email });
   if (status === "confirmed") return json({ error: "This email already has an account. Log in, or reset your password." }, 409);
   if (status === "unconfirmed") {

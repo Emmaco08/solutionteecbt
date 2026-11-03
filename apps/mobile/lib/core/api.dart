@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'config.dart';
+import 'device.dart';
 
 /// A friendly error the UI can show as-is.
 class ApiError implements Exception {
@@ -47,6 +48,8 @@ class WebApi {
       'fullName': fullName,
       'consent': true,
       if (referralCode != null && referralCode.isNotEmpty) 'referralCode': referralCode,
+      // D-079: the server refuses sign-up on a banned phone.
+      'deviceIds': (await DeviceCheck.ids()).list.whereType<String>().toList(),
     });
     return (d['codeLength'] as num?)?.toInt() ?? 6;
   }

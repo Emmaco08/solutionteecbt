@@ -82,3 +82,17 @@ export function testEmail(name: string) {
     text: `Hi ${name}, this is a test from the SolutionTee admin. If you can read this, emails are working.`,
   };
 }
+
+/** Reply to a banned phone's appeal (D-079). */
+export function phoneAppealEmail(accepted: boolean, note: string) {
+  const head = accepted ? "Your phone is no longer banned" : "Your appeal was not accepted";
+  const line = accepted
+    ? "We checked your appeal. You can use SolutionTee CBT on this phone again. Open the app and log in."
+    : "We checked your appeal. The ban on this phone stays.";
+  const extra = note.trim() ? `<p style="margin:12px 0 0">${esc(note.trim())}</p>` : "";
+  return {
+    subject: `SolutionTee CBT: ${head.toLowerCase()}`,
+    html: layout(head, `<p style="margin:0">Hi,</p><p style="margin:8px 0 0">${line}</p>${extra}`),
+    text: `Hi,\n\n${line}${note.trim() ? `\n\n${note.trim()}` : ""}\n\n${DISCLAIMER}`,
+  };
+}

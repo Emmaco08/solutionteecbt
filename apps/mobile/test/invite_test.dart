@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:solutiontee_cbt/core/device.dart';
 import 'package:solutiontee_cbt/core/nav.dart';
 import 'package:solutiontee_cbt/features/invite/invite_screens.dart';
 import 'package:solutiontee_cbt/theme/theme.dart';
@@ -141,5 +142,28 @@ void main() {
     expect(find.text('This phone already has an account'), findsOneWidget);
     expect(find.text('Log in with another account'), findsOneWidget);
     expect(find.textContaining('brother or sister'), findsOneWidget);
+  });
+
+  test('a dual / cloned copy is recognised from the phone\'s flags; a cloner app only being installed is not enough', () {
+    expect(const DeviceIds('a', 'b', ['clone:second-user']).clone, isTrue);
+    expect(const DeviceIds('a', 'b', ['clone:data-dir']).clone, isTrue);
+    expect(const DeviceIds('a', 'b', ['cloner-installed:com.lbe.parallel.intl', 'emulator']).clone, isFalse);
+    expect(const DeviceIds('a', 'b', []).list, ['a', 'b']);
+    expect(const DeviceIds(null, null, []).any, isFalse);
+  });
+
+  testWidgets('phone banned: no account can be used here; an appeal needs only an email', (t) async {
+    await t.pumpWidget(wrap(const PhoneBannedScreen(), status: {'phone_ban_reason': 'Many fake accounts on one phone.'}));
+    await settle(t);
+    expect(find.text('This phone is banned'), findsOneWidget);
+    expect(find.textContaining('No account can be created or used on this phone'), findsOneWidget);
+    expect(find.text('Your email (we reply here)'), findsOneWidget);
+  });
+
+  testWidgets('clone blocked: explains dual apps and cloners and how to fix it', (t) async {
+    await t.pumpWidget(wrap(const CloneBlockedScreen()));
+    await settle(t);
+    expect(find.text('Use the original app'), findsOneWidget);
+    expect(find.textContaining('dual app'), findsWidgets);
   });
 }

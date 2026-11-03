@@ -14,6 +14,12 @@ export type Database = {
   }
   public: {
     Tables: {
+      device_events: {
+        Row: { at: string; detail: string | null; device_hash: string | null; id: number; kind: string; user_id: string | null }
+        Insert: { at?: string; detail?: string | null; device_hash?: string | null; id?: never; kind: string; user_id?: string | null }
+        Update: { at?: string; detail?: string | null; device_hash?: string | null; id?: never; kind?: string; user_id?: string | null }
+        Relationships: []
+      }
       access_rules: {
         Row: {
           rules: Json
@@ -2379,6 +2385,11 @@ export type Database = {
           used: number
         }[]
       }
+      admin_ban_device: { Args: { p_hash: string; p_reason: string }; Returns: Json }
+      admin_device_appeal: {
+        Args: { p_accept: boolean; p_id: string; p_note?: string }
+        Returns: Json
+      }
       admin_device_allow: {
         Args: { p_allowed: boolean; p_hash: string; p_user: string }
         Returns: undefined
@@ -2403,6 +2414,7 @@ export type Database = {
         Args: { p_accept: boolean; p_appeal: string; p_note?: string }
         Returns: undefined
       }
+      admin_unban_device: { Args: { p_hash: string }; Returns: Json }
       admin_challenge_add_random: {
         Args: { p_count: number; p_id: string; p_subjects: number[] }
         Returns: Json
@@ -2575,7 +2587,13 @@ export type Database = {
       }
       challenge_result: { Args: { p_id: string }; Returns: Json }
       ban_appeal: { Args: { p_reason: string }; Returns: Json }
+      device_appeal: {
+        Args: { p_email: string; p_ids: string[]; p_reason: string }
+        Returns: Json
+      }
+      device_check_in: { Args: { p_flags?: string[]; p_ids: string[] }; Returns: Json }
       device_register: { Args: { p_hash: string }; Returns: Json }
+      device_status: { Args: { p_ids: string[] }; Returns: Json }
       my_referrals: { Args: never; Returns: Json }
       my_status: { Args: never; Returns: Json }
       referral_apply: { Args: { p_code: string }; Returns: Json }
