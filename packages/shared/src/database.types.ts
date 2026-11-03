@@ -1506,25 +1506,40 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          custom_answer: string | null
+          custom_body: string | null
+          custom_explanation: string | null
+          custom_options: Json | null
+          custom_subject: string | null
           day: string
           id: string
-          question_id: string
+          question_id: string | null
           source: string
         }
         Insert: {
           created_at?: string
           created_by?: string | null
+          custom_answer?: string | null
+          custom_body?: string | null
+          custom_explanation?: string | null
+          custom_options?: Json | null
+          custom_subject?: string | null
           day: string
           id?: string
-          question_id: string
+          question_id?: string | null
           source?: string
         }
         Update: {
           created_at?: string
           created_by?: string | null
+          custom_answer?: string | null
+          custom_body?: string | null
+          custom_explanation?: string | null
+          custom_options?: Json | null
+          custom_subject?: string | null
           day?: string
           id?: string
-          question_id?: string
+          question_id?: string | null
           source?: string
         }
         Relationships: [
@@ -2070,6 +2085,15 @@ export type Database = {
       }
       leaderboard: {
         Args: { p_scope?: string; p_season?: number }
+        Returns: Json
+      }
+      leaderboard_for: {
+        Args: {
+          p_exam?: string
+          p_scope?: string
+          p_season?: number
+          p_subject?: number
+        }
         Returns: Json
       }
       mark_notifications_read: { Args: { p_ids?: string[] }; Returns: number }

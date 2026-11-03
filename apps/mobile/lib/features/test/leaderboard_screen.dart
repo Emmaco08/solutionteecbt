@@ -14,10 +14,13 @@ import '../profile/me_extras.dart' show MyAvatar;
 
 /// Leaderboard for a JAMB season (server `leaderboard`, milestone 4E1, D-026/D-066): best full mock per student,
 /// first name + initial only. The server decides everything, including whether it is on.
-typedef LbKey = ({int? season, String scope});
+typedef LbKey = ({String exam, int? season, String scope, int? subject});
 
 final leaderboardProvider = FutureProvider.autoDispose.family<Map<String, dynamic>, LbKey>((ref, k) async {
-  final j = await ref.read(supabaseProvider).rpc('leaderboard', params: {'p_season': k.season, 'p_scope': k.scope}).timeout(const Duration(seconds: 20));
+  final j = await ref
+      .read(supabaseProvider)
+      .rpc('leaderboard_for', params: {'p_exam': k.exam, 'p_season': k.season, 'p_scope': k.scope, 'p_subject': k.subject})
+      .timeout(const Duration(seconds: 20));
   return Map<String, dynamic>.from(j as Map);
 });
 
@@ -35,10 +38,12 @@ class LeaderboardScreen extends ConsumerStatefulWidget {
 }
 
 class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
+  String _exam = 'JAMB';
   int? _season;
   String _scope = 'ng';
+  int? _subject;
 
-  void _rules(int minMocks) => showSheet<void>(
+  void _rules(int minMocks, bool jamb) => showSheet<void>(
     context,
     builder: (ctx) => Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -46,11 +51,19 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
         Text('How the leaderboard works', style: ctx.ty.h3),
         const Gap(Space.s4),
         for (final (ic, t) in [
-          (PhosphorIcons.exam(PhosphorIconsStyle.fill), 'Your best score in a full JAMB mock (out of 400) counts.'),
-          (PhosphorIcons.listChecks(PhosphorIconsStyle.fill), 'You need at least $minMocks full ${minMocks == 1 ? 'mock' : 'mocks'} this season to appear.'),
+          (
+            PhosphorIcons.exam(PhosphorIconsStyle.fill),
+            jamb
+                ? 'JAMB: your best score in a full mock (Test → Start full exam, out of 400) counts.'
+                : 'WAEC and NECO: each subject has its own board. Your best paper in that subject (out of 100) counts.',
+          ),
+          (
+            PhosphorIcons.listChecks(PhosphorIconsStyle.fill),
+            'You need at least $minMocks ${jamb ? 'full ${minMocks == 1 ? 'mock' : 'mocks'}' : '${minMocks == 1 ? 'paper' : 'papers'} in the subject'} this season to appear. Quick tests do not count.',
+          ),
           (PhosphorIcons.timer(PhosphorIconsStyle.fill), 'If two students tie, the faster time ranks higher.'),
           (PhosphorIcons.eyeSlash(PhosphorIconsStyle.fill), 'Only your first name and an initial are shown. Turn it off in Settings any time.'),
-          (PhosphorIcons.calendar(PhosphorIconsStyle.fill), 'Each JAMB year has its own board. Past years show the best student.'),
+          (PhosphorIcons.calendar(PhosphorIconsStyle.fill), 'Each exam year has its own board. Past years show the best student.'),
         ]) ...[
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -68,15 +81,18 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final key = (season: _season, scope: _scope);
+    final key = (exam: _exam, season: _season, scope: _scope, subject: _subject);
     final v = ref.watch(leaderboardProvider(key));
     final d = v.value;
     final on = d?['on'] == true;
     return Scaffold(
       appBar: TopBar(
         title: 'Leaderboard',
-        subtitle: on ? 'Best full JAMB mock score this season' : null,
-        actions: [if (on) IconBtn(PhosphorIcons.info(), label: 'How ranking works', onPressed: () => _rules((d!['min_mocks'] as num?)?.toInt() ?? 1))],
+        subtitle: on ? (d!['exam'] == 'JAMB' ? 'Best full JAMB mock this season' : 'Best ${d['exam']} paper this season') : null,
+        actions: [
+          if (on)
+            IconBtn(PhosphorIcons.info(), label: 'How ranking works', onPressed: () => _rules((d!['min_mocks'] as num?)?.toInt() ?? 1, d['exam'] == 'JAMB')),
+        ],
       ),
       body: asyncView(
         v,
@@ -115,17 +131,77 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
     final best = d['best'] is Map ? Map<String, dynamic>.from(d['best'] as Map) : null;
     final state = d['my_state'] as String?;
     final rm = context.reduceMotion;
+    final exam = '${d['exam'] ?? 'JAMB'}';
+    final exams = [
+      for (final x in (d['exams'] as List? ?? const ['JAMB'])) '$x',
+    ];
+    final subjects = rows(d['subjects']);
+    final subjectId = (d['subject'] as num?)?.toInt();
+    final subjectName = subjects.where((x) => x['id'] == subjectId).firstOrNull?['name'];
+    final title = exam == 'JAMB' ? 'JAMB UTME $season' : '$exam ${subjectName ?? ''} $season'.replaceAll('  ', ' ');
 
     final sections = <Widget>[
+      if (exams.length > 1)
+        Row(
+          children: [
+            for (final x in exams) ...[
+              Expanded(
+                child: Semantics(
+                  selected: x == exam,
+                  button: true,
+                  label: '$x leaderboard',
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(Radii.md),
+                    onTap: () => setState(() {
+                      _exam = x;
+                      _subject = null;
+                    }),
+                    child: AnimatedContainer(
+                      duration: Motion.fast,
+                      constraints: const BoxConstraints(minHeight: 56),
+                      padding: const EdgeInsets.symmetric(horizontal: Space.s2, vertical: Space.s2),
+                      decoration: BoxDecoration(
+                        color: x == exam ? c.secondarySoft : c.surface,
+                        borderRadius: BorderRadius.circular(Radii.md),
+                        border: Border.all(color: x == exam ? c.secondary : c.border, width: x == exam ? 2 : 1),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          ExamLogo(x, size: LogoSize.sm),
+                          const Gap(Space.s2),
+                          Text(x, style: context.ty.sm.bold),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              if (x != exams.last) const Gap(Space.s2),
+            ],
+          ],
+        ),
+      if (exam != 'JAMB' && subjects.isNotEmpty)
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              for (final sj in subjects) ...[
+                AppChip('${sj['name']}', on: sj['id'] == subjectId, onTap: () => setState(() => _subject = (sj['id'] as num).toInt())),
+                const Gap(Space.s2),
+              ],
+            ],
+          ),
+        ),
       Row(
         children: [
-          const ExamLogo('JAMB', size: LogoSize.md),
+          ExamLogo(exam, size: LogoSize.md),
           const Gap(Space.s3),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('JAMB UTME $season', style: context.ty.h3),
+                Text(title, style: context.ty.h3),
                 Text(current ? 'This season · ${d['scope'] == 'state' ? state : 'Nigeria'}' : 'Past season', style: context.ty.cap.col(c.textMuted)),
               ],
             ),
@@ -138,7 +214,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
           child: Row(
             children: [
               for (final s in seasons) ...[
-                AppChip('JAMB $s${s == seasons.first ? ' (now)' : ''}', on: s == season, onTap: () => setState(() => _season = s)),
+                AppChip('$exam $s${s == seasons.first ? ' (now)' : ''}', on: s == season, onTap: () => setState(() => _season = s)),
                 const Gap(Space.s2),
               ],
             ],
@@ -158,7 +234,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Best student of JAMB $season', style: context.ty.cap.bold.col(c.onAccentSoft)),
+                    Text('Best student of $title', style: context.ty.cap.bold.col(c.onAccentSoft)),
                     Text('${best['name']}', style: context.ty.h3),
                     Text([best['school'], best['state']].where((x) => (x ?? '').toString().isNotEmpty).join(' · '), style: context.ty.cap.col(c.textMuted)),
                   ],
@@ -173,8 +249,18 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
           icon: PhosphorIcons.ranking(PhosphorIconsStyle.fill),
           tone: Tone.gold,
           title: 'No one here yet',
-          text: current ? 'Finish a full JAMB mock to be the first on this board.' : 'No full mocks counted for this year.',
-          action: current ? Btn('Start a full mock', kind: BtnKind.accent, onPressed: () => context.push('/test/setup?exam=JAMB&mode=full')) : null,
+          text: current
+              ? (exam == 'JAMB'
+                    ? 'Finish a full JAMB mock to be the first on this board.'
+                    : 'Finish a $exam ${subjectName ?? ''} paper to be the first on this board.')
+              : 'No tests counted for this year.',
+          action: current
+              ? Btn(
+                  exam == 'JAMB' ? 'Start a full mock' : 'Practise $exam',
+                  kind: BtnKind.accent,
+                  onPressed: () => context.push(exam == 'JAMB' ? '/test/setup?exam=JAMB&mode=full' : '/test/setup?exam=$exam'),
+                )
+              : null,
         )
       else ...[
         _Podium(top: top.take(3).toList()),
@@ -214,7 +300,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
       ),
     ];
     return RefreshIndicator(
-      onRefresh: () async => ref.invalidate(leaderboardProvider((season: _season, scope: _scope))),
+      onRefresh: () async => ref.invalidate(leaderboardProvider((exam: _exam, season: _season, scope: _scope, subject: _subject))),
       child: ListView(
         padding: const EdgeInsets.fromLTRB(Space.s5, Space.s2, Space.s5, Space.s8),
         children: [
@@ -328,7 +414,12 @@ class _MeBar extends ConsumerWidget {
       line = 'You are hidden. Turn it on in Settings to appear.';
     } else {
       final needs = (me['needs'] as num?)?.toInt() ?? 0;
-      line = needs > 0 ? 'Finish $needs more full JAMB ${needs == 1 ? 'mock' : 'mocks'} to appear' : 'Not on this board yet';
+      final jamb = d['exam'] == null || d['exam'] == 'JAMB';
+      line = needs > 0
+          ? (jamb
+                ? 'Finish $needs more full JAMB ${needs == 1 ? 'mock' : 'mocks'} to appear'
+                : 'Finish $needs more ${needs == 1 ? 'paper' : 'papers'} in this subject to appear')
+          : 'Not on this board yet';
     }
     return SafeArea(
       top: false,
@@ -380,7 +471,7 @@ class LeaderboardEntry extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Leaderboard', style: context.ty.body.bold),
-                Text('See the best JAMB students this season', style: context.ty.cap.col(c.textMuted)),
+                Text('See the best JAMB, WAEC and NECO students', style: context.ty.cap.col(c.textMuted)),
               ],
             ),
           ),

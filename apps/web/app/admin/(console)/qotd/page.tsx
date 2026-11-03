@@ -32,7 +32,7 @@ async function Qotd() {
   const past = rows.filter((r) => r.day < today).reverse();
   return (
     <>
-      <PageHeader title="Question of the day" description="Every student sees the same question on Home, once a day, with one try. You don't have to do anything: days you leave empty get a question picked automatically. To choose the question yourself, use the box below." />
+      <PageHeader title="Question of the day" description="Every student sees the same question on Home, once a day, with one try. You don't have to do anything: days you leave empty get a question picked automatically. To set the question yourself, write your own or pick a past question in the box below." />
       <Panel title="Add a question of the day" className="mb-4"><AddPanel today={today} subjects={subjects.data ?? []} /></Panel>
       <div className="grid gap-4 xl:grid-cols-[1.3fr_1fr]">
         <Panel title="Next 14 days" bodyClassName="p-0"><DayList days={coming} today={today} subjects={subjects.data ?? []} /></Panel>
@@ -44,7 +44,7 @@ async function Qotd() {
                   <div className="flex items-center justify-between gap-2"><b>{new Date(r.day + "T12:00:00Z").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}</b>
                     <span className="tabular-nums text-muted-foreground">{r.answers} answered · {r.answers ? Math.round((100 * r.right) / r.answers) : 0}% right</span></div>
                   <p className="line-clamp-2 text-muted-foreground">{r.body}</p>
-                  <span className="text-xs text-muted-foreground">{r.exam} {r.year} · {r.subject} · answer {r.answer}{r.source === "auto" ? " · automatic" : ""}</span>
+                  <span className="text-xs text-muted-foreground">{r.exam ? `${r.exam} ${r.year} · ` : "Your question · "}{r.subject ? `${r.subject} · ` : ""}answer {r.answer}{r.source === "auto" ? " · automatic" : ""}</span>
                 </li>
               ))}
             </ul>

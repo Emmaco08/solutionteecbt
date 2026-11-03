@@ -12,9 +12,10 @@ import { reviewMock, saveLeaderboard } from "./actions";
 export type LbSettings = {
   on: boolean; past_seasons: number[]; min_mocks: number; names: "first-initial" | "first";
   min_questions: number; fast_minutes: number; include_staff: boolean;
+  exams: { JAMB: boolean; WAEC: boolean; NECO: boolean }; subject_min_questions: number; subject_fast_minutes: number;
 };
 export type Recent = {
-  attempt_id: string; name: string | null; state: string | null; score: number; questions: number; time_s: number;
+  attempt_id: string; exam: string; subject: string | null; max: number; name: string | null; state: string | null; score: number; questions: number; time_s: number;
   submitted_at: string; season: number; reason: string | null; held: boolean;
 };
 
@@ -29,6 +30,11 @@ export function SettingsForm({ settings, seasonNow }: { settings: LbSettings; se
     })}>
       <label className="flex items-start gap-3 text-sm"><input type="checkbox" name="on" defaultChecked={settings.on} className="mt-1" />
         <span><b>Show the leaderboard to students</b><span className="block text-muted-foreground">Off: students see “Leaderboards are switched off”. Scores still count in the background.</span></span></label>
+      <div className="space-y-1.5"><Label>Boards</Label>
+        <div className="flex flex-wrap gap-4">{(["JAMB", "WAEC", "NECO"] as const).map((x) => (
+          <label key={x} className="flex items-center gap-2 text-sm"><input type="checkbox" name={`exam_${x}`} defaultChecked={settings.exams[x]} /> {x}{x === "JAMB" ? " (full mock, out of 400)" : " (per subject, out of 100)"}</label>
+        ))}</div></div>
+      <b className="block text-sm">JAMB</b>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5"><Label htmlFor="lbQ">Questions needed in a full mock</Label>
           <input id="lbQ" name="min_questions" type="number" min={4} max={400} defaultValue={settings.min_questions} className={inputCls} />
@@ -36,7 +42,19 @@ export function SettingsForm({ settings, seasonNow }: { settings: LbSettings; se
         <div className="space-y-1.5"><Label htmlFor="lbFast">Too fast: held if finished in under (minutes)</Label>
           <input id="lbFast" name="fast_minutes" type="number" min={0} max={120} defaultValue={settings.fast_minutes} className={inputCls} />
           <span className="text-xs text-muted-foreground">0 = no check. Held mocks wait for you below.</span></div>
-        <div className="space-y-1.5"><Label htmlFor="lbMin">Full mocks needed to appear</Label>
+      </div>
+      <b className="block text-sm">WAEC and NECO</b>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1.5"><Label htmlFor="lbSQ">Questions needed in a subject paper</Label>
+          <input id="lbSQ" name="subject_min_questions" type="number" min={4} max={200} defaultValue={settings.subject_min_questions} className={inputCls} />
+          <span className="text-xs text-muted-foreground">Real papers: WAEC 50, NECO 60.</span></div>
+        <div className="space-y-1.5"><Label htmlFor="lbSFast">Too fast: held if finished in under (minutes)</Label>
+          <input id="lbSFast" name="subject_fast_minutes" type="number" min={0} max={120} defaultValue={settings.subject_fast_minutes} className={inputCls} />
+          <span className="text-xs text-muted-foreground">0 = no check.</span></div>
+      </div>
+      <b className="block text-sm">All boards</b>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1.5"><Label htmlFor="lbMin">Tests needed to appear (full mocks, or papers in that subject)</Label>
           <input id="lbMin" name="min_mocks" type="number" min={1} max={20} defaultValue={settings.min_mocks} className={inputCls} /></div>
         <div className="space-y-1.5"><Label htmlFor="lbNames">Names shown</Label>
           <select id="lbNames" name="names" defaultValue={settings.names} className={inputCls}>
@@ -69,9 +87,9 @@ export function RecentList({ rows }: { rows: Recent[] }) {
       {rows.map((r) => (
         <li key={r.attempt_id} className="flex flex-wrap items-center gap-3 px-5 py-3 text-sm">
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2"><b>{r.name || "No name"}</b>{r.state ? <span className="text-muted-foreground">{r.state}</span> : null}
+            <div className="flex flex-wrap items-center gap-2"><Pill>{r.exam}{r.subject ? ` · ${r.subject}` : " · full mock"}</Pill><b>{r.name || "No name"}</b>{r.state ? <span className="text-muted-foreground">{r.state}</span> : null}
               {r.reason ? <Pill tone={r.held ? "warn" : "neutral"}>{r.held ? "Waiting for you" : "Does not count"}</Pill> : <Pill tone="ok">Counts</Pill>}</div>
-            <span className="text-muted-foreground"><b className="tabular-nums text-foreground">{r.score}</b>/400 · {r.questions} questions · {mins(r.time_s)} · {when(r.submitted_at)}</span>
+            <span className="text-muted-foreground"><b className="tabular-nums text-foreground">{r.score}</b>/{r.max} · {r.questions} questions · {mins(r.time_s)} · {when(r.submitted_at)}</span>
             {r.reason ? <span className="block text-xs text-muted-foreground">{r.reason}</span> : null}
           </div>
           {r.held ? (

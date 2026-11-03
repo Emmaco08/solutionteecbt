@@ -70,6 +70,20 @@ void main() {
     expect(fake.sent, ['C']);
   });
 
+  testWidgets('question of the day: the admin\'s own question says who set it and has no Ask AI', (t) async {
+    final fake = FakeQotd();
+    FakeQotd.question = {...FakeQotd.question, 'own': true, 'subject': 'General knowledge', 'exam': null, 'year': null};
+    await t.pumpWidget(app(const Scaffold(body: SingleChildScrollView(child: QotdCard())), [qotdProvider.overrideWith(() => fake)]));
+    await t.pumpAndSettle();
+    expect(find.text('General knowledge · set by SolutionTee'), findsOneWidget);
+    await t.tap(find.text('2'));
+    await t.pumpAndSettle();
+    expect(find.text('Correct!'), findsOneWidget);
+    expect(find.text('Ask AI'), findsNothing);
+    expect(find.text('Practise more'), findsOneWidget);
+    FakeQotd.question = {...FakeQotd.question, 'own': false, 'subject': 'Mathematics', 'exam': 'JAMB', 'year': 2019};
+  });
+
   testWidgets('leaderboard: off message', (t) async {
     await t.pumpWidget(
       app(const LeaderboardScreen(), [
@@ -91,6 +105,9 @@ void main() {
         leaderboardProvider.overrideWith(
           (ref, k) async => {
             'on': true,
+            'exam': 'JAMB',
+            'exams': ['JAMB', 'WAEC', 'NECO'],
+            'max': 400,
             'seasons': [2027, 2026],
             'season': 2027,
             'current': true,
@@ -107,9 +124,55 @@ void main() {
     await t.pumpAndSettle();
     expect(find.text('JAMB UTME 2027'), findsOneWidget);
     expect(find.text('Abdullahi M.'), findsOneWidget);
-    expect(find.text('Zainab Y. (you)'), findsOneWidget);
     expect(find.text('13 points to reach #3'), findsOneWidget);
     expect(find.text('My state (Lagos)'), findsOneWidget);
     expect(find.text('JAMB 2026'), findsOneWidget);
+    expect(find.text('WAEC'), findsOneWidget);
+    expect(find.text('NECO'), findsOneWidget);
+    await t.scrollUntilVisible(find.text('Zainab Y. (you)'), 200, scrollable: find.byType(Scrollable).first);
+    expect(find.text('Zainab Y. (you)'), findsOneWidget);
+  });
+
+  testWidgets('leaderboard: WAEC has one board per subject', (t) async {
+    final asked = <LbKey>[];
+    await t.pumpWidget(
+      app(const LeaderboardScreen(), [
+        profileProvider.overrideWith((_) async => {'full_name': 'Ada Obi'}),
+        leaderboardProvider.overrideWith((ref, k) async {
+          asked.add(k);
+          return {
+            'on': true,
+            'exam': k.exam,
+            'exams': ['JAMB', 'WAEC', 'NECO'],
+            'max': k.exam == 'JAMB' ? 400 : 100,
+            'subject': k.subject ?? 2,
+            'subjects': [
+              {'id': 2, 'name': 'Mathematics'},
+              {'id': 3, 'name': 'Physics'},
+            ],
+            'seasons': [2027],
+            'season': 2027,
+            'current': true,
+            'scope': 'ng',
+            'my_state': null,
+            'min_mocks': 1,
+            'top': [
+              {'rank': 1, 'name': 'Ada O.', 'state': 'Oyo', 'score': 88, 'me': true},
+            ],
+            'me': {'rank': 1, 'score': 88, 'mocks': 1, 'ahead': null},
+            'best': null,
+          };
+        }),
+      ]),
+    );
+    await t.pumpAndSettle();
+    await t.tap(find.text('WAEC'));
+    await t.pumpAndSettle();
+    expect(asked.last.exam, 'WAEC');
+    expect(find.text('WAEC Mathematics 2027'), findsOneWidget);
+    await t.tap(find.text('Physics'));
+    await t.pumpAndSettle();
+    expect(asked.last.subject, 3);
+    expect(find.text('You are first. Keep it up!'), findsOneWidget);
   });
 }

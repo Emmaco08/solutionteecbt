@@ -120,7 +120,12 @@ class _QotdCardState extends ConsumerState<QotdCard> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('Question of the day', style: context.ty.sm.bold),
-                      Text('${qq['subject']} · from ${qq['exam']} ${qq['year']}', style: context.ty.cap.col(c.textMuted)),
+                      Text(
+                        qq['own'] == true
+                            ? [if ((qq['subject'] ?? '').toString().isNotEmpty) qq['subject'], 'set by SolutionTee'].join(' · ')
+                            : '${qq['subject']} · from ${qq['exam']} ${qq['year']}',
+                        style: context.ty.cap.col(c.textMuted),
+                      ),
                     ],
                   ),
                 ),
@@ -167,7 +172,11 @@ class _QotdCardState extends ConsumerState<QotdCard> {
                   const Gap(Space.s2),
                 ],
                 if (r != null)
-                  _Result(r: r, streak: q.streak, questionId: '${qq['id']}').animate(target: rm ? 0 : 1).fadeIn(duration: Motion.base).slideY(begin: .08),
+                  _Result(
+                    r: r,
+                    streak: q.streak,
+                    questionId: qq['own'] == true ? null : '${qq['id']}',
+                  ).animate(target: rm ? 0 : 1).fadeIn(duration: Motion.base).slideY(begin: .08),
                 const Gap(Space.s2),
                 Row(
                   children: [
@@ -189,7 +198,9 @@ class _Result extends StatelessWidget {
   const _Result({required this.r, required this.streak, required this.questionId});
   final Map<String, dynamic> r;
   final int streak;
-  final String questionId;
+
+  /// The past question's id for Ask AI; null for the admin's own question (Ask AI explains bank questions).
+  final String? questionId;
   @override
   Widget build(BuildContext context) {
     final c = context.c;
@@ -261,16 +272,18 @@ class _Result extends StatelessWidget {
         const Gap(Space.s3),
         Row(
           children: [
-            Expanded(
-              child: Btn(
-                'Ask AI',
-                kind: BtnKind.tonal,
-                sm: true,
-                leading: PhosphorIcons.sparkle(PhosphorIconsStyle.fill),
-                onPressed: () => askAiAbout(context, questionId: questionId, label: 'Question of the day'),
+            if (questionId != null) ...[
+              Expanded(
+                child: Btn(
+                  'Ask AI',
+                  kind: BtnKind.tonal,
+                  sm: true,
+                  leading: PhosphorIcons.sparkle(PhosphorIconsStyle.fill),
+                  onPressed: () => askAiAbout(context, questionId: questionId!, label: 'Question of the day'),
+                ),
               ),
-            ),
-            const Gap(Space.s2),
+              const Gap(Space.s2),
+            ],
             Expanded(
               child: Btn(
                 'Practise more',
