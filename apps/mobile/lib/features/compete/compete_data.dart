@@ -1,0 +1,117 @@
+import 'dart:convert';
+
+import 'package:crypto/crypto.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../core/providers.dart';
+
+/// Challenges & events (milestone 4E2, D-028 to D-030, D-070). The server sends one question at a time, marks and
+/// times every answer, counts exits and ranks. The phone only shows what it is given.
+
+/// "₦20,000" from whole naira.
+String nairaWhole(num n) {
+  final s = n.round().toString().replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => ',');
+  return '₦$s';
+}
+
+/// "3:12" from milliseconds.
+String mmss(num ms) {
+  final s = (ms / 1000).round();
+  return '${s ~/ 60}:${(s % 60).toString().padLeft(2, '0')}';
+}
+
+/// "2h 05m", "3d 4h", "12m" until [t].
+String untilShort(DateTime t, {DateTime? now}) {
+  final s = t.difference(now ?? DateTime.now()).inSeconds.clamp(0, 1 << 31);
+  final d = s ~/ 86400, h = s % 86400 ~/ 3600, m = s % 3600 ~/ 60;
+  if (d > 0) return '${d}d ${h}h';
+  if (h > 0) return '${h}h ${m.toString().padLeft(2, '0')}m';
+  return '${m}m';
+}
+
+/// Friendly text for a server error.
+String challengeError(Object e) {
+  if (e is PostgrestException && e.message.isNotEmpty && e.code != '42501') return e.message;
+  return 'Something went wrong. Check your internet and try again.';
+}
+
+class Challenge {
+  Challenge(this.j);
+  final Map<String, dynamic> j;
+  String get id => '${j['id']}';
+  String get title => '${j['title']}';
+  String? get subtitle => j['subtitle'] as String?;
+  String get kind => '${j['kind']}';
+  String get icon => '${j['icon'] ?? 'trophy'}';
+  String? get exam => j['exam'] as String?;
+  String get status => '${j['status']}';
+  DateTime get startsAt => DateTime.parse('${j['starts_at']}').toLocal();
+  DateTime get endsAt => DateTime.parse('${j['ends_at']}').toLocal();
+  int get questions => (j['questions'] as num?)?.toInt() ?? 0;
+  int get seconds => (j['seconds'] as num?)?.toInt() ?? 30;
+  List<int> get prizes => [for (final p in (j['prizes'] as List? ?? const [])) (p as num).toInt()];
+  String? get reward => j['reward'] as String?;
+  int get joined => (j['joined'] as num?)?.toInt() ?? 0;
+  int get allowedExits => (j['allowed_exits'] as num?)?.toInt() ?? 0;
+  Map<String, dynamic>? get mine => j['mine'] is Map ? Map<String, dynamic>.from(j['mine'] as Map) : null;
+  bool get live => status == 'live';
+  bool get upcoming => status == 'upcoming';
+  bool get ended => status == 'ended';
+  List<Map<String, dynamic>> get winners => rows(j['winners']);
+
+  /// "₦20,000 first prize", the reward text, or practice.
+  String get rewardText => prizes.isNotEmpty ? '${nairaWhole(prizes.first)} first prize' : (reward ?? 'No prize, just for practice');
+  String get rule => kind == 'practice'
+      ? 'No winners. See how you rank against other students.'
+      : 'Best score wins. Same score: the fastest time wins. Same score and same time: the student who started earlier wins.';
+}
+
+final challengesProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+  final uid = currentSession(ref)?.user.id;
+  if (uid == null) return const {'on': false};
+  return cached(ref, 'challenges:$uid', (s) => s.rpc('challenges_list'), (j) => Map<String, dynamic>.from(j as Map));
+});
+
+final challengeProvider = FutureProvider.autoDispose.family<Challenge, String>((ref, id) async {
+  final j = await ref.read(supabaseProvider).rpc('challenge_detail', params: {'p_id': id}).timeout(const Duration(seconds: 15));
+  return Challenge(Map<String, dynamic>.from(j as Map));
+});
+
+final challengeResultProvider = FutureProvider.autoDispose.family<Map<String, dynamic>, String>((ref, id) async {
+  final j = await ref.read(supabaseProvider).rpc('challenge_result', params: {'p_id': id}).timeout(const Duration(seconds: 15));
+  return Map<String, dynamic>.from(j as Map);
+});
+
+final winningsProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+  final j = await ref.read(supabaseProvider).rpc('my_winnings').timeout(const Duration(seconds: 15));
+  return Map<String, dynamic>.from(j as Map);
+});
+
+final winnersWallProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+  return cached(ref, 'winners_wall', (s) => s.rpc('winners_wall_list'), (j) => Map<String, dynamic>.from(j as Map));
+});
+
+/// The phone's id (hashed, never sent raw) and what the phone noticed (emulator, split screen) — fair play only.
+abstract final class DeviceCheck {
+  static const ch = MethodChannel('solutiontee/device');
+
+  static Future<String?> hashedId() async {
+    try {
+      final raw = await ch.invokeMethod<String>('id');
+      if (raw == null || raw.isEmpty) return null;
+      return sha256.convert(utf8.encode('solutiontee:$raw')).toString();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<List<String>> flags() async {
+    try {
+      return [for (final f in await ch.invokeMethod<List<Object?>>('flags') ?? const []) '$f'];
+    } catch (_) {
+      return const [];
+    }
+  }
+}

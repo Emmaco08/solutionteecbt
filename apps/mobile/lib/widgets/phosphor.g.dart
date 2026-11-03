@@ -54,10 +54,14 @@ abstract final class PhosphorIcons {
       s == PhosphorIconsStyle.regular ? const IconData(0xe108, fontFamily: 'PhosphorRegular') : const IconData(0xe108, fontFamily: 'PhosphorFill');
   static IconData calendarBlank([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe10a, fontFamily: 'PhosphorRegular') : const IconData(0xe10a, fontFamily: 'PhosphorFill');
+  static IconData calendarStar([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
+      s == PhosphorIconsStyle.regular ? const IconData(0xe8b2, fontFamily: 'PhosphorRegular') : const IconData(0xe8b2, fontFamily: 'PhosphorFill');
   static IconData camera([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe10e, fontFamily: 'PhosphorRegular') : const IconData(0xe10e, fontFamily: 'PhosphorFill');
   static IconData cameraPlus([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xec58, fontFamily: 'PhosphorRegular') : const IconData(0xec58, fontFamily: 'PhosphorFill');
+  static IconData cameraSlash([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
+      s == PhosphorIconsStyle.regular ? const IconData(0xe110, fontFamily: 'PhosphorRegular') : const IconData(0xe110, fontFamily: 'PhosphorFill');
   static IconData caretDown([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe136, fontFamily: 'PhosphorRegular') : const IconData(0xe136, fontFamily: 'PhosphorFill');
   static IconData caretLeft([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
@@ -108,6 +112,8 @@ abstract final class PhosphorIcons {
       s == PhosphorIconsStyle.regular ? const IconData(0xe1d2, fontFamily: 'PhosphorRegular') : const IconData(0xe1d2, fontFamily: 'PhosphorFill');
   static IconData crownSimple([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe616, fontFamily: 'PhosphorRegular') : const IconData(0xe616, fontFamily: 'PhosphorFill');
+  static IconData currencyNgn([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
+      s == PhosphorIconsStyle.regular ? const IconData(0xeb52, fontFamily: 'PhosphorRegular') : const IconData(0xeb52, fontFamily: 'PhosphorFill');
   static IconData deviceMobile([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe1e0, fontFamily: 'PhosphorRegular') : const IconData(0xe1e0, fontFamily: 'PhosphorFill');
   static IconData dna([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
@@ -164,6 +170,8 @@ abstract final class PhosphorIcons {
       s == PhosphorIconsStyle.regular ? const IconData(0xe2b8, fontFamily: 'PhosphorRegular') : const IconData(0xe2b8, fontFamily: 'PhosphorFill');
   static IconData house([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe2c2, fontFamily: 'PhosphorRegular') : const IconData(0xe2c2, fontFamily: 'PhosphorFill');
+  static IconData identificationBadge([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
+      s == PhosphorIconsStyle.regular ? const IconData(0xe6f6, fontFamily: 'PhosphorRegular') : const IconData(0xe6f6, fontFamily: 'PhosphorFill');
   static IconData identificationCard([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe2c8, fontFamily: 'PhosphorRegular') : const IconData(0xe2c8, fontFamily: 'PhosphorFill');
   static IconData image([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
@@ -190,8 +198,12 @@ abstract final class PhosphorIcons {
       s == PhosphorIconsStyle.regular ? const IconData(0xe30c, fontFamily: 'PhosphorRegular') : const IconData(0xe30c, fontFamily: 'PhosphorFill');
   static IconData mapTrifold([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe31a, fontFamily: 'PhosphorRegular') : const IconData(0xe31a, fontFamily: 'PhosphorFill');
+  static IconData mathOperations([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
+      s == PhosphorIconsStyle.regular ? const IconData(0xe31e, fontFamily: 'PhosphorRegular') : const IconData(0xe31e, fontFamily: 'PhosphorFill');
   static IconData medal([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe320, fontFamily: 'PhosphorRegular') : const IconData(0xe320, fontFamily: 'PhosphorFill');
+  static IconData megaphone([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
+      s == PhosphorIconsStyle.regular ? const IconData(0xe324, fontFamily: 'PhosphorRegular') : const IconData(0xe324, fontFamily: 'PhosphorFill');
   static IconData minusCircle([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe32c, fontFamily: 'PhosphorRegular') : const IconData(0xe32c, fontFamily: 'PhosphorFill');
   static IconData moonStars([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
@@ -216,6 +228,8 @@ abstract final class PhosphorIcons {
       s == PhosphorIconsStyle.regular ? const IconData(0xe73a, fontFamily: 'PhosphorRegular') : const IconData(0xe73a, fontFamily: 'PhosphorFill');
   static IconData phone([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe3b8, fontFamily: 'PhosphorRegular') : const IconData(0xe3b8, fontFamily: 'PhosphorFill');
+  static IconData phoneCall([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
+      s == PhosphorIconsStyle.regular ? const IconData(0xe3ba, fontFamily: 'PhosphorRegular') : const IconData(0xe3ba, fontFamily: 'PhosphorFill');
   static IconData plant([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xebae, fontFamily: 'PhosphorRegular') : const IconData(0xebae, fontFamily: 'PhosphorFill');
   static IconData play([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
@@ -240,6 +254,10 @@ abstract final class PhosphorIcons {
       s == PhosphorIconsStyle.regular ? const IconData(0xe408, fontFamily: 'PhosphorRegular') : const IconData(0xe408, fontFamily: 'PhosphorFill');
   static IconData shieldCheck([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe40c, fontFamily: 'PhosphorRegular') : const IconData(0xe40c, fontFamily: 'PhosphorFill');
+  static IconData shieldWarning([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
+      s == PhosphorIconsStyle.regular ? const IconData(0xe412, fontFamily: 'PhosphorRegular') : const IconData(0xe412, fontFamily: 'PhosphorFill');
+  static IconData shuffle([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
+      s == PhosphorIconsStyle.regular ? const IconData(0xe422, fontFamily: 'PhosphorRegular') : const IconData(0xe422, fontFamily: 'PhosphorFill');
   static IconData sigma([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xeab8, fontFamily: 'PhosphorRegular') : const IconData(0xeab8, fontFamily: 'PhosphorFill');
   static IconData signOut([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
@@ -278,10 +296,14 @@ abstract final class PhosphorIcons {
       s == PhosphorIconsStyle.regular ? const IconData(0xe4c2, fontFamily: 'PhosphorRegular') : const IconData(0xe4c2, fontFamily: 'PhosphorFill');
   static IconData userCircle([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe4c4, fontFamily: 'PhosphorRegular') : const IconData(0xe4c4, fontFamily: 'PhosphorFill');
+  static IconData users([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
+      s == PhosphorIconsStyle.regular ? const IconData(0xe4d6, fontFamily: 'PhosphorRegular') : const IconData(0xe4d6, fontFamily: 'PhosphorFill');
   static IconData usersThree([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe68e, fontFamily: 'PhosphorRegular') : const IconData(0xe68e, fontFamily: 'PhosphorFill');
   static IconData videoCamera([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe4da, fontFamily: 'PhosphorRegular') : const IconData(0xe4da, fontFamily: 'PhosphorFill');
+  static IconData wallet([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
+      s == PhosphorIconsStyle.regular ? const IconData(0xe68a, fontFamily: 'PhosphorRegular') : const IconData(0xe68a, fontFamily: 'PhosphorFill');
   static IconData warning([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe4e0, fontFamily: 'PhosphorRegular') : const IconData(0xe4e0, fontFamily: 'PhosphorFill');
   static IconData warningCircle([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>

@@ -19,6 +19,7 @@ import '../cbt/exam_clock.dart';
 import '../home/home_screen.dart';
 import '../setup/setup_screen.dart';
 import '../premium/paywall.dart';
+import '../compete/compete_data.dart';
 import 'leaderboard_screen.dart';
 
 /// Test tab (prototype: test): navy "Full JAMB simulation" hero, practice modes, other exams, offline note.
@@ -172,6 +173,14 @@ class TestHubScreen extends ConsumerWidget {
           ),
         ],
       ),
+      if (ref.watch(challengesProvider).value?['on'] == true)
+        modeCard(
+          PhosphorIcons.trophy(PhosphorIconsStyle.fill),
+          Tone.gold,
+          'Challenges & events',
+          'Weekly cash prizes and special events',
+          () => context.push('/challenges'),
+        ),
       if (ref.watch(leaderboardOnProvider).value == true) const LeaderboardEntry(),
       modeCard(
         PhosphorIcons.cloudArrowDown(PhosphorIconsStyle.fill),

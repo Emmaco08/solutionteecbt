@@ -108,8 +108,8 @@ Plan: `docs/plans/phase-4.md`.
   - [x] **Owner approved: "4D ok" (2026-11-03)**
 - [x] Real app icon from `brand/favicon.svg`; /download updated automatically by GitHub after every app change (D-065)
 - **4E Challenges, referrals, leaderboard, question of the day, winners wall** (plan: `docs/plans/phase-4e.md`, three parts)
-  - [~] 4E1 Question of the day + leaderboard (D-066, D-067, D-068: own questions, WAEC/NECO boards, rules as settings; DB tests 43/43, app 50/50): database + tests **32/32**; admin pages (Question of the day, Leaderboard); app card on Home, Leaderboard screen, Settings switch; app tests 48/48, analyzer clean. Waiting for owner check (`4E1 ok`)
-  - [ ] 4E2 Challenges & events, fair play, prize claims, winners wall
+  - [x] 4E1 Question of the day + leaderboard (D-066 to D-069: own questions, WAEC/NECO boards, rules as settings, photos; DB tests 43/43, app 50/50). **Owner approved: "4E1 ok" (2026-11-03)**. database + tests **32/32**; admin pages (Question of the day, Leaderboard); app card on Home, Leaderboard screen, Settings switch; app tests 48/48, analyzer clean. Waiting for owner check (`4E1 ok`)
+  - [~] 4E2 Challenges & events, fair play, prize claims, winners wall (D-070): database + tests **30/30**; admin Challenges & events and Winners & payouts; app Home section, list, details with fair-play rules, protected play screen, result/winners, prize claim, My winnings, Winners wall; app tests 55/55. Waiting for owner check (`4E2 ok`)
   - [ ] 4E3 Referrals, one account per person, bans
 
 ## Phase 5 — Website, classes, community  (approval: `WEBSITE APPROVED`)

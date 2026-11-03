@@ -19,6 +19,8 @@ import '../news/news_screens.dart';
 import '../shell/shell.dart';
 import '../premium/paywall.dart';
 import '../profile/me_extras.dart';
+import '../compete/challenges_screens.dart';
+import '../compete/compete_data.dart';
 import 'qotd_card.dart';
 
 /// The unfinished test on this phone (if any), for the "Continue your test" card.
@@ -143,6 +145,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ref.invalidate(openYearsProvider);
     ref.invalidate(unfinishedProvider);
     ref.invalidate(qotdProvider);
+    ref.invalidate(challengesProvider);
     await ref.read(examsProvider.future).catchError((_) => <Map<String, dynamic>>[]);
   }
 
@@ -195,6 +198,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
       ),
       if (unfinished != null) ContinueCard(a: unfinished),
+      if (ref.watch(challengesProvider).value?['on'] == true) const ChallengeSection(),
       Column(
         key: _startKey,
         crossAxisAlignment: CrossAxisAlignment.stretch,

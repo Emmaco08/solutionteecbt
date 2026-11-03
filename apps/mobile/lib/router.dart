@@ -24,6 +24,9 @@ import 'features/study/novel_screens.dart';
 import 'features/study/pq_screens.dart';
 import 'features/study/study_hub.dart';
 import 'features/study/video_screens.dart';
+import 'features/compete/challenge_play.dart';
+import 'features/compete/challenges_screens.dart';
+import 'features/compete/results_screens.dart';
 import 'features/test/leaderboard_screen.dart';
 import 'features/test/test_screens.dart';
 
@@ -116,6 +119,29 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(path: '/history', builder: (_, _) => const HistoryScreen()),
       GoRoute(path: '/leaderboard', builder: (_, _) => const LeaderboardScreen()),
+      GoRoute(path: '/challenges', builder: (_, _) => const ChallengesScreen()),
+      GoRoute(
+        path: '/challenges/:id',
+        builder: (_, s) => ChallengeScreen(id: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/challenges/:id/play',
+        builder: (_, s) => ChallengePlayScreen(id: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/challenges/:id/result',
+        builder: (_, s) => ChallengeResultScreen(id: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/challenges/:id/winners',
+        builder: (_, s) => ChallengeResultScreen(id: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/challenges/:id/claim',
+        builder: (_, s) => ClaimPrizeScreen(id: s.pathParameters['id']!),
+      ),
+      GoRoute(path: '/winnings', builder: (_, _) => const WinningsScreen()),
+      GoRoute(path: '/winners-wall', builder: (_, _) => const WinnersWallScreen()),
       GoRoute(path: '/notifications', builder: (_, _) => const NotificationsScreen()),
       GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),
       GoRoute(path: '/help', builder: (_, _) => const HelpScreen()),
