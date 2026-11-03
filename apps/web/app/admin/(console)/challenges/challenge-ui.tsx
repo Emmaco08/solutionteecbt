@@ -15,7 +15,7 @@ export type ChallengeRow = {
   id: string; title: string; subtitle: string | null; kind: "cash" | "event" | "practice"; icon: string; exam_code: string | null;
   starts_at: string; ends_at: string; seconds_per_question: number; prizes: number[]; reward_text: string | null;
   premium_days: number; premium_top: number; allowed_exits: number; published: boolean; closed_at: string | null;
-  mode: "mixed" | "subject" | "fixed"; subject_id: number | null; per_level: Record<string, number>; same_questions: boolean;
+  mode: "mixed" | "subject" | "fixed"; subject_id: number | null; per_level: Record<string, number>; same_questions: boolean; allow_review: boolean;
 };
 export type QRow = { id: string; position: number; body: string; options: Record<string, string>; answer: string; subject_id: number | null; difficulty: string };
 export type Subject = { id: number; name: string };

@@ -21,6 +21,9 @@ abstract class ChallengeApi {
   Future<Map<String, dynamic>> start(String id, String? device, List<String> flags);
   Future<Map<String, dynamic>> answer(String entryId, String questionId, String? choice);
   Future<Map<String, dynamic>> exit(String entryId, String reason);
+
+  /// A screenshot or screen recording during the challenge: a fair-play flag (D-075).
+  Future<void> report(String entryId, String what);
 }
 
 class SupabaseChallengeApi implements ChallengeApi {
@@ -36,6 +39,10 @@ class SupabaseChallengeApi implements ChallengeApi {
       _rpc('challenge_answer', {'p_entry': entryId, 'p_question': questionId, 'p_choice': choice});
   @override
   Future<Map<String, dynamic>> exit(String entryId, String reason) => _rpc('challenge_exit', {'p_entry': entryId, 'p_reason': reason});
+  @override
+  Future<void> report(String entryId, String what) async {
+    await ref.read(supabaseProvider).rpc('challenge_report', params: {'p_entry': entryId, 'p_what': what}).timeout(const Duration(seconds: 20));
+  }
 }
 
 final challengeApiProvider = Provider<ChallengeApi>((ref) => SupabaseChallengeApi(ref));
@@ -63,6 +70,7 @@ class _ChallengePlayScreenState extends ConsumerState<ChallengePlayScreen> with 
   bool _hasQ = false;
   final _startedAt = DateTime.now();
   Timer? _tick;
+  StreamSubscription<MethodCall>? _events, _secure;
 
   ChallengeApi get _api => ref.read(challengeApiProvider);
   String? get _entry => _q?['entry_id'] as String?;
@@ -72,11 +80,12 @@ class _ChallengePlayScreenState extends ConsumerState<ChallengePlayScreen> with 
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     SecureScreen.on();
-    DeviceCheck.ch.setMethodCallHandler((call) async {
+    _events = DeviceEvents.stream.listen((call) {
       if (call.method == 'focus' && call.arguments == false) _left('Another window or the notification panel opened over the challenge');
       if (call.method == 'multiWindow' && call.arguments == true) _left('Split screen or a floating window was opened');
       if (call.method == 'focus' && call.arguments == true) _away = false;
     });
+    _secure = SecureScreen.watch(onScreenshot: () => _capture('screenshot'), onRecording: () => _capture('recording'));
     _tick = Timer.periodic(const Duration(milliseconds: 250), (_) => _onTick());
     _begin();
   }
@@ -84,10 +93,25 @@ class _ChallengePlayScreenState extends ConsumerState<ChallengePlayScreen> with 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    DeviceCheck.ch.setMethodCallHandler(null);
+    _events?.cancel();
+    _secure?.cancel();
     _tick?.cancel();
     SecureScreen.off();
     super.dispose();
+  }
+
+  /// Screenshots are blocked; an attempt is shown to the student and saved for the fair-play review.
+  void _capture(String what) {
+    if (!mounted || _done) return;
+    final e = _entry;
+    if (e != null) _api.report(e, what).ignore();
+    toast(
+      context,
+      what == 'screenshot'
+          ? 'Screenshots are not allowed in challenges. This attempt was recorded.'
+          : 'Screen recording is not allowed in challenges. Stop it, or your entry may not win.',
+      icon: PhosphorIcons.cameraSlash(PhosphorIconsStyle.fill),
+    );
   }
 
   @override

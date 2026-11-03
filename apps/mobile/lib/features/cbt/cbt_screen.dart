@@ -58,7 +58,17 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     SecureScreen.on();
+    _secure = SecureScreen.watch(
+      onScreenshot: () => _warnCapture('Screenshots are not allowed during a test.'),
+      onRecording: () => _warnCapture('Screen recording is not allowed during a test. The screen will look black.'),
+    );
     _load();
+  }
+
+  StreamSubscription<MethodCall>? _secure;
+
+  void _warnCapture(String text) {
+    if (mounted) toast(context, text, icon: PhosphorIcons.cameraSlash(PhosphorIconsStyle.fill));
   }
 
   Future<void> _load() async {
@@ -116,6 +126,7 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _tick?.cancel();
+    _secure?.cancel();
     SecureScreen.off();
     super.dispose();
   }

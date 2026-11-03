@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { ErrorState, PageHeader, PageSkeleton, Panel } from "@/components/admin/ui";
 import { ChallengeForm, CloseButton, EntriesList, QuestionsPanel, type ChallengeRow, type EntryRow, type QRow, type Subject } from "../challenge-ui";
 import { jambSubjects } from "../subjects";
-import { CopyButton, LivePanel } from "../live-ui";
+import { CopyButton, LivePanel, ReviewToggle } from "../live-ui";
 import type { LiveData } from "../actions";
 
 export const metadata: Metadata = { title: "Challenge" };
@@ -54,6 +54,7 @@ async function Edit({ params }: { params: Promise<{ id: string }> }) {
     <>
       <PageHeader title={ch.title} description={ch.closed_at ? "Ended. Winners are saved; pay them in Money → Winners & payouts." : live ? "Live now." : "Not live yet."}
         actions={<div className="flex flex-wrap items-center gap-2"><Link href="/admin/challenges" className="text-sm text-muted-foreground hover:underline">All challenges</Link><CopyButton id={ch.id} defaultStart={nextWeek(ch.starts_at)} />{!ch.closed_at && ch.published ? <CloseButton id={ch.id} /> : null}</div>} />
+      <Panel title="After it ends" className="mb-4"><ReviewToggle id={ch.id} on={ch.allow_review ?? true} /></Panel>
       {ld && rows.length ? <Panel title="Live leaderboard and analysis" className="mb-4"><LivePanel id={ch.id} title={ch.title} initial={ld} /></Panel> : null}
       <div className="grid gap-4 xl:grid-cols-2">
         <Panel title="Challenge">{ch.closed_at ? <p className="text-sm text-muted-foreground">It has ended, so it cannot be changed.</p> : <ChallengeForm c={ch} subjects={subjects} />}</Panel>

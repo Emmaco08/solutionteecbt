@@ -1,7 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 
-/// Blocks screenshots and screen recording (Android FLAG_SECURE) while a test is open.
-/// Implemented in android/app/src/main/kotlin/.../MainActivity.kt.
+/// Blocks screenshots and screen recording (Android FLAG_SECURE) while a test, a challenge or a challenge review is
+/// open. Implemented in android/app/src/main/kotlin/.../MainActivity.kt.
 abstract final class SecureScreen {
   static const _ch = MethodChannel('solutiontee/secure');
   static Future<void> on() => _call(true);
@@ -13,4 +15,29 @@ abstract final class SecureScreen {
       // Not available (tests, other platforms): nothing to do.
     }
   }
+
+  /// Calls [onScreenshot] when the student tries a screenshot (Android 14+) and [onRecording] when screen recording
+  /// starts (Android 15+). Older phones still block the picture, they just do not tell us (D-075).
+  static StreamSubscription<MethodCall> watch({void Function()? onScreenshot, void Function()? onRecording}) => DeviceEvents.stream.listen((c) {
+    if (c.method == 'screenshot') onScreenshot?.call();
+    if (c.method == 'recording' && c.arguments == true) onRecording?.call();
+  });
+}
+
+/// Messages from Android on `solutiontee/device`: focus, multiWindow, screenshot, recording. One handler, many listeners.
+abstract final class DeviceEvents {
+  static const ch = MethodChannel('solutiontee/device');
+  static final _c = StreamController<MethodCall>.broadcast();
+  static bool _hooked = false;
+
+  static Stream<MethodCall> get stream {
+    if (!_hooked) {
+      _hooked = true;
+      ch.setMethodCallHandler((call) async => _c.add(call));
+    }
+    return _c.stream;
+  }
+
+  /// For tests: pretend Android sent [method].
+  static void debugSend(String method, [Object? args]) => _c.add(MethodCall(method, args));
 }

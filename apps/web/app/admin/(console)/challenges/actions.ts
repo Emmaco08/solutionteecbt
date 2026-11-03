@@ -259,3 +259,14 @@ export async function liveData(id: string): Promise<ActionResult<LiveData>> {
   if (error) return { ok: false, error: friendlyError(error) };
   return { ok: true, data: data as unknown as LiveData };
 }
+
+/** Let students review their answers after the end, or not (any time, also after it ends) — D-075. */
+export async function setReview(id: string, on: boolean): Promise<ActionResult> {
+  await editors();
+  if (!uuid.test(id)) return { ok: false, error: "Unknown challenge" };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_challenge_set_review", { p_id: id, p_on: on });
+  if (error) return { ok: false, error: friendlyError(error) };
+  revalidatePath(`/admin/challenges/${id}`);
+  return { ok: true, message: on ? "Students can review their answers after it ends." : "Answer review is off." };
+}

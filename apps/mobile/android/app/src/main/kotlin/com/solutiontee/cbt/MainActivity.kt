@@ -1,5 +1,6 @@
 package com.solutiontee.cbt
 
+import android.app.Activity
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
@@ -10,9 +11,47 @@ import android.view.WindowManager
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import java.util.function.Consumer
 
 class MainActivity : FlutterActivity() {
     private var device: MethodChannel? = null
+
+    // Screenshot (Android 14+) and screen-recording (Android 15+) detection (D-075). FLAG_SECURE already blocks the
+    // picture where it matters; this tells Flutter so it can warn the student and flag a challenge entry.
+    private val screenshotCallback: Any? by lazy {
+        if (Build.VERSION.SDK_INT >= 34) Activity.ScreenCaptureCallback { device?.invokeMethod("screenshot", null) } else null
+    }
+    private val recordingCallback: Any? by lazy {
+        if (Build.VERSION.SDK_INT >= 35) {
+            Consumer<Int> { state -> device?.invokeMethod("recording", state == WindowManager.SCREEN_RECORDING_STATE_VISIBLE) }
+        } else {
+            null
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    override fun onStart() {
+        super.onStart()
+        try {
+            if (Build.VERSION.SDK_INT >= 34) registerScreenCaptureCallback(mainExecutor, screenshotCallback as Activity.ScreenCaptureCallback)
+            if (Build.VERSION.SDK_INT >= 35) {
+                val state = windowManager.addScreenRecordingCallback(mainExecutor, recordingCallback as Consumer<Int>)
+                if (state == WindowManager.SCREEN_RECORDING_STATE_VISIBLE) device?.invokeMethod("recording", true)
+            }
+        } catch (e: Exception) {
+            // Detection is a bonus; never crash because of it.
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    override fun onStop() {
+        try {
+            if (Build.VERSION.SDK_INT >= 34) unregisterScreenCaptureCallback(screenshotCallback as Activity.ScreenCaptureCallback)
+            if (Build.VERSION.SDK_INT >= 35) windowManager.removeScreenRecordingCallback(recordingCallback as Consumer<Int>)
+        } catch (e: Exception) {
+        }
+        super.onStop()
+    }
 
     // Fair play in challenges (D-070): tell Flutter when another window (notification shade, floating app, call screen)
     // takes the focus, or when split screen starts.

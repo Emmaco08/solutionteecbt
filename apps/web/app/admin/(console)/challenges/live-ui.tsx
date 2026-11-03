@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { inputCls } from "@/components/admin/row-form";
 import { MathText } from "@/components/admin/math-text";
 import { Pill } from "@/components/admin/ui";
-import { copyChallenge, liveData, type LiveData } from "./actions";
+import { copyChallenge, liveData, setReview, type LiveData } from "./actions";
 
 const LEVEL: Record<string, string> = { easy: "Easy", medium: "Medium", hard: "Hard", very_hard: "Very hard" };
 const mmss = (ms: number | null | undefined) => {
@@ -178,5 +178,21 @@ export function CopyButton({ id, defaultStart }: { id: string; defaultStart: str
       })}>{pending ? <SpinnerGap size={16} className="animate-spin" /> : null} Copy</Button>
       <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
     </div>
+  );
+}
+
+/** After the end: may students see their questions, answers and explanations? Can be changed any time. */
+export function ReviewToggle({ id, on }: { id: string; on: boolean }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  return (
+    <label className="flex items-start gap-3 text-sm">
+      <input type="checkbox" checked={on} disabled={pending} className="mt-1" onChange={(e) => {
+        const v = e.target.checked;
+        start(async () => { const r = await setReview(id, v); if (r.ok) { toast.success(r.message ?? "Saved"); router.refresh(); } else toast.error(r.error); });
+      }} />
+      <span><b>Students can review their answers after it ends</b>
+        <span className="block text-muted-foreground">They see each question, their choice, the right answer and the explanation, only after the end. Screenshots are blocked on that screen. Turn it off if you will reuse these questions. You can change this any time, also after it ends.</span></span>
+    </label>
   );
 }

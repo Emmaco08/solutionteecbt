@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -10,6 +12,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/nav.dart';
 import '../../core/providers.dart';
+import '../../core/secure_screen.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
 import '../../ui/confetti.dart';
@@ -212,6 +215,8 @@ class ChallengeResultScreen extends ConsumerWidget {
                   child: const Text('After we pay the winners, the proof of payment is posted on the Winners wall.'),
                 ),
               ),
+            if (ended && mine != null && mine['status'] != 'playing' && ch.j['allow_review'] == false)
+              Text('Answer review is turned off for this challenge.', style: context.ty.cap.col(c.textMuted), textAlign: TextAlign.center),
             if (ended && mine?['can_review'] == true)
               Btn(
                 'Review my answers',
@@ -722,11 +727,42 @@ class AppealStatus extends StatelessWidget {
 
 /// After a challenge ends: each of the student's questions, their choice, the right answer and the explanation (D-074).
 /// The server only sends this once the challenge has ended, so answers cannot be shared while it runs.
-class ChallengeReviewScreen extends ConsumerWidget {
+/// Screenshots and screen recording are blocked here too, so the questions are not shared (D-075).
+class ChallengeReviewScreen extends ConsumerStatefulWidget {
   const ChallengeReviewScreen({super.key, required this.id});
   final String id;
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ChallengeReviewScreen> createState() => _ChallengeReviewScreenState();
+}
+
+class _ChallengeReviewScreenState extends ConsumerState<ChallengeReviewScreen> {
+  StreamSubscription<MethodCall>? _secure;
+
+  @override
+  void initState() {
+    super.initState();
+    SecureScreen.on();
+    _secure = SecureScreen.watch(
+      onScreenshot: () => _warn('Screenshots are not allowed in challenge reviews.'),
+      onRecording: () => _warn('Screen recording is not allowed here. The screen will look black.'),
+    );
+  }
+
+  void _warn(String text) {
+    if (mounted) toast(context, text, icon: PhosphorIcons.cameraSlash(PhosphorIconsStyle.fill));
+  }
+
+  @override
+  void dispose() {
+    _secure?.cancel();
+    SecureScreen.off();
+    super.dispose();
+  }
+
+  String get id => widget.id;
+
+  @override
+  Widget build(BuildContext context) {
     final v = ref.watch(challengeReviewProvider(id));
     final c = context.c;
     return Scaffold(

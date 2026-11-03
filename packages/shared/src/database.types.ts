@@ -840,6 +840,7 @@ export type Database = {
           prizes: number[]
           published: boolean
           reward_text: string | null
+          allow_review: boolean
           same_questions: boolean
           seconds_per_question: number
           soon_notified_at: string | null
@@ -868,6 +869,7 @@ export type Database = {
           prizes?: number[]
           published?: boolean
           reward_text?: string | null
+          allow_review?: boolean
           same_questions?: boolean
           seconds_per_question?: number
           soon_notified_at?: string | null
@@ -896,6 +898,7 @@ export type Database = {
           prizes?: number[]
           published?: boolean
           reward_text?: string | null
+          allow_review?: boolean
           same_questions?: boolean
           seconds_per_question?: number
           soon_notified_at?: string | null
@@ -2392,6 +2395,10 @@ export type Database = {
       }
       admin_challenge_entries: { Args: { p_id: string }; Returns: Json }
       admin_challenge_live: { Args: { p_id: string }; Returns: Json }
+      admin_challenge_set_review: {
+        Args: { p_id: string; p_on: boolean }
+        Returns: undefined
+      }
       admin_challenge_set_level: {
         Args: { p_level: string; p_question: string }
         Returns: undefined
@@ -2548,6 +2555,10 @@ export type Database = {
         Returns: Json
       }
       challenge_result: { Args: { p_id: string }; Returns: Json }
+      challenge_report: {
+        Args: { p_entry: string; p_what: string }
+        Returns: undefined
+      }
       challenge_review: { Args: { p_id: string }; Returns: Json }
       challenge_start: {
         Args: { p_device?: string; p_device_flags?: string[]; p_id: string }

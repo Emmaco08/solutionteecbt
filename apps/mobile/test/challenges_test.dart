@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:solutiontee_cbt/core/nav.dart';
+import 'package:solutiontee_cbt/core/secure_screen.dart';
 import 'package:solutiontee_cbt/features/compete/challenge_play.dart';
 import 'package:solutiontee_cbt/features/compete/challenges_screens.dart';
 import 'package:solutiontee_cbt/features/compete/compete_data.dart';
@@ -45,6 +46,10 @@ class FakeApi implements ChallengeApi {
     exits.add(reason);
     return {'status': 'disqualified'};
   }
+
+  final reports = <String>[];
+  @override
+  Future<void> report(String entryId, String what) async => reports.add(what);
 }
 
 Challenge sample({String status = 'live', Map<String, dynamic>? mine, Map<String, dynamic> extra = const {}}) => Challenge({
@@ -312,5 +317,16 @@ void main() {
     expect(find.text('Wrong'), findsOneWidget);
     expect(find.text('Mathematics · Very hard'), findsOneWidget);
     expect(find.text('Add them: four.', findRichText: true), findsOneWidget);
+  });
+
+  testWidgets('play: a screenshot attempt is reported for the fair-play review and the student is told', (t) async {
+    final api = FakeApi();
+    await t.pumpWidget(app('/challenges/c1/play', api));
+    await settle(t);
+    DeviceEvents.debugSend('screenshot');
+    await settle(t);
+    expect(api.reports, ['screenshot']);
+    expect(find.textContaining('Screenshots are not allowed in challenges'), findsOneWidget);
+    expect(api.exits, isEmpty);
   });
 }
