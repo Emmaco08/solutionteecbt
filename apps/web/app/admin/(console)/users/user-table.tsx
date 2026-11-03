@@ -153,8 +153,9 @@ function UserDrawer({ id, onChanged }: { id: string; onChanged: () => void }) {
               <Button variant="outline" disabled={pending} onClick={() => start(async () => after("Ban removed.")(await setBan(u.id, false, "")))}>Remove ban</Button>
             </>
           ) : (
-            <form action={(f) => { if (!confirm("Ban this student? They will be signed out and cannot log in.")) return; start(async () => after("Student banned.")(await setBan(u.id, true, String(f.get("reason"))))); }} className="space-y-2">
-              <input name="reason" required minLength={3} placeholder="Reason (kept in the audit log)" className="h-10 w-full rounded-xl border border-input bg-card px-3 text-sm" />
+            <form action={(f) => { if (!confirm("Ban this student? The app shows them a ban screen, and unpaid rewards and prizes are cancelled. They can send one appeal within 14 days.")) return; start(async () => after("Student banned.")(await setBan(u.id, true, String(f.get("reason")), f.get("linked") === "on"))); }} className="space-y-2">
+              <input name="reason" required minLength={3} placeholder="Reason (the student sees it; kept in the audit log)" className="h-10 w-full rounded-xl border border-input bg-card px-3 text-sm" />
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="linked" /> Also ban other accounts on the same phone</label>
               <Button type="submit" variant="destructive" disabled={pending}><Prohibit size={16} /> Ban</Button>
             </form>
           )}

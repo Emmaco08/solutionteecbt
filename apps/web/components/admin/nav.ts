@@ -26,8 +26,8 @@ export const NAV: NavGroup[] = [
     items: [
       { href: "/admin/users", label: "Users", icon: "Users", roles: ADMINS },
       { href: "/admin/leaderboard", label: "Leaderboard", icon: "Ranking", roles: ADMINS },
-      { href: "/admin/referrals", label: "Referrals", icon: "Gift", soon: "Phase 4b" },
-      { href: "/admin/fraud", label: "Fraud & bans", icon: "ShieldWarning", soon: "Phase 4b" },
+      { href: "/admin/referrals", label: "Referrals", icon: "Gift", roles: ADMINS },
+      { href: "/admin/fraud", label: "Fraud & bans", icon: "ShieldWarning", roles: ADMINS },
     ],
   },
   {
@@ -47,7 +47,6 @@ export const NAV: NavGroup[] = [
       { href: "/admin/tabs", label: "Tabs manager", icon: "Layout", roles: ADMINS },
       { href: "/admin/ai", label: "AI tutor", icon: "Sparkle", roles: ADMINS },
       { href: "/admin/settings", label: "Flags & settings", icon: "ToggleRight", roles: ADMINS },
-      { href: "/admin/leaderboard", label: "Leaderboard", icon: "Ranking", soon: "Phase 4" },
     ],
   },
   {

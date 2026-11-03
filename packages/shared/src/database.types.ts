@@ -2379,11 +2379,30 @@ export type Database = {
           used: number
         }[]
       }
+      admin_device_allow: {
+        Args: { p_allowed: boolean; p_hash: string; p_user: string }
+        Returns: undefined
+      }
+      admin_fraud: { Args: never; Returns: Json }
+      admin_referral_paid: {
+        Args: { p_note?: string; p_receipt?: string; p_reward: string }
+        Returns: undefined
+      }
+      admin_referral_settings: { Args: { p: Json }; Returns: undefined }
+      admin_referrals: { Args: never; Returns: Json }
       admin_challenge_appeal: {
         Args: { p_accept: boolean; p_appeal: string; p_note?: string }
         Returns: Json
       }
       admin_challenge_appeals: { Args: never; Returns: Json }
+      admin_ban: {
+        Args: { p_banned: boolean; p_linked?: boolean; p_reason?: string; p_user: string }
+        Returns: Json
+      }
+      admin_ban_appeal: {
+        Args: { p_accept: boolean; p_appeal: string; p_note?: string }
+        Returns: undefined
+      }
       admin_challenge_add_random: {
         Args: { p_count: number; p_id: string; p_subjects: number[] }
         Returns: Json
@@ -2555,6 +2574,15 @@ export type Database = {
         Returns: Json
       }
       challenge_result: { Args: { p_id: string }; Returns: Json }
+      ban_appeal: { Args: { p_reason: string }; Returns: Json }
+      device_register: { Args: { p_hash: string }; Returns: Json }
+      my_referrals: { Args: never; Returns: Json }
+      my_status: { Args: never; Returns: Json }
+      referral_apply: { Args: { p_code: string }; Returns: Json }
+      referral_claim: {
+        Args: { p_account_name: string; p_account_number: string; p_bank: string; p_reward: string }
+        Returns: Json
+      }
       challenge_report: {
         Args: { p_entry: string; p_what: string }
         Returns: undefined

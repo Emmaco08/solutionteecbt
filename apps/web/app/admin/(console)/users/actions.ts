@@ -64,14 +64,16 @@ export async function revokeEntitlement(id: string): Promise<ActionResult> {
   return { ok: true };
 }
 
-export async function setBan(userId: string, banned: boolean, reason: string): Promise<ActionResult> {
+export async function setBan(userId: string, banned: boolean, reason: string, linked = false): Promise<ActionResult> {
   try { await admin(); } catch (e) { return { ok: false, error: (e as Error).message }; }
   const supabase = await createClient();
-  const { error } = await supabase.rpc("admin_set_ban", { p_user: userId, p_banned: banned, p_reason: reason || undefined });
+  // D-078: the server bans (questions, study, AI, payments, challenges, referrals are refused; unpaid rewards and prizes
+  // are cancelled; logged). Sign-in stays open so the student sees the ban screen and can send one appeal.
+  const { error } = await supabase.rpc("admin_ban", { p_user: userId, p_banned: banned, p_reason: reason || undefined, p_linked: linked });
   if (error) return { ok: false, error: friendlyError(error) };
-  // Also stop (or allow) sign-in at the Auth level, which ends existing sessions when they refresh.
-  if (hasServiceKey()) {
-    await (await createServiceClient()).auth.admin.updateUserById(userId, { ban_duration: banned ? "876000h" : "none" });
+  // Older bans also blocked sign-in at the Auth level; unbanning clears that.
+  if (!banned && hasServiceKey()) {
+    await (await createServiceClient()).auth.admin.updateUserById(userId, { ban_duration: "none" });
   }
   revalidatePath("/admin", "layout");
   return { ok: true };
