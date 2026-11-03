@@ -398,9 +398,47 @@ Share **https://admin.solutiontee.com/download** with the team (Android only). T
 
 ```
 cd apps/mobile
-flutter build apk --release --target-platform android-arm64
+flutter build apk --release --flavor direct --target-platform android-arm64
 cd ../web
 node scripts/upload-apk.mjs
 ```
 
 The page picks up the new file at once (no website deploy needed). Testers install over the old version and keep their account.
+
+## 13. Payments (milestone 4C, 2026-11-03)
+
+Premium is given only by our server after it checks the payment with Paystack or Google (D-060). **Never paste keys in chat.** You type them only into the Supabase and Paystack dashboards, as below.
+
+### 13.1 Paystack (test mode first) — needed now
+1. Open https://dashboard.paystack.com and make sure the switch at the top says **Test mode**.
+2. *Settings → API Keys & Webhooks.* Copy the **Test Secret Key** (starts with `sk_test_`).
+3. Open https://supabase.com/dashboard/project/mxeemubacnmcmmmzteax/functions/secrets → **Add new secret**:
+   - Name `PAYSTACK_SECRET_KEY`, value = the test secret key. Save.
+   - Optional: name `PAYSTACK_CALLBACK_URL`, value `https://admin.solutiontee.com/pay/done` (the "go back to the app" page; works after the next website deploy).
+4. Back in Paystack *Settings → API Keys & Webhooks*, set **Test Webhook URL** to:
+   `https://mxeemubacnmcmmmzteax.supabase.co/functions/v1/paystack-webhook` and save.
+5. The public key is **not** needed: the server starts every payment.
+6. Tell me "Paystack keys set" in the chat (no key in the message).
+
+**Test it on your phone** (after installing a new `direct` build):
+1. Log in with a test student account (not your own admin account), tap a locked item → paywall → *Continue* → *Pay*.
+2. Paystack opens. Choose **Card** and use Paystack's test card `4084 0840 8408 4081`, any future expiry, CVV `408`, PIN `0000`, OTP `123456`.
+3. Close the Paystack page. The app shows *Checking payment*, then *You are now Premium!*
+4. Admin → **Payments**: the payment shows *Paid* with a timeline (started → Paystack checkout opened → webhook → verify → Premium given).
+5. Optional: in Paystack *Transactions*, resend the webhook. The payment still has one Premium (shown in the timeline as a repeat).
+6. Optional: press **Refund** on the payment. Premium is removed when Paystack finishes the refund.
+
+**Going live later (Phase 6):** switch Paystack to Live mode, put the `sk_live_` key in the same Supabase secret, and set the **Live Webhook URL** to the same address.
+
+### 13.2 Redeem codes — ready now
+Admin → **Redeem codes**: make a shared code (e.g. `LOYOLA20`, 20% off) or a batch of one-use codes (download them as CSV). Free-day codes are typed by students in the app: Me → *Redeem a code*. Discount codes work only with Paystack (Google allows only its own promo codes in the Play app).
+
+### 13.3 Google Play (the Play Store build) — later, when you have Play Console
+1. Create the app in Play Console (package `com.solutiontee.cbt`) and upload a `play` build to **Internal testing**: `flutter build appbundle --release --flavor play` (needs the upload key, set up at launch).
+2. *Monetise → Products → In-app products*: create one product per plan, type one-time, with these IDs (or your own, then put them in Admin → Plans → *Google Play product ID*): `premium_monthly`, `premium_three_months`, `premium_exam_season`. Set the same prices as Admin → Plans.
+3. Google Cloud console (the project linked to Play Console): create a **service account**, make a **JSON key**. In Play Console *Users and permissions*, invite the service account email with **View financial data** and **Manage orders and subscriptions**.
+4. Supabase → Edge Functions → Secrets: add `GOOGLE_PLAY_SERVICE_ACCOUNT` = the whole JSON key file content (open it in Notepad, copy all). Never send it in chat.
+5. Refund notices: in Google Cloud create a Pub/Sub topic (e.g. `play-rtdn`), give `google-play-developer-notifications@system.gserviceaccount.com` the *Publisher* role on it, and add a **push** subscription to
+   `https://mxeemubacnmcmmmzteax.supabase.co/functions/v1/play-rtdn?token=<a long random password you make up>`.
+   Put the same random password in Supabase secrets as `PLAY_RTDN_TOKEN`. Then in Play Console *Monetisation setup* enter the topic name and press *Send test notification*.
+6. Add your testers as **licence testers** in Play Console (*Settings → Licence testing*) so test purchases are free.

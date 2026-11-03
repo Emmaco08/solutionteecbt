@@ -1,6 +1,6 @@
 # Handoff: where the build is (read this first in a new or cloud session)
 
-Last updated: 2026-11-03, after commit "test app download page". Read `CLAUDE.md`, then this file, then `docs/PROGRESS.md`, `docs/DECISIONS.md` (D-001 to D-059), `docs/SETUP.md` and `docs/plans/phase-4*.md`.
+Last updated: 2026-11-03, after milestone 4C (payments) on branch `claude/clever-gates-rdt2wx`. Read `CLAUDE.md`, then this file, then `docs/PROGRESS.md`, `docs/DECISIONS.md` (D-001 to D-060), `docs/SETUP.md` and `docs/plans/phase-4*.md`.
 
 ## Where we are
 
@@ -9,8 +9,9 @@ Last updated: 2026-11-03, after commit "test app download page". Read `CLAUDE.md
   - **4A Study tab:** past questions, video solutions (thumbnails, own player), notes (Markdown + KaTeX + pictures), novels (PDF + summary), docs, downloads, bookmarks, progress; admin Study manager; per-item locks (video list always visible, each video locked).
   - **4B AI tutor:** NVIDIA primary, Dahl backup, providers/keys/models/prompts managed in Admin → AI tutor; keys in Supabase Vault; `ai-chat` and `ai-index` Edge Functions; app AI tab with streaming, photos, hint mode, history and quota. DB tests 28/28 (ai) and 22/22 (study); app tests 28/28.
   - **Test APK page:** https://admin.solutiontee.com/download (D-059).
-- Next milestones, in order: **4C payments** (Paystack + Google Play Billing, server-verified, idempotent webhooks), **4D** push (FCM) + Me dashboard, **4E** challenges, referrals, leaderboard, question of the day, winners wall. Then the Phase 4 report and STOP for `PREMIUM APPROVED`.
-- Waiting on the owner: press "Add new and edited notes" in Admin → AI tutor → Knowledge; rotate the NVIDIA and Dahl keys (they were pasted in chat for testing); Paystack test keys and a Play Console account for 4C; Firebase project for 4D.
+  - **4C Payments** (built, waiting for the owner's review and Paystack test key): Paystack and Google Play, server-verified, idempotent, redeem codes, admin Payments and Codes, app checkout; `direct` / `play` flavors (D-060). Branch `claude/clever-gates-rdt2wx`, not merged.
+- Next milestones, in order: **4D** push (FCM) + Me dashboard, **4E** challenges, referrals, leaderboard, question of the day, winners wall. Then the Phase 4 report and STOP for `PREMIUM APPROVED`.
+- Waiting on the owner: press "Add new and edited notes" in Admin → AI tutor → Knowledge; rotate the NVIDIA and Dahl keys (they were pasted in chat for testing); Paystack test secret key in Supabase secrets + webhook URL (SETUP §13.1) and a Play Console account (§13.3) for 4C; deploy the website from the laptop (new admin pages); Firebase project for 4D.
 
 ## Live systems
 
@@ -44,5 +45,7 @@ What does not work from the cloud, and what to do instead:
 - Web checks (from `apps/web`): `npx tsc --noEmit -p .` and `npx eslint .`
 - App checks (from `apps/mobile`): `flutter analyze`, `dart format .`, `flutter test`
 - Icons: `python design/scripts/phosphor-to-dart.py`
-- Release APK: `flutter build apk --release --target-platform android-arm64`, then from `apps/web` `node scripts/upload-apk.mjs`
+- Release APK (website build): `flutter build apk --release --flavor direct --target-platform android-arm64`, then from `apps/web` `node scripts/upload-apk.mjs`. Play Store: `flutter build appbundle --release --flavor play`.
+- Edge Functions with shared code: deploy with files `<name>/index.ts`, `_shared/pay.ts`, `_shared/paycrypto.ts` and entrypoint `<name>/index.ts`. `paystack-webhook` and `play-rtdn` use verify_jwt = false (they check a signature / URL token).
+- DB tests from a cloud session: paste a test file into Supabase `execute_sql`, replacing the final `select … rollback` with a `raise exception` that prints the results (the error rolls everything back).
 - DB tests: run `supabase/tests/*.test.sql` against the project (each runs inside `begin … rollback`).

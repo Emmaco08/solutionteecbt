@@ -65,3 +65,9 @@ A student pays for Premium and it turns on, on the phone and (later) on the webs
 - **Unit (Deno/Node):** webhook signature check (good, bad, missing), Google JWT building.
 - **App:** price/discount display, checkout widget test (direct and play), redeem sheet, `flutter analyze`.
 - **Live (owner, after keys):** Paystack test card `4084 0840 8408 4081` → Premium on the phone; repeat webhook from Paystack dashboard → still one entitlement; refund in admin → Premium gone.
+
+## Built (2026-11-03) and changes from this plan
+- Built as planned; details in D-060.
+- The Card / Bank transfer / USSD choice is shown as information on checkout, because Paystack's page asks again.
+- Receipts by email stay out of 4C, so the success screen does not mention one.
+- New flag `codes_in_play_build` (off) for "Redeem a code" in the Play build (owner/lawyer decision).

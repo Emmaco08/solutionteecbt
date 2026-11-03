@@ -48,6 +48,17 @@ node ..\..\design\scripts\tokens-to-dart.mjs ..\..\design\tokens.json lib\theme\
 flutter build apk --debug
 ```
 
+## Two builds: `direct` and `play` (D-060)
+
+| Build | Where it goes | Pays with | Command |
+|---|---|---|---|
+| `direct` (default) | APK on admin.solutiontee.com/download | Paystack | `flutter run -d <id>` or `flutter build apk --release --flavor direct --target-platform android-arm64` |
+| `play` | Google Play Store | Google Play Billing | `flutter build appbundle --release --flavor play` |
+
+`direct` is the default (`default-flavor` in pubspec.yaml), so `flutter run` works as before. The release APK is now
+`build/app/outputs/flutter-apk/app-direct-release.apk`; `node scripts/upload-apk.mjs` (in `apps/web`) picks it up and refuses a Play build.
+Google Play Billing only works in a build installed from a Play Console testing track.
+
 ## Layout
 
 - `lib/core`: config, API client, providers, secure storage, screen protection
