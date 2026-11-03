@@ -784,14 +784,9 @@ class _Composer extends StatelessWidget {
             children: [
               IconBtn(PhosphorIcons.cameraPlus(), label: 'Add a photo', onPressed: disabled || busy ? null : onAttach),
               Expanded(
-                child: Container(
-                  constraints: const BoxConstraints(minHeight: 48),
-                  decoration: BoxDecoration(
-                    color: c.surface,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: c.border, width: 1.5),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                // One rounded pill only: the app's text-field theme (fill + focus border) is switched off inside it,
+                // and the pill itself turns blue while typing (prototype `.composer .input`).
+                child: _FocusPill(
                   child: TextField(
                     controller: controller,
                     enabled: !disabled,
@@ -801,7 +796,14 @@ class _Composer extends StatelessWidget {
                     textCapitalization: TextCapitalization.sentences,
                     style: context.ty.body,
                     decoration: InputDecoration(
+                      filled: false,
+                      isCollapsed: true,
                       border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      disabledBorder: InputBorder.none,
+                      errorBorder: InputBorder.none,
+                      focusedErrorBorder: InputBorder.none,
                       hintText: disabled ? 'Prompts reset at midnight' : (hasPhoto ? 'Add a note (optional)' : 'Ask any question…'),
                       hintStyle: context.ty.body.col(c.textSubtle),
                       contentPadding: const EdgeInsets.symmetric(vertical: 13),
@@ -832,6 +834,39 @@ class _Composer extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// The composer's rounded box: 1.5 px border, secondary blue while the text field has focus.
+class _FocusPill extends StatefulWidget {
+  const _FocusPill({required this.child});
+  final Widget child;
+  @override
+  State<_FocusPill> createState() => _FocusPillState();
+}
+
+class _FocusPillState extends State<_FocusPill> {
+  bool _focus = false;
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    return Focus(
+      skipTraversal: true,
+      canRequestFocus: false,
+      onFocusChange: (f) => setState(() => _focus = f),
+      child: AnimatedContainer(
+        duration: Motion.fast,
+        constraints: const BoxConstraints(minHeight: 48),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        alignment: Alignment.centerLeft,
+        decoration: BoxDecoration(
+          color: c.surface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: _focus ? c.secondary : c.border, width: _focus ? 2 : 1.5),
+        ),
+        child: widget.child,
       ),
     );
   }
