@@ -103,10 +103,14 @@ Plan: `docs/plans/phase-4.md`.
   - [x] Edge Function `push` deployed (FCM HTTP v1, topics per plan, dead tokens removed); the schedule reaches it every 5 minutes (checked). Message tests 3/3
   - [x] Admin: Notifications (write, who gets it, link, now or later, history, cancel), news "Send as a notification". `tsc` clean, `eslint` 0 errors. Live at admin.solutiontee.com (owner: "deploy 4D", 2026-11-03)
   - [x] App: Notifications screen, bell with unread count, Settings switches, push service (off without Firebase), permission after the first test, Me badges, Bookmarks/Downloads/AI rows, profile photo. `flutter analyze` clean, tests 41/41
-  - [!] Owner: Firebase project, `google-services.json`, `FIREBASE_SERVICE_ACCOUNT` (SETUP §15)
-  - [ ] Phone test of a real push (after Firebase)
+  - [x] Owner: Firebase project, `google-services.json`, `FIREBASE_SERVICE_ACCOUNT` (SETUP §15)
+  - [x] Phone test of a real push: arrived on the owner's phone; asks for notifications every opening while off (D-064)
+  - [x] **Owner approved: "4D ok" (2026-11-03)**
 - [x] Real app icon from `brand/favicon.svg`; /download updated automatically by GitHub after every app change (D-065)
-- [ ] 4E Challenges, referrals, leaderboard, question of the day, winners wall
+- **4E Challenges, referrals, leaderboard, question of the day, winners wall** (plan: `docs/plans/phase-4e.md`, three parts)
+  - [ ] 4E1 Question of the day + leaderboard
+  - [ ] 4E2 Challenges & events, fair play, prize claims, winners wall
+  - [ ] 4E3 Referrals, one account per person, bans
 
 ## Phase 5 — Website, classes, community  (approval: `WEBSITE APPROVED`)
 - [ ] Not started

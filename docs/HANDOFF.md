@@ -11,7 +11,7 @@ Last updated: 2026-11-03, after milestone 4C (payments) on branch `claude/clever
   - **Test APK page:** https://admin.solutiontee.com/download (D-059).
   - **4C Payments** (built, test payment on the phone worked 2026-11-03; waiting for the owner.s review): Paystack and Google Play, server-verified, idempotent, redeem codes, admin Payments and Codes, app checkout; `direct` / `play` flavors (D-061). Branch `claude/clever-gates-rdt2wx`, not merged.
   - **4D Notifications + Me dashboard** (built on the branch, waiting for the owner's review and Firebase, D-063).
-- Next milestones, in order: **4E** challenges, referrals, leaderboard, question of the day, winners wall. Then the Phase 4 report and STOP for `PREMIUM APPROVED`.
+- 4D approved ("4D ok", 2026-11-03). Next: **4E** in three parts (plan `docs/plans/phase-4e.md`): 4E1 question of the day + leaderboard, 4E2 challenges + winners wall, 4E3 referrals + bans; owner checks each part. Then the Phase 4 report and STOP for `PREMIUM APPROVED`.
 - Waiting on the owner: press "Add new and edited notes" in Admin → AI tutor → Knowledge; rotate the NVIDIA and Dahl keys (they were pasted in chat for testing); a Play Console account for 4C (SETUP §14.3); link the Emmaco08 GitHub login to the Vercel account so website deploys are accepted; Firebase project for 4D.
 
 ## Live systems
