@@ -860,6 +860,7 @@ export type Database = {
           is_pinned: boolean
           link_target: string | null
           link_type: string | null
+          notify: boolean
           publish_at: string
           status: Database["public"]["Enums"]["content_status"]
           summary: string | null
@@ -876,6 +877,7 @@ export type Database = {
           is_pinned?: boolean
           link_target?: string | null
           link_type?: string | null
+          notify?: boolean
           publish_at?: string
           status?: Database["public"]["Enums"]["content_status"]
           summary?: string | null
@@ -892,11 +894,116 @@ export type Database = {
           is_pinned?: boolean
           link_target?: string | null
           link_type?: string | null
+          notify?: boolean
           publish_at?: string
           status?: Database["public"]["Enums"]["content_status"]
           summary?: string | null
           title?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      notification_prefs: {
+        Row: {
+          enabled: boolean
+          topic: Database["public"]["Enums"]["notif_topic"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          enabled: boolean
+          topic: Database["public"]["Enums"]["notif_topic"]
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          enabled?: boolean
+          topic?: Database["public"]["Enums"]["notif_topic"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notification_reads: {
+        Row: {
+          notification_id: string
+          read_at: string
+          user_id: string
+        }
+        Insert: {
+          notification_id: string
+          read_at?: string
+          user_id?: string
+        }
+        Update: {
+          notification_id?: string
+          read_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_reads_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          audience: string
+          body: string
+          created_at: string
+          created_by: string | null
+          error: string | null
+          id: string
+          link: Json
+          scheduled_at: string
+          sent_at: string | null
+          sent_count: number
+          source: string
+          source_ref: string | null
+          status: string
+          title: string
+          topic: Database["public"]["Enums"]["notif_topic"]
+          user_id: string | null
+        }
+        Insert: {
+          audience?: string
+          body: string
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          id?: string
+          link?: Json
+          scheduled_at?: string
+          sent_at?: string | null
+          sent_count?: number
+          source?: string
+          source_ref?: string | null
+          status?: string
+          title: string
+          topic: Database["public"]["Enums"]["notif_topic"]
+          user_id?: string | null
+        }
+        Update: {
+          audience?: string
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          id?: string
+          link?: Json
+          scheduled_at?: string
+          sent_at?: string | null
+          sent_count?: number
+          source?: string
+          source_ref?: string | null
+          status?: string
+          title?: string
+          topic?: Database["public"]["Enums"]["notif_topic"]
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -1339,6 +1446,33 @@ export type Database = {
           },
         ]
       }
+      push_tokens: {
+        Row: {
+          app_version: string | null
+          created_at: string
+          last_seen: string
+          platform: string
+          token: string
+          user_id: string
+        }
+        Insert: {
+          app_version?: string | null
+          created_at?: string
+          last_seen?: string
+          platform?: string
+          token: string
+          user_id?: string
+        }
+        Update: {
+          app_version?: string | null
+          created_at?: string
+          last_seen?: string
+          platform?: string
+          token?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       questions: {
         Row: {
           answer: string
@@ -1720,6 +1854,7 @@ export type Database = {
           total: number
         }[]
       }
+      admin_notifications: { Args: { p_limit?: number }; Returns: Json }
       admin_pause_codes: {
         Args: { p_id: string; p_paused: boolean }
         Returns: number
@@ -1791,6 +1926,7 @@ export type Database = {
       ai_refund: { Args: { p_uid: string }; Returns: undefined }
       ai_take: { Args: { p_uid: string }; Returns: number }
       am_money_admin: { Args: never; Returns: boolean }
+      am_notifier: { Args: never; Returns: boolean }
       auth_user_status: { Args: { p_email: string }; Returns: string }
       can_upload_images: { Args: never; Returns: boolean }
       can_view_note_image: { Args: { p_key: string }; Returns: boolean }
@@ -1828,6 +1964,21 @@ export type Database = {
       import_questions: {
         Args: { p_dry_run?: boolean; p_file_name: string; p_rows: Json }
         Returns: Json
+      }
+      mark_notifications_read: { Args: { p_ids?: string[] }; Returns: number }
+      my_badges: { Args: never; Returns: Json }
+      my_dashboard: { Args: never; Returns: Json }
+      my_notifications: {
+        Args: { p_limit?: number }
+        Returns: {
+          body: string
+          id: string
+          link: Json
+          read: boolean
+          sent_at: string
+          title: string
+          topic: string
+        }[]
       }
       my_open_years: {
         Args: { p_exam?: number }
@@ -1894,8 +2045,18 @@ export type Database = {
         }
         Returns: Json
       }
+      push_cron_ok: { Args: { p_token: string }; Returns: boolean }
+      push_done: {
+        Args: { p_error: string; p_id: string; p_sent: number }
+        Returns: undefined
+      }
+      push_take_due: { Args: { p_limit?: number }; Returns: Json }
       quote_price: { Args: { p_code?: string; p_plan: string }; Returns: Json }
       redeem_code: { Args: { p_code: string }; Returns: Json }
+      register_push_token: {
+        Args: { p_platform?: string; p_token: string; p_version?: string }
+        Returns: undefined
+      }
       set_questions_status: {
         Args: {
           p_ids: string[]
@@ -1942,6 +2103,13 @@ export type Database = {
         | "code"
         | "referral"
         | "prize"
+      notif_topic:
+        | "announcements"
+        | "new_questions"
+        | "streak"
+        | "classes"
+        | "challenges"
+        | "account"
       payment_status:
         | "pending"
         | "success"
@@ -2089,6 +2257,14 @@ export const Constants = {
         "code",
         "referral",
         "prize",
+      ],
+      notif_topic: [
+        "announcements",
+        "new_questions",
+        "streak",
+        "classes",
+        "challenges",
+        "account",
       ],
       payment_status: [
         "pending",

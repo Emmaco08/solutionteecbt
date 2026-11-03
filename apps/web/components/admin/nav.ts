@@ -15,6 +15,7 @@ export const NAV: NavGroup[] = [
       { href: "/admin/passages", label: "Passages", icon: "Article" },
       { href: "/admin/exams", label: "Exams & years", icon: "Exam" },
       { href: "/admin/news", label: "News", icon: "Newspaper" },
+      { href: "/admin/notifications", label: "Notifications", icon: "BellRinging", roles: ["super_admin", "admin", "editor"] },
       { href: "/admin/study", label: "Study content", icon: "Books" },
       { href: "/admin/challenges", label: "Challenges & events", icon: "Trophy", soon: "Phase 4b" },
     ],
