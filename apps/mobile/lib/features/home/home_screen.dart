@@ -20,6 +20,7 @@ import '../shell/shell.dart';
 import '../premium/paywall.dart';
 import '../profile/me_extras.dart';
 import '../compete/challenges_screens.dart';
+import '../invite/invite_screens.dart';
 import '../compete/compete_data.dart';
 import 'qotd_card.dart';
 
@@ -199,6 +200,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
       if (unfinished != null) ContinueCard(a: unfinished),
       if (ref.watch(challengesProvider).value?['on'] == true) const ChallengeSection(),
+      const InviteCard(),
       Column(
         key: _startKey,
         crossAxisAlignment: CrossAxisAlignment.stretch,

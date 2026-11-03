@@ -341,6 +341,12 @@ class ProfileScreen extends ConsumerWidget {
                       ),
                       if (showsRedeem(ref))
                         ListRow(icon: PhosphorIcons.ticket(PhosphorIconsStyle.fill), title: 'Redeem a code', onTap: () => showRedeemSheet(context)),
+                      ListRow(
+                        icon: PhosphorIcons.gift(PhosphorIconsStyle.fill),
+                        title: 'Invite friends',
+                        caption: 'Get Premium cheaper',
+                        onTap: () => openRoute(context, '/me/invite'),
+                      ),
                       ListRow(icon: PhosphorIcons.wallet(PhosphorIconsStyle.fill), title: 'My winnings', onTap: () => openRoute(context, '/me/winnings')),
                       ListRow(
                         icon: PhosphorIcons.sealCheck(PhosphorIconsStyle.fill),

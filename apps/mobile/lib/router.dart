@@ -27,6 +27,7 @@ import 'features/study/video_screens.dart';
 import 'features/compete/challenge_play.dart';
 import 'features/compete/challenges_screens.dart';
 import 'features/compete/results_screens.dart';
+import 'features/invite/invite_screens.dart';
 import 'features/test/leaderboard_screen.dart';
 import 'features/test/test_screens.dart';
 
@@ -141,7 +142,10 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/me',
                 builder: (_, _) => const ProfileScreen(),
-                routes: [GoRoute(path: 'winnings', builder: (_, _) => const WinningsScreen())],
+                routes: [
+                  GoRoute(path: 'winnings', builder: (_, _) => const WinningsScreen()),
+                  GoRoute(path: 'invite', builder: (_, _) => const InviteScreen()),
+                ],
               ),
             ],
           ),
@@ -175,6 +179,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/challenges/:id', redirect: (_, s) => '/test/challenges/${s.pathParameters['id']}'),
       GoRoute(path: '/challenges/:id/:page', redirect: (_, s) => '/test/challenges/${s.pathParameters['id']}/${s.pathParameters['page']}'),
       GoRoute(path: '/winnings', redirect: (_, _) => '/me/winnings'),
+      GoRoute(path: '/invite', redirect: (_, _) => '/me/invite'),
+      // 4E3 (D-078): shown instead of the app; no tabs, no back.
+      GoRoute(path: '/banned', builder: (_, _) => const BannedScreen()),
+      GoRoute(path: '/phone-taken', builder: (_, _) => const PhoneTakenScreen()),
       GoRoute(path: '/winners-wall', redirect: (_, _) => '/test/winners-wall'),
       GoRoute(path: '/notifications', builder: (_, _) => const NotificationsScreen()),
       GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),

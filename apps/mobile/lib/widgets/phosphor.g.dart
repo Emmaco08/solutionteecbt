@@ -206,6 +206,8 @@ abstract final class PhosphorIcons {
       s == PhosphorIconsStyle.regular ? const IconData(0xe324, fontFamily: 'PhosphorRegular') : const IconData(0xe324, fontFamily: 'PhosphorFill');
   static IconData minusCircle([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe32c, fontFamily: 'PhosphorRegular') : const IconData(0xe32c, fontFamily: 'PhosphorFill');
+  static IconData money([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
+      s == PhosphorIconsStyle.regular ? const IconData(0xe588, fontFamily: 'PhosphorRegular') : const IconData(0xe588, fontFamily: 'PhosphorFill');
   static IconData moonStars([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe58e, fontFamily: 'PhosphorRegular') : const IconData(0xe58e, fontFamily: 'PhosphorFill');
   static IconData newspaper([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
@@ -236,6 +238,8 @@ abstract final class PhosphorIcons {
       s == PhosphorIconsStyle.regular ? const IconData(0xe3d0, fontFamily: 'PhosphorRegular') : const IconData(0xe3d0, fontFamily: 'PhosphorFill');
   static IconData playCircle([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe3d2, fontFamily: 'PhosphorRegular') : const IconData(0xe3d2, fontFamily: 'PhosphorFill');
+  static IconData prohibit([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
+      s == PhosphorIconsStyle.regular ? const IconData(0xe3de, fontFamily: 'PhosphorRegular') : const IconData(0xe3de, fontFamily: 'PhosphorFill');
   static IconData pushPin([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe3e2, fontFamily: 'PhosphorRegular') : const IconData(0xe3e2, fontFamily: 'PhosphorFill');
   static IconData question([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>

@@ -18,6 +18,8 @@ import '../../data/tests_repo.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
 import '../../ui/kit.dart';
+import '../compete/compete_data.dart' show DeviceCheck;
+import '../invite/invite_screens.dart';
 import '../notifications/turn_on_sheet.dart';
 import '../premium/payments.dart';
 
@@ -65,11 +67,29 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
       billing.start();
     }
     Future.microtask(_startPush);
+    Future.microtask(_checkAccount);
     // Screenshots are blocked in the whole app (D-076); on Android 14+ we can say why.
     _secure = SecureScreen.watch(onScreenshot: _screenshotTried);
   }
 
   StreamSubscription<MethodCall>? _secure;
+
+  /// One account per phone and bans (D-078): save this phone (hashed id) and ask the server about this account.
+  /// Offline or any error: carry on (the server still refuses a banned account's data).
+  Future<void> _checkAccount() async {
+    try {
+      final hash = await DeviceCheck.hashedId();
+      final j = await ref.read(supabaseProvider).rpc('device_register', params: {'p_hash': hash}).timeout(const Duration(seconds: 15));
+      final st = Map<String, dynamic>.from(j as Map);
+      ref.read(accountStatusProvider.notifier).set(st);
+      if (!mounted) return;
+      if (st['banned'] == true) {
+        context.go('/banned');
+      } else if (st['phone_taken'] == true) {
+        context.go('/phone-taken');
+      }
+    } catch (_) {}
+  }
 
   void _screenshotTried() {
     if (!mounted) return;
@@ -118,6 +138,7 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
   void didChangeAppLifecycleState(AppLifecycleState s) {
     if (s == AppLifecycleState.resumed) {
       ref.read(testsRepoProvider).syncPending();
+      _checkAccount();
       // Back from the phone's settings: notifications may be on now.
       ref.invalidate(notificationsOnProvider);
     }
