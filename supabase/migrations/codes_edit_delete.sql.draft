@@ -1,0 +1,172 @@
+-- Redeem codes: edit and delete (owner request after 4C, D-061).
+-- Delete removes a code nobody has used. A code that was used (or is in a checkout) is archived instead:
+-- it stops working and leaves the list, but payments and redemptions still show which code they used.
+
+alter table public.promo_codes add column deleted_at timestamptz;
+
+-- An archived code works like an unknown code.
+create or replace function private.check_code(p_uid uuid, p_code text, p_plan smallint, p_for text)
+returns jsonb language plpgsql stable security definer set search_path = '' as $$
+declare c public.promo_codes; v_pending integer;
+begin
+  select * into c from public.promo_codes where code = private.norm_code(p_code) and deleted_at is null;
+  if c.id is null then return jsonb_build_object('ok', false, 'error', 'not_found'); end if;
+  if c.paused then return jsonb_build_object('ok', false, 'error', 'paused'); end if;
+  if c.starts_at > now() then return jsonb_build_object('ok', false, 'error', 'not_started'); end if;
+  if c.ends_at is not null and c.ends_at <= now() then return jsonb_build_object('ok', false, 'error', 'expired'); end if;
+  if p_for = 'checkout' and c.kind = 'days' then return jsonb_build_object('ok', false, 'error', 'days_code'); end if;
+  if p_for = 'redeem' and c.kind <> 'days' then return jsonb_build_object('ok', false, 'error', 'discount_code'); end if;
+  if exists (select 1 from public.promo_redemptions r where r.code_id = c.id and r.user_id = p_uid) then
+    return jsonb_build_object('ok', false, 'error', 'already_used');
+  end if;
+  if c.max_uses is not null then
+    -- Unpaid checkouts from the last 30 minutes hold a use, so a limited code is not oversold.
+    select count(*) into v_pending from public.payments p
+    where p.code_id = c.id and p.status = 'pending' and p.created_at > now() - interval '30 minutes' and p.user_id <> p_uid;
+    if c.used_count + v_pending >= c.max_uses then return jsonb_build_object('ok', false, 'error', 'used_up'); end if;
+  end if;
+  if c.new_only and exists (select 1 from public.payments p where p.user_id = p_uid and p.status in ('success', 'refunded')) then
+    return jsonb_build_object('ok', false, 'error', 'new_only');
+  end if;
+  if c.kind <> 'days' and cardinality(c.plan_ids) > 0 and not (p_plan = any (c.plan_ids)) then
+    return jsonb_build_object('ok', false, 'error', 'wrong_plan',
+      'plans', (select jsonb_agg(pl.name order by pl.sort) from public.plans pl where pl.id = any (c.plan_ids)));
+  end if;
+  return jsonb_build_object('ok', true, 'id', c.id, 'kind', c.kind, 'value', c.value, 'code', c.code);
+end;
+$$;
+
+-- The admin list leaves archived codes out.
+create or replace function public.admin_codes()
+returns jsonb language plpgsql stable security definer set search_path = '' as $$
+begin
+  if not private.is_staff(array['super_admin', 'admin']::public.staff_role[]) then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  return jsonb_build_object(
+    'rows', coalesce((select jsonb_agg(r order by r.created_at desc) from (
+      select (array_agg(c.id order by c.code))[1] as id, c.batch_id, count(*) as codes,
+             case when c.batch_id is null then min(c.code) else split_part(min(c.code), '-', 1) || '-····-····' end as code,
+             min(c.kind::text) as kind, min(c.value) as value, (jsonb_agg(to_jsonb(c.plan_ids)) -> 0) as plan_ids,
+             sum(c.used_count) as used, case when c.batch_id is null then min(c.max_uses) else count(*) end as max_uses,
+             bool_or(c.new_only) as new_only, min(c.starts_at) as starts_at, max(c.ends_at) as ends_at,
+             bool_and(c.paused) as paused, min(c.note) as note, min(c.created_at) as created_at,
+             (select u.email from auth.users u where u.id = min(c.created_by::text)::uuid) as created_by
+      from public.promo_codes c
+      where c.deleted_at is null
+      group by coalesce(c.batch_id, c.id), c.batch_id) r), '[]'::jsonb),
+    'totals', jsonb_build_object(
+      'active', (select count(*) from public.promo_codes c where c.deleted_at is null and not c.paused
+                   and (c.ends_at is null or c.ends_at > now()) and (c.max_uses is null or c.used_count < c.max_uses)),
+      'used_month', (select count(*) from public.promo_redemptions r where r.created_at >= date_trunc('month', now())),
+      'discount_month_kobo', (select coalesce(sum(r.discount_kobo), 0) from public.promo_redemptions r where r.created_at >= date_trunc('month', now()))));
+end;
+$$;
+
+-- Batch CSV export: live codes only.
+create or replace function public.admin_batch_codes(p_batch uuid)
+returns table (code text, used integer) language plpgsql stable security definer set search_path = '' as $$
+begin
+  if not private.is_staff(array['super_admin', 'admin']::public.staff_role[]) then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  return query select c.code, c.used_count from public.promo_codes c
+  where c.batch_id = p_batch and c.deleted_at is null order by c.code;
+end;
+$$;
+
+/**
+ * Edits a shared code, or every code of a batch (p_id is any code of it). The kind (% / ₦ / days) and the code text
+ * stay as they are. Payments already made keep the discount they got. Returns how many codes changed.
+ * p_value: % (1–100), kobo off, or days (1–366). p_max_uses: shared codes only (null = no limit; not below uses so far).
+ */
+create or replace function public.admin_update_codes(p_id uuid, p_value integer, p_plan_ids smallint[], p_max_uses integer,
+  p_starts timestamptz, p_ends timestamptz, p_new_only boolean, p_note text)
+returns integer language plpgsql volatile security definer set search_path = '' as $$
+declare c public.promo_codes; v_n integer;
+begin
+  if not private.can_edit(array['super_admin', 'admin']::public.staff_role[]) then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  select * into c from public.promo_codes where id = p_id and deleted_at is null;
+  if c.id is null then raise exception 'code not found' using errcode = 'P0002'; end if;
+  if p_value is null or p_value <= 0 or (c.kind = 'pct' and p_value > 100) or (c.kind = 'days' and p_value > 366) then
+    raise exception 'value out of range' using errcode = '22023';
+  end if;
+  if p_ends is not null and p_ends <= coalesce(p_starts, c.starts_at) then
+    raise exception 'the end date must be after the start date' using errcode = '22023';
+  end if;
+  if c.batch_id is null and p_max_uses is not null and p_max_uses < c.used_count then
+    raise exception 'uses allowed cannot be below the uses so far (%)', c.used_count using errcode = '22023';
+  end if;
+  if c.batch_id is not null then perform set_config('app.bulk_audit', 'on', true); end if;
+  update public.promo_codes x set
+    value = p_value,
+    plan_ids = case when c.kind = 'days' then '{}' else coalesce(p_plan_ids, '{}') end,
+    max_uses = case when c.batch_id is null then p_max_uses else 1 end,
+    starts_at = coalesce(p_starts, x.starts_at),
+    ends_at = p_ends,
+    new_only = coalesce(p_new_only, false),
+    note = nullif(trim(coalesce(p_note, '')), '')
+  where x.deleted_at is null and ((c.batch_id is not null and x.batch_id = c.batch_id) or x.id = c.id);
+  get diagnostics v_n = row_count;
+  if c.batch_id is not null then
+    perform set_config('app.bulk_audit', 'off', true);
+    insert into public.audit_log (actor, action, table_name, row_id, after)
+    values ((select auth.uid()), 'code_batch_edit', 'promo_codes', c.batch_id::text,
+            jsonb_build_object('count', v_n, 'value', p_value, 'ends_at', p_ends, 'note', p_note));
+  end if;
+  return v_n;
+end;
+$$;
+revoke all on function public.admin_update_codes(uuid, integer, smallint[], integer, timestamptz, timestamptz, boolean, text) from public, anon;
+grant execute on function public.admin_update_codes(uuid, integer, smallint[], integer, timestamptz, timestamptz, boolean, text) to authenticated;
+
+/**
+ * Deletes a shared code or a whole batch. Codes nobody used are removed; used ones (or ones in a checkout) are archived:
+ * paused, hidden from the list, and refused like an unknown code. Returns {deleted, archived}.
+ */
+create or replace function public.admin_delete_codes(p_id uuid)
+returns jsonb language plpgsql volatile security definer set search_path = '' as $$
+declare c public.promo_codes; v_del integer; v_arch integer;
+begin
+  if not private.can_edit(array['super_admin', 'admin']::public.staff_role[]) then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  select * into c from public.promo_codes where id = p_id and deleted_at is null;
+  if c.id is null then raise exception 'code not found' using errcode = 'P0002'; end if;
+  perform set_config('app.bulk_audit', 'on', true);
+  delete from public.promo_codes x
+  where x.deleted_at is null and ((c.batch_id is not null and x.batch_id = c.batch_id) or x.id = c.id)
+    and x.used_count = 0
+    and not exists (select 1 from public.promo_redemptions r where r.code_id = x.id)
+    and not exists (select 1 from public.payments p where p.code_id = x.id);
+  get diagnostics v_del = row_count;
+  update public.promo_codes x set deleted_at = now(), paused = true
+  where x.deleted_at is null and ((c.batch_id is not null and x.batch_id = c.batch_id) or x.id = c.id);
+  get diagnostics v_arch = row_count;
+  perform set_config('app.bulk_audit', 'off', true);
+  insert into public.audit_log (actor, action, table_name, row_id, before, after)
+  values ((select auth.uid()), 'code_delete', 'promo_codes', coalesce(c.batch_id, c.id)::text, to_jsonb(c),
+          jsonb_build_object('deleted', v_del, 'archived', v_arch));
+  return jsonb_build_object('deleted', v_del, 'archived', v_arch);
+end;
+$$;
+revoke all on function public.admin_delete_codes(uuid) from public, anon;
+grant execute on function public.admin_delete_codes(uuid) to authenticated;
+
+-- Pausing never touches archived codes.
+create or replace function public.admin_pause_codes(p_id uuid, p_paused boolean)
+returns integer language plpgsql volatile security definer set search_path = '' as $$
+declare v_batch uuid; v_n integer;
+begin
+  if not private.can_edit(array['super_admin', 'admin']::public.staff_role[]) then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  select batch_id into v_batch from public.promo_codes where id = p_id;
+  update public.promo_codes set paused = p_paused
+  where deleted_at is null and ((v_batch is not null and batch_id = v_batch) or id = p_id);
+  get diagnostics v_n = row_count;
+  return v_n;
+end;
+$$;
