@@ -24,3 +24,9 @@ update public.ai_models set priority = 9, max_tokens = 3000 where model = 'deeps
 update public.ai_models set priority = 1, max_tokens = 4000 where model = 'nvidia/nemotron-3.5-super-vl-120b-a12b';
 update public.ai_models set priority = 4 where model = 'meta/llama-3.2-90b-vision-instruct';
 update public.ai_models set priority = 5 where model = 'google/gemma-4-31b-it';
+
+-- 2026-11-03: nemotron-3.5-embed-1b failed most batched requests (HTTP 500); llama-nemotron-embed-vl-1b-v2 handled them.
+insert into public.ai_models (provider_id, model, label, purpose, priority, temperature, max_tokens, dimensions)
+select id, 'nvidia/llama-nemotron-embed-vl-1b-v2', 'Llama Nemotron Embed VL 1B v2', 'embed', 1, 0, 64, 768 from public.ai_providers where name = 'NVIDIA'
+on conflict (provider_id, model, purpose) do update set priority = 1, enabled = true, dimensions = 768;
+update public.ai_models set priority = 2, enabled = false where model = 'nvidia/nemotron-3.5-embed-1b';

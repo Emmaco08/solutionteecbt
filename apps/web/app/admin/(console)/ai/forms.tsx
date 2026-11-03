@@ -126,7 +126,7 @@ export function PromptEditor({ body, versions }: { body: string; versions: { id:
   );
 }
 
-/** Rebuilds the AI's knowledge from published notes, 25 notes per call, until nothing is left. */
+/** Rebuilds the AI's knowledge from published notes, 8 notes per call, until nothing is left. */
 export function KnowledgeBox({ chunks, supabaseUrl }: { chunks: number; supabaseUrl: string }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -139,11 +139,11 @@ export function KnowledgeBox({ chunks, supabaseUrl }: { chunks: number; supabase
       const token = data.session?.access_token;
       if (!token) throw new Error("Log in again.");
       let first = true, total = 0;
-      for (let i = 0; i < 40; i++) {
+      for (let i = 0; i < 80; i++) {
         const r = await fetch(`${supabaseUrl}/functions/v1/ai-index`, {
           method: "POST",
           headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
-          body: JSON.stringify({ mode: restart ? "all" : "missing", restart: restart && first, limit: 25 }),
+          body: JSON.stringify({ mode: restart ? "all" : "missing", restart: restart && first, limit: 8 }),
         });
         const j = await r.json();
         if (!r.ok) throw new Error(j.error ?? `HTTP ${r.status}`);

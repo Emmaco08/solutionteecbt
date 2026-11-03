@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
 
   const b = await req.json().catch(() => ({}));
   const mode = b.mode === "all" ? "all" : "missing";
-  const limit = Math.min(Math.max(Number(b.limit) || 25, 1), 40);
+  const limit = Math.min(Math.max(Number(b.limit) || 10, 1), 40);
 
   const { data: cfg } = await admin.rpc("ai_config");
   const m = ((cfg?.models ?? []) as { purpose: string; model: string; base_url: string; key: string; dimensions: number | null; provider: string }[]).find((x) => x.purpose === "embed");
@@ -83,25 +83,54 @@ Deno.serve(async (req) => {
     const title = n.title.replace("[SAMPLE] ", "");
     const parts = chunks(title, n.body ?? "");
     if (!parts.length) continue;
-    const r = await fetch(`${m.base_url}/embeddings`, {
-      method: "POST",
-      headers: { authorization: `Bearer ${m.key}`, "content-type": "application/json" },
-      body: JSON.stringify({ model: m.model, input: parts, input_type: "passage", encoding_format: "float", ...(m.dimensions ? { dimensions: m.dimensions } : {}) }),
-    });
-    if (!r.ok) {
-      const err = `HTTP ${r.status} ${(await r.text()).slice(0, 160)}`;
-      await admin.from("ai_calls").insert({ provider: m.provider, model: m.model, purpose: "embed", ok: false, ms: Date.now() - t, error: err });
-      return json({ error: `The embedding model failed: ${err}`, done: made }, 502);
+    // NVIDIA's embedding service sometimes fails on batches: try the batch twice, then one piece at a time.
+    const embedMany = async (inputs: string[]): Promise<number[][]> => {
+      const r = await fetch(`${m.base_url}/embeddings`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${m.key}`, "content-type": "application/json" },
+        body: JSON.stringify({ model: m.model, input: inputs, input_type: "passage", encoding_format: "float", ...(m.dimensions ? { dimensions: m.dimensions } : {}) }),
+        signal: AbortSignal.timeout(30000),
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status} ${(await r.text()).slice(0, 160)}`);
+      const j = await r.json();
+      return (j.data as { embedding: number[]; index: number }[]).sort((a, b) => a.index - b.index).map((d) => d.embedding);
+    };
+    let vectors: number[][] | null = null;
+    let lastErr = "";
+    for (let attempt = 0; attempt < 2 && !vectors; attempt++) {
+      try {
+        vectors = await embedMany(parts);
+      } catch (e) {
+        lastErr = String(e);
+      }
     }
-    const j = await r.json();
+    if (!vectors) {
+      vectors = [];
+      for (const part of parts) {
+        let v: number[] | null = null;
+        for (let attempt = 0; attempt < 3 && !v; attempt++) {
+          try {
+            v = (await embedMany([part]))[0];
+          } catch (e) {
+            lastErr = String(e);
+            await new Promise((res) => setTimeout(res, 800));
+          }
+        }
+        if (!v) {
+          await admin.from("ai_calls").insert({ provider: m.provider, model: m.model, purpose: "embed", ok: false, ms: Date.now() - t, error: lastErr.slice(0, 300) });
+          return json({ error: `The embedding model failed: ${lastErr}`, done: made }, 502);
+        }
+        vectors.push(v);
+      }
+    }
     await admin.from("ai_chunks").delete().eq("source", "note").eq("source_id", n.id);
-    const rows = (j.data as { embedding: number[]; index: number }[]).map((d) => ({
+    const rows = vectors.map((v, i) => ({
       source: "note",
       source_id: n.id,
       subject_id: n.subject_id,
       title,
-      content: parts[d.index].slice(title.length + 1),
-      embedding: JSON.stringify(d.embedding),
+      content: parts[i].slice(title.length + 1),
+      embedding: JSON.stringify(v),
     }));
     const { error: ie } = await admin.from("ai_chunks").insert(rows);
     if (ie) return json({ error: ie.message, done: made }, 500);
