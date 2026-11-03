@@ -17,6 +17,7 @@ export const NAV: NavGroup[] = [
       { href: "/admin/news", label: "News", icon: "Newspaper" },
       { href: "/admin/notifications", label: "Notifications", icon: "BellRinging", roles: ["super_admin", "admin", "editor"] },
       { href: "/admin/study", label: "Study content", icon: "Books" },
+      { href: "/admin/qotd", label: "Question of the day", icon: "Lightbulb", roles: ["super_admin", "admin", "editor"] },
       { href: "/admin/challenges", label: "Challenges & events", icon: "Trophy", soon: "Phase 4b" },
     ],
   },
@@ -24,6 +25,7 @@ export const NAV: NavGroup[] = [
     label: "Students",
     items: [
       { href: "/admin/users", label: "Users", icon: "Users", roles: ADMINS },
+      { href: "/admin/leaderboard", label: "Leaderboard", icon: "Ranking", roles: ADMINS },
       { href: "/admin/referrals", label: "Referrals", icon: "Gift", soon: "Phase 4b" },
       { href: "/admin/fraud", label: "Fraud & bans", icon: "ShieldWarning", soon: "Phase 4b" },
     ],

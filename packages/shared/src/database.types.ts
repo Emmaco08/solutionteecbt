@@ -1,6 +1,3 @@
-// Generated from the Supabase dev project (solutiontee-dev) on 2026-11-03. Do not edit by hand.
-// Regenerate after schema changes (Supabase MCP generate_typescript_types or `supabase gen types`).
-// One hand fix to keep after regenerating: email_send_allowed p_ip_hash is `string | null` (the generator cannot express a nullable argument).
 export type Json =
   | string
   | number
@@ -849,6 +846,35 @@ export type Database = {
         }
         Relationships: []
       }
+      leaderboard_reviews: {
+        Row: {
+          attempt_id: string
+          decided_at: string
+          decided_by: string | null
+          decision: string
+        }
+        Insert: {
+          attempt_id: string
+          decided_at?: string
+          decided_by?: string | null
+          decision: string
+        }
+        Update: {
+          attempt_id?: string
+          decided_at?: string
+          decided_by?: string | null
+          decision?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leaderboard_reviews_attempt_id_fkey"
+            columns: ["attempt_id"]
+            isOneToOne: true
+            referencedRelation: "attempts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       news_posts: {
         Row: {
           body: string | null
@@ -1290,6 +1316,7 @@ export type Database = {
           banned_at: string | null
           created_at: string
           full_name: string | null
+          hide_on_leaderboard: boolean
           id: string
           jamb_subjects: string[]
           phone: string | null
@@ -1305,6 +1332,7 @@ export type Database = {
           banned_at?: string | null
           created_at?: string
           full_name?: string | null
+          hide_on_leaderboard?: boolean
           id: string
           jamb_subjects?: string[]
           phone?: string | null
@@ -1320,6 +1348,7 @@ export type Database = {
           banned_at?: string | null
           created_at?: string
           full_name?: string | null
+          hide_on_leaderboard?: boolean
           id?: string
           jamb_subjects?: string[]
           phone?: string | null
@@ -1472,6 +1501,73 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      qotd: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          day: string
+          id: string
+          question_id: string
+          source: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          day: string
+          id?: string
+          question_id: string
+          source?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          day?: string
+          id?: string
+          question_id?: string
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qotd_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qotd_answers: {
+        Row: {
+          answered_at: string
+          choice: string
+          correct: boolean
+          day: string
+          user_id: string
+        }
+        Insert: {
+          answered_at?: string
+          choice: string
+          correct: boolean
+          day: string
+          user_id: string
+        }
+        Update: {
+          answered_at?: string
+          choice?: string
+          correct?: boolean
+          day?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qotd_answers_day_fkey"
+            columns: ["day"]
+            isOneToOne: false
+            referencedRelation: "qotd"
+            referencedColumns: ["day"]
+          },
+        ]
       }
       questions: {
         Row: {
@@ -1825,6 +1921,7 @@ export type Database = {
         Returns: Json
       }
       admin_dashboard: { Args: never; Returns: Json }
+      admin_leaderboard_held: { Args: { p_season?: number }; Returns: Json }
       admin_list_staff: {
         Args: never
         Returns: {
@@ -1870,6 +1967,11 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_qotd_candidates: {
+        Args: { p_limit?: number; p_search?: string; p_subject?: number }
+        Returns: Json
+      }
+      admin_qotd_days: { Args: { p_from: string; p_to: string }; Returns: Json }
       admin_set_ai_key: {
         Args: { p_key: string; p_provider: string }
         Returns: string
@@ -1965,6 +2067,10 @@ export type Database = {
         Args: { p_dry_run?: boolean; p_file_name: string; p_rows: Json }
         Returns: Json
       }
+      leaderboard: {
+        Args: { p_scope?: string; p_season?: number }
+        Returns: Json
+      }
       mark_notifications_read: { Args: { p_ids?: string[] }; Returns: number }
       my_badges: { Args: never; Returns: Json }
       my_dashboard: { Args: never; Returns: Json }
@@ -2051,6 +2157,8 @@ export type Database = {
         Returns: undefined
       }
       push_take_due: { Args: { p_limit?: number }; Returns: Json }
+      qotd_answer: { Args: { p_choice: string }; Returns: Json }
+      qotd_today: { Args: never; Returns: Json }
       quote_price: { Args: { p_code?: string; p_plan: string }; Returns: Json }
       redeem_code: { Args: { p_code: string }; Returns: Json }
       register_push_token: {
