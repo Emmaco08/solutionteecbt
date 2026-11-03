@@ -34,6 +34,7 @@ void main() {
     for (final b in badges) {
       expect(find.text(b['title'] as String), findsOneWidget);
     }
-    expect(find.bySemanticsLabel('Speedster, not yet'), findsOneWidget);
+    // Badges not earned yet are faded.
+    expect(t.widgetList<Opacity>(find.byType(Opacity)).where((o) => o.opacity < 1).length, 4);
   });
 }
