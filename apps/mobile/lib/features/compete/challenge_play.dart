@@ -139,7 +139,7 @@ class _ChallengePlayScreenState extends ConsumerState<ChallengePlayScreen> with 
     if (dq) {
       setState(() => _dqReason ??= 'You left the challenge screen.');
     } else {
-      context.pushReplacement('/challenges/${widget.id}/result');
+      context.go('/test/challenges/${widget.id}/result');
     }
   }
 
@@ -207,7 +207,12 @@ class _ChallengePlayScreenState extends ConsumerState<ChallengePlayScreen> with 
   Widget build(BuildContext context) {
     final c = context.c;
     if (_dqReason != null && _done) {
-      return _Disqualified(reason: _dqReason!, answered: (_q?['index'] as num?)?.toInt() ?? 0, total: (_q?['total'] as num?)?.toInt() ?? 0);
+      return _Disqualified(
+        challengeId: widget.id,
+        reason: _dqReason!,
+        answered: (_q?['index'] as num?)?.toInt() ?? 0,
+        total: (_q?['total'] as num?)?.toInt() ?? 0,
+      );
     }
     return PopScope(
       canPop: false,
@@ -354,7 +359,8 @@ class _Ring extends StatelessWidget {
 }
 
 class _Disqualified extends StatelessWidget {
-  const _Disqualified({required this.reason, required this.answered, required this.total});
+  const _Disqualified({required this.challengeId, required this.reason, required this.answered, required this.total});
+  final String challengeId;
   final String reason;
   final int answered, total;
   @override
@@ -363,7 +369,7 @@ class _Disqualified extends StatelessWidget {
     return Scaffold(
       appBar: TopBar(
         showBack: false,
-        actions: [IconBtn(PhosphorIcons.x(), label: 'Close', onPressed: () => context.go('/challenges'))],
+        actions: [IconBtn(PhosphorIcons.x(), label: 'Close', onPressed: () => context.go('/test/challenges'))],
       ),
       body: ListView(
         padding: const EdgeInsets.all(Space.s5),
@@ -388,10 +394,17 @@ class _Disqualified extends StatelessWidget {
           InfoBanner(
             kind: BannerKind.warn,
             icon: PhosphorIcons.phoneCall(PhosphorIconsStyle.fill),
-            child: const Text('Was it a phone call or a crash? Contact support within 24 hours (Me → Help). Our team checks it.'),
+            child: const Text('Was it a phone call or a crash? Send an appeal within 24 hours, with a screenshot if you can. Our team checks it.'),
+          ),
+          const Gap(Space.s3),
+          Btn(
+            'Send an appeal',
+            block: true,
+            leading: PhosphorIcons.scales(PhosphorIconsStyle.fill),
+            onPressed: () => context.go('/test/challenges/$challengeId/appeal'),
           ),
           const Gap(Space.s4),
-          Btn('Back to challenges', kind: BtnKind.outline, block: true, onPressed: () => context.go('/challenges')),
+          Btn('Back to challenges', kind: BtnKind.outline, block: true, onPressed: () => context.go('/test/challenges')),
         ],
       ),
     );

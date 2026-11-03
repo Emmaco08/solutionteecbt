@@ -61,6 +61,34 @@ class Challenge {
   bool get ended => status == 'ended';
   List<Map<String, dynamic>> get winners => rows(j['winners']);
 
+  /// 'fixed' (same questions for all), 'mixed' (the student's JAMB subjects) or 'subject' (one subject) — D-073.
+  String get mode => '${j['mode'] ?? 'fixed'}';
+  String? get subject => j['subject'] as String?;
+  bool get eligible => j['eligible'] != false;
+
+  /// Questions per subject at each level, easiest first, skipping zeros: [('Easy', 3), ('Hard', 2)].
+  List<(String, int)> get perLevel {
+    final m = j['per_level'] is Map ? Map<String, dynamic>.from(j['per_level'] as Map) : const <String, dynamic>{};
+    return [
+      for (final (k, l) in const [('easy', 'Easy'), ('medium', 'Medium'), ('hard', 'Hard'), ('very_hard', 'Very hard')])
+        if (((m[k] as num?) ?? 0) > 0) (l, (m[k] as num).toInt()),
+    ];
+  }
+
+  /// One line on whose questions these are.
+  String get modeText => switch (mode) {
+    'mixed' => 'Questions from your 4 JAMB subjects, mixed.',
+    'subject' => 'Only for students who take ${subject ?? 'this subject'}.',
+    _ => 'Everyone answers the same questions, shuffled.',
+  };
+
+  /// Why this student cannot take it (null = they can).
+  String? get ineligibleText => eligible
+      ? null
+      : mode == 'subject'
+      ? 'This challenge is only for students who take ${subject ?? 'this subject'}. Add it to your JAMB subjects to join.'
+      : 'Choose your JAMB subjects first, so we can pick your questions.';
+
   /// "₦20,000 first prize", the reward text, or practice.
   String get rewardText => prizes.isNotEmpty ? '${nairaWhole(prizes.first)} first prize' : (reward ?? 'No prize, just for practice');
   String get rule => kind == 'practice'

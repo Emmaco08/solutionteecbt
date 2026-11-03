@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:solutiontee_cbt/core/nav.dart';
 import 'package:solutiontee_cbt/features/compete/challenge_play.dart';
 import 'package:solutiontee_cbt/features/compete/challenges_screens.dart';
 import 'package:solutiontee_cbt/features/compete/compete_data.dart';
@@ -45,7 +46,7 @@ class FakeApi implements ChallengeApi {
   }
 }
 
-Challenge sample({String status = 'live', Map<String, dynamic>? mine}) => Challenge({
+Challenge sample({String status = 'live', Map<String, dynamic>? mine, Map<String, dynamic> extra = const {}}) => Challenge({
   'id': 'c1',
   'title': 'Weekly Challenge #1',
   'subtitle': 'Mixed JAMB subjects',
@@ -60,16 +61,37 @@ Challenge sample({String status = 'live', Map<String, dynamic>? mine}) => Challe
   'joined': 12,
   'allowed_exits': 0,
   'mine': mine,
+  ...extra,
 });
 
 Widget app(String initial, FakeApi api, {Challenge? ch}) {
   final router = GoRouter(
     initialLocation: initial,
     routes: [
-      GoRoute(path: '/challenges', builder: (_, _) => const Scaffold(body: Text('LIST'))),
-      GoRoute(path: '/challenges/:id', builder: (_, s) => ChallengeScreen(id: s.pathParameters['id']!)),
-      GoRoute(path: '/challenges/:id/play', builder: (_, s) => ChallengePlayScreen(id: s.pathParameters['id']!)),
-      GoRoute(path: '/challenges/:id/result', builder: (_, _) => const Scaffold(body: Text('RESULT'))),
+      GoRoute(
+        path: '/test/challenges',
+        builder: (_, _) => const Scaffold(body: Text('LIST')),
+      ),
+      GoRoute(
+        path: '/test/challenges/:id',
+        builder: (_, s) => ChallengeScreen(id: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/challenges/:id/play',
+        builder: (_, s) => ChallengePlayScreen(id: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/test/challenges/:id/result',
+        builder: (_, _) => const Scaffold(body: Text('RESULT')),
+      ),
+      GoRoute(
+        path: '/test/challenges/:id/appeal',
+        builder: (_, _) => const Scaffold(body: Text('APPEAL')),
+      ),
+      GoRoute(
+        path: '/subjects',
+        builder: (_, _) => const Scaffold(body: Text('SUBJECTS')),
+      ),
     ],
   );
   return ProviderScope(
@@ -108,7 +130,7 @@ void main() {
 
   testWidgets('details: prizes, fair-play rules, and Start needs the agreement', (t) async {
     final api = FakeApi();
-    await t.pumpWidget(app('/challenges/c1', api));
+    await t.pumpWidget(app('/test/challenges/c1', api));
     await settle(t);
     expect(find.text('Weekly Challenge #1'), findsOneWidget);
     expect(find.text('₦20,000'), findsOneWidget);
@@ -156,5 +178,84 @@ void main() {
     await settle(t);
     expect(api.answers, [null]);
     expect(find.text('Question number 2?', findRichText: true), findsOneWidget);
+  });
+
+  testWidgets('weekly mixed: says the questions come from your JAMB subjects, with the same level mix for all', (t) async {
+    final api = FakeApi();
+    final ch = sample(
+      extra: {
+        'mode': 'mixed',
+        'per_level': {'easy': 3, 'medium': 3, 'hard': 3, 'very_hard': 1},
+        'eligible': true,
+      },
+    );
+    await t.pumpWidget(app('/test/challenges/c1', api, ch: ch));
+    await settle(t);
+    expect(find.text('Your JAMB subjects'), findsOneWidget);
+    expect(find.text('Questions from your 4 JAMB subjects, mixed.'), findsOneWidget);
+    expect(find.textContaining('From each subject: 3 easy, 3 medium, 3 hard, 1 very hard'), findsOneWidget);
+    expect(find.text('Start challenge'), findsOneWidget);
+  });
+
+  testWidgets('subject challenge for another subject: no Start, and it says why', (t) async {
+    final api = FakeApi();
+    final ch = sample(
+      extra: {
+        'mode': 'subject',
+        'subject': 'Biology',
+        'per_level': {'easy': 5},
+        'eligible': false,
+      },
+    );
+    await t.pumpWidget(app('/test/challenges/c1', api, ch: ch));
+    await settle(t);
+    expect(find.text('Biology'), findsOneWidget);
+    expect(find.textContaining('only for students who take Biology'), findsOneWidget);
+    expect(find.text('Start challenge'), findsNothing);
+    expect(find.text('Not one of your subjects'), findsOneWidget);
+  });
+
+  testWidgets('no JAMB subjects yet: the weekly challenge asks the student to choose them', (t) async {
+    final api = FakeApi();
+    final ch = sample(
+      extra: {
+        'mode': 'mixed',
+        'per_level': {'easy': 2},
+        'eligible': false,
+      },
+    );
+    await t.pumpWidget(app('/test/challenges/c1', api, ch: ch));
+    await settle(t);
+    await t.tap(find.text('Choose my JAMB subjects'));
+    await settle(t);
+    expect(find.text('SUBJECTS'), findsOneWidget);
+  });
+
+  testWidgets('disqualified: the student can send an appeal', (t) async {
+    final api = FakeApi();
+    await t.pumpWidget(app('/challenges/c1/play', api));
+    await settle(t);
+    t.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    await settle(t);
+    t.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await settle(t);
+    await t.scrollUntilVisible(find.text('Send an appeal'), 200, scrollable: find.byType(Scrollable).first);
+    await t.tap(find.text('Send an appeal'));
+    await settle(t);
+    expect(find.text('APPEAL'), findsOneWidget);
+  });
+
+  test('challenge screens open inside the tabs; old links still work', () {
+    expect(tabRoute('/challenges'), '/test/challenges');
+    expect(tabRoute('/challenges/abc'), '/test/challenges/abc');
+    expect(tabRoute('/challenges/abc/result'), '/test/challenges/abc/result');
+    expect(tabRoute('/challenges/abc/play'), '/challenges/abc/play');
+    expect(tabRoute('/winnings'), '/me/winnings');
+    expect(tabOf('/test/challenges/abc/result'), '/test');
+    expect(tabOf('/me/winnings'), '/me');
+    expect(tabOf('/home'), '/home');
+    expect(tabOf('/test/setup'), isNull);
+    expect(tabOf('/challenges/abc/play'), isNull);
+    expect(tabOf('/notifications'), isNull);
   });
 }

@@ -1,9 +1,14 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/nav.dart';
 import '../../core/providers.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
@@ -30,11 +35,7 @@ class ChallengeResultScreen extends ConsumerWidget {
     final v = ref.watch(challengeResultProvider(id));
     final c = context.c;
     return Scaffold(
-      appBar: TopBar(
-        title: v.value?['title'] as String? ?? 'Result',
-        showBack: false,
-        actions: [IconBtn(PhosphorIcons.x(), label: 'Close', onPressed: () => context.canPop() ? context.pop() : context.go('/challenges'))],
-      ),
+      appBar: TopBar(title: v.value?['title'] as String? ?? 'Result', onBack: () => context.canPop() ? context.pop() : context.go('/test/challenges')),
       body: asyncView(
         v,
         (d) {
@@ -78,7 +79,7 @@ class ChallengeResultScreen extends ConsumerWidget {
                         kind: BtnKind.accent,
                         block: true,
                         leading: PhosphorIcons.bank(PhosphorIconsStyle.fill),
-                        onPressed: () => context.push('/challenges/$id/claim'),
+                        onPressed: () => openRoute(context, '/test/challenges/$id/claim'),
                       )
                     else
                       InfoBanner(
@@ -102,6 +103,8 @@ class ChallengeResultScreen extends ConsumerWidget {
                       Pill('Disqualified', kind: BadgeKind.error, icon: PhosphorIcons.shieldWarning(PhosphorIconsStyle.fill)),
                       const Gap(Space.s2),
                       Text('${mine['dq_reason'] ?? 'You left the challenge screen.'}', style: context.ty.sm.col(c.textMuted), textAlign: TextAlign.center),
+                      const Gap(Space.s3),
+                      AppealStatus(challengeId: id, mine: mine),
                     ] else ...[
                       Pill('Fair-play check passed', kind: BadgeKind.success, icon: PhosphorIcons.shieldCheck(PhosphorIconsStyle.fill)),
                       const Gap(Space.s3),
@@ -204,11 +207,11 @@ class ChallengeResultScreen extends ConsumerWidget {
                 kind: BannerKind.ok,
                 icon: PhosphorIcons.sealCheck(PhosphorIconsStyle.fill),
                 child: GestureDetector(
-                  onTap: () => context.push('/winners-wall'),
+                  onTap: () => openRoute(context, '/test/winners-wall'),
                   child: const Text('After we pay the winners, the proof of payment is posted on the Winners wall.'),
                 ),
               ),
-            Btn('See other challenges', kind: BtnKind.outline, block: true, onPressed: () => context.go('/challenges')),
+            Btn('See other challenges', kind: BtnKind.outline, block: true, onPressed: () => context.go('/test/challenges')),
           ];
           return Stack(
             children: [
@@ -311,7 +314,7 @@ class _ClaimPrizeScreenState extends ConsumerState<ClaimPrizeScreen> {
       ref.invalidate(challengeResultProvider(widget.id));
       if (!mounted) return;
       toast(context, 'Sent. Your prize is waiting for the fair-play review.', icon: PhosphorIcons.checkCircle(PhosphorIconsStyle.fill));
-      context.pushReplacement('/winnings');
+      context.go('/me/winnings');
     } on PostgrestException catch (e) {
       setState(() => _err = e.message);
     } catch (_) {
@@ -454,7 +457,7 @@ class WinningsScreen extends ConsumerWidget {
                             }}'
                           : '#${w['rank']} · ${w['premium_days']} days of Premium added',
                       trailing: Text((w['prize'] as num? ?? 0) > 0 ? nairaWhole(w['prize'] as num) : 'Reward', style: context.ty.sm.bold),
-                      onTap: () => context.push('/challenges/${w['challenge_id']}/result'),
+                      onTap: () => openRoute(context, '/test/challenges/${w['challenge_id']}/result'),
                     ),
                 ],
               ),
@@ -551,6 +554,159 @@ class WinnersWallScreen extends ConsumerWidget {
           ],
         );
       }, onRetry: () => ref.invalidate(winnersWallProvider)),
+    );
+  }
+}
+
+/// Appeal a disqualification (D-073): what happened, plus an optional screenshot (for example of the call that came in).
+/// Within 24 hours; the admin accepts (the entry counts again) or rejects, and the student gets a notification.
+class AppealScreen extends ConsumerStatefulWidget {
+  const AppealScreen({super.key, required this.id});
+  final String id;
+  @override
+  ConsumerState<AppealScreen> createState() => _AppealScreenState();
+}
+
+class _AppealScreenState extends ConsumerState<AppealScreen> {
+  final _reason = TextEditingController();
+  XFile? _shot;
+  String? _err;
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _reason.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pick() async {
+    final x = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 1600, imageQuality: 80);
+    if (x != null && mounted) setState(() => _shot = x);
+  }
+
+  Future<void> _send() async {
+    if (_reason.text.trim().length < 10) return setState(() => _err = 'Tell us what happened in a short sentence or two.');
+    setState(() {
+      _busy = true;
+      _err = null;
+    });
+    try {
+      String? key;
+      if (_shot != null) {
+        final bytes = await File(_shot!.path).readAsBytes();
+        if (bytes.length > 3 * 1024 * 1024) throw const FormatException('too big');
+        final type = _shot!.path.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
+        final (k, url) = await ref.read(apiProvider).appealUploadLink(bytes.length, type);
+        final r = await http.put(Uri.parse(url), headers: {'content-type': type}, body: bytes).timeout(const Duration(seconds: 60));
+        if (r.statusCode >= 300) throw Exception('upload');
+        key = k;
+      }
+      await ref.read(supabaseProvider).rpc('challenge_appeal', params: {'p_id': widget.id, 'p_reason': _reason.text.trim(), 'p_image': key});
+      ref.invalidate(challengeProvider(widget.id));
+      ref.invalidate(challengeResultProvider(widget.id));
+      if (!mounted) return;
+      toast(context, 'Appeal sent. We will reply in your notifications.', icon: PhosphorIcons.checkCircle(PhosphorIconsStyle.fill));
+      context.pop();
+    } on PostgrestException catch (e) {
+      setState(() => _err = e.message);
+    } on FormatException {
+      setState(() => _err = 'That picture is too big. Choose a smaller screenshot.');
+    } catch (_) {
+      setState(() => _err = 'Could not send. Check your internet and try again.');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    return Scaffold(
+      appBar: const TopBar(title: 'Send an appeal'),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(Space.s5, Space.s2, Space.s5, Space.s8),
+        children: [
+          InfoBanner(
+            icon: PhosphorIcons.info(PhosphorIconsStyle.fill),
+            child: const Text(
+              'Was it a phone call, a crash or something you could not control? Explain what happened. A screenshot helps (for example of the missed call). Send it within 24 hours.',
+            ),
+          ),
+          const Gap(Space.s4),
+          Text('What happened?', style: context.ty.label),
+          const Gap(Space.s2),
+          TextField(
+            controller: _reason,
+            minLines: 4,
+            maxLines: 8,
+            maxLength: 1000,
+            decoration: const InputDecoration(hintText: 'e.g. A call came in at 8:12 pm and covered the screen. I did not open another app.'),
+          ),
+          const Gap(Space.s3),
+          Text('Screenshot (optional)', style: context.ty.label),
+          const Gap(Space.s2),
+          if (_shot != null)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(Radii.md),
+              child: Image.file(File(_shot!.path), height: 200, fit: BoxFit.cover),
+            ),
+          const Gap(Space.s2),
+          Btn(
+            _shot == null ? 'Add a screenshot' : 'Change the screenshot',
+            kind: BtnKind.outline,
+            block: true,
+            leading: PhosphorIcons.image(PhosphorIconsStyle.fill),
+            onPressed: _busy ? null : _pick,
+          ),
+          if (_err != null) ...[const Gap(Space.s3), ErrText(_err!)],
+          const Gap(Space.s3),
+          Text('Our team checks every appeal. If it is accepted, your entry counts again.', style: context.ty.cap.col(c.textSubtle)),
+        ],
+      ),
+      bottomNavigationBar: FooterCta(
+        child: Btn('Send the appeal', block: true, loading: _busy, onPressed: _busy ? null : _send),
+      ),
+    );
+  }
+}
+
+/// Appeal state for a disqualified entry: the button within 24 hours, or where the appeal stands.
+class AppealStatus extends StatelessWidget {
+  const AppealStatus({super.key, required this.challengeId, required this.mine});
+  final String challengeId;
+  final Map<String, dynamic> mine;
+  @override
+  Widget build(BuildContext context) {
+    if (mine['status'] != 'disqualified' && mine['appeal'] == null) return const SizedBox.shrink();
+    final a = mine['appeal'] is Map ? Map<String, dynamic>.from(mine['appeal'] as Map) : null;
+    if (a != null) {
+      final s = a['status'];
+      return InfoBanner(
+        kind: s == 'accepted'
+            ? BannerKind.ok
+            : s == 'rejected'
+            ? BannerKind.err
+            : BannerKind.info,
+        icon: PhosphorIcons.scales(PhosphorIconsStyle.fill),
+        child: Text(
+          s == 'accepted'
+              ? 'Your appeal was accepted. Your entry counts again.${(a['note'] ?? '').toString().isNotEmpty ? ' ${a['note']}' : ''}'
+              : s == 'rejected'
+              ? 'Your appeal was not accepted.${(a['note'] ?? '').toString().isNotEmpty ? ' ${a['note']}' : ''}'
+              : 'Your appeal is waiting for our team. We will tell you in your notifications.',
+        ),
+      );
+    }
+    final finished = DateTime.tryParse('${mine['finished_at'] ?? ''}');
+    if (finished != null && DateTime.now().difference(finished).inHours >= 24) {
+      return const InfoBanner(kind: BannerKind.warn, child: Text('The 24 hours to appeal have passed.'));
+    }
+    return Btn(
+      'Send an appeal',
+      kind: BtnKind.outline,
+      block: true,
+      leading: PhosphorIcons.scales(PhosphorIconsStyle.fill),
+      onPressed: () => openRoute(context, '/test/challenges/$challengeId/appeal'),
     );
   }
 }

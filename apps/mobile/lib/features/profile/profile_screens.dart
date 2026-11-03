@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/nav.dart';
 import '../../core/config.dart';
 import '../../core/providers.dart';
 import '../../core/push.dart';
@@ -340,8 +341,12 @@ class ProfileScreen extends ConsumerWidget {
                       ),
                       if (showsRedeem(ref))
                         ListRow(icon: PhosphorIcons.ticket(PhosphorIconsStyle.fill), title: 'Redeem a code', onTap: () => showRedeemSheet(context)),
-                      ListRow(icon: PhosphorIcons.wallet(PhosphorIconsStyle.fill), title: 'My winnings', onTap: () => context.push('/winnings')),
-                      ListRow(icon: PhosphorIcons.sealCheck(PhosphorIconsStyle.fill), title: 'Winners wall', onTap: () => context.push('/winners-wall')),
+                      ListRow(icon: PhosphorIcons.wallet(PhosphorIconsStyle.fill), title: 'My winnings', onTap: () => openRoute(context, '/me/winnings')),
+                      ListRow(
+                        icon: PhosphorIcons.sealCheck(PhosphorIconsStyle.fill),
+                        title: 'Winners wall',
+                        onTap: () => openRoute(context, '/test/winners-wall'),
+                      ),
                       ListRow(icon: PhosphorIcons.gearSix(PhosphorIconsStyle.fill), title: 'Settings', onTap: () => context.push('/settings')),
                       ListRow(icon: PhosphorIcons.question(PhosphorIconsStyle.fill), title: 'Help & support', onTap: () => context.push('/help')),
                     ],

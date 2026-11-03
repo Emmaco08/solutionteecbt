@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/nav.dart';
 import '../../core/providers.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
@@ -84,6 +85,13 @@ Widget _typeBadge(Challenge c) => switch (c.kind) {
   _ => const Pill('Practice', kind: BadgeKind.neutral),
 };
 
+/// "Biology" for a one-subject challenge, "Your JAMB subjects" for the weekly mixed one.
+Widget? _modeBadge(Challenge c) => switch (c.mode) {
+  'subject' => Pill(c.subject ?? 'Subject', kind: BadgeKind.neutral, icon: PhosphorIcons.bookOpen(PhosphorIconsStyle.fill)),
+  'mixed' => Pill('Your JAMB subjects', kind: BadgeKind.neutral, icon: PhosphorIcons.shuffle(PhosphorIconsStyle.fill)),
+  _ => null,
+};
+
 Widget _statusBadge(BuildContext context, Challenge c) => c.live
     ? const LivePill()
     : c.upcoming
@@ -98,7 +106,7 @@ class ChallengeHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final mine = c.mine;
     return Pressable(
-      onTap: () => context.push('/challenges/${c.id}'),
+      onTap: () => openRoute(context, '/test/challenges/${c.id}'),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(Radii.lg),
         child: Container(
@@ -128,7 +136,12 @@ class ChallengeHero extends StatelessWidget {
                   Expanded(
                     child: Ticker(builder: (_) => Text('Winners in ${untilShort(c.endsAt)}', style: context.ty.cap.col(const Color(0xFFAFC0DD)))),
                   ),
-                  Btn(mine != null ? 'See result' : 'Play now', kind: BtnKind.accent, sm: true, onPressed: () => context.push('/challenges/${c.id}')),
+                  Btn(
+                    mine != null ? 'See result' : 'Play now',
+                    kind: BtnKind.accent,
+                    sm: true,
+                    onPressed: () => openRoute(context, '/test/challenges/${c.id}'),
+                  ),
                 ],
               ),
             ],
@@ -157,7 +170,7 @@ class ChallengeSection extends ConsumerWidget {
       top = ChallengeHero(c: featured);
     } else if (featured != null) {
       top = AppCard(
-        onTap: () => context.push('/challenges/${featured.id}'),
+        onTap: () => openRoute(context, '/test/challenges/${featured.id}'),
         child: Row(
           children: [
             IconTile(challengeIcon(featured.icon), tone: Tone.blue, size: 48, radius: 14, iconSize: 24),
@@ -195,7 +208,7 @@ class ChallengeSection extends ConsumerWidget {
                   Text('No challenge right now', style: context.ty.body.bold),
                   Text('New challenges with prizes come every week. We tell you the moment one starts.', style: context.ty.sm.col(c.textMuted)),
                   const Gap(Space.s2),
-                  Btn('Past winners', kind: BtnKind.ghost, sm: true, onPressed: () => context.push('/winners-wall')),
+                  Btn('Past winners', kind: BtnKind.ghost, sm: true, onPressed: () => openRoute(context, '/test/winners-wall')),
                 ],
               ),
             ),
@@ -206,7 +219,7 @@ class ChallengeSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SectTitle('Challenges & events', action: 'See all', onAction: () => context.push('/challenges')),
+        SectTitle('Challenges & events', action: 'See all', onAction: () => openRoute(context, '/test/challenges')),
         top,
         if (others.isNotEmpty) ...[
           const Gap(Space.s4),
@@ -234,7 +247,7 @@ class _Mini extends StatelessWidget {
   Widget build(BuildContext context) {
     final cc = context.c;
     return AppCard(
-      onTap: () => context.push('/challenges/${c.id}'),
+      onTap: () => openRoute(context, '/test/challenges/${c.id}'),
       padding: const EdgeInsets.all(Space.s4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -287,8 +300,9 @@ class ChallengesScreen extends ConsumerWidget {
     return Scaffold(
       appBar: TopBar(
         title: 'Challenges & events',
+        onBack: () => context.canPop() ? context.pop() : context.go('/test'),
         subtitle: 'Win prizes. Free and Premium can join.',
-        actions: [IconBtn(PhosphorIcons.sealCheck(), label: 'Winners wall', onPressed: () => context.push('/winners-wall'))],
+        actions: [IconBtn(PhosphorIcons.sealCheck(), label: 'Winners wall', onPressed: () => openRoute(context, '/test/winners-wall'))],
       ),
       body: asyncView(
         v,
@@ -308,7 +322,7 @@ class ChallengesScreen extends ConsumerWidget {
           final live = items.where((x) => x.live).toList(), up = items.where((x) => x.upcoming).toList();
           final c = context.c;
           Widget card(Challenge x) => AppCard(
-            onTap: () => context.push('/challenges/${x.id}'),
+            onTap: () => openRoute(context, '/test/challenges/${x.id}'),
             child: Row(
               children: [
                 IconTile(challengeIcon(x.icon), tone: x.kind == 'cash' ? Tone.gold : Tone.navy, size: 48, radius: 14, iconSize: 24),
@@ -317,7 +331,7 @@ class ChallengesScreen extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Wrap(spacing: Space.s2, runSpacing: Space.s1, children: [_statusBadge(context, x), _typeBadge(x)]),
+                      Wrap(spacing: Space.s2, runSpacing: Space.s1, children: [_statusBadge(context, x), _typeBadge(x), ?_modeBadge(x)]),
                       const Gap(Space.s1),
                       Text(x.title, style: context.ty.sm.bold),
                       Text('${x.rewardText} · Free to join', style: context.ty.cap.col(c.textMuted)),
@@ -345,7 +359,7 @@ class ChallengesScreen extends ConsumerWidget {
               for (final x in up) ...[card(x), const Gap(Space.s2)],
             ],
             AppCard(
-              onTap: () => context.push('/winners-wall'),
+              onTap: () => openRoute(context, '/test/winners-wall'),
               child: Row(
                 children: [
                   IconTile(PhosphorIcons.sealCheck(PhosphorIconsStyle.fill), tone: Tone.green, size: 44, radius: 12),
@@ -367,7 +381,7 @@ class ChallengesScreen extends ConsumerWidget {
               const SectTitle('Past winners'),
               for (final x in past) ...[
                 AppCard(
-                  onTap: () => context.push('/challenges/${x.id}/winners'),
+                  onTap: () => openRoute(context, '/test/challenges/${x.id}/winners'),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -471,7 +485,7 @@ class _ChallengeScreenState extends ConsumerState<ChallengeScreen> {
     final v = ref.watch(challengeProvider(widget.id));
     final c = context.c;
     return Scaffold(
-      appBar: const TopBar(),
+      appBar: TopBar(onBack: () => context.canPop() ? context.pop() : context.go('/test/challenges')),
       body: asyncView(
         v,
         (ch) => ListView(
@@ -497,7 +511,7 @@ class _ChallengeScreenState extends ConsumerState<ChallengeScreen> {
               ),
             ),
             const Gap(Space.s4),
-            Wrap(spacing: Space.s2, runSpacing: Space.s2, children: [_statusBadge(context, ch), _typeBadge(ch)]),
+            Wrap(spacing: Space.s2, runSpacing: Space.s2, children: [_statusBadge(context, ch), _typeBadge(ch), ?_modeBadge(ch)]),
             const Gap(Space.s3),
             Text(ch.title, style: context.ty.h1),
             if ((ch.subtitle ?? '').isNotEmpty) ...[const Gap(Space.s1), Text(ch.subtitle!, style: context.ty.body.col(c.textMuted))],
@@ -521,6 +535,43 @@ class _ChallengeScreenState extends ConsumerState<ChallengeScreen> {
               ],
             ),
             const Gap(Space.s4),
+            if (ch.ineligibleText != null) ...[
+              InfoBanner(kind: BannerKind.warn, icon: PhosphorIcons.lockSimple(PhosphorIconsStyle.fill), child: Text(ch.ineligibleText!)),
+              const Gap(Space.s3),
+            ],
+            AppCard(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  IconTile(
+                    ch.mode == 'fixed' ? PhosphorIcons.shuffle(PhosphorIconsStyle.fill) : PhosphorIcons.bookOpen(PhosphorIconsStyle.fill),
+                    tone: Tone.blue,
+                    size: 36,
+                    radius: 10,
+                    iconSize: 18,
+                  ),
+                  const Gap(Space.s3),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Your questions', style: context.ty.sm.bold),
+                        Text(ch.modeText, style: context.ty.cap.col(c.textMuted)),
+                        if (ch.mode != 'fixed' && ch.perLevel.isNotEmpty) ...[
+                          const Gap(Space.s1),
+                          Text(
+                            '${ch.mode == 'mixed' ? 'From each subject' : 'You get'}: ${ch.perLevel.map((e) => '${e.$2} ${e.$1.toLowerCase()}').join(', ')}. '
+                            'Every student gets the same mix, but different questions.',
+                            style: context.ty.cap.col(c.textMuted),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Gap(Space.s3),
             AppCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -579,7 +630,7 @@ class _ChallengeScreenState extends ConsumerState<ChallengeScreen> {
                   ),
               ],
             ),
-            if (ch.live && ch.mine == null) ...[
+            if (ch.live && ch.mine == null && ch.eligible) ...[
               const Gap(Space.s3),
               CheckRow(
                 value: _agree,
@@ -639,7 +690,7 @@ class _Footer extends StatelessWidget {
     final cc = context.c;
     final Widget child;
     if (c.ended) {
-      child = Btn('See the winners', block: true, onPressed: () => context.push('/challenges/${c.id}/winners'));
+      child = Btn('See the winners', block: true, onPressed: () => openRoute(context, '/test/challenges/${c.id}/winners'));
     } else if (mine != null) {
       final dq = mine['status'] == 'disqualified';
       child = Row(
@@ -674,7 +725,7 @@ class _Footer extends StatelessWidget {
               if (mine['status'] == 'playing') {
                 context.push('/challenges/${c.id}/play');
               } else {
-                context.push('/challenges/${c.id}/result');
+                openRoute(context, '/test/challenges/${c.id}/result');
               }
             },
           ),
@@ -690,6 +741,10 @@ class _Footer extends StatelessWidget {
           onPressed: () => toast(context, 'We will send you a notification the moment it starts.', icon: PhosphorIcons.bellRinging(PhosphorIconsStyle.fill)),
         ),
       );
+    } else if (!c.eligible) {
+      child = c.mode == 'subject'
+          ? Btn('Not one of your subjects', kind: BtnKind.tonal, block: true, leading: PhosphorIcons.lockSimple(PhosphorIconsStyle.fill), onPressed: null)
+          : Btn('Choose my JAMB subjects', block: true, onPressed: () => context.push('/subjects'));
     } else {
       child = Btn('Start challenge', block: true, leading: PhosphorIcons.play(PhosphorIconsStyle.fill), onPressed: c.questions == 0 ? null : onStart);
     }

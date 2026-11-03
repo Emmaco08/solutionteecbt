@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/nav.dart';
 import '../../core/api.dart';
 import '../../core/providers.dart';
 import '../../data/tests_repo.dart';
@@ -179,7 +180,7 @@ class TestHubScreen extends ConsumerWidget {
           Tone.gold,
           'Challenges & events',
           'Weekly cash prizes and special events',
-          () => context.push('/challenges'),
+          () => openRoute(context, '/test/challenges'),
         ),
       if (ref.watch(leaderboardOnProvider).value == true) const LeaderboardEntry(),
       modeCard(

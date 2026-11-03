@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/nav.dart';
 import '../../data/notifications_repo.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
@@ -42,7 +43,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       return;
     }
     final route = linkRoute(n.link);
-    if (route != null && mounted) context.push(route);
+    if (route != null && mounted) openRoute(context, route);
   }
 
   @override

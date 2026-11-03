@@ -6,6 +6,7 @@ import '../../widgets/phosphor.g.dart';
 
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/nav.dart';
 import '../../core/config.dart';
 import '../../core/providers.dart';
 import '../../core/push.dart';
@@ -68,7 +69,7 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
   Future<void> _startPush() async {
     final push = ref.read(pushProvider);
     push.onOpen = (route) {
-      if (mounted) context.push(route);
+      if (mounted) openRoute(context, route);
     };
     push.onForeground = (title) {
       if (mounted) toast(context, title, icon: PhosphorIcons.bellRinging(PhosphorIconsStyle.fill));

@@ -85,7 +85,43 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [GoRoute(path: '/study', builder: (_, _) => const StudyScreen())],
           ),
           StatefulShellBranch(
-            routes: [GoRoute(path: '/test', builder: (_, _) => const TestHubScreen())],
+            routes: [
+              GoRoute(
+                path: '/test',
+                builder: (_, _) => const TestHubScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'challenges',
+                    builder: (_, _) => const ChallengesScreen(),
+                    routes: [
+                      GoRoute(
+                        path: ':id',
+                        builder: (_, s) => ChallengeScreen(id: s.pathParameters['id']!),
+                        routes: [
+                          GoRoute(
+                            path: 'result',
+                            builder: (_, s) => ChallengeResultScreen(id: s.pathParameters['id']!),
+                          ),
+                          GoRoute(
+                            path: 'winners',
+                            builder: (_, s) => ChallengeResultScreen(id: s.pathParameters['id']!),
+                          ),
+                          GoRoute(
+                            path: 'claim',
+                            builder: (_, s) => ClaimPrizeScreen(id: s.pathParameters['id']!),
+                          ),
+                          GoRoute(
+                            path: 'appeal',
+                            builder: (_, s) => AppealScreen(id: s.pathParameters['id']!),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  GoRoute(path: 'winners-wall', builder: (_, _) => const WinnersWallScreen()),
+                ],
+              ),
+            ],
           ),
           StatefulShellBranch(
             routes: [
@@ -97,7 +133,13 @@ final routerProvider = Provider<GoRouter>((ref) {
             ],
           ),
           StatefulShellBranch(
-            routes: [GoRoute(path: '/me', builder: (_, _) => const ProfileScreen())],
+            routes: [
+              GoRoute(
+                path: '/me',
+                builder: (_, _) => const ProfileScreen(),
+                routes: [GoRoute(path: 'winnings', builder: (_, _) => const WinningsScreen())],
+              ),
+            ],
           ),
         ],
       ),
@@ -119,29 +161,17 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(path: '/history', builder: (_, _) => const HistoryScreen()),
       GoRoute(path: '/leaderboard', builder: (_, _) => const LeaderboardScreen()),
-      GoRoute(path: '/challenges', builder: (_, _) => const ChallengesScreen()),
-      GoRoute(
-        path: '/challenges/:id',
-        builder: (_, s) => ChallengeScreen(id: s.pathParameters['id']!),
-      ),
+      // Challenges live inside the Test tab so the bottom tabs stay visible (owner, D-073); playing is full screen.
+      // Old links (/challenges/…, /winnings, /winners-wall) still work: they redirect into the tabs.
       GoRoute(
         path: '/challenges/:id/play',
         builder: (_, s) => ChallengePlayScreen(id: s.pathParameters['id']!),
       ),
-      GoRoute(
-        path: '/challenges/:id/result',
-        builder: (_, s) => ChallengeResultScreen(id: s.pathParameters['id']!),
-      ),
-      GoRoute(
-        path: '/challenges/:id/winners',
-        builder: (_, s) => ChallengeResultScreen(id: s.pathParameters['id']!),
-      ),
-      GoRoute(
-        path: '/challenges/:id/claim',
-        builder: (_, s) => ClaimPrizeScreen(id: s.pathParameters['id']!),
-      ),
-      GoRoute(path: '/winnings', builder: (_, _) => const WinningsScreen()),
-      GoRoute(path: '/winners-wall', builder: (_, _) => const WinnersWallScreen()),
+      GoRoute(path: '/challenges', redirect: (_, _) => '/test/challenges'),
+      GoRoute(path: '/challenges/:id', redirect: (_, s) => '/test/challenges/${s.pathParameters['id']}'),
+      GoRoute(path: '/challenges/:id/:page', redirect: (_, s) => '/test/challenges/${s.pathParameters['id']}/${s.pathParameters['page']}'),
+      GoRoute(path: '/winnings', redirect: (_, _) => '/me/winnings'),
+      GoRoute(path: '/winners-wall', redirect: (_, _) => '/test/winners-wall'),
       GoRoute(path: '/notifications', builder: (_, _) => const NotificationsScreen()),
       GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),
       GoRoute(path: '/help', builder: (_, _) => const HelpScreen()),
