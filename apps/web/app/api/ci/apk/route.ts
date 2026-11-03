@@ -4,8 +4,6 @@ import { apkBuildAllowed, apkNameOk, verifyGithubToken } from "@/lib/github-oidc
 import { objectSize, presignPut, writeJson } from "@/lib/r2";
 import type { ApkInfo } from "@/app/download/apk/route";
 
-export const dynamic = "force-dynamic";
-
 const APK = "application/vnd.android.package-archive";
 const read = (k: string) => (process.env[k] ?? "").trim();
 
