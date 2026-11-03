@@ -52,3 +52,19 @@ export async function saveSettings(form: FormData): Promise<ActionResult> {
   revalidatePath("/admin", "layout");
   return { ok: true };
 }
+
+const SWITCHES: Record<string, string[]> = { screen_protection: ["whole_app", "exams"], app_update: ["force"] };
+
+/** One switch inside a JSON setting (D-080): screen protection and in-app updates. Logged by the settings trigger. */
+export async function setAppSwitch(key: string, field: string, on: boolean): Promise<ActionResult> {
+  await requireStaff(["super_admin", "admin"]);
+  if (!SWITCHES[key]?.includes(field)) return { ok: false, error: "Unknown setting" };
+  const supabase = await createClient();
+  const { data, error: e1 } = await supabase.from("app_settings").select("value").eq("key", key).maybeSingle();
+  if (e1 || !data) return { ok: false, error: e1 ? friendlyError(e1) : "Setting not found" };
+  const value = { ...((data.value as Record<string, boolean | string | number | null>) ?? {}), [field]: on };
+  const { error } = await supabase.from("app_settings").update({ value }).eq("key", key);
+  if (error) return { ok: false, error: friendlyError(error) };
+  revalidatePath("/admin", "layout");
+  return { ok: true };
+}

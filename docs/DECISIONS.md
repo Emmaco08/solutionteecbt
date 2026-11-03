@@ -559,3 +559,11 @@ The owner asked to run the admin from Vercel instead of the laptop.
 - **Referral codes:** made with up to 12 letters of the first name, and 2–20 letters accepted at sign-up and in "Add code" (EMMANUEL-H9X8, OLUWASEUN-7K3P).
 - Limits: a modified app could send false ids; a second phone is a second phone. Play Integrity (Play Console) can be added later.
 - Tests: `supabase/tests/fraud_v2.test.sql` 12/12, `referrals_bans.test.sql` re-run; app tests 75/75.
+
+**D-080 · 2026-11-03 · Screenshot block is an admin switch; the direct app updates itself (owner)**
+- Replaces D-076. Admin → Flags & settings → "Screenshots and screen recording": **Block in the whole app** (default off, so the owner can send screenshots and recordings) and **Block in tests, challenges and Premium videos** (default on: CBT tests, challenges, challenge answer reviews, Premium videos). Saved in `app_settings.screen_protection` (public); the app applies it every time the settings load. Screenshot messages only show when the screen is really blocked; in challenges a screenshot attempt is still saved as a fair-play flag.
+- **In-app update (direct app only):** GitHub now sends the build number (Android versionCode = minutes since 1970) with every published APK; `GET /api/app/latest` returns version, build, size and the download link. The app compares it with its own versionCode on start and every time it comes back to the front. If newer: with "Students must update to the newest app" on (default, `app_update.force`), a full-screen **Update needed** replaces every screen; off, a small "A new version is ready" card. **Update now** downloads the APK inside the app (progress, reused if already downloaded), asks once for Android's "install unknown apps" permission, then opens Android's installer (FileProvider; the permission and provider are only in the direct flavor). Same signing key, so it installs over the old app and keeps the account.
+- The Play Store app is updated by Google Play (Play does not allow self-updates); its old "minimum version" screen stays.
+- Builds published before this have no build number: the build time decides, with 30 minutes of slack. Developer builds (versionCode 1) are never asked.
+- This first version with the updater must be installed once from /download; after that, updates happen in the app.
+- App tests 78/78.

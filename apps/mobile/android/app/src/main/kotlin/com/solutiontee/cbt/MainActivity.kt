@@ -7,7 +7,6 @@ import android.content.Intent
 import android.media.MediaDrm
 import android.net.Uri
 import android.os.Build
-import android.os.Bundle
 import android.provider.Settings
 import android.view.WindowManager
 import io.flutter.embedding.android.FlutterActivity
@@ -30,13 +29,6 @@ class MainActivity : FlutterActivity() {
         } else {
             null
         }
-    }
-
-    // Owner (D-076): screenshots and screen recording are blocked in the whole app, on every Android version.
-    // Set before anything is drawn, so even the first frame and the recent-apps preview are protected.
-    override fun onCreate(savedInstanceState: Bundle?) {
-        window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
-        super.onCreate(savedInstanceState)
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -144,14 +136,50 @@ class MainActivity : FlutterActivity() {
                 }
             }
         }
-        // Screenshots and screen recording are blocked in the whole app (lib/core/secure_screen.dart).
+        // Screenshots and screen recording: blocked where the admin switches say (lib/core/secure_screen.dart).
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "solutiontee/secure").setMethodCallHandler { call, result ->
             if (call.method == "set") {
-                // The whole app stays protected (D-076): screens may ask for it, but never turn it off.
-                window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                // On or off as Flutter decides from the admin switches (D-080: whole app; tests, challenges, videos).
+                if (call.arguments == true) {
+                    window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                } else {
+                    window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                }
                 result.success(null)
             } else {
                 result.notImplemented()
+            }
+        }
+        // In-app update of the direct app (D-080): own version, the "install unknown apps" permission, Android's installer.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "solutiontee/update").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "version" -> {
+                    val info = packageManager.getPackageInfo(packageName, 0)
+                    val code = if (Build.VERSION.SDK_INT >= 28) info.longVersionCode else @Suppress("DEPRECATION") info.versionCode.toLong()
+                    result.success(mapOf("code" to code, "name" to (info.versionName ?: "")))
+                }
+                "canInstall" -> result.success(Build.VERSION.SDK_INT < 26 || packageManager.canRequestPackageInstalls())
+                "allowInstall" -> {
+                    try {
+                        startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.success(false)
+                    }
+                }
+                "install" -> {
+                    try {
+                        val file = java.io.File(call.arguments as String)
+                        val uri = androidx.core.content.FileProvider.getUriForFile(this, "$packageName.updates", file)
+                        val intent = Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/vnd.android.package-archive")
+                            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+                        startActivity(intent)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("install", e.message, null)
+                    }
+                }
+                else -> result.notImplemented()
             }
         }
         // Notifications on/off for this app, and the phone's notification settings page (lib/core/push.dart, D-064).

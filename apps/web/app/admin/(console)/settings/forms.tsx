@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Panel } from "@/components/admin/ui";
-import { saveSettings, setFlag } from "./actions";
+import { saveSettings, setAppSwitch, setFlag } from "./actions";
 
 const LABELS: Record<string, string> = {
   challenges_enabled: "Challenges & events", referrals_enabled: "Referral programme", ai_photo_questions: "AI photo questions",
@@ -73,5 +73,22 @@ export function SettingsForm({ values: v }: { values: V }) {
       </Panel>
       <div className="flex justify-end lg:col-span-2"><Button type="submit" disabled={pending} className="h-11 px-6">Save settings</Button></div>
     </form>
+  );
+}
+
+/** An instant switch for one field of a JSON setting (screen protection, in-app updates). */
+export function AppSwitch({ k, field, on: initial, title, text }: { k: string; field: string; on: boolean; title: string; text: string }) {
+  const router = useRouter();
+  const [, start] = useTransition();
+  const [on, setOn] = useOptimistic(initial);
+  return (
+    <label className="flex cursor-pointer items-center gap-4 py-3.5">
+      <span className="grow"><b className="block text-sm">{title}</b><small className="block text-[13px] text-muted-foreground">{text}</small></span>
+      <Switch checked={on} aria-label={title} onCheckedChange={(v) => start(async () => {
+        setOn(v);
+        const r = await setAppSwitch(k, field, v);
+        if (r.ok) { toast.success(`${title}: ${v ? "on" : "off"}. Phones get it the next time the app opens.`); router.refresh(); } else toast.error(r.error);
+      })} />
+    </label>
   );
 }

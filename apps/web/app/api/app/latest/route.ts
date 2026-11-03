@@ -1,0 +1,22 @@
+import { NextResponse } from "next/server";
+import { hasR2 } from "@/lib/env";
+import { readJson } from "@/lib/r2";
+import { apkInfoKey, type ApkInfo } from "@/app/download/apk/route";
+
+/**
+ * GET /api/app/latest → the newest direct Android app (D-080): { version, build, size, built_at, url }.
+ * The app compares `build` with its own versionCode, then downloads `url` (a redirect to a 10-minute link).
+ */
+export async function GET(req: Request) {
+  if (!hasR2()) return NextResponse.json({ error: "Not available" }, { status: 503 });
+  const channel = new URL(req.url).searchParams.get("channel");
+  const info = await readJson<ApkInfo>(apkInfoKey(channel));
+  if (!info) return NextResponse.json({ error: "No app yet" }, { status: 404 });
+  const origin = new URL(req.url).origin;
+  const res = NextResponse.json({
+    version: info.version, build: info.build ?? null, size: info.size, built_at: info.built_at,
+    url: `${origin}/download/apk${channel === "test" ? "?channel=test" : ""}`,
+  });
+  res.headers.set("Cache-Control", "no-store");
+  return res;
+}

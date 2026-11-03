@@ -81,3 +81,8 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // FileProvider for the in-app update of the direct app (D-080).
+    implementation("androidx.core:core-ktx:1.13.1")
+}

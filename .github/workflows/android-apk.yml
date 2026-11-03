@@ -79,6 +79,7 @@ jobs:
           flutter build apk --release --flavor direct --target-platform android-arm64 \
             --build-number="$BUILD" --dart-define=APP_VERSION="$NAME"
           echo "APP_NAME_VERSION=$NAME" >> "$GITHUB_ENV"
+          echo "APP_BUILD=$BUILD" >> "$GITHUB_ENV"
 
       - name: Put it on /download
         run: |
@@ -95,7 +96,7 @@ jobs:
           curl -sSf -X PUT -H "content-type: application/vnd.android.package-archive" --upload-file "$FILE" "$URL" -o /dev/null
           TOKEN=$(token); echo "::add-mask::$TOKEN"
           curl -sSf -X POST "$SITE/api/ci/apk" -H "Authorization: Bearer $TOKEN" -H "content-type: application/json" \
-            -d "{\"step\":\"publish\",\"name\":\"$APK\",\"version\":\"$VERSION\",\"built_at\":\"$BUILT\"}"
+            -d "{\"step\":\"publish\",\"name\":\"$APK\",\"version\":\"$VERSION\",\"built_at\":\"$BUILT\",\"build\":$APP_BUILD}"
           echo
           echo "### The new app is on $SITE/download (version $VERSION, $(du -m "$FILE" | cut -f1) MB)" >> "$GITHUB_STEP_SUMMARY"
 

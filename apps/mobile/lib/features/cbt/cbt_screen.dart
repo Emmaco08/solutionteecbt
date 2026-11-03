@@ -68,7 +68,7 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
   StreamSubscription<MethodCall>? _secure;
 
   void _warnCapture(String text) {
-    if (mounted) toast(context, text, icon: PhosphorIcons.cameraSlash(PhosphorIconsStyle.fill));
+    if (mounted && SecureScreen.protecting) toast(context, text, icon: PhosphorIcons.cameraSlash(PhosphorIconsStyle.fill));
   }
 
   Future<void> _load() async {

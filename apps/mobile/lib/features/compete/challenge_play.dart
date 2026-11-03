@@ -104,7 +104,8 @@ class _ChallengePlayScreenState extends ConsumerState<ChallengePlayScreen> with 
   void _capture(String what) {
     if (!mounted || _done) return;
     final e = _entry;
-    if (e != null) _api.report(e, what).ignore();
+    if (e != null) _api.report(e, what).ignore(); // saved for the fair-play review even when screenshots are allowed
+    if (!SecureScreen.protecting) return;
     toast(
       context,
       what == 'screenshot'

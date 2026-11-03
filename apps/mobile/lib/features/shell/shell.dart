@@ -97,13 +97,13 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
   }
 
   void _screenshotTried() {
-    if (!mounted) return;
+    if (!mounted || !SecureScreen.protecting) return; // screenshots allowed right now (admin switch, D-080)
     String path = '';
     try {
       path = GoRouter.of(context).routerDelegate.currentConfiguration.uri.path;
     } catch (_) {}
     if (DeviceEvents.ownMessage(path)) return;
-    toast(context, 'Screenshots are turned off in SolutionTee CBT to protect our questions.', icon: PhosphorIcons.cameraSlash(PhosphorIconsStyle.fill));
+    toast(context, 'Screenshots are turned off here to protect our questions.', icon: PhosphorIcons.cameraSlash(PhosphorIconsStyle.fill));
   }
 
   /// Push (4D, D-063): save this phone's token, match topics to the switches and plan, and open tapped messages.

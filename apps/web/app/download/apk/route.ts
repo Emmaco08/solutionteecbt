@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { hasR2 } from "@/lib/env";
 import { presignDownload, readJson } from "@/lib/r2";
 
-export type ApkInfo = { key: string; version: string; size: number; built_at: string; branch?: string };
+export type ApkInfo = { key: string; version: string; size: number; built_at: string; branch?: string; build?: number };
 /** "main" is the build from the main branch (for the team); "test" is the newest build from any other branch (D-060). */
 export const apkInfoKey = (channel: string | null | undefined) => (channel === "test" ? "apk/test.json" : "apk/latest.json");
 

@@ -2,16 +2,38 @@ import 'dart:async';
 
 import 'package:flutter/services.dart';
 
-/// Screenshots and screen recording are blocked in the whole app (Android FLAG_SECURE, set when the app opens; owner,
-/// D-076). `on`/`off` are kept for the screens that need it most, but Android never turns it off.
-/// Implemented in android/app/src/main/kotlin/.../MainActivity.kt.
+/// Screenshots and screen recording (Android FLAG_SECURE), as the admin decides (D-080, Admin → Flags & settings):
+/// "whole app" and "tests, challenges and Premium videos". Screens that need it call [on] / [off]; [policy] comes
+/// from the server settings. Implemented in android/app/src/main/kotlin/.../MainActivity.kt.
 abstract final class SecureScreen {
   static const _ch = MethodChannel('solutiontee/secure');
-  static Future<void> on() => _call(true);
-  static Future<void> off() => _call(false);
-  static Future<void> _call(bool on) async {
+  static bool _whole = false, _exams = true;
+  static int _screens = 0;
+
+  /// Is the screen blocked right now (so a screenshot attempt really failed)?
+  static bool get protecting => _whole || (_exams && _screens > 0);
+
+  /// A test, challenge, challenge review or Premium video is open.
+  static Future<void> on() {
+    _screens++;
+    return _apply();
+  }
+
+  static Future<void> off() {
+    if (_screens > 0) _screens--;
+    return _apply();
+  }
+
+  /// The admin's switches (app_settings.screen_protection).
+  static Future<void> policy({required bool wholeApp, required bool exams}) {
+    _whole = wholeApp;
+    _exams = exams;
+    return _apply();
+  }
+
+  static Future<void> _apply() async {
     try {
-      await _ch.invokeMethod<void>('set', on);
+      await _ch.invokeMethod<void>('set', protecting);
     } catch (_) {
       // Not available (tests, other platforms): nothing to do.
     }

@@ -749,7 +749,7 @@ class _ChallengeReviewScreenState extends ConsumerState<ChallengeReviewScreen> {
   }
 
   void _warn(String text) {
-    if (mounted) toast(context, text, icon: PhosphorIcons.cameraSlash(PhosphorIconsStyle.fill));
+    if (mounted && SecureScreen.protecting) toast(context, text, icon: PhosphorIcons.cameraSlash(PhosphorIconsStyle.fill));
   }
 
   @override
