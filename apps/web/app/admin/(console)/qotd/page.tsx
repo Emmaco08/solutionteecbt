@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { requireStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { ErrorState, PageHeader, PageSkeleton, Panel } from "@/components/admin/ui";
-import { DayList, type QotdDay } from "./qotd-ui";
+import { AddPanel, DayList, type QotdDay } from "./qotd-ui";
 
 export const metadata: Metadata = { title: "Question of the day" };
 
@@ -32,7 +32,8 @@ async function Qotd() {
   const past = rows.filter((r) => r.day < today).reverse();
   return (
     <>
-      <PageHeader title="Question of the day" description="One question a day for every student, with one try. It changes at midnight Lagos time. Days you leave empty get a question picked automatically from the years Free students can open, rotating subjects." />
+      <PageHeader title="Question of the day" description="Every student sees the same question on Home, once a day, with one try. You don't have to do anything: days you leave empty get a question picked automatically. To choose the question yourself, use the box below." />
+      <Panel title="Add a question of the day" className="mb-4"><AddPanel today={today} subjects={subjects.data ?? []} /></Panel>
       <div className="grid gap-4 xl:grid-cols-[1.3fr_1fr]">
         <Panel title="Next 14 days" bodyClassName="p-0"><DayList days={coming} today={today} subjects={subjects.data ?? []} /></Panel>
         <Panel title="Last 14 days" bodyClassName="p-0">

@@ -1922,6 +1922,7 @@ export type Database = {
       }
       admin_dashboard: { Args: never; Returns: Json }
       admin_leaderboard_held: { Args: { p_season?: number }; Returns: Json }
+      admin_leaderboard_recent: { Args: { p_limit?: number }; Returns: Json }
       admin_list_staff: {
         Args: never
         Returns: {

@@ -12,6 +12,9 @@ const Settings = z.object({
   past_seasons: z.array(z.number().int().min(2020).max(2100)).max(10),
   min_mocks: z.number().int().min(1).max(20),
   names: z.enum(["first-initial", "first"]),
+  min_questions: z.number().int().min(4).max(400),
+  fast_minutes: z.number().int().min(0).max(120),
+  include_staff: z.boolean(),
 });
 
 export async function saveLeaderboard(form: FormData): Promise<ActionResult> {
@@ -21,6 +24,9 @@ export async function saveLeaderboard(form: FormData): Promise<ActionResult> {
     past_seasons: form.getAll("past").map(Number),
     min_mocks: Number(form.get("min_mocks")),
     names: form.get("names"),
+    min_questions: Number(form.get("min_questions")),
+    fast_minutes: Number(form.get("fast_minutes")),
+    include_staff: form.get("include_staff") === "on",
   });
   if (!p.success) return { ok: false, error: p.error.issues[0]?.message ?? "Check the settings" };
   const supabase = await createClient();
