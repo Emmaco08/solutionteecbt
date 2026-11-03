@@ -28,6 +28,15 @@ android {
         versionName = flutter.versionName
     }
 
+    // Two builds (D-060): "direct" = APK from the website, pays with Paystack;
+    // "play" = Play Store, pays with Google Play Billing. Same app id, so one account per phone.
+    // `flutter run` / `flutter build apk` use "direct" (pubspec.yaml default-flavor).
+    flavorDimensions += "store"
+    productFlavors {
+        create("direct") { dimension = "store" }
+        create("play") { dimension = "store" }
+    }
+
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.

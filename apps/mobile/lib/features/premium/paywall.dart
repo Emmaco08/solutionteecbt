@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../data/study_repo.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
 import '../../ui/kit.dart';
 import '../../widgets/phosphor.g.dart';
+import 'payments.dart';
 
 /// Why the paywall opened: an exam code, a year, or a study kind / feature.
 const _reasons = {
@@ -26,6 +28,15 @@ const _reasons = {
 Future<void> showPaywall(BuildContext context, {String? reason}) {
   final head = _reasons[reason] ?? (RegExp(r'\d{4}$').hasMatch(reason ?? '') ? '$reason is Premium' : 'Go Premium');
   return showSheet<void>(context, builder: (_) => _Paywall(head: head));
+}
+
+/// How long a plan lasts, e.g. "3 months" or "Until 31 Jul 2027".
+String planPeriod(Map<String, dynamic> plan) {
+  final d = (plan['duration_days'] as num?)?.toInt();
+  if (d != null) return d % 30 == 0 ? (d == 30 ? '1 month' : '${d ~/ 30} months') : '$d days';
+  final e = DateTime.tryParse('${plan['ends_on']}');
+  const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return e == null ? '' : 'Until ${e.day} ${m[e.month - 1]} ${e.year}';
 }
 
 String naira(num kobo) {
@@ -67,7 +78,11 @@ class _PaywallState extends ConsumerState<_Paywall> {
   Widget build(BuildContext context) {
     final c = context.c;
     final rules = ref.watch(accessRulesProvider).value ?? const {};
-    final plans = ref.watch(plansProvider).value ?? const [];
+    final plans = ref.watch(plansForSaleProvider).value ?? ref.watch(plansProvider).value ?? const [];
+    // Play build: Google's own price text (Google charges its own price, set in Play Console).
+    final playPrices = usesPaystack(ref) ? const <String, String>{} : (ref.watch(playPricesProvider).value ?? const {});
+    String price(Map<String, dynamic> p) => playPrices['${p['play_product_id'] ?? ''}'] ?? naira(p['price_kobo'] as num);
+    final sample = plans.any((p) => '${p['description'] ?? ''}'.startsWith('SAMPLE'));
     final benefits = premiumBenefits(rules);
     final pick = firstOr(plans, (p) => p['code'] == (_pick ?? 'three_months'), fallbackFirst: true);
     final rm = context.reduceMotion;
@@ -113,22 +128,32 @@ class _PaywallState extends ConsumerState<_Paywall> {
         Row(
           children: [
             Expanded(child: Text('Choose a plan', style: context.ty.label)),
-            const Pill('SAMPLE PRICES', kind: BadgeKind.sample),
+            if (sample) const Pill('SAMPLE PRICES', kind: BadgeKind.sample),
           ],
         ),
         const Gap(Space.s3),
-        for (final p in plans) ...[_PlanRow(plan: p, on: identical(p, pick), onTap: () => setState(() => _pick = p['code'] as String)), const Gap(Space.s3)],
+        for (final p in plans) ...[
+          _PlanRow(plan: p, price: price(p), on: identical(p, pick), onTap: () => setState(() => _pick = p['code'] as String)),
+          const Gap(Space.s3),
+        ],
         const Gap(Space.s1),
         Btn(
-          pick.isEmpty ? 'Continue' : 'Continue with ${pick['name']} · ${naira(pick['price_kobo'] as num)}',
+          pick.isEmpty ? 'Continue' : 'Continue with ${pick['name']} · ${price(pick)}',
           block: true,
-          onPressed: () {
-            Navigator.of(context).pop();
-            toast(context, 'Payments open in the next update. Your plan is not charged.', icon: PhosphorIcons.crownSimple(PhosphorIconsStyle.fill));
-          },
+          onPressed: pick.isEmpty
+              ? null
+              : () {
+                  final router = GoRouter.of(context);
+                  Navigator.of(context).pop();
+                  router.push('/checkout?plan=${Uri.encodeQueryComponent('${pick['code']}')}');
+                },
         ),
         const Gap(Space.s3),
-        Text('Secure payment. Premium starts as soon as payment is confirmed.', textAlign: TextAlign.center, style: context.ty.cap.col(c.textMuted)),
+        Text(
+          'Secure payment. Premium starts as soon as payment is confirmed.${usesPaystack(ref) ? ' Have a discount code? Add it at checkout.' : ''}',
+          textAlign: TextAlign.center,
+          style: context.ty.cap.col(c.textMuted),
+        ),
       ],
     );
   }
@@ -136,18 +161,13 @@ class _PaywallState extends ConsumerState<_Paywall> {
 
 /// `.plan` row: radio, name + note, price + period; "Best value" badge on the 3-month plan.
 class _PlanRow extends StatelessWidget {
-  const _PlanRow({required this.plan, required this.on, required this.onTap});
+  const _PlanRow({required this.plan, required this.price, required this.on, required this.onTap});
   final Map<String, dynamic> plan;
+  final String price;
   final bool on;
   final VoidCallback onTap;
 
-  String get _per {
-    final d = (plan['duration_days'] as num?)?.toInt();
-    if (d != null) return d % 30 == 0 ? (d == 30 ? '1 month' : '${d ~/ 30} months') : '$d days';
-    final e = DateTime.tryParse('${plan['ends_on']}');
-    const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return e == null ? '' : 'Until ${e.day} ${m[e.month - 1]} ${e.year}';
-  }
+  String get _per => planPeriod(plan);
 
   @override
   Widget build(BuildContext context) {
@@ -192,7 +212,7 @@ class _PlanRow extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(naira(plan['price_kobo'] as num), style: context.ty.body.bold.tnum.copyWith(fontSize: 18)),
+                    Text(price, style: context.ty.body.bold.tnum.copyWith(fontSize: 18)),
                     Text(_per, style: context.ty.cap.col(c.textMuted)),
                   ],
                 ),

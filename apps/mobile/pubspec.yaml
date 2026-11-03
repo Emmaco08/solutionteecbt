@@ -9,6 +9,7 @@ environment:
 
 dependencies:
   connectivity_plus: ^7.3.2
+  crypto: ^3.0.8
   drift: ^2.35.3
   drift_flutter: ^0.3.1
   flutter:
@@ -21,6 +22,7 @@ dependencies:
   go_router: ^18.1.1
   http: ^1.6.0
   image_picker: ^1.2.4
+  in_app_purchase: ^3.3.1
   lottie: ^3.7.0
   markdown: ^7.3.1
   path_provider: ^2.1.6
@@ -40,6 +42,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  # Payments build used when no --flavor is given (D-060): direct = Paystack, play = Google Play.
+  default-flavor: direct
   assets:
     - assets/brand/
     - assets/brand/exam-bodies/

@@ -16,6 +16,8 @@ import '../../ui/kit.dart';
 import '../../widgets/phosphor.g.dart';
 import '../../widgets/states.dart';
 import '../home/home_screen.dart';
+import '../premium/checkout.dart';
+import '../premium/payments.dart';
 
 const _supportEmailFallback = 'support@mail.solutiontee.com';
 
@@ -291,6 +293,8 @@ class ProfileScreen extends ConsumerWidget {
                   ListCard(
                     children: [
                       ListRow(icon: PhosphorIcons.clockCounterClockwise(PhosphorIconsStyle.fill), title: 'Test history', onTap: () => context.push('/history')),
+                      if (showsRedeem(ref))
+                        ListRow(icon: PhosphorIcons.ticket(PhosphorIconsStyle.fill), title: 'Redeem a code', onTap: () => showRedeemSheet(context)),
                       ListRow(icon: PhosphorIcons.gearSix(PhosphorIconsStyle.fill), title: 'Settings', onTap: () => context.push('/settings')),
                       ListRow(icon: PhosphorIcons.question(PhosphorIconsStyle.fill), title: 'Help & support', onTap: () => context.push('/help')),
                     ],
@@ -731,7 +735,10 @@ class HelpScreen extends ConsumerWidget {
                     'What if my phone goes off during a test?',
                     'Every answer is saved as you tap it. Open the app and tap Continue your test on Home. The timer pauses while the app is closed.',
                   ),
-                  ('Why are some years locked?', 'Free accounts can open some years of each exam. Premium opens every year. Premium payments are coming soon.'),
+                  (
+                    'Why are some years locked?',
+                    'Free accounts can open some years of each exam. Premium opens every year. Tap Upgrade to Premium on Home or Me to see the plans.',
+                  ),
                 ]) ...[_Faq(q: q, a: a), const Gap(Space.s2)],
               ],
             ),

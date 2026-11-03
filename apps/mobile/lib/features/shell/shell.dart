@@ -12,6 +12,7 @@ import '../../data/tests_repo.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
 import '../../ui/kit.dart';
+import '../premium/payments.dart';
 
 /// Branch order in router.dart: home, study, test, ai, me.
 const _branchOf = {'home': 0, 'study': 1, 'test': 2, 'ai_chat': 3, 'profile': 4};
@@ -48,6 +49,14 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
     WidgetsBinding.instance.addObserver(this);
     // Send any tests finished offline.
     Future.microtask(() => ref.read(testsRepoProvider).syncPending());
+    // Play build: listen to Google Play and finish any purchase that was not checked last time.
+    if (store == Store.play) {
+      final billing = ref.read(playBillingProvider);
+      billing.onPremium = () {
+        if (mounted) refreshPlan(ref);
+      };
+      billing.start();
+    }
   }
 
   @override

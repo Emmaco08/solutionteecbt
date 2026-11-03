@@ -11,6 +11,7 @@ import 'features/cbt/cbt_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/news/news_screens.dart';
 import 'features/onboarding/onboarding_screens.dart';
+import 'features/premium/checkout.dart';
 import 'features/profile/profile_screens.dart';
 import 'features/results/results_screens.dart';
 import 'features/setup/setup_screen.dart';
@@ -163,6 +164,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/study/search', builder: (_, _) => const StudySearchScreen()),
       GoRoute(path: '/downloads', builder: (_, _) => const DownloadsScreen()),
       GoRoute(path: '/ai/history', builder: (_, _) => const AiHistoryScreen()),
+      // Payments (milestone 4C). The server sets the price and gives Premium only after checking the payment.
+      GoRoute(
+        path: '/checkout',
+        builder: (_, s) => CheckoutScreen(planCode: s.uri.queryParameters['plan'] ?? 'three_months'),
+      ),
+      GoRoute(
+        path: '/pay-success',
+        builder: (_, s) => PaySuccessScreen(info: (s.extra as Map<String, Object?>?) ?? const {}),
+      ),
       GoRoute(
         path: '/news/:id',
         builder: (_, s) => NewsDetailScreen(id: s.pathParameters['id']!),
