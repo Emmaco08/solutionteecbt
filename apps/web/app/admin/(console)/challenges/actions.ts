@@ -25,6 +25,7 @@ const Ch = z.object({
   premium_top: z.coerce.number().int().min(0).max(100),
   allowed_exits: z.coerce.number().int().min(0).max(3),
   published: z.boolean(),
+  same_questions: z.boolean(),
   mode: z.enum(["mixed", "subject", "fixed"]),
   subject_id: z.coerce.number().int().min(0),
   easy: z.coerce.number().int().min(0).max(50), medium: z.coerce.number().int().min(0).max(50),
@@ -34,7 +35,7 @@ const Ch = z.object({
 /** Create or update a challenge. Returns its id. */
 export async function saveChallenge(form: FormData): Promise<ActionResult<{ id: string }>> {
   await editors();
-  const p = Ch.safeParse({ ...Object.fromEntries(form), published: form.get("published") === "on" });
+  const p = Ch.safeParse({ ...Object.fromEntries(form), published: form.get("published") === "on", same_questions: form.get("same_questions") === "on" });
   if (!p.success) return { ok: false, error: p.error.issues[0]?.message ?? "Check the challenge" };
   const c = p.data;
   const starts = lagos(c.starts), ends = lagos(c.ends);
@@ -51,6 +52,7 @@ export async function saveChallenge(form: FormData): Promise<ActionResult<{ id: 
     premium_days: c.premium_days, premium_top: c.premium_top, allowed_exits: c.allowed_exits, published: c.published,
     mode: c.mode, subject_id: c.mode === "subject" ? c.subject_id : null,
     per_level: { easy: c.easy, medium: c.medium, hard: c.hard, very_hard: c.very_hard },
+    same_questions: c.mode !== "fixed" && c.same_questions,
   };
   const supabase = await createClient();
   const r = c.id && uuid.test(c.id)
@@ -196,4 +198,64 @@ export async function decideAppeal(id: string, accept: boolean, note: string): P
   if (error) return { ok: false, error: friendlyError(error) };
   revalidatePath("/admin/challenges");
   return { ok: true, message: accept ? "Accepted. The entry counts again." : "Rejected." };
+}
+
+/** Random past questions (Free years only, with levels) for the chosen subjects (D-074). */
+export async function addRandom(challengeId: string, subjectIds: number[], count: number): Promise<ActionResult<{ subject: string; added: number; left: number }[]>> {
+  await editors();
+  if (!uuid.test(challengeId)) return { ok: false, error: "Unknown challenge" };
+  const ids = subjectIds.filter((x) => Number.isInteger(x) && x > 0).slice(0, 30);
+  if (!ids.length) return { ok: false, error: "Choose at least one subject" };
+  if (!Number.isInteger(count) || count < 1 || count > 500) return { ok: false, error: "Choose 1 to 500 questions per subject" };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_challenge_add_random", { p_id: challengeId, p_subjects: ids, p_count: count });
+  if (error) return { ok: false, error: friendlyError(error) };
+  const rows = (data ?? []) as { subject: string; added: number; left: number }[];
+  const added = rows.reduce((n, r) => n + r.added, 0);
+  revalidatePath(`/admin/challenges/${challengeId}`);
+  return { ok: true, data: rows, message: added ? `${added} past questions added.` : "No more Free past questions left for these subjects." };
+}
+
+export async function setLevel(challengeId: string, questionId: string, level: string): Promise<ActionResult> {
+  await editors();
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_challenge_set_level", { p_question: questionId, p_level: level });
+  if (error) return { ok: false, error: friendlyError(error) };
+  revalidatePath(`/admin/challenges/${challengeId}`);
+  return { ok: true, message: "Level changed." };
+}
+
+/** Copy a challenge (settings and questions) to a new start time; hidden until published. */
+export async function copyChallenge(id: string, starts: string): Promise<ActionResult<{ id: string }>> {
+  await editors();
+  const t = lagos(starts);
+  if (!uuid.test(id) || Number.isNaN(t.getTime())) return { ok: false, error: "Choose when the copy starts" };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_challenge_copy", { p_id: id, p_starts: t.toISOString() });
+  if (error || !data) return { ok: false, error: friendlyError(error) };
+  revalidatePath("/admin/challenges");
+  return { ok: true, data: { id: data as string }, message: "Copied. Check it, then tick “Show to students”." };
+}
+
+export type LiveData = {
+  status: string;
+  summary: { joined: number; playing: number; finished: number; disqualified: number; flagged: number; appeals_pending: number; avg_pct: number | null; avg_ms: number | null; best: number | null };
+  board: { id: string; rank: number | null; name: string | null; state: string | null; status: string; review: string | null; score: number; answered: number; total: number; time_ms: number; exits: number; flags: string[]; dq_reason: string | null; prize: number | null; started_at: string; finished_at: string | null }[];
+  by_subject: { subject: string; answers: number; right_pct: number }[];
+  by_level: { level: string; answers: number; right_pct: number; avg_ms: number }[];
+  spread: { from: number; students: number }[];
+  questions: { id: string; body: string; subject: string | null; level: string; answer: string; answers: number; right_pct: number | null; avg_ms: number | null; no_answer: number; top_wrong: string | null }[];
+  exits: { reason: string; students: number }[];
+  students_per_subject: Record<string, number>;
+  paper_size: number;
+};
+
+/** Live leaderboard and analysis (polled every 15 s by the admin page). */
+export async function liveData(id: string): Promise<ActionResult<LiveData>> {
+  await requireStaff();
+  if (!uuid.test(id)) return { ok: false, error: "Unknown challenge" };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_challenge_live", { p_id: id });
+  if (error) return { ok: false, error: friendlyError(error) };
+  return { ok: true, data: data as unknown as LiveData };
 }

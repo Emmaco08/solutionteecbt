@@ -65,6 +65,7 @@ class Challenge {
   String get mode => '${j['mode'] ?? 'fixed'}';
   String? get subject => j['subject'] as String?;
   bool get eligible => j['eligible'] != false;
+  bool get sameQuestions => j['same_questions'] == true;
 
   /// Questions per subject at each level, easiest first, skipping zeros: [('Easy', 3), ('Hard', 2)].
   List<(String, int)> get perLevel {
@@ -77,8 +78,14 @@ class Challenge {
 
   /// One line on whose questions these are.
   String get modeText => switch (mode) {
-    'mixed' => 'Questions from your 4 JAMB subjects, mixed.',
-    'subject' => 'Only for students who take ${subject ?? 'this subject'}.',
+    'mixed' =>
+      sameQuestions
+          ? 'Questions from your 4 JAMB subjects, mixed. Everyone who takes a subject gets the same questions, in a different order.'
+          : 'Questions from your 4 JAMB subjects, mixed.',
+    'subject' =>
+      sameQuestions
+          ? 'Only for students who take ${subject ?? 'this subject'}. Everyone gets the same questions, in a different order.'
+          : 'Only for students who take ${subject ?? 'this subject'}.',
     _ => 'Everyone answers the same questions, shuffled.',
   };
 
@@ -111,6 +118,15 @@ final challengeResultProvider = FutureProvider.autoDispose.family<Map<String, dy
   final j = await ref.read(supabaseProvider).rpc('challenge_result', params: {'p_id': id}).timeout(const Duration(seconds: 15));
   return Map<String, dynamic>.from(j as Map);
 });
+
+/// The student's own answers, after the challenge has ended (D-074).
+final challengeReviewProvider = FutureProvider.autoDispose.family<Map<String, dynamic>, String>((ref, id) async {
+  final j = await ref.read(supabaseProvider).rpc('challenge_review', params: {'p_id': id}).timeout(const Duration(seconds: 15));
+  return Map<String, dynamic>.from(j as Map);
+});
+
+/// "Very hard" from 'very_hard'.
+String levelName(String k) => const {'easy': 'Easy', 'medium': 'Medium', 'hard': 'Hard', 'very_hard': 'Very hard'}[k] ?? '';
 
 final winningsProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   final j = await ref.read(supabaseProvider).rpc('my_winnings').timeout(const Duration(seconds: 15));

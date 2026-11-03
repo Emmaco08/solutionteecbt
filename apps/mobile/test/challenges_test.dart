@@ -7,6 +7,7 @@ import 'package:solutiontee_cbt/core/nav.dart';
 import 'package:solutiontee_cbt/features/compete/challenge_play.dart';
 import 'package:solutiontee_cbt/features/compete/challenges_screens.dart';
 import 'package:solutiontee_cbt/features/compete/compete_data.dart';
+import 'package:solutiontee_cbt/features/compete/results_screens.dart';
 import 'package:solutiontee_cbt/theme/theme.dart';
 
 /// Plays the server: two questions, answers checked "on the server", exits reported.
@@ -257,5 +258,59 @@ void main() {
     expect(tabOf('/test/setup'), isNull);
     expect(tabOf('/challenges/abc/play'), isNull);
     expect(tabOf('/notifications'), isNull);
+  });
+
+  testWidgets('same questions: the details say everyone gets the same questions', (t) async {
+    final api = FakeApi();
+    final ch = sample(
+      extra: {
+        'mode': 'subject',
+        'subject': 'Physics',
+        'per_level': {'easy': 2},
+        'eligible': true,
+        'same_questions': true,
+      },
+    );
+    await t.pumpWidget(app('/test/challenges/c1', api, ch: ch));
+    await settle(t);
+    expect(find.textContaining('Everyone gets the same questions'), findsOneWidget);
+    expect(find.textContaining('Every student gets the same mix.'), findsOneWidget);
+  });
+
+  testWidgets('after the end: review shows the right answer, the student\'s choice and the explanation', (t) async {
+    await t.pumpWidget(
+      ProviderScope(
+        overrides: [
+          challengeReviewProvider.overrideWith(
+            (ref, id) async => {
+              'score': 0,
+              'total': 1,
+              'items': [
+                {
+                  'n': 1,
+                  'body': 'What is two plus two?',
+                  'options': {'A': 'Three', 'B': 'Four', 'C': 'Five', 'D': 'Six'},
+                  'answer': 'B',
+                  'choice': 'C',
+                  'correct': false,
+                  'subject': 'Mathematics',
+                  'level': 'very_hard',
+                  'explanation': 'Add them: four.',
+                },
+              ],
+            },
+          ),
+        ],
+        child: MaterialApp(
+          theme: buildTheme(Brightness.light),
+          home: const ChallengeReviewScreen(id: 'c1'),
+        ),
+      ),
+    );
+    await settle(t);
+    expect(find.text('0/1 right'), findsOneWidget);
+    expect(find.text('Wrong'), findsOneWidget);
+    expect(find.text('Mathematics · Very hard'), findsOneWidget);
+    expect(find.text('Add them: four.', findRichText: true), findsOneWidget);
   });
 }

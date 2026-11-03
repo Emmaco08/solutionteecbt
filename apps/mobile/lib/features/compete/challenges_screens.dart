@@ -561,7 +561,7 @@ class _ChallengeScreenState extends ConsumerState<ChallengeScreen> {
                           const Gap(Space.s1),
                           Text(
                             '${ch.mode == 'mixed' ? 'From each subject' : 'You get'}: ${ch.perLevel.map((e) => '${e.$2} ${e.$1.toLowerCase()}').join(', ')}. '
-                            'Every student gets the same mix, but different questions.',
+                            '${ch.sameQuestions ? 'Every student gets the same mix.' : 'Every student gets the same mix, but different questions.'}',
                             style: context.ty.cap.col(c.textMuted),
                           ),
                         ],

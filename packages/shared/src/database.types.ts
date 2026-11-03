@@ -840,6 +840,7 @@ export type Database = {
           prizes: number[]
           published: boolean
           reward_text: string | null
+          same_questions: boolean
           seconds_per_question: number
           soon_notified_at: string | null
           starts_at: string
@@ -867,6 +868,7 @@ export type Database = {
           prizes?: number[]
           published?: boolean
           reward_text?: string | null
+          same_questions?: boolean
           seconds_per_question?: number
           soon_notified_at?: string | null
           starts_at: string
@@ -894,6 +896,7 @@ export type Database = {
           prizes?: number[]
           published?: boolean
           reward_text?: string | null
+          same_questions?: boolean
           seconds_per_question?: number
           soon_notified_at?: string | null
           starts_at?: string
@@ -2378,8 +2381,21 @@ export type Database = {
         Returns: Json
       }
       admin_challenge_appeals: { Args: never; Returns: Json }
+      admin_challenge_add_random: {
+        Args: { p_count: number; p_id: string; p_subjects: number[] }
+        Returns: Json
+      }
       admin_challenge_close: { Args: { p_id: string }; Returns: Json }
+      admin_challenge_copy: {
+        Args: { p_id: string; p_starts: string }
+        Returns: string
+      }
       admin_challenge_entries: { Args: { p_id: string }; Returns: Json }
+      admin_challenge_live: { Args: { p_id: string }; Returns: Json }
+      admin_challenge_set_level: {
+        Args: { p_level: string; p_question: string }
+        Returns: undefined
+      }
       admin_challenge_review: {
         Args: { p_decision: string; p_entry: string }
         Returns: Json
@@ -2532,6 +2548,7 @@ export type Database = {
         Returns: Json
       }
       challenge_result: { Args: { p_id: string }; Returns: Json }
+      challenge_review: { Args: { p_id: string }; Returns: Json }
       challenge_start: {
         Args: { p_device?: string; p_device_flags?: string[]; p_id: string }
         Returns: Json

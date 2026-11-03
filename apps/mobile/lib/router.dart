@@ -114,6 +114,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                             path: 'appeal',
                             builder: (_, s) => AppealScreen(id: s.pathParameters['id']!),
                           ),
+                          GoRoute(
+                            path: 'review',
+                            builder: (_, s) => ChallengeReviewScreen(id: s.pathParameters['id']!),
+                          ),
                         ],
                       ),
                     ],

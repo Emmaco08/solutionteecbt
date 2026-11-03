@@ -15,6 +15,7 @@ import '../../theme/tokens.g.dart';
 import '../../ui/confetti.dart';
 import '../../ui/kit.dart';
 import '../../widgets/phosphor.g.dart';
+import '../../widgets/math_text.dart';
 import '../../widgets/r2_image.dart';
 import '../../widgets/states.dart';
 import 'challenges_screens.dart' show Ticker;
@@ -210,6 +211,14 @@ class ChallengeResultScreen extends ConsumerWidget {
                   onTap: () => openRoute(context, '/test/winners-wall'),
                   child: const Text('After we pay the winners, the proof of payment is posted on the Winners wall.'),
                 ),
+              ),
+            if (ended && mine?['can_review'] == true)
+              Btn(
+                'Review my answers',
+                kind: BtnKind.tonal,
+                block: true,
+                leading: PhosphorIcons.listChecks(PhosphorIconsStyle.fill),
+                onPressed: () => openRoute(context, '/test/challenges/$id/review'),
               ),
             Btn('See other challenges', kind: BtnKind.outline, block: true, onPressed: () => context.go('/test/challenges')),
           ];
@@ -707,6 +716,99 @@ class AppealStatus extends StatelessWidget {
       block: true,
       leading: PhosphorIcons.scales(PhosphorIconsStyle.fill),
       onPressed: () => openRoute(context, '/test/challenges/$challengeId/appeal'),
+    );
+  }
+}
+
+/// After a challenge ends: each of the student's questions, their choice, the right answer and the explanation (D-074).
+/// The server only sends this once the challenge has ended, so answers cannot be shared while it runs.
+class ChallengeReviewScreen extends ConsumerWidget {
+  const ChallengeReviewScreen({super.key, required this.id});
+  final String id;
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final v = ref.watch(challengeReviewProvider(id));
+    final c = context.c;
+    return Scaffold(
+      appBar: TopBar(title: 'Review my answers', subtitle: v.value == null ? null : '${v.value!['score']}/${v.value!['total']} right'),
+      body: asyncView(
+        v,
+        (d) {
+          final items = rows(d['items']);
+          if (items.isEmpty) {
+            return Center(
+              child: StateBlock(icon: PhosphorIcons.listChecks(PhosphorIconsStyle.fill), title: 'Nothing to review', text: 'You did not answer any questions.'),
+            );
+          }
+          return ListView.separated(
+            padding: const EdgeInsets.fromLTRB(Space.s5, Space.s2, Space.s5, Space.s8),
+            itemCount: items.length,
+            separatorBuilder: (_, _) => const Gap(Space.s3),
+            itemBuilder: (_, i) {
+              final q = items[i];
+              final opts = q['options'] is Map ? Map<String, dynamic>.from(q['options'] as Map) : const <String, dynamic>{};
+              final answer = '${q['answer']}', choice = q['choice'] as String?;
+              final right = q['correct'] == true;
+              return AppCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Text('${q['n']}.', style: context.ty.sm.bold.tnum),
+                        const Gap(Space.s2),
+                        Expanded(
+                          child: Text(
+                            [q['subject'], levelName('${q['level']}')].whereType<String>().where((x) => x.isNotEmpty).join(' · '),
+                            style: context.ty.cap.col(c.textMuted),
+                          ),
+                        ),
+                        Pill(
+                          right ? 'Right' : (choice == null ? 'No answer' : 'Wrong'),
+                          kind: right ? BadgeKind.success : (choice == null ? BadgeKind.neutral : BadgeKind.error),
+                        ),
+                      ],
+                    ),
+                    const Gap(Space.s2),
+                    MathText('${q['body']}', style: context.ty.body),
+                    const Gap(Space.s2),
+                    for (final k in opts.keys.toList()..sort())
+                      Container(
+                        margin: const EdgeInsets.only(top: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: Space.s3, vertical: Space.s2),
+                        decoration: BoxDecoration(
+                          color: k == answer ? c.successSoft : (k == choice ? c.errorSoft : c.surfaceAlt),
+                          borderRadius: BorderRadius.circular(Radii.md),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(width: 24, child: Text(k, style: context.ty.sm.bold)),
+                            Expanded(child: MathText('${opts[k]}', style: context.ty.sm)),
+                            if (k == answer) Icon(PhosphorIcons.checkCircle(PhosphorIconsStyle.fill), size: 18, color: c.success),
+                            if (k == choice && k != answer) Icon(PhosphorIcons.xCircle(PhosphorIconsStyle.fill), size: 18, color: c.error),
+                          ],
+                        ),
+                      ),
+                    if ('${q['explanation'] ?? ''}'.trim().isNotEmpty) ...[
+                      const Gap(Space.s3),
+                      Text('Explanation', style: context.ty.cap.bold),
+                      MathText('${q['explanation']}', style: context.ty.sm.col(c.textMuted)),
+                    ],
+                  ],
+                ),
+              );
+            },
+          );
+        },
+        loading: ListView(
+          padding: const EdgeInsets.all(Space.s5),
+          children: [
+            for (var i = 0; i < 3; i++) ...[const Skeleton(height: 220, radius: Radii.lg), const Gap(Space.s3)],
+          ],
+        ),
+        onRetry: () => ref.invalidate(challengeReviewProvider(id)),
+      ),
     );
   }
 }

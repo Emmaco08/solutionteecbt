@@ -9,13 +9,13 @@ import { inputCls } from "@/components/admin/row-form";
 import { MathText } from "@/components/admin/math-text";
 import { Pill, when } from "@/components/admin/ui";
 import { findQuestions, type Candidate } from "../qotd/actions";
-import { addFromBank, addQuestion, closeNow, decideAppeal, importQuestions, removeQuestion, reviewEntry, saveChallenge, type ImportRow } from "./actions";
+import { addFromBank, addQuestion, addRandom, closeNow, decideAppeal, importQuestions, removeQuestion, reviewEntry, saveChallenge, setLevel, type ImportRow } from "./actions";
 
 export type ChallengeRow = {
   id: string; title: string; subtitle: string | null; kind: "cash" | "event" | "practice"; icon: string; exam_code: string | null;
   starts_at: string; ends_at: string; seconds_per_question: number; prizes: number[]; reward_text: string | null;
   premium_days: number; premium_top: number; allowed_exits: number; published: boolean; closed_at: string | null;
-  mode: "mixed" | "subject" | "fixed"; subject_id: number | null; per_level: Record<string, number>;
+  mode: "mixed" | "subject" | "fixed"; subject_id: number | null; per_level: Record<string, number>; same_questions: boolean;
 };
 export type QRow = { id: string; position: number; body: string; options: Record<string, string>; answer: string; subject_id: number | null; difficulty: string };
 export type Subject = { id: number; name: string };
@@ -51,7 +51,7 @@ export function ChallengeForm({ c, subjects }: { c?: ChallengeRow; subjects: Sub
           <select id="cMode" name="mode" value={mode} onChange={(e) => setMode(e.target.value as ChallengeRow["mode"])} className={inputCls}>
             <option value="mixed">Weekly mixed: each student&apos;s own 4 JAMB subjects</option>
             <option value="subject">One subject: only students who take it see it</option>
-            <option value="fixed">Same questions for everyone</option>
+            <option value="fixed">One list for everyone (any subjects)</option>
           </select></div>
         {mode === "subject" ? (
           <div className="space-y-1.5 sm:col-span-2"><Label htmlFor="cSubj">Subject</Label>
@@ -65,6 +65,10 @@ export function ChallengeForm({ c, subjects }: { c?: ChallengeRow; subjects: Sub
             ))}</div>
             <span className="text-xs text-muted-foreground">{mode === "mixed" ? "A student with 4 subjects gets 4 × this. " : ""}Add many more questions than this to each subject and level, so students get different questions.</span></div>
         ) : LEVELS.map(([k]) => <input key={k} type="hidden" name={k} value={0} />)}
+        {mode !== "fixed" ? (
+          <label className="flex items-start gap-3 text-sm sm:col-span-2"><input type="checkbox" name="same_questions" defaultChecked={c?.same_questions ?? false} className="mt-1" />
+            <span><b>Same questions for every student</b><span className="block text-muted-foreground">Everyone who takes a subject gets the same questions for it, in a different order. Leave it off to give each student random questions from the pool (harder to copy).</span></span></label>
+        ) : null}
         <div className="space-y-1.5"><Label htmlFor="cKind">Type</Label>
           <select id="cKind" name="kind" value={kind} onChange={(e) => setKind(e.target.value as typeof kind)} className={inputCls}>
             <option value="cash">Cash prize</option><option value="event">Event (prize or reward)</option><option value="practice">Practice (no prize)</option>
@@ -117,10 +121,10 @@ export function CloseButton({ id }: { id: string }) {
   );
 }
 
-export function QuestionsPanel({ challengeId, rows, locked, subjects, mode, perLevel, subjectId }: { challengeId: string; rows: QRow[]; locked: boolean; subjects: Subject[]; mode: ChallengeRow["mode"]; perLevel: Record<string, number>; subjectId: number | null }) {
+export function QuestionsPanel({ challengeId, rows, locked, subjects, mode, perLevel, subjectId, students = {} }: { challengeId: string; rows: QRow[]; locked: boolean; subjects: Subject[]; mode: ChallengeRow["mode"]; perLevel: Record<string, number>; subjectId: number | null; students?: Record<string, number> }) {
   const router = useRouter();
   const [pending, start] = useTransition();
-  const [add, setAdd] = useState<"none" | "write" | "bank" | "csv">(rows.length ? "none" : "write");
+  const [add, setAdd] = useState<"none" | "write" | "bank" | "csv" | "random">(rows.length ? "none" : "random");
   const [show, setShow] = useState(false);
   const name = (id: number | null) => subjects.find((x) => x.id === id)?.name ?? "No subject";
   const run = (p: Promise<{ ok: boolean; message?: string; error?: string }>) => start(async () => {
@@ -131,18 +135,18 @@ export function QuestionsPanel({ challengeId, rows, locked, subjects, mode, perL
       {mode !== "fixed" ? (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead><tr className="text-left text-xs text-muted-foreground"><th className="py-1">Subject</th>{LEVELS.map(([k, l]) => <th key={k}>{l} ({perLevel[k] ?? 0} each)</th>)}</tr></thead>
+            <thead><tr className="text-left text-xs text-muted-foreground"><th className="py-1">Subject</th><th>Students</th>{LEVELS.map(([k, l]) => <th key={k}>{l} ({perLevel[k] ?? 0} each)</th>)}</tr></thead>
             <tbody>{(mode === "subject" ? subjects.filter((x) => x.id === subjectId) : subjects).map((x) => {
               const have = (lvl: string) => rows.filter((r) => r.subject_id === x.id && r.difficulty === lvl).length;
               return (
-                <tr key={x.id} className="border-t"><td className="py-1.5">{x.name}</td>{LEVELS.map(([k]) => {
+                <tr key={x.id} className="border-t"><td className="py-1.5">{x.name}</td><td className="tabular-nums text-muted-foreground">{students[String(x.id)] ?? 0}</td>{LEVELS.map(([k]) => {
                   const n = have(k), need = perLevel[k] ?? 0;
                   return <td key={k} className={`tabular-nums ${need && n < need ? "font-bold text-error" : need && n < need * 3 ? "text-warning" : ""}`}>{n}</td>;
                 })}</tr>
               );
             })}</tbody>
           </table>
-          <p className="mt-1 text-xs text-muted-foreground">Red: fewer than a paper needs. Amber: fewer than 3 × needed, so many students would get the same questions. Aim for 5 × or more.</p>
+          <p className="mt-1 text-xs text-muted-foreground">Students: how many students take that subject. Red: fewer than a paper needs. Amber: fewer than 3 × needed, so many students would get the same questions. Aim for 5 × or more.</p>
         </div>
       ) : null}
       {rows.length ? (
@@ -153,7 +157,11 @@ export function QuestionsPanel({ challengeId, rows, locked, subjects, mode, perL
               <li key={q.id} className="flex gap-3 rounded-xl border p-3 text-sm">
                 <b className="w-6 tabular-nums">{i + 1}.</b>
                 <div className="min-w-0 flex-1"><MathText text={q.body} />
-                  <span className="mt-1 block text-xs text-muted-foreground">{name(q.subject_id)} · {LEVELS.find(([k]) => k === q.difficulty)?.[1]} · answer {q.answer}: <MathText text={q.options[q.answer] ?? ""} /></span></div>
+                  <span className="mt-1 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">{name(q.subject_id)} ·{" "}
+                    {locked ? LEVELS.find(([k]) => k === q.difficulty)?.[1] : (
+                      <select aria-label="Level" value={q.difficulty} disabled={pending} onChange={(e) => run(setLevel(challengeId, q.id, e.target.value))} className="rounded-md border bg-card px-1 py-0.5 text-xs">
+                        {LEVELS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
+                    )} · answer {q.answer}: <MathText text={q.options[q.answer] ?? ""} /></span></div>
                 {!locked ? <Button variant="ghost" size="icon" aria-label="Remove question" disabled={pending} onClick={() => run(removeQuestion(challengeId, q.id))}><Trash size={16} /></Button> : null}
               </li>
             ))}</ol>
@@ -163,16 +171,54 @@ export function QuestionsPanel({ challengeId, rows, locked, subjects, mode, perL
       {locked ? <p className="text-xs text-muted-foreground">Students have started, so the questions cannot change.</p> : (
         <>
           <div className="flex flex-wrap gap-2">
+            <Button type="button" size="sm" variant={add === "random" ? "default" : "outline"} onClick={() => setAdd("random")}>Add random past questions</Button>
             <Button type="button" size="sm" variant={add === "write" ? "default" : "outline"} onClick={() => setAdd("write")}>Write a new question</Button>
             <Button type="button" size="sm" variant={add === "csv" ? "default" : "outline"} onClick={() => setAdd("csv")}>Import a CSV file</Button>
             <Button type="button" size="sm" variant={add === "bank" ? "default" : "outline"} onClick={() => setAdd("bank")}>Pick from past questions</Button>
           </div>
+          {add === "random" ? <RandomPast challengeId={challengeId} subjects={mode === "subject" ? subjects.filter((x) => x.id === subjectId) : subjects} single={mode === "subject"} onDone={() => router.refresh()} /> : null}
           {add === "write" ? <WriteQuestion challengeId={challengeId} subjects={subjects} onDone={() => router.refresh()} /> : null}
           {add === "csv" ? <CsvImport challengeId={challengeId} onDone={() => router.refresh()} /> : null}
           {add === "bank" ? <Bank pending={pending} onPick={(qid) => run(addFromBank(challengeId, qid))} /> : null}
           <p className="text-xs text-muted-foreground">For cash prizes, new questions are best: past questions can be looked up during the challenge.</p>
         </>
       )}
+    </div>
+  );
+}
+
+/** Pick random past questions by subject: the server copies them (Free years only) and gives each a level. */
+function RandomPast({ challengeId, subjects, single, onDone }: { challengeId: string; subjects: Subject[]; single: boolean; onDone: () => void }) {
+  const [pending, start] = useTransition();
+  const [picked, setPicked] = useState<number[]>(subjects.map((x) => x.id));
+  const [count, setCount] = useState(40);
+  const [result, setResult] = useState<{ subject: string; added: number; left: number }[] | null>(null);
+  const toggle = (id: number) => setPicked(picked.includes(id) ? picked.filter((x) => x !== id) : [...picked, id]);
+  return (
+    <div className="space-y-3 rounded-xl bg-surface-alt p-3 text-sm">
+      <p className="text-muted-foreground">We pick random published past questions for each subject and set each one&apos;s level (its saved level, or from how students did on it). Only years Free students can open are used, so nothing locked reaches Free students. Change any level in the list after.</p>
+      {!single ? (
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" size="sm" variant="ghost" onClick={() => setPicked(picked.length === subjects.length ? [] : subjects.map((x) => x.id))}>{picked.length === subjects.length ? "Clear all" : "All JAMB subjects"}</Button>
+          {subjects.map((x) => (
+            <label key={x.id} className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 text-xs ${picked.includes(x.id) ? "border-secondary bg-secondary/10 font-semibold" : ""}`}>
+              <input type="checkbox" className="sr-only" checked={picked.includes(x.id)} onChange={() => toggle(x.id)} />{x.name}</label>
+          ))}
+        </div>
+      ) : <p><b>{subjects[0]?.name}</b></p>}
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="text-xs text-muted-foreground">How many per subject
+          <input type="number" min={1} max={500} value={count} onChange={(e) => setCount(Number(e.target.value))} className={`${inputCls} w-32`} /></label>
+        <Button type="button" disabled={pending || !picked.length} onClick={() => start(async () => {
+          const r = await addRandom(challengeId, picked, count);
+          if (r.ok) { toast.success(r.message ?? "Added"); setResult(r.data ?? null); onDone(); } else toast.error(r.error);
+        })}>{pending ? <SpinnerGap size={16} className="animate-spin" /> : null} Add random questions</Button>
+      </div>
+      {result ? (
+        <ul className="space-y-0.5 text-xs">{result.map((r) => (
+          <li key={r.subject}><b>{r.subject}</b>: {r.added} added{r.left === 0 ? " · no more Free past questions in this subject" : ` · ${r.left} more available`}</li>
+        ))}</ul>
+      ) : null}
     </div>
   );
 }
