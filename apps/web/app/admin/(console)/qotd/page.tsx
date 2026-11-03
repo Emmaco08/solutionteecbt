@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { requireStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { ErrorState, PageHeader, PageSkeleton, Panel } from "@/components/admin/ui";
-import { AddPanel, DayList, type QotdDay } from "./qotd-ui";
+import { AddPanel, Analysis, DayGrid, NotifyForm, type QotdDay, type Stats } from "./qotd-ui";
 
 export const metadata: Metadata = { title: "Question of the day" };
 
@@ -13,44 +13,39 @@ export default function Page() {
 
 /** Today in Lagos as YYYY-MM-DD, plus n days. */
 function lagosDay(n = 0) {
-  const d = new Date(Date.now() + 3600_000 + n * 86400_000); // Lagos is UTC+1 all year
-  return d.toISOString().slice(0, 10);
+  return new Date(Date.now() + 3600_000 + n * 86400_000).toISOString().slice(0, 10); // Lagos is UTC+1 all year
 }
 
 async function Qotd() {
-  await requireStaff(["super_admin", "admin", "editor"]);
+  const staff = await requireStaff(["super_admin", "admin", "editor"]);
   const supabase = await createClient();
-  const [days, subjects] = await Promise.all([
+  const [days, subjects, stats, setting] = await Promise.all([
     supabase.rpc("admin_qotd_days", { p_from: lagosDay(-14), p_to: lagosDay(13) }),
-    supabase.from("subjects").select("id, name").order("name"),
+    supabase.from("exam_subjects").select("subject_id, subjects(id, name, sort), exam_bodies!inner(code)").eq("exam_bodies.code", "JAMB"),
+    supabase.rpc("admin_qotd_stats", { p_days: 14 }),
+    supabase.from("app_settings").select("value").eq("key", "qotd").maybeSingle(),
   ]);
   if (days.error) return <ErrorState message={days.error.message} />;
   const rows = (days.data ?? []) as unknown as QotdDay[];
   const today = lagosDay();
-  const byDay = new Map(rows.map((r) => [r.day, r]));
-  const coming = Array.from({ length: 14 }, (_, i) => lagosDay(i)).map((d) => ({ day: d, row: byDay.get(d) ?? null }));
-  const past = rows.filter((r) => r.day < today).reverse();
+  const subs = ((subjects.data ?? []) as unknown as { subjects: { id: number; name: string; sort: number } }[])
+    .map((x) => x.subjects).filter(Boolean).sort((a, b) => a.sort - b.sort || a.name.localeCompare(b.name));
+  const coming = Array.from({ length: 7 }, (_, i) => lagosDay(i));
+  const past = Array.from({ length: 14 }, (_, i) => lagosDay(-i - 1));
+  const notify = (setting.data?.value ?? {}) as { notify?: boolean; notify_hour?: number };
+  const canSettings = staff.role === "super_admin" || staff.role === "admin";
   return (
     <>
-      <PageHeader title="Question of the day" description="Every student sees the same question on Home, once a day, with one try. You don't have to do anything: days you leave empty get a question picked automatically. To set the question yourself, write your own or pick a past question in the box below." />
-      <Panel title="Add a question of the day" className="mb-4"><AddPanel today={today} subjects={subjects.data ?? []} /></Panel>
-      <div className="grid gap-4 xl:grid-cols-[1.3fr_1fr]">
-        <Panel title="Next 14 days" bodyClassName="p-0"><DayList days={coming} today={today} subjects={subjects.data ?? []} /></Panel>
-        <Panel title="Last 14 days" bodyClassName="p-0">
-          {past.length ? (
-            <ul className="divide-y">
-              {past.map((r) => (
-                <li key={r.day} className="px-5 py-3 text-sm">
-                  <div className="flex items-center justify-between gap-2"><b>{new Date(r.day + "T12:00:00Z").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}</b>
-                    <span className="tabular-nums text-muted-foreground">{r.answers} answered · {r.answers ? Math.round((100 * r.right) / r.answers) : 0}% right</span></div>
-                  <p className="line-clamp-2 text-muted-foreground">{r.body}</p>
-                  <span className="text-xs text-muted-foreground">{r.exam ? `${r.exam} ${r.year} · ` : "Your question · "}{r.subject ? `${r.subject} · ` : ""}answer {r.answer}{r.source === "auto" ? " · automatic" : ""}</span>
-                </li>
-              ))}
-            </ul>
-          ) : <p className="px-5 py-6 text-sm text-muted-foreground">No past questions of the day yet.</p>}
-        </Panel>
+      <PageHeader title="Question of the day" description="Every day, each student gets one question from one of their own 4 JAMB subjects, picked at random for them. Set a question for each subject below, or leave it: empty subjects get a past question picked automatically from the years Free students can open." />
+      <Panel title="Analysis (last 14 days)" className="mb-4">{stats.error ? <ErrorState message={stats.error.message} /> : <Analysis stats={stats.data as unknown as Stats} />}</Panel>
+      <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
+        <Panel title="Add or change a question"><AddPanel today={today} subjects={subs} /></Panel>
+        <div className="space-y-4">
+          <Panel title="Next 7 days" bodyClassName="p-0"><DayGrid days={coming} rows={rows} subjects={subs} today={today} editable /></Panel>
+          {canSettings ? <Panel title="Daily notification"><NotifyForm notify={notify.notify ?? true} hour={notify.notify_hour ?? 7} /></Panel> : null}
+        </div>
       </div>
+      <Panel title="Past days: how students answered" className="mt-4" bodyClassName="p-0"><DayGrid days={past} rows={rows} subjects={subs} today={today} /></Panel>
     </>
   );
 }

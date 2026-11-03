@@ -492,3 +492,11 @@ The owner asked to run the admin from Vercel instead of the laptop.
 - Copying a past question into a challenge is allowed only from years Free students can open (`admin_question_is_free`), so nothing locked reaches Free phones. New questions are recommended for cash challenges.
 - The question timer on the phone counts ticks of its own clock; the server checks the real time.
 - Tests: `supabase/tests/challenges.test.sql` 30/30; app `test/challenges_test.dart` (agreement, answering, leaving disqualifies, timer), all app tests 55/55.
+
+**D-071 · 2026-11-03 · Question of the day per subject, analysis, daily notification (owner)**
+- **One question per subject per day** (`qotd.subject_id`, unique day + subject). Each student gets **one of their own JAMB subjects** (profile `jamb_subjects`), picked at random per student per day (a hash of student + day, so it is fixed for the day). If that subject has no question, the next of their subjects is tried; students with no subjects use the subjects that have questions.
+- For each day and subject: the admin's own question, a chosen past question (from that subject, Free years only), or an automatic pick (a Free-year past question in that subject, not used in the last 365 days if possible), saved so all students with that subject get the same one. % right is per question.
+- Answers keep one per student per day (`qotd_answers` now also stores which question, `qotd_id`); the streak is unchanged.
+- **Admin analysis:** answered today and % right, answers and students in the last 14 days, students ever, students on a 3-day streak, answers per day (with % right), by subject, and for every day × subject the count, % right and which options were picked.
+- **Daily notification:** "Your question of the day is ready" (topic "New questions added", so students who switched that off do not get it), once a day at an hour set in the admin (default 07:00 Lagos; the questions change at midnight, and a midnight push would wake students). pg_cron `qotd-notify` every 10 minutes. Not sent on 3 Nov 2026 (it was already evening when this went live).
+- Tests: `supabase/tests/qotd_leaderboard.test.sql` 47/47.

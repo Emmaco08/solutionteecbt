@@ -1819,6 +1819,7 @@ export type Database = {
           id: string
           question_id: string | null
           source: string
+          subject_id: number | null
         }
         Insert: {
           created_at?: string
@@ -1832,6 +1833,7 @@ export type Database = {
           id?: string
           question_id?: string | null
           source?: string
+          subject_id?: number | null
         }
         Update: {
           created_at?: string
@@ -1845,6 +1847,7 @@ export type Database = {
           id?: string
           question_id?: string | null
           source?: string
+          subject_id?: number | null
         }
         Relationships: [
           {
@@ -1852,6 +1855,13 @@ export type Database = {
             columns: ["question_id"]
             isOneToOne: false
             referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qotd_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
             referencedColumns: ["id"]
           },
         ]
@@ -1862,6 +1872,7 @@ export type Database = {
           choice: string
           correct: boolean
           day: string
+          qotd_id: string
           user_id: string
         }
         Insert: {
@@ -1869,6 +1880,7 @@ export type Database = {
           choice: string
           correct: boolean
           day: string
+          qotd_id: string
           user_id: string
         }
         Update: {
@@ -1876,15 +1888,16 @@ export type Database = {
           choice?: string
           correct?: boolean
           day?: string
+          qotd_id?: string
           user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "qotd_answers_day_fkey"
-            columns: ["day"]
+            foreignKeyName: "qotd_answers_qotd_id_fkey"
+            columns: ["qotd_id"]
             isOneToOne: false
             referencedRelation: "qotd"
-            referencedColumns: ["day"]
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -2346,13 +2359,14 @@ export type Database = {
         }
         Returns: Json
       }
-      admin_question_is_free: { Args: { p_id: string }; Returns: boolean }
       admin_prize_claims: { Args: never; Returns: Json }
       admin_qotd_candidates: {
         Args: { p_limit?: number; p_search?: string; p_subject?: number }
         Returns: Json
       }
       admin_qotd_days: { Args: { p_from: string; p_to: string }; Returns: Json }
+      admin_qotd_stats: { Args: { p_days?: number }; Returns: Json }
+      admin_question_is_free: { Args: { p_id: string }; Returns: boolean }
       admin_set_ai_key: {
         Args: { p_key: string; p_provider: string }
         Returns: string

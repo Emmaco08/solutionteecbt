@@ -9,6 +9,7 @@ export type Candidate = { id: string; body: string; exam: string; subject: strin
 
 const editors = () => requireStaff(["super_admin", "admin", "editor"]);
 const isDay = (d: string) => /^\d{4}-\d{2}-\d{2}$/.test(d);
+const uuid = /^[0-9a-f-]{36}$/;
 
 /** Questions that can be the question of the day: published, from a year Free students can open, no passage. */
 export async function findQuestions(search: string, subject: number | null): Promise<ActionResult<Candidate[]>> {
@@ -21,34 +22,42 @@ export async function findQuestions(search: string, subject: number | null): Pro
   return { ok: true, data: (data ?? []) as unknown as Candidate[] };
 }
 
-/** Schedules a question for a day (replaces the automatic pick or an earlier choice, unless students already answered). */
-export async function scheduleQuestion(day: string, questionId: string): Promise<ActionResult> {
-  await editors();
-  if (!isDay(day) || !/^[0-9a-f-]{36}$/.test(questionId)) return { ok: false, error: "Choose a day and a question" };
+/** Saves one day + subject: updates its row or adds one (one question per subject per day, D-071). */
+async function saveRow(day: string, subjectId: number, row: Record<string, unknown>): Promise<ActionResult> {
   const supabase = await createClient();
-  const { error } = await supabase.from("qotd").upsert(
-    { day, question_id: questionId, source: "admin", custom_subject: null, custom_body: null, custom_options: null, custom_answer: null, custom_explanation: null },
-    { onConflict: "day" },
-  );
-  if (error) return { ok: false, error: friendlyError(error) };
+  const { data: existing } = await supabase.from("qotd").select("id").eq("day", day).eq("subject_id", subjectId).maybeSingle();
+  const r = existing
+    ? await supabase.from("qotd").update({ ...row, source: "admin" }).eq("id", existing.id)
+    : await supabase.from("qotd").insert({ day, subject_id: subjectId, ...row, source: "admin" });
+  if (r.error) return { ok: false, error: friendlyError(r.error) };
   revalidatePath("/admin/qotd");
-  return { ok: true, message: "Scheduled." };
+  return { ok: true, message: "Saved." };
 }
 
-/** Removes a day's choice so the server picks one automatically. */
-export async function clearDay(day: string): Promise<ActionResult> {
+export async function scheduleQuestion(day: string, subjectId: number, questionId: string): Promise<ActionResult> {
+  await editors();
+  if (!isDay(day) || !uuid.test(questionId) || !Number.isInteger(subjectId)) return { ok: false, error: "Choose a day, a subject and a question" };
+  const supabase = await createClient();
+  const { data: q } = await supabase.from("questions").select("subject_id").eq("id", questionId).maybeSingle();
+  if (!q) return { ok: false, error: "Question not found" };
+  if (q.subject_id !== subjectId) return { ok: false, error: "That question is from another subject. Pick one from the chosen subject." };
+  return saveRow(day, subjectId, { question_id: questionId, custom_subject: null, custom_body: null, custom_options: null, custom_answer: null, custom_explanation: null });
+}
+
+/** Removes the admin's choice for a day + subject, so it is picked automatically again. */
+export async function clearDay(day: string, subjectId: number): Promise<ActionResult> {
   await editors();
   if (!isDay(day)) return { ok: false, error: "Choose a day" };
   const supabase = await createClient();
-  const { error } = await supabase.from("qotd").delete().eq("day", day);
+  const { error } = await supabase.from("qotd").delete().eq("day", day).eq("subject_id", subjectId);
   if (error) return { ok: false, error: friendlyError(error) };
   revalidatePath("/admin/qotd");
-  return { ok: true, message: "That day is back to automatic." };
+  return { ok: true, message: "Back to automatic." };
 }
 
 const Own = z.object({
   day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a day"),
-  subject: z.string().trim().max(60),
+  subject_id: z.coerce.number().int().positive("Choose the subject"),
   body: z.string().trim().min(3, "Write the question").max(4000),
   A: z.string().trim().min(1, "Write option A").max(500),
   B: z.string().trim().min(1, "Write option B").max(500),
@@ -59,7 +68,7 @@ const Own = z.object({
   explanation: z.string().trim().max(8000),
 }).refine((o) => o.answer !== "E" || o.E.length > 0, { message: "The correct answer is E, so write option E" });
 
-/** The admin's own question for a day (any question, not only past questions). */
+/** The admin's own question for a day and subject (any question, not only past questions). */
 export async function saveOwnQuestion(form: FormData): Promise<ActionResult> {
   await editors();
   const p = Own.safeParse(Object.fromEntries(form));
@@ -67,11 +76,18 @@ export async function saveOwnQuestion(form: FormData): Promise<ActionResult> {
   const o = p.data;
   const options: Record<string, string> = { A: o.A, B: o.B, C: o.C, D: o.D };
   if (o.E) options.E = o.E;
+  return saveRow(o.day, o.subject_id, { question_id: null, custom_subject: null, custom_body: o.body, custom_options: options, custom_answer: o.answer, custom_explanation: o.explanation || null });
+}
+
+/** Daily "Your question of the day is ready" notification: on/off and the hour (Lagos time). */
+export async function saveNotify(form: FormData): Promise<ActionResult> {
+  await requireStaff(["super_admin", "admin"]);
+  const hour = Number(form.get("notify_hour"));
+  if (!Number.isInteger(hour) || hour < 0 || hour > 23) return { ok: false, error: "Choose an hour" };
   const supabase = await createClient();
-  const { error } = await supabase.from("qotd").upsert(
-    { day: o.day, question_id: null, source: "admin", custom_subject: o.subject || null, custom_body: o.body, custom_options: options, custom_answer: o.answer, custom_explanation: o.explanation || null },
-    { onConflict: "day" },
-  );
+  const { data: cur } = await supabase.from("app_settings").select("value").eq("key", "qotd").maybeSingle();
+  const value = { ...((cur?.value ?? {}) as Record<string, unknown>), notify: form.get("notify") === "on", notify_hour: hour };
+  const { error } = await supabase.from("app_settings").update({ value }).eq("key", "qotd");
   if (error) return { ok: false, error: friendlyError(error) };
   revalidatePath("/admin/qotd");
   return { ok: true, message: "Saved." };
