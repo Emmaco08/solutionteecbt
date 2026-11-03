@@ -9,7 +9,9 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/config.dart';
 import '../../core/providers.dart';
+import '../../core/push.dart';
 import '../../data/db.dart';
+import '../../data/notifications_repo.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
 import '../../ui/kit.dart';
@@ -45,6 +47,7 @@ String _date(DateTime d) {
 /// router leave this screen at once, after which `ref` can no longer be used.
 Future<void> signOutAndWipe(WidgetRef ref) async {
   final db = ref.read(dbProvider);
+  await ref.read(pushProvider).signOut();
   await db.wipe();
   // Local lists re-read the now-empty database; account data (profile, plan, years) follows the login state by itself.
   for (final p in [historyProvider, unfinishedProvider, practiceStatsProvider]) {
@@ -633,6 +636,7 @@ class SettingsScreen extends ConsumerWidget {
                 ),
               ],
             ),
+            const _NotificationSwitches(),
             ListCard(
               children: [
                 ListRow(icon: PhosphorIcons.books(PhosphorIconsStyle.fill), title: 'Change JAMB subjects', onTap: () => context.push('/subjects')),
@@ -1016,5 +1020,67 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
         ),
       ),
     );
+  }
+}
+
+/// Settings → Notifications: one switch per topic (prototype `settings`). Saved on the server and applied to this
+/// phone's push topics, so a new phone gets the same choices.
+class _NotificationSwitches extends ConsumerWidget {
+  const _NotificationSwitches();
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.c;
+    final prefs = ref.watch(notificationPrefsProvider).value ?? const <String, bool>{};
+    final push = ref.watch(pushProvider);
+    final premium = ref.watch(myPlanProvider).value?['tier'] == 'premium';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('Notifications', style: context.ty.label),
+        const Gap(Space.s2),
+        ListCard(
+          children: [
+            for (final (topic, title, sub) in notificationTopics)
+              InkWell(
+                onTap: () => _set(context, ref, push, topic, !(prefs[topic] ?? true), prefs, premium),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: 56),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: Space.s4, vertical: Space.s3),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(title, style: context.ty.sm.bold),
+                              Text(sub, style: context.ty.cap.col(c.textMuted)),
+                            ],
+                          ),
+                        ),
+                        const Gap(Space.s2),
+                        AppSwitch(value: prefs[topic] ?? true, onChanged: (v) => _set(context, ref, push, topic, v, prefs, premium)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        if (!push.available) ...[
+          const Gap(Space.s2),
+          Text('Push messages are not set up in this test version yet. Messages still appear under Notifications.', style: context.ty.cap.col(c.textMuted)),
+        ],
+      ],
+    );
+  }
+
+  Future<void> _set(BuildContext context, WidgetRef ref, PushService push, String topic, bool on, Map<String, bool> prefs, bool premium) async {
+    try {
+      await ref.read(notificationsRepoProvider).setPref(topic, on);
+      await push.syncTopics(premium: premium, prefs: {...prefs, topic: on});
+    } catch (_) {
+      if (context.mounted) toast(context, 'Could not save. Check your internet and try again.');
+    }
   }
 }

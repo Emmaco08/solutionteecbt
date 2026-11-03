@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/config.dart';
 import '../../core/providers.dart';
+import '../../core/push.dart';
 import '../../data/tests_repo.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
@@ -57,6 +58,26 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
       };
       billing.start();
     }
+    Future.microtask(_startPush);
+  }
+
+  /// Push (4D, D-063): save this phone's token, match topics to the switches and plan, and open tapped messages.
+  /// The permission question comes only after the student has finished a test, and only once.
+  Future<void> _startPush() async {
+    final push = ref.read(pushProvider);
+    push.onOpen = (route) {
+      if (mounted) context.push(route);
+    };
+    push.onForeground = (title) {
+      if (mounted) toast(context, title, icon: PhosphorIcons.bellRinging(PhosphorIconsStyle.fill));
+    };
+    final premium = await ref.read(myPlanProvider.future).then((p) => p['tier'] == 'premium').catchError((_) => false);
+    await push.register(premium: premium);
+    final db = ref.read(dbProvider);
+    if (await db.kvGet('push_asked') == null && (await db.finishedAttempts()).isNotEmpty) {
+      await db.kvSet('push_asked', DateTime.now().toIso8601String());
+      await push.askPermission();
+    }
   }
 
   @override
@@ -72,6 +93,11 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
 
   @override
   Widget build(BuildContext context) {
+    // Plan changed (payment, code, expiry): move this phone between the Free and Premium push topics.
+    ref.listen(myPlanProvider, (prev, next) {
+      final was = prev?.value?['tier'], now = next.value?['tier'];
+      if (now != null && was != now) ref.read(pushProvider).syncTopics(premium: now == 'premium').ignore();
+    });
     final settings = ref.watch(appSettingsProvider).value ?? const {};
     final gate = _gate(settings);
     if (gate != null) return gate;

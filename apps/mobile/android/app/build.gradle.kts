@@ -6,6 +6,12 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Push notifications (D-063): Firebase is set up only when google-services.json is here (laptop file or the
+// GOOGLE_SERVICES_JSON secret on GitHub Actions). Without it the app builds and runs with push off.
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 // Upload key (D-060): from android/key.properties on the laptop, or from environment variables on GitHub Actions.
 // With neither (e.g. a fresh clone), release builds fall back to the debug key so `flutter run --release` still works.
 val keyProps = Properties().apply {

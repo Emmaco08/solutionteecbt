@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/providers.dart';
 import '../../data/db.dart';
+import '../../data/notifications_repo.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
 import '../../ui/kit.dart';
@@ -285,6 +286,44 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ],
                         ),
                       ),
+                    ),
+                    const Gap(Space.s2),
+                    Consumer(
+                      builder: (context, ref, _) {
+                        final unread = ref.watch(unreadCountProvider);
+                        return Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            IconBtn(
+                              PhosphorIcons.bell(),
+                              label: unread > 0 ? 'Notifications, $unread unread' : 'Notifications',
+                              onPressed: () => context.push('/notifications'),
+                            ),
+                            if (unread > 0)
+                              Positioned(
+                                right: 4,
+                                top: 4,
+                                child: IgnorePointer(
+                                  child: Container(
+                                    constraints: const BoxConstraints(minWidth: 18),
+                                    height: 18,
+                                    padding: const EdgeInsets.symmetric(horizontal: 5),
+                                    decoration: BoxDecoration(
+                                      color: c.error,
+                                      borderRadius: BorderRadius.circular(99),
+                                      border: Border.all(color: c.bg, width: 2),
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      unread > 9 ? '9+' : '$unread',
+                                      style: context.ty.cap.bold.tnum.col(Colors.white).copyWith(fontSize: 10, height: 1),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        );
+                      },
                     ),
                   ],
                 ),

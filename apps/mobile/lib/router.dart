@@ -10,6 +10,7 @@ import 'features/auth/auth_screens.dart';
 import 'features/cbt/cbt_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/news/news_screens.dart';
+import 'features/notifications/notifications_screen.dart';
 import 'features/onboarding/onboarding_screens.dart';
 import 'features/premium/checkout.dart';
 import 'features/profile/profile_screens.dart';
@@ -113,6 +114,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, s) => ReviewScreen(attemptId: s.pathParameters['id']!),
       ),
       GoRoute(path: '/history', builder: (_, _) => const HistoryScreen()),
+      GoRoute(path: '/notifications', builder: (_, _) => const NotificationsScreen()),
       GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),
       GoRoute(path: '/help', builder: (_, _) => const HelpScreen()),
       GoRoute(

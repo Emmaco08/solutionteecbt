@@ -477,9 +477,12 @@ class Pill extends StatelessWidget {
 
 /// Filter chip (`.chip`, `.chip.on`).
 class AppChip extends StatelessWidget {
-  const AppChip(this.label, {super.key, required this.on, this.onTap, this.icon});
+  const AppChip(this.label, {super.key, required this.on, this.onTap, this.icon, this.dot = false});
   final String label;
   final bool on;
+
+  /// A small unread dot after the label (prototype `.chip .unread-dot`).
+  final bool dot;
   final VoidCallback? onTap;
   final IconData? icon;
   @override
@@ -506,6 +509,14 @@ class AppChip extends StatelessWidget {
             children: [
               if (icon != null) ...[Icon(icon, size: 16, color: on ? c.onPrimary : c.textMuted), const SizedBox(width: 6)],
               Text(label, style: context.ty.sm.bold.col(on ? c.onPrimary : c.textMuted)),
+              if (dot) ...[
+                const SizedBox(width: 6),
+                Container(
+                  width: 7,
+                  height: 7,
+                  decoration: BoxDecoration(color: on ? c.onPrimary : c.secondary, shape: BoxShape.circle),
+                ),
+              ],
             ],
           ),
         ),
