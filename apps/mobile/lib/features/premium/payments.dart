@@ -11,7 +11,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/providers.dart';
 
-/// Which shop this build sells through (D-060). Set at build time with `--flavor direct|play`.
+/// Which shop this build sells through (D-061). Set at build time with `--flavor direct|play`.
 /// `direct` (APK from the website): Paystack. `play` (Play Store): Google Play Billing.
 enum Store { direct, play }
 

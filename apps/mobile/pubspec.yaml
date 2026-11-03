@@ -42,7 +42,7 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  # Payments build used when no --flavor is given (D-060): direct = Paystack, play = Google Play.
+  # Payments build used when no --flavor is given (D-061): direct = Paystack, play = Google Play.
   default-flavor: direct
   assets:
     - assets/brand/

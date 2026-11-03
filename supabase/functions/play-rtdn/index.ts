@@ -1,4 +1,4 @@
-// Google Play Real-time developer notifications (milestone 4C, D-060): refunds and chargebacks.
+// Google Play Real-time developer notifications (milestone 4C, D-061): refunds and chargebacks.
 // Pub/Sub push subscription endpoint:
 //   https://<project>.supabase.co/functions/v1/play-rtdn?token=<PLAY_RTDN_TOKEN>
 // The message body is not trusted: for a voided purchase we look the token up in Google's Voided Purchases API

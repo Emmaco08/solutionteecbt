@@ -47,12 +47,12 @@ A student pays for Premium and it turns on, on the phone and (later) on the webs
 - `supabase/functions/paystack/` (start, check, admin refund), `paystack-webhook/`, `play-verify/`, `play-rtdn/`, `_shared/pay.ts` (signature check, Google sign-in)
 - `apps/web/app/admin/(console)/payments/`, `codes/`, plans card update, nav entries
 - `apps/mobile`: Gradle flavors, `lib/features/premium/` (payment provider interface, Paystack and Play providers, checkout, checking, success, redeem sheet), Me → "Redeem a code", `in_app_purchase` dependency
-- Docs: `SETUP.md` §13 (Paystack keys and webhook, Play Console, service account), `DECISIONS.md`, `PROGRESS.md`, `HANDOFF.md`
+- Docs: `SETUP.md` §14 (Paystack keys and webhook, Play Console, service account), `DECISIONS.md`, `PROGRESS.md`, `HANDOFF.md`
 
 ## What the owner must do (never paste keys in chat)
 1. **Paystack test secret key** → Supabase dashboard → Edge Functions → Secrets → `PAYSTACK_SECRET_KEY` (starts with `sk_test_`). The public key is not needed (the server starts every payment).
 2. **Paystack webhook URL** → Paystack dashboard → Settings → API Keys & Webhooks → Test Webhook URL: `https://mxeemubacnmcmmmzteax.supabase.co/functions/v1/paystack-webhook`.
-3. Later, for the Play build: Play Console account, the app uploaded to internal testing, one product per plan, a service account with "View financial data" and "Manage orders", its JSON key in Supabase secrets as `GOOGLE_PLAY_SERVICE_ACCOUNT`, and a Pub/Sub topic for refunds. Steps go in SETUP §13.
+3. Later, for the Play build: Play Console account, the app uploaded to internal testing, one product per plan, a service account with "View financial data" and "Manage orders", its JSON key in Supabase secrets as `GOOGLE_PLAY_SERVICE_ACCOUNT`, and a Pub/Sub topic for refunds. Steps go in SETUP §14.
 
 ## Risks
 - **Play Billing cannot be tested** until the app is in a Play Console test track with products. I will say so in the report.
@@ -67,7 +67,7 @@ A student pays for Premium and it turns on, on the phone and (later) on the webs
 - **Live (owner, after keys):** Paystack test card `4084 0840 8408 4081` → Premium on the phone; repeat webhook from Paystack dashboard → still one entitlement; refund in admin → Premium gone.
 
 ## Built (2026-11-03) and changes from this plan
-- Built as planned; details in D-060.
+- Built as planned; details in D-061.
 - The Card / Bank transfer / USSD choice is shown as information on checkout, because Paystack's page asks again.
 - Receipts by email stay out of 4C, so the success screen does not mention one.
 - New flag `codes_in_play_build` (off) for "Redeem a code" in the Play build (owner/lawyer decision).

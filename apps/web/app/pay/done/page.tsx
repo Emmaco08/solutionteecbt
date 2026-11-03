@@ -6,7 +6,7 @@ export const metadata: Metadata = {
 };
 
 /**
- * Where Paystack sends the student after paying (Edge Function secret PAYSTACK_CALLBACK_URL, D-060).
+ * Where Paystack sends the student after paying (Edge Function secret PAYSTACK_CALLBACK_URL, D-061).
  * Nothing is decided here: Premium is given by the server after it checks the payment with Paystack.
  * The page only tells the student to go back to the app, which checks the payment when it reopens.
  */

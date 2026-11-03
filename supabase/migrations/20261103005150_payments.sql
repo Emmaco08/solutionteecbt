@@ -1,4 +1,4 @@
--- Milestone 4C: payments (Paystack + Google Play), redeem codes (docs/plans/phase-4c.md, D-060).
+-- Milestone 4C: payments (Paystack + Google Play), redeem codes (docs/plans/phase-4c.md, D-061).
 -- Premium is only ever granted by server code after the payment was checked with Paystack or Google.
 -- Students read their own payments; they never write payments, codes or entitlements.
 

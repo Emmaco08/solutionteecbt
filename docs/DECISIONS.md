@@ -404,7 +404,13 @@ The owner asked to run the admin from Vercel instead of the laptop.
 - Anyone with the link can install the test build. This is acceptable because the app itself still enforces every lock on the server (free users get only free questions). It is debug-signed for now; the Play Store build (4C/launch) will use the upload key, and testers will need to uninstall this one first then.
 - New version: build, then `node scripts/upload-apk.mjs` from `apps/web` (see SETUP §12). No redeploy needed.
 
-**D-060 · 2026-11-03 · Payments: Paystack, Google Play and redeem codes (milestone 4C)**
+**D-060 · 2026-11-03 · Permanent upload key + automatic APK builds on GitHub**
+- The app is now signed with a permanent upload key (`apps/mobile/android/app/upload-keystore.jks`, alias `upload`, passwords in `android/key.properties`; both git-ignored). It will also be the Play Store upload key. With no key present, release builds fall back to the debug key.
+- Changing from the debug key means phones with the old test app must **uninstall once** before installing the new one. After that, updates install over the top.
+- `.github/workflows/android-apk.yml` runs analyzer + tests, builds the arm64 APK and uploads it: `main` goes to `/download`, any other branch (e.g. a cloud session's) goes to `/download?channel=test`. Build number = minutes since 1970, so each build installs over the last.
+- Secrets live only in GitHub Actions secrets, added by the owner (SETUP §13).
+
+**D-061 · 2026-11-03 · Payments: Paystack, Google Play and redeem codes (milestone 4C)**
 - **The server sets every price.** The app (and later the website) sends only the plan and an optional code. `pay_start` works out the price from `plans` and the code and saves a `pending` payment with a random `st_…` reference. Paystack is asked to charge exactly that amount.
 - **Premium only after our own check.**
   - Paystack: the webhook must carry a valid `x-paystack-signature` (HMAC-SHA512 of the raw body with the secret key), and even then we call Paystack's **verify** endpoint ourselves before granting.

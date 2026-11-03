@@ -1,4 +1,4 @@
-// Paystack webhook (milestone 4C, D-060). Set in Paystack → Settings → API Keys & Webhooks:
+// Paystack webhook (milestone 4C, D-061). Set in Paystack → Settings → API Keys & Webhooks:
 //   https://<project>.supabase.co/functions/v1/paystack-webhook
 // 1. The x-paystack-signature header must be HMAC-SHA512(raw body, secret key); anything else gets 401.
 // 2. charge.success is never trusted on its own: we call Paystack's verify endpoint, then apply the answer.

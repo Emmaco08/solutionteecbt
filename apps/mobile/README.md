@@ -48,7 +48,7 @@ node ..\..\design\scripts\tokens-to-dart.mjs ..\..\design\tokens.json lib\theme\
 flutter build apk --debug
 ```
 
-## Two builds: `direct` and `play` (D-060)
+## Two builds: `direct` and `play` (D-061)
 
 | Build | Where it goes | Pays with | Command |
 |---|---|---|---|

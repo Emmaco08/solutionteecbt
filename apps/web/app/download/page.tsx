@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 import { hasR2 } from "@/lib/env";
 import { readJson } from "@/lib/r2";
-import type { ApkInfo } from "./apk/route";
+import { apkInfoKey, type ApkInfo } from "./apk/route";
 
 export const metadata: Metadata = {
   title: "Download the Android app",
@@ -11,21 +11,22 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function Page() {
+export default function Page({ searchParams }: { searchParams: Promise<{ channel?: string }> }) {
   return (
     <main className="grid min-h-dvh place-items-center bg-[var(--c-bg)] px-4 py-10">
       <Suspense fallback={<div className="h-96 w-full max-w-md animate-pulse rounded-3xl bg-card" />}>
-        <Download />
+        <Download searchParams={searchParams} />
       </Suspense>
     </main>
   );
 }
 
-async function Download() {
+async function Download({ searchParams }: { searchParams: Promise<{ channel?: string }> }) {
   await connection();
-  const info = hasR2() ? await readJson<ApkInfo>("apk/latest.json").catch(() => null) : null;
+  const test = (await searchParams).channel === "test";
+  const info = hasR2() ? await readJson<ApkInfo>(apkInfoKey(test ? "test" : "main")).catch(() => null) : null;
   const mb = info ? (info.size / 1024 / 1024).toFixed(1) : "";
-  const date = info ? new Date(info.built_at).toLocaleString("en-NG", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", timeZone: "Africa/Lagos" }) : "";
+  const date = info ? new Date(info.built_at).toLocaleString("en-NG", { day: "numeric", month: "short", year: "numeric", hour: "numeric", hour12: true, minute: "2-digit", timeZone: "Africa/Lagos" }) : "";
   return (
     <section className="w-full max-w-md rounded-3xl border bg-card p-6 shadow-sm">
       {/* Real brand mark from /brand (never redrawn) */}
@@ -33,11 +34,19 @@ async function Download() {
       <h1 className="text-2xl font-bold">SolutionTee CBT</h1>
       <p className="mt-1 text-sm text-muted-foreground">Learn. Think. Solve.</p>
       <p className="mt-4 rounded-xl bg-warning-soft px-3 py-2 text-sm text-on-warning-soft">
-        <b>Test version for Android.</b> For the team and invited testers only. Please do not share this link.
+        {test ? (
+          <>
+            <b>Work-in-progress build{info?.branch ? ` from “${info.branch}”` : ""}.</b> For checking new changes before they go to the team.
+          </>
+        ) : (
+          <>
+            <b>Test version for Android.</b> For the team and invited testers only. Please do not share this link.
+          </>
+        )}
       </p>
       {info ? (
         <>
-          <a href="/download/apk" className="mt-5 flex h-12 w-full items-center justify-center rounded-xl bg-primary text-[15px] font-bold text-primary-foreground hover:opacity-90">
+          <a href={test ? "/download/apk?channel=test" : "/download/apk"} className="mt-5 flex h-12 w-full items-center justify-center rounded-xl bg-primary text-[15px] font-bold text-primary-foreground hover:opacity-90">
             Download the app ({mb} MB)
           </a>
           <p className="mt-2 text-center text-xs text-muted-foreground">Version {info.version} · {date}</p>

@@ -405,11 +405,30 @@ node scripts/upload-apk.mjs
 
 The page picks up the new file at once (no website deploy needed). Testers install over the old version and keep their account.
 
-## 13. Payments (milestone 4C, 2026-11-03)
+## 13. Automatic app builds on GitHub (2026-11-03)
 
-Premium is given only by our server after it checks the payment with Paystack or Google (D-060). **Never paste keys in chat.** You type them only into the Supabase and Paystack dashboards, as below.
+Add these at **github.com/Emmaco08/solutionteecbt → Settings → Secrets and variables → Actions → New repository secret**. Type them yourself; never paste them in chat.
 
-### 13.1 Paystack (test mode first) — needed now
+| Secret name | Where to get the value on the laptop |
+|---|---|
+| `ANDROID_KEYSTORE_BASE64` | PowerShell: `[Convert]::ToBase64String([IO.File]::ReadAllBytes("C:\solutiontee-cbt\apps\mobile\android\app\upload-keystore.jks")) \| Set-Clipboard`, then paste |
+| `ANDROID_KEYSTORE_PASSWORD` | `apps/mobile/android/key.properties`, the `storePassword=` value |
+| `ANDROID_KEY_PASSWORD` | same file, the `keyPassword=` value |
+| `ANDROID_KEY_ALIAS` | `upload` |
+| `R2_ENDPOINT` | `apps/web/.env.local`, the `R2_ENDPOINT=` value |
+| `R2_BUCKET` | `apps/web/.env.local`, `R2_BUCKET=` |
+| `R2_ACCESS_KEY_ID` | `apps/web/.env.local`, `R2_ACCESS_KEY_ID=` |
+| `R2_SECRET_ACCESS_KEY` | `apps/web/.env.local`, `R2_SECRET_ACCESS_KEY=` |
+
+Then on GitHub: **Actions → Android app → Run workflow**. About 10–15 minutes later the new app is at https://admin.solutiontee.com/download (main) or https://admin.solutiontee.com/download?channel=test (other branches).
+
+**Back up the signing key:** copy `upload-keystore.jks` and `key.properties` to a private place (e.g. your own Google Drive). If it is lost, phones cannot update the app without uninstalling.
+
+## 14. Payments (milestone 4C, 2026-11-03)
+
+Premium is given only by our server after it checks the payment with Paystack or Google (D-061). **Never paste keys in chat.** You type them only into the Supabase and Paystack dashboards, as below.
+
+### 14.1 Paystack (test mode first) — needed now
 1. Open https://dashboard.paystack.com and make sure the switch at the top says **Test mode**.
 2. *Settings → API Keys & Webhooks.* Copy the **Test Secret Key** (starts with `sk_test_`).
 3. Open https://supabase.com/dashboard/project/mxeemubacnmcmmmzteax/functions/secrets → **Add new secret**:
@@ -430,10 +449,10 @@ Premium is given only by our server after it checks the payment with Paystack or
 
 **Going live later (Phase 6):** switch Paystack to Live mode, put the `sk_live_` key in the same Supabase secret, and set the **Live Webhook URL** to the same address.
 
-### 13.2 Redeem codes — ready now
+### 14.2 Redeem codes — ready now
 Admin → **Redeem codes**: make a shared code (e.g. `LOYOLA20`, 20% off) or a batch of one-use codes (download them as CSV). Free-day codes are typed by students in the app: Me → *Redeem a code*. Discount codes work only with Paystack (Google allows only its own promo codes in the Play app).
 
-### 13.3 Google Play (the Play Store build) — later, when you have Play Console
+### 14.3 Google Play (the Play Store build) — later, when you have Play Console
 1. Create the app in Play Console (package `com.solutiontee.cbt`) and upload a `play` build to **Internal testing**: `flutter build appbundle --release --flavor play` (needs the upload key, set up at launch).
 2. *Monetise → Products → In-app products*: create one product per plan, type one-time, with these IDs (or your own, then put them in Admin → Plans → *Google Play product ID*): `premium_monthly`, `premium_three_months`, `premium_exam_season`. Set the same prices as Admin → Plans.
 3. Google Cloud console (the project linked to Play Console): create a **service account**, make a **JSON key**. In Play Console *Users and permissions*, invite the service account email with **View financial data** and **Manage orders and subscriptions**.

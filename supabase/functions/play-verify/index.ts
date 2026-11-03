@@ -1,4 +1,4 @@
-// Google Play purchases for the Play Store build (milestone 4C, D-060).
+// Google Play purchases for the Play Store build (milestone 4C, D-061).
 // POST /functions/v1/play-verify   Authorization: Bearer <access token>
 //   {productId, purchaseToken}
 //   → {status:"success", expires_at} · {status:"pending"} (cash/slow bank: try again later)

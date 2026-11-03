@@ -1,4 +1,4 @@
-// Paystack payments for the direct APK and the website (milestone 4C, docs/plans/phase-4c.md, D-060).
+// Paystack payments for the direct APK and the website (milestone 4C, docs/plans/phase-4c.md, D-061).
 // POST /functions/v1/paystack   Authorization: Bearer <access token>
 //   {action:"start", plan, code?, source?: "app"|"web"}
 //      → {free:true, expires_at} when a 100% code covers it, else {reference, url, amount_kobo}

@@ -1,6 +1,6 @@
 # Handoff: where the build is (read this first in a new or cloud session)
 
-Last updated: 2026-11-03, after milestone 4C (payments) on branch `claude/clever-gates-rdt2wx`. Read `CLAUDE.md`, then this file, then `docs/PROGRESS.md`, `docs/DECISIONS.md` (D-001 to D-060), `docs/SETUP.md` and `docs/plans/phase-4*.md`.
+Last updated: 2026-11-03, after milestone 4C (payments) on branch `claude/clever-gates-rdt2wx`. Read `CLAUDE.md`, then this file, then `docs/PROGRESS.md`, `docs/DECISIONS.md` (D-001 to D-061), `docs/SETUP.md` and `docs/plans/phase-4*.md`.
 
 ## Where we are
 
@@ -9,9 +9,9 @@ Last updated: 2026-11-03, after milestone 4C (payments) on branch `claude/clever
   - **4A Study tab:** past questions, video solutions (thumbnails, own player), notes (Markdown + KaTeX + pictures), novels (PDF + summary), docs, downloads, bookmarks, progress; admin Study manager; per-item locks (video list always visible, each video locked).
   - **4B AI tutor:** NVIDIA primary, Dahl backup, providers/keys/models/prompts managed in Admin → AI tutor; keys in Supabase Vault; `ai-chat` and `ai-index` Edge Functions; app AI tab with streaming, photos, hint mode, history and quota. DB tests 28/28 (ai) and 22/22 (study); app tests 28/28.
   - **Test APK page:** https://admin.solutiontee.com/download (D-059).
-  - **4C Payments** (built, waiting for the owner's review and Paystack test key): Paystack and Google Play, server-verified, idempotent, redeem codes, admin Payments and Codes, app checkout; `direct` / `play` flavors (D-060). Branch `claude/clever-gates-rdt2wx`, not merged.
+  - **4C Payments** (built, test payment on the phone worked 2026-11-03; waiting for the owner.s review): Paystack and Google Play, server-verified, idempotent, redeem codes, admin Payments and Codes, app checkout; `direct` / `play` flavors (D-061). Branch `claude/clever-gates-rdt2wx`, not merged.
 - Next milestones, in order: **4D** push (FCM) + Me dashboard, **4E** challenges, referrals, leaderboard, question of the day, winners wall. Then the Phase 4 report and STOP for `PREMIUM APPROVED`.
-- Waiting on the owner: press "Add new and edited notes" in Admin → AI tutor → Knowledge; rotate the NVIDIA and Dahl keys (they were pasted in chat for testing); Paystack test secret key in Supabase secrets + webhook URL (SETUP §13.1) and a Play Console account (§13.3) for 4C; deploy the website from the laptop (new admin pages); Firebase project for 4D.
+- Waiting on the owner: press "Add new and edited notes" in Admin → AI tutor → Knowledge; rotate the NVIDIA and Dahl keys (they were pasted in chat for testing); a Play Console account for 4C (SETUP §14.3); link the Emmaco08 GitHub login to the Vercel account so website deploys are accepted; Firebase project for 4D.
 
 ## Live systems
 
@@ -37,7 +37,7 @@ Last updated: 2026-11-03, after milestone 4C (payments) on branch `claude/clever
 What works the same: reading and writing code, plans, docs, migrations, Edge Function code, web code, Dart code, git commits and pushes, and Supabase/Vercel changes **if** those connectors are enabled for the session.
 
 What does not work from the cloud, and what to do instead:
-- **No USB phone:** a cloud session cannot install on the owner's phone or take phone screenshots. Build the APK in the cloud only if Flutter + Android SDK are installed there; otherwise leave building to the laptop and say so.
+- **No USB phone:** a cloud session cannot install on the owner's phone. Instead, pushing a branch with app changes triggers the GitHub workflow `android-apk.yml` (D-060), which builds the APK and puts it on https://admin.solutiontee.com/download?channel=test for the owner to install. Tell the owner when it is ready; check the run's result (analyzer and tests run there too).
 - **No `.env.local`:** the R2 upload script and `vercel` CLI need secrets that are only on the laptop. Do not ask for them in chat. Deploys can happen by the owner later, or by Vercel's Git integration if the owner connects the repo in the Vercel dashboard.
 - Say plainly what was not run or tested (CLAUDE.md "Never fake it").
 - Work on a branch, push it, and tell the owner the branch name so the laptop can pull it later.

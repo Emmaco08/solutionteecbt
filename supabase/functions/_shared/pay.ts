@@ -1,4 +1,4 @@
-// Shared server code for the payment Edge Functions (milestone 4C, D-060).
+// Shared server code for the payment Edge Functions (milestone 4C, D-061).
 // Secrets (Edge Function secrets, never in the app):
 //   PAYSTACK_SECRET_KEY            sk_test_… / sk_live_…
 //   PAYSTACK_CALLBACK_URL          optional page Paystack returns to after paying

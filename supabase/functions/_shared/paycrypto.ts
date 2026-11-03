@@ -1,4 +1,4 @@
-// Pure helpers for the payment Edge Functions (milestone 4C, D-060). No Deno or npm imports, so the same file
+// Pure helpers for the payment Edge Functions (milestone 4C, D-061). No Deno or npm imports, so the same file
 // is unit-tested with Node (supabase/functions/_shared/paycrypto.test.mjs) and deployed with the functions.
 
 const enc = new TextEncoder();
