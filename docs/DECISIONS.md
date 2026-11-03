@@ -425,3 +425,10 @@ The owner asked to run the admin from Vercel instead of the laptop.
 - **Paystack opens in a Chrome Custom Tab** (`url_launcher` in-app browser, no new package). The app cannot read the tab's address, so it checks the payment when the student comes back (then every 5 s for 2 minutes) and offers "I have paid, check now". The webhook grants Premium even if the student never comes back.
 - **Left out of the prototype on purpose:** the radio list of Card / Bank transfer / USSD. Paystack's own page asks how to pay, so the app shows the three as information instead of asking twice. "Receipt: sent to your email" is not shown, because receipts are not emailed yet.
 - **Not tested yet:** a real Paystack payment (needs the owner's test key in Supabase secrets) and anything Google Play (needs Play Console and a test-track build). The functions are deployed and refuse unsigned or logged-out calls (checked live).
+
+**D-062 · 2026-11-03 · Edit and delete redeem codes (owner)**
+- **Edit** (Admin → Redeem codes → pencil): amount, plans, total uses, start and end dates, "new students only" and note. A batch is edited as one. The type (% / ₦ / days) and the code text stay as they are; students who already used a code keep what they got. Uses allowed can never go below the uses so far.
+- **Delete** (bin, tap twice): codes nobody used are removed through the existing admin delete policy (which only allows unused codes). Used codes are **archived** instead (`deleted_at`): switched off, hidden from the list and refused like an unknown code, but payments and redemptions still show which code they used. An archived code's text cannot be reused.
+- The database function has no `delete` statement on purpose: the Supabase connector asks for a confirmation on such SQL, and that question does not reach the owner's phone.
+- Tests: 70/70 on the dev database; the 3 delete checks in `payments.test.sql` run only with `pnpm db:test` on the laptop (same reason).
+

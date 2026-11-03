@@ -25,6 +25,11 @@ language sql as $$
   select set_config('request.jwt.claims', json_build_object('role', 'service_role')::text, true);
   select set_config('role', 'service_role', true);
 $$;
+create function tests.as_admin(uid uuid) returns void
+language sql as $$
+  select set_config('request.jwt.claims', json_build_object('sub', uid, 'role', 'authenticated', 'aal', 'aal2')::text, true);
+  select set_config('role', 'authenticated', true);
+$$;
 grant execute on all functions in schema tests to anon, authenticated, service_role;
 create table tests.v (k text primary key, j jsonb);
 grant all on tests.v to authenticated, service_role;
@@ -37,7 +42,9 @@ update public.plans set price_kobo = 600000, duration_days = null, ends_on = (pr
 insert into auth.users (id, email, aud, role) values
   ('00000000-0000-4000-8000-0000000000d1', 'pay1@test.local', 'authenticated', 'authenticated'),
   ('00000000-0000-4000-8000-0000000000d2', 'pay2@test.local', 'authenticated', 'authenticated'),
-  ('00000000-0000-4000-8000-0000000000d3', 'pay3@test.local', 'authenticated', 'authenticated');
+  ('00000000-0000-4000-8000-0000000000d3', 'pay3@test.local', 'authenticated', 'authenticated'),
+  ('00000000-0000-4000-8000-0000000000d9', 'payadmin@test.local', 'authenticated', 'authenticated');
+insert into public.staff (user_id, role) values ('00000000-0000-4000-8000-0000000000d9', 'admin');
 
 insert into public.promo_codes (code, kind, value, plan_ids, max_uses, note) values
   ('tst20', 'pct', 20, '{}', null, 'test'),
@@ -155,6 +162,40 @@ select tests.throws($q$ select provider_data from public.payments $q$, '42501', 
 select public.redeem_code('WRONG' || g) from generate_series(1, 10) g;
 select tests.check((select public.redeem_code('TSTWEEK') ->> 'error') = 'too_many_tries', 'redeem: 10 wrong tries in an hour locks codes for a while');
 select tests.check((select public.quote_price('monthly', 'TST20') ->> 'error') = 'too_many_tries', 'quote: the same limit applies at checkout');
+
+-- ---------------------------------------------------------------- admin: edit and delete codes
+select tests.throws($q$ select public.admin_update_codes((select id from public.promo_codes limit 1), 5, '{}', null, null, null, false, '') $q$,
+  '42501', null, 'students cannot edit codes');
+select tests.throws($q$ select public.admin_archive_codes(gen_random_uuid(), null) $q$, '42501', null, 'students cannot archive codes');
+reset role;
+insert into tests.v select 'c20', to_jsonb(id) from public.promo_codes where code = 'TST20';
+insert into tests.v select 'cold', to_jsonb(id) from public.promo_codes where code = 'TSTOLD';
+select tests.as_admin('00000000-0000-4000-8000-0000000000d9');
+select tests.check(public.admin_update_codes((select (j #>> '{}')::uuid from tests.v where k = 'c20'), 30, '{}', 50, null, null, false, 'edited') = 1,
+  'admin edits a shared code');
+select tests.check((select value = 30 and max_uses = 50 and note = 'edited' from public.promo_codes where code = 'TST20'), 'edit saved: 30% off, 50 uses, note');
+select tests.throws($q$ select public.admin_update_codes((select (j #>> '{}')::uuid from tests.v where k = 'c20'), 101, '{}', null, null, null, false, '') $q$,
+  '22023', null, 'a % code cannot go above 100');
+select tests.throws($q$ select public.admin_update_codes((select (j #>> '{}')::uuid from tests.v where k = 'c20'), 20, '{}', 0, null, null, false, '') $q$,
+  '22023', null, 'uses allowed cannot go below uses so far');
+-- delete: an unused code is removed; a used one is not removed by the delete policy, then archived
+with d as (delete from public.promo_codes where code in ('TSTOLD', 'TST20') and used_count = 0 and deleted_at is null returning code)
+select tests.check((select array_agg(code) from d) = array['TSTOLD'], 'delete removes only the unused code');
+with d as (delete from public.promo_codes where code = 'TST20' returning 1)
+select tests.check((select count(*) from d) = 0, 'the delete policy never removes a used code');
+select tests.check(public.admin_archive_codes((select (j #>> '{}')::uuid from tests.v where k = 'c20'), null) = 1, 'a used code is archived instead');
+select tests.check(not exists (select 1 from jsonb_array_elements(public.admin_codes() -> 'rows') r where r ->> 'code' = 'TST20'), 'archived code leaves the admin list');
+-- batch: edit all, delete all
+insert into tests.v values ('b', public.admin_create_code_batch('TSTB', 3, 'days', 5, '{}', now(), null, 'batch test', false));
+select tests.check(public.admin_update_codes((select id from public.promo_codes where batch_id = (select (j ->> 'batch_id')::uuid from tests.v where k = 'b') limit 1),
+  9, '{}', null, null, null, false, 'longer') = 3, 'editing a batch changes all its codes');
+select tests.check((select bool_and(value = 9 and max_uses = 1) from public.promo_codes where batch_id = (select (j ->> 'batch_id')::uuid from tests.v where k = 'b')), 'batch codes stay one-use');
+with d as (delete from public.promo_codes where batch_id = (select (j ->> 'batch_id')::uuid from tests.v where k = 'b') and used_count = 0 returning 1)
+select tests.check((select count(*) from d) = 3, 'deleting an unused batch removes all its codes');
+reset role;
+select tests.check((select count(*) from public.payments where code_id = (select (j #>> '{}')::uuid from tests.v where k = 'c20')) >= 1, 'payments still point at the archived code');
+select tests.as_user('00000000-0000-4000-8000-0000000000d3');
+select tests.check((select public.redeem_code('TST20') ->> 'error') = 'not_found', 'an archived code is not accepted');
 
 reset role;
 select n, ok, name, detail from tests.results order by n;

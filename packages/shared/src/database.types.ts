@@ -1230,6 +1230,7 @@ export type Database = {
           code: string
           created_at: string
           created_by: string | null
+          deleted_at: string | null
           ends_at: string | null
           id: string
           kind: Database["public"]["Enums"]["promo_kind"]
@@ -1248,6 +1249,7 @@ export type Database = {
           code: string
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
           ends_at?: string | null
           id?: string
           kind: Database["public"]["Enums"]["promo_kind"]
@@ -1266,6 +1268,7 @@ export type Database = {
           code?: string
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
           ends_at?: string | null
           id?: string
           kind?: Database["public"]["Enums"]["promo_kind"]
@@ -1661,6 +1664,10 @@ export type Database = {
     }
     Functions: {
       admin_ai_health: { Args: never; Returns: Json }
+      admin_archive_codes: {
+        Args: { p_batch: string; p_id: string }
+        Returns: number
+      }
       admin_batch_codes: {
         Args: { p_batch: string }
         Returns: {
@@ -1735,6 +1742,19 @@ export type Database = {
       admin_set_ban: {
         Args: { p_banned: boolean; p_reason?: string; p_user: string }
         Returns: undefined
+      }
+      admin_update_codes: {
+        Args: {
+          p_ends: string
+          p_id: string
+          p_max_uses: number
+          p_new_only: boolean
+          p_note: string
+          p_plan_ids: number[]
+          p_starts: string
+          p_value: number
+        }
+        Returns: number
       }
       admin_user_detail: { Args: { p_user: string }; Returns: Json }
       admin_year_counts: {
