@@ -1,5 +1,5 @@
 -- Redeem codes: edit and delete (owner request after 4C, D-061).
--- Delete removes a code nobody has used. A code that was used (or is in a checkout) is archived instead:
+-- Delete (admin website) removes codes nobody used, through the existing delete policy. Used ones are archived:
 -- it stops working and leaves the list, but payments and redemptions still show which code they used.
 
 alter table public.promo_codes add column deleted_at timestamptz;
@@ -123,37 +123,32 @@ revoke all on function public.admin_update_codes(uuid, integer, smallint[], inte
 grant execute on function public.admin_update_codes(uuid, integer, smallint[], integer, timestamptz, timestamptz, boolean, text) to authenticated;
 
 /**
- * Deletes a shared code or a whole batch. Codes nobody used are removed; used ones (or ones in a checkout) are archived:
- * paused, hidden from the list, and refused like an unknown code. Returns {deleted, archived}.
+ * Archives what is left of a shared code or a batch after the admin website removed the unused codes
+ * (it uses the existing "admins edit (delete)" policy, which only allows codes nobody used).
+ * Archived codes are paused, hidden from the list and refused like an unknown code, but payments and
+ * redemptions still show which code they used. Returns how many codes were archived.
  */
-create or replace function public.admin_delete_codes(p_id uuid)
-returns jsonb language plpgsql volatile security definer set search_path = '' as $$
-declare c public.promo_codes; v_del integer; v_arch integer;
+create or replace function public.admin_archive_codes(p_id uuid, p_batch uuid)
+returns integer language plpgsql volatile security definer set search_path = '' as $$
+declare v_n integer;
 begin
   if not private.can_edit(array['super_admin', 'admin']::public.staff_role[]) then
     raise exception 'not allowed' using errcode = '42501';
   end if;
-  select * into c from public.promo_codes where id = p_id and deleted_at is null;
-  if c.id is null then raise exception 'code not found' using errcode = 'P0002'; end if;
-  perform set_config('app.bulk_audit', 'on', true);
-  delete from public.promo_codes x
-  where x.deleted_at is null and ((c.batch_id is not null and x.batch_id = c.batch_id) or x.id = c.id)
-    and x.used_count = 0
-    and not exists (select 1 from public.promo_redemptions r where r.code_id = x.id)
-    and not exists (select 1 from public.payments p where p.code_id = x.id);
-  get diagnostics v_del = row_count;
+  if p_batch is not null then perform set_config('app.bulk_audit', 'on', true); end if;
   update public.promo_codes x set deleted_at = now(), paused = true
-  where x.deleted_at is null and ((c.batch_id is not null and x.batch_id = c.batch_id) or x.id = c.id);
-  get diagnostics v_arch = row_count;
-  perform set_config('app.bulk_audit', 'off', true);
-  insert into public.audit_log (actor, action, table_name, row_id, before, after)
-  values ((select auth.uid()), 'code_delete', 'promo_codes', coalesce(c.batch_id, c.id)::text, to_jsonb(c),
-          jsonb_build_object('deleted', v_del, 'archived', v_arch));
-  return jsonb_build_object('deleted', v_del, 'archived', v_arch);
+  where x.deleted_at is null and ((p_batch is not null and x.batch_id = p_batch) or x.id = p_id);
+  get diagnostics v_n = row_count;
+  if p_batch is not null then
+    perform set_config('app.bulk_audit', 'off', true);
+    insert into public.audit_log (actor, action, table_name, row_id, after)
+    values ((select auth.uid()), 'code_archive', 'promo_codes', p_batch::text, jsonb_build_object('archived', v_n));
+  end if;
+  return v_n;
 end;
 $$;
-revoke all on function public.admin_delete_codes(uuid) from public, anon;
-grant execute on function public.admin_delete_codes(uuid) to authenticated;
+revoke all on function public.admin_archive_codes(uuid, uuid) from public, anon;
+grant execute on function public.admin_archive_codes(uuid, uuid) to authenticated;
 
 -- Pausing never touches archived codes.
 create or replace function public.admin_pause_codes(p_id uuid, p_paused boolean)
