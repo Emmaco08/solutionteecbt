@@ -222,13 +222,13 @@ export function NotifyForm({ notify, hour }: { notify: boolean; hour: number }) 
     <form className="flex flex-wrap items-end gap-3" action={(f) => start(async () => {
       const r = await saveNotify(f); if (r.ok) { toast.success(r.message ?? "Saved"); router.refresh(); } else toast.error(r.error);
     })}>
-      <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="notify" defaultChecked={notify} /> Send “Your question of the day is ready” every day</label>
-      <div className="space-y-1"><Label htmlFor="nHour">At (Lagos time)</Label>
-        <select id="nHour" name="notify_hour" defaultValue={hour} className={`${inputCls} w-auto`}>
+      <div className="space-y-1"><Label htmlFor="nHour">New question every day at (Lagos time)</Label>
+        <select id="nHour" name="drop_hour" defaultValue={hour} className={`${inputCls} w-auto`}>
           {Array.from({ length: 24 }, (_, h) => <option key={h} value={h}>{String(h).padStart(2, "0")}:00</option>)}
         </select></div>
+      <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="notify" defaultChecked={notify} /> Send “Your question of the day is ready” at that time</label>
       <Button type="submit" disabled={pending}>Save</Button>
-      <p className="w-full text-xs text-muted-foreground">The new questions start at midnight. Students who switched off “New questions added” in Settings do not get it.</p>
+      <p className="w-full text-xs text-muted-foreground">Until then students see the day before&apos;s question. The notification arrives within a few minutes. Students who switched off “New questions added” in Settings do not get it.</p>
     </form>
   );
 }

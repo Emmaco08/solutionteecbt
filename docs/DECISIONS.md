@@ -500,3 +500,7 @@ The owner asked to run the admin from Vercel instead of the laptop.
 - **Admin analysis:** answered today and % right, answers and students in the last 14 days, students ever, students on a 3-day streak, answers per day (with % right), by subject, and for every day × subject the count, % right and which options were picked.
 - **Daily notification:** "Your question of the day is ready" (topic "New questions added", so students who switched that off do not get it), once a day at an hour set in the admin (default 07:00 Lagos; the questions change at midnight, and a midnight push would wake students). pg_cron `qotd-notify` every 10 minutes. Not sent on 3 Nov 2026 (it was already evening when this went live).
 - Tests: `supabase/tests/qotd_leaderboard.test.sql` 47/47.
+
+**D-072 · 2026-11-03 · The question of the day drops at 08:00 (owner)**
+- The question day now changes at **08:00 Lagos time** (`app_settings.qotd.drop_hour`, default 8; `private.qotd_day()`), not midnight. Before 8:00 students still see the day before's question. The app's countdown ("New question in …") counts to 8:00.
+- "Your question of the day is ready" is sent at the same moment (the check runs every minute; push sends every 5 minutes, so it arrives by about 8:05). Admin → Question of the day → "New question every day at" changes both. Midnight-based days (`private.lagos_today()`) stay for payments and streak reminders.

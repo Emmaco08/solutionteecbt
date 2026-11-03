@@ -43,6 +43,7 @@ update public.profiles set jamb_subjects = array[(select code from public.subjec
 
 -- The test runs on a pretend "today" far ahead, so the real question of the day is not touched (rolled back).
 create or replace function private.lagos_today() returns date language sql stable set search_path = '' as $f$ select date '2090-06-15' $f$;
+create or replace function private.qotd_day() returns date language sql stable security definer set search_path = '' as $f$ select date '2090-06-15' $f$;
 
 -- Free can open every JAMB year in this test; WAEC is closed for Free.
 update public.access_rules set rules = jsonb_set(jsonb_set(rules, '{jamb}', '"all"'), '{waec}', '0') where tier = 'free';

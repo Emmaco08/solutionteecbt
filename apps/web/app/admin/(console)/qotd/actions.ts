@@ -79,14 +79,14 @@ export async function saveOwnQuestion(form: FormData): Promise<ActionResult> {
   return saveRow(o.day, o.subject_id, { question_id: null, custom_subject: null, custom_body: o.body, custom_options: options, custom_answer: o.answer, custom_explanation: o.explanation || null });
 }
 
-/** Daily "Your question of the day is ready" notification: on/off and the hour (Lagos time). */
+/** When the new question drops each day (Lagos time, default 08:00) and whether "Your question of the day is ready" is sent then. */
 export async function saveNotify(form: FormData): Promise<ActionResult> {
   await requireStaff(["super_admin", "admin"]);
-  const hour = Number(form.get("notify_hour"));
+  const hour = Number(form.get("drop_hour"));
   if (!Number.isInteger(hour) || hour < 0 || hour > 23) return { ok: false, error: "Choose an hour" };
   const supabase = await createClient();
   const { data: cur } = await supabase.from("app_settings").select("value").eq("key", "qotd").maybeSingle();
-  const value = { ...((cur?.value ?? {}) as Record<string, unknown>), notify: form.get("notify") === "on", notify_hour: hour };
+  const value = { ...((cur?.value ?? {}) as Record<string, unknown>), notify: form.get("notify") === "on", drop_hour: hour };
   const { error } = await supabase.from("app_settings").update({ value }).eq("key", "qotd");
   if (error) return { ok: false, error: friendlyError(error) };
   revalidatePath("/admin/qotd");
