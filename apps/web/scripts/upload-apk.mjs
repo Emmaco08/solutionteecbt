@@ -1,8 +1,9 @@
 // Puts the Android test app on https://admin.solutiontee.com/download (D-059).
 // Uploads the APK to the private R2 bucket under apk/ and points apk/latest.json at it.
 // Usage (from apps/web): node scripts/upload-apk.mjs [path-to-apk]
-// Default path: ../mobile/build/app/outputs/flutter-apk/app-release.apk. Reads keys from .env.local; never prints them.
-import { readFileSync, statSync } from "node:fs";
+// Default path: the "direct" (Paystack) build, ../mobile/build/app/outputs/flutter-apk/app-direct-release.apk (D-060).
+// The website APK must never be the "play" build. Reads keys from .env.local; never prints them.
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { AwsClient } from "aws4fetch";
 
 const env = Object.fromEntries(
@@ -11,7 +12,12 @@ const env = Object.fromEntries(
     .filter((l) => l.includes("=") && !l.trim().startsWith("#"))
     .map((l) => [l.slice(0, l.indexOf("=")).trim(), l.slice(l.indexOf("=") + 1).trim().replace(/^["']|["']$/g, "")]),
 );
-const file = process.argv[2] ?? new URL("../../mobile/build/app/outputs/flutter-apk/app-release.apk", import.meta.url);
+const out = (n) => new URL(`../../mobile/build/app/outputs/flutter-apk/${n}`, import.meta.url);
+const file = process.argv[2] ?? (existsSync(out("app-direct-release.apk")) ? out("app-direct-release.apk") : out("app-release.apk"));
+if (String(file).includes("app-play-")) {
+  console.error("This is the Play Store build. Upload the direct build: flutter build apk --release --flavor direct");
+  process.exit(1);
+}
 const pubspec = readFileSync(new URL("../../mobile/pubspec.yaml", import.meta.url), "utf8");
 const name = pubspec.match(/^version:\s*([0-9.]+)/m)?.[1] ?? "0.0.0";
 const built = statSync(file).mtime;

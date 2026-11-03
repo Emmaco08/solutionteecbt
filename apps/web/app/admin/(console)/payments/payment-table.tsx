@@ -92,7 +92,10 @@ function PaymentDrawer({ id, onChanged }: { id: string; onChanged: () => void })
   const [sure, setSure] = useState(false);
   const [pending, start] = useTransition();
   const load = () => getPayment(id).then((r) => (r.ok ? setD(r.data!) : setErr(r.error)));
-  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [id]);
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   if (err) return <p className="p-6 text-sm text-error">{err}</p>;
   if (!d) return <div className="space-y-3 p-6">{[0, 1, 2, 3].map((i) => <div key={i} className="h-14 animate-pulse rounded-xl bg-muted" />)}</div>;
