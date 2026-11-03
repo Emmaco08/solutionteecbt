@@ -1,0 +1,411 @@
+-- Milestone 4D: notifications (FCM push + in-app inbox) and the Me dashboard (docs/plans/phase-4d.md, D-063).
+-- Sending happens only in the `push` Edge Function (Firebase key in Edge Function secrets). pg_cron calls it every
+-- 5 minutes; each message is taken once (status 'sending' with SKIP LOCKED) and marked sent with a count.
+
+create extension if not exists pg_cron;
+create extension if not exists pg_net with schema extensions;
+
+create type public.notif_topic as enum ('announcements', 'new_questions', 'streak', 'classes', 'challenges', 'account');
+
+-- ------------------------------------------------------------------ tables
+create table public.notifications (
+  id uuid primary key default gen_random_uuid(),
+  topic public.notif_topic not null,
+  title text not null check (char_length(title) between 2 and 80),
+  body text not null check (char_length(body) between 2 and 240),
+  -- where a tap goes: {"type":"news","target":"<id>"} | {"type":"screen","target":"/study"} | {"type":"url","target":"https://…"}
+  link jsonb not null default '{}',
+  audience text not null default 'all' check (audience in ('all', 'free', 'premium', 'user', 'staff')),
+  user_id uuid references auth.users (id) on delete cascade,
+  scheduled_at timestamptz not null default now(),
+  status text not null default 'scheduled' check (status in ('draft', 'scheduled', 'sending', 'sent', 'failed', 'cancelled')),
+  sent_at timestamptz,
+  sent_count integer not null default 0,
+  error text,
+  source text not null default 'admin' check (source in ('admin', 'news', 'year', 'streak', 'premium')),
+  source_ref text,
+  created_by uuid default auth.uid() references auth.users (id) on delete set null,
+  created_at timestamptz not null default now(),
+  check ((audience = 'user') = (user_id is not null))
+);
+create index notifications_due on public.notifications (scheduled_at) where status = 'scheduled';
+create index notifications_user on public.notifications (user_id, created_at desc) where user_id is not null;
+create index notifications_feed on public.notifications (sent_at desc) where status = 'sent';
+create unique index notifications_source on public.notifications (source, source_ref) where source_ref is not null;
+
+create table public.notification_reads (
+  user_id uuid not null references auth.users (id) on delete cascade default auth.uid(),
+  notification_id uuid not null references public.notifications (id) on delete cascade,
+  read_at timestamptz not null default now(),
+  primary key (user_id, notification_id)
+);
+create index notification_reads_notif on public.notification_reads (notification_id);
+
+create table public.notification_prefs (
+  user_id uuid not null references auth.users (id) on delete cascade default auth.uid(),
+  topic public.notif_topic not null,
+  enabled boolean not null,
+  updated_at timestamptz not null default now(),
+  primary key (user_id, topic)
+);
+
+create table public.push_tokens (
+  token text primary key check (char_length(token) between 20 and 4096),
+  user_id uuid not null references auth.users (id) on delete cascade default auth.uid(),
+  platform text not null default 'android' check (platform in ('android', 'web')),
+  app_version text check (char_length(app_version) <= 20),
+  created_at timestamptz not null default now(),
+  last_seen timestamptz not null default now()
+);
+create index push_tokens_user on public.push_tokens (user_id);
+
+alter table public.news_posts add column notify boolean not null default false;
+
+create trigger notifications_audit after insert or update or delete on public.notifications
+  for each row when (coalesce(new.source, old.source) = 'admin') execute function private.audit_row();
+
+-- ------------------------------------------------------------------ RLS
+alter table public.notifications enable row level security;
+alter table public.notification_reads enable row level security;
+alter table public.notification_prefs enable row level security;
+alter table public.push_tokens enable row level security;
+
+create policy "staff read" on public.notifications for select to authenticated
+  using (private.is_staff(array['super_admin', 'admin', 'editor']::public.staff_role[]));
+create policy "staff write (insert)" on public.notifications for insert to authenticated
+  with check (private.can_edit(array['super_admin', 'admin', 'editor']::public.staff_role[]) and source = 'admin'
+              and status in ('draft', 'scheduled') and sent_at is null and sent_count = 0);
+create policy "staff write (update)" on public.notifications for update to authenticated
+  using (private.can_edit(array['super_admin', 'admin', 'editor']::public.staff_role[]) and status in ('draft', 'scheduled'))
+  with check (private.can_edit(array['super_admin', 'admin', 'editor']::public.staff_role[]) and status in ('draft', 'scheduled', 'cancelled')
+              and sent_at is null and sent_count = 0);
+-- Students read the inbox only through my_notifications() (audience rules live there).
+
+create policy "own reads" on public.notification_reads for select to authenticated using (user_id = (select auth.uid()));
+create policy "own reads (insert)" on public.notification_reads for insert to authenticated with check (user_id = (select auth.uid()));
+create policy "own prefs" on public.notification_prefs for select to authenticated using (user_id = (select auth.uid()));
+create policy "own prefs (insert)" on public.notification_prefs for insert to authenticated with check (user_id = (select auth.uid()));
+create policy "own prefs (update)" on public.notification_prefs for update to authenticated
+  using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+create policy "own tokens" on public.push_tokens for select to authenticated using (user_id = (select auth.uid()));
+create policy "own tokens (insert)" on public.push_tokens for insert to authenticated with check (user_id = (select auth.uid()));
+create policy "own tokens (update)" on public.push_tokens for update to authenticated
+  using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+create policy "own tokens (delete)" on public.push_tokens for delete to authenticated using (user_id = (select auth.uid()));
+
+revoke all on public.notifications, public.notification_reads, public.notification_prefs, public.push_tokens from anon;
+revoke update, delete, truncate on public.notification_reads from authenticated;
+
+-- ------------------------------------------------------------------ student functions
+/** The signed-in student's inbox: sent messages meant for them (last 60 days, newest first), with read flags. */
+create or replace function public.my_notifications(p_limit integer default 100)
+returns table (id uuid, topic text, title text, body text, link jsonb, sent_at timestamptz, read boolean)
+language sql stable security definer set search_path = '' as $$
+  with me as (
+    select (select auth.uid()) as uid, private.has_premium() as prem, private.is_staff() as staff,
+           (select u.created_at from auth.users u where u.id = (select auth.uid())) as joined)
+  select n.id, n.topic::text, n.title, n.body, n.link, n.sent_at,
+         exists (select 1 from public.notification_reads r where r.notification_id = n.id and r.user_id = me.uid)
+  from public.notifications n, me
+  where me.uid is not null and n.status = 'sent' and n.sent_at > now() - interval '60 days'
+    and n.sent_at > me.joined - interval '7 days'
+    and (n.audience = 'all'
+         or (n.audience = 'free' and not me.prem)
+         or (n.audience = 'premium' and me.prem)
+         or (n.audience = 'user' and n.user_id = me.uid)
+         or (n.audience = 'staff' and me.staff))
+  order by n.sent_at desc
+  limit least(greatest(p_limit, 1), 200);
+$$;
+revoke all on function public.my_notifications(integer) from public, anon;
+grant execute on function public.my_notifications(integer) to authenticated;
+
+/** Marks messages read: the given ids, or everything in the inbox when p_ids is null. Returns how many were new. */
+create or replace function public.mark_notifications_read(p_ids uuid[] default null)
+returns integer language plpgsql volatile security definer set search_path = '' as $$
+declare v_n integer;
+begin
+  if (select auth.uid()) is null then raise exception 'sign in first' using errcode = '42501'; end if;
+  insert into public.notification_reads (user_id, notification_id)
+  select (select auth.uid()), m.id from public.my_notifications(200) m
+  where not m.read and (p_ids is null or m.id = any (p_ids))
+  on conflict do nothing;
+  get diagnostics v_n = row_count;
+  return v_n;
+end;
+$$;
+revoke all on function public.mark_notifications_read(uuid[]) from public, anon;
+grant execute on function public.mark_notifications_read(uuid[]) to authenticated;
+
+-- ------------------------------------------------------------------ streak and badges
+/** Lagos days on which the student finished at least one test. */
+create or replace function private.practice_days(p_uid uuid)
+returns table (day date) language sql stable security definer set search_path = '' as $$
+  select distinct (a.submitted_at at time zone 'Africa/Lagos')::date
+  from public.attempts a where a.user_id = p_uid and a.status::text = 'submitted' and a.submitted_at is not null;
+$$;
+
+/** Current streak (days in a row up to today, or up to yesterday if not yet today) and the longest ever. */
+create or replace function private.streak(p_uid uuid, out current_days integer, out longest_days integer, out today_done boolean)
+language plpgsql stable security definer set search_path = '' as $$
+declare v_today date := private.lagos_today();
+begin
+  with d as (select day, day - (row_number() over (order by day))::integer as grp from private.practice_days(p_uid)),
+       runs as (select min(day) as first_day, max(day) as last_day, count(*)::integer as len from d group by grp)
+  select coalesce(max(len), 0),
+         coalesce(max(len) filter (where last_day >= v_today - 1), 0),
+         coalesce(bool_or(last_day = v_today), false)
+  into longest_days, current_days, today_done from runs;
+end;
+$$;
+
+/**
+ * The 8 badges of the approved design, worked out from the student's synced tests and study progress.
+ * Returns [{key, title, earned, progress}] in the design's order.
+ */
+create or replace function public.my_badges()
+returns jsonb language plpgsql stable security definer set search_path = '' as $$
+declare
+  v_uid uuid := (select auth.uid());
+  s record; v_correct integer; v_best integer; v_speed boolean; v_night boolean; v_full boolean; v_read integer;
+begin
+  if v_uid is null then raise exception 'sign in first' using errcode = '42501'; end if;
+  select * into s from private.streak(v_uid);
+  select coalesce(sum((a.server_score ->> 'correct')::integer), 0),
+         coalesce(max((a.server_score ->> 'total')::integer) filter (where a.mode = 'full'), 0),
+         coalesce(bool_or((a.server_score ->> 'answered')::integer >= 20 and a.time_used_s > 0
+                          and a.time_used_s::numeric / nullif((a.server_score ->> 'answered')::integer, 0) < 30
+                          and (a.server_score ->> 'correct')::numeric / nullif((a.server_score ->> 'answered')::integer, 0) >= 0.7), false),
+         coalesce(bool_or(extract(hour from a.submitted_at at time zone 'Africa/Lagos') >= 22
+                          or extract(hour from a.submitted_at at time zone 'Africa/Lagos') < 4), false),
+         coalesce(bool_or(a.mode = 'full' and (a.server_score ->> 'answered')::integer
+                          >= 0.9 * nullif((a.server_score ->> 'questions')::integer, 0)), false)
+  into v_correct, v_best, v_speed, v_night, v_full
+  from public.attempts a where a.user_id = v_uid and a.status::text = 'submitted' and a.server_score is not null;
+  select count(*) into v_read from public.study_progress p where p.user_id = v_uid and p.progress >= 0.9;
+  return jsonb_build_array(
+    jsonb_build_object('key', 'streak7', 'title', '7-day streak', 'earned', s.longest_days >= 7, 'progress', least(s.longest_days, 7) || ' of 7 days'),
+    jsonb_build_object('key', 'first250', 'title', 'First 250+', 'earned', v_best >= 250, 'progress', 'Best JAMB mock: ' || v_best),
+    jsonb_build_object('key', 'speedster', 'title', 'Speedster', 'earned', v_speed, 'progress', '20+ answers, under 30 s each, 70% right'),
+    jsonb_build_object('key', 'correct100', 'title', '100 correct', 'earned', v_correct >= 100, 'progress', least(v_correct, 100) || ' of 100'),
+    jsonb_build_object('key', 'score300', 'title', 'Score 300', 'earned', v_best >= 300, 'progress', 'Best JAMB mock: ' || v_best),
+    jsonb_build_object('key', 'nightowl', 'title', 'Night owl', 'earned', v_night, 'progress', 'Finish a test after 10 pm'),
+    jsonb_build_object('key', 'bookworm', 'title', 'Bookworm', 'earned', v_read >= 5, 'progress', least(v_read, 5) || ' of 5 lessons read'),
+    jsonb_build_object('key', 'fullmock', 'title', 'Full mock', 'earned', v_full, 'progress', 'Finish a full JAMB mock'));
+end;
+$$;
+revoke all on function public.my_badges() from public, anon;
+grant execute on function public.my_badges() to authenticated;
+
+/** One call for the Me screen: streak, AI prompts left, unread messages, bookmarks. */
+create or replace function public.my_dashboard()
+returns jsonb language plpgsql stable security definer set search_path = '' as $$
+declare v_uid uuid := (select auth.uid()); s record;
+begin
+  if v_uid is null then raise exception 'sign in first' using errcode = '42501'; end if;
+  select * into s from private.streak(v_uid);
+  return jsonb_build_object(
+    'streak', s.current_days, 'longest_streak', s.longest_days, 'practised_today', s.today_done,
+    'ai', public.ai_quota(),
+    'unread', (select count(*) from public.my_notifications(200) m where not m.read),
+    'bookmarks', (select count(*) from public.bookmarks b where b.user_id = v_uid),
+    'avatar', (select p.avatar_path from public.profiles p where p.id = v_uid));
+end;
+$$;
+revoke all on function public.my_dashboard() from public, anon;
+grant execute on function public.my_dashboard() to authenticated;
+
+-- ------------------------------------------------------------------ automatic messages
+create or replace function private.notify_news() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  if new.notify and new.status = 'published' then
+    insert into public.notifications (topic, title, body, link, audience, scheduled_at, source, source_ref, created_by)
+    values ('announcements', left(new.title, 80), left(coalesce(nullif(new.summary, ''), 'Tap to read.'), 240),
+            jsonb_build_object('type', 'news', 'target', new.id), 'all', greatest(new.publish_at, now()), 'news', new.id::text, new.created_by)
+    on conflict (source, source_ref) where source_ref is not null do nothing;
+  end if;
+  return null;
+end;
+$$;
+create trigger news_notify after insert or update of status, notify, publish_at on public.news_posts
+  for each row execute function private.notify_news();
+
+/** A newly published exam year becomes one "now available" message per exam, sent 10 minutes later so a batch is one message. */
+create or replace function private.notify_year() returns trigger
+language plpgsql security definer set search_path = '' as $$
+declare v_exam text; v_subject text; v_item text; v_n public.notifications;
+begin
+  if new.status::text <> 'published' or (tg_op = 'UPDATE' and old.status::text = 'published') then return null; end if;
+  select e.code into v_exam from public.exam_bodies e where e.id = new.exam_id;
+  select s.name into v_subject from public.subjects s where s.id = new.subject_id;
+  v_item := v_exam || ' ' || new.year || ' ' || coalesce(v_subject, '');
+  select * into v_n from public.notifications n
+  where n.source = 'year' and n.status = 'scheduled' and n.source_ref like v_exam || ':%' and n.scheduled_at > now()
+  order by n.created_at desc limit 1 for update;
+  if v_n.id is null then
+    insert into public.notifications (topic, title, body, link, audience, scheduled_at, source, source_ref)
+    values ('new_questions', left('New: ' || v_item, 80), left(v_item || ' is now available. Practise it now.', 240),
+            jsonb_build_object('type', 'screen', 'target', '/test'), 'all', now() + interval '10 minutes',
+            'year', v_exam || ':' || new.id);
+  elsif position(v_item in v_n.body) = 0 then
+    update public.notifications set
+      title = left('New ' || v_exam || ' past questions', 80),
+      body = left(rtrim(replace(v_n.body, ' is now available. Practise it now.', ''), '.') || ', ' || v_item || ' are now available.', 240)
+    where id = v_n.id;
+  end if;
+  return null;
+end;
+$$;
+create trigger exam_years_notify after insert or update of status on public.exam_years
+  for each row execute function private.notify_year();
+
+create or replace function private.notify_premium() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  if new.revoked_at is null then
+    insert into public.notifications (topic, title, body, link, audience, user_id, source, source_ref)
+    values ('account', 'You are now Premium', 'Every year, every exam and more AI help are open until '
+            || to_char(new.expires_at at time zone 'Africa/Lagos', 'FMDD Mon YYYY') || '.',
+            jsonb_build_object('type', 'screen', 'target', '/me'), 'user', new.user_id, 'premium', new.id::text)
+    on conflict (source, source_ref) where source_ref is not null do nothing;
+  end if;
+  return null;
+end;
+$$;
+create trigger entitlements_notify after insert on public.entitlements for each row execute function private.notify_premium();
+
+/** Once a day after the admin's hour (default 19:00 Lagos): a reminder for students with a 2+ day streak who have not practised today. */
+create or replace function private.queue_streak_reminders() returns integer
+language plpgsql volatile security definer set search_path = '' as $$
+declare v_cfg jsonb; v_hour integer; v_today date := private.lagos_today(); v_n integer := 0; r record;
+begin
+  select value into v_cfg from public.app_settings where key = 'push';
+  if coalesce((v_cfg ->> 'streak_enabled')::boolean, true) is false then return 0; end if;
+  v_hour := coalesce((v_cfg ->> 'streak_hour')::integer, 19);
+  if extract(hour from now() at time zone 'Africa/Lagos') < v_hour then return 0; end if;
+  for r in
+    select distinct t.user_id from public.push_tokens t
+    where not exists (select 1 from public.notification_prefs p where p.user_id = t.user_id and p.topic = 'streak' and not p.enabled)
+      and not private.is_banned(t.user_id)
+  loop
+    declare s record;
+    begin
+      select * into s from private.streak(r.user_id);
+      if s.current_days >= 2 and not s.today_done then
+        insert into public.notifications (topic, title, body, link, audience, user_id, source, source_ref)
+        values ('streak', 'Keep your ' || s.current_days || '-day streak', 'A quick 20-question test keeps it going. You can do it!',
+                jsonb_build_object('type', 'screen', 'target', '/test/setup?exam=JAMB&mode=quick'), 'user', r.user_id,
+                'streak', r.user_id || ':' || v_today)
+        on conflict (source, source_ref) where source_ref is not null do nothing;
+        if found then v_n := v_n + 1; end if;
+      end if;
+    end;
+  end loop;
+  return v_n;
+end;
+$$;
+
+insert into public.app_settings (key, value, description, is_public, updated_by) values
+  ('push', '{"streak_enabled": true, "streak_hour": 19}', 'Push notifications: daily streak reminder on/off and the hour (Lagos time).', false, null)
+on conflict (key) do nothing;
+
+-- ------------------------------------------------------------------ server functions (push Edge Function only)
+/**
+ * Takes the messages that are due (and queues today's streak reminders first). Each is marked 'sending' so a second
+ * run never sends it again. Returns [{id, topic, title, body, link, audience, tokens:[…]}]: tokens only for user/staff
+ * messages (topic messages go to FCM topics); students who switched the topic off are left out.
+ */
+create or replace function public.push_take_due(p_limit integer default 50)
+returns jsonb language plpgsql volatile security definer set search_path = '' as $$
+declare v_out jsonb;
+begin
+  perform private.queue_streak_reminders();
+  with due as (
+    select n.id from public.notifications n
+    where n.status = 'scheduled' and n.scheduled_at <= now()
+    order by n.scheduled_at
+    limit least(greatest(p_limit, 1), 200)
+    for update skip locked),
+  taken as (
+    update public.notifications n set status = 'sending' from due where n.id = due.id
+    returning n.*)
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'id', t.id, 'topic', t.topic, 'title', t.title, 'body', t.body, 'link', t.link, 'audience', t.audience,
+    'tokens', case when t.audience in ('user', 'staff') then coalesce((
+      select jsonb_agg(pt.token) from public.push_tokens pt
+      where ((t.audience = 'user' and pt.user_id = t.user_id)
+             or (t.audience = 'staff' and exists (select 1 from public.staff s where s.user_id = pt.user_id)))
+        and not exists (select 1 from public.notification_prefs p where p.user_id = pt.user_id and p.topic = t.topic and not p.enabled)
+    ), '[]'::jsonb) end)), '[]'::jsonb)
+  into v_out from taken t;
+  return v_out;
+end;
+$$;
+
+/** Records the result of one message. p_bad_tokens are removed (FCM said they no longer exist). */
+create or replace function public.push_done(p_id uuid, p_sent integer, p_error text, p_bad_tokens text[] default '{}')
+returns void language sql volatile security definer set search_path = '' as $$
+  update public.notifications set status = case when p_error is null or p_sent > 0 then 'sent' else 'failed' end,
+    sent_at = now(), sent_count = p_sent, error = left(p_error, 300) where id = p_id;
+  delete from public.push_tokens where token = any (coalesce(p_bad_tokens, '{}'));
+$$;
+
+revoke all on function public.push_take_due(integer), public.push_done(uuid, integer, text, text[]) from public, anon, authenticated;
+grant execute on function public.push_take_due(integer), public.push_done(uuid, integer, text, text[]) to service_role;
+revoke all on function private.queue_streak_reminders(), private.streak(uuid), private.practice_days(uuid) from public, anon, authenticated;
+
+/** Is this the cron token? (The push function checks it before running for pg_cron.) */
+create or replace function public.push_cron_ok(p_token text) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from vault.decrypted_secrets s where s.name = 'push_cron_token' and s.decrypted_secret = p_token);
+$$;
+revoke all on function public.push_cron_ok(text) from public, anon, authenticated;
+grant execute on function public.push_cron_ok(text) to service_role;
+
+/** Can the caller send notifications from the admin? (editors and up, with 2-step) */
+create or replace function public.am_notifier() returns boolean
+language sql stable security definer set search_path = '' as $$
+  select private.can_edit(array['super_admin', 'admin', 'editor']::public.staff_role[]);
+$$;
+revoke all on function public.am_notifier() from public, anon;
+grant execute on function public.am_notifier() to authenticated;
+
+/** Admin list: newest first, with read counts. */
+create or replace function public.admin_notifications(p_limit integer default 100)
+returns jsonb language plpgsql stable security definer set search_path = '' as $$
+begin
+  if not private.is_staff(array['super_admin', 'admin', 'editor']::public.staff_role[]) then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  return coalesce((select jsonb_agg(r order by r.created_at desc) from (
+    select n.id, n.topic, n.title, n.body, n.link, n.audience, n.status, n.scheduled_at, n.sent_at, n.sent_count, n.error, n.source,
+           n.created_at, (select count(*) from public.notification_reads x where x.notification_id = n.id) as reads,
+           (select u.email from auth.users u where u.id = n.created_by) as created_by
+    from public.notifications n where n.audience <> 'user' or n.source = 'admin'
+    order by n.created_at desc limit least(greatest(p_limit, 1), 300)) r), '[]'::jsonb);
+end;
+$$;
+revoke all on function public.admin_notifications(integer) from public, anon;
+grant execute on function public.admin_notifications(integer) to authenticated;
+
+-- ------------------------------------------------------------------ schedule (every 5 minutes)
+do $$
+declare v_token text := encode(extensions.gen_random_bytes(24), 'hex');
+begin
+  if not exists (select 1 from vault.secrets where name = 'push_cron_token') then
+    perform vault.create_secret(v_token, 'push_cron_token', 'pg_cron → push Edge Function');
+  end if;
+  if not exists (select 1 from vault.secrets where name = 'project_url') then
+    perform vault.create_secret('https://mxeemubacnmcmmmzteax.supabase.co', 'project_url', 'This project''s API URL (for pg_cron calls)');
+  end if;
+end $$;
+
+select cron.schedule('push-due', '*/5 * * * *', $cron$
+  select net.http_post(
+    url := (select decrypted_secret from vault.decrypted_secrets where name = 'project_url') || '/functions/v1/push',
+    headers := jsonb_build_object('content-type', 'application/json',
+                                  'x-cron-token', (select decrypted_secret from vault.decrypted_secrets where name = 'push_cron_token')),
+    body := '{"run":"due"}'::jsonb,
+    timeout_milliseconds := 55000);
+$cron$);
