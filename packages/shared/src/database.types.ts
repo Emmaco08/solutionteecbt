@@ -1,4 +1,4 @@
-// Generated from the Supabase dev project (solutiontee-dev) on 2026-11-02. Do not edit by hand.
+// Generated from the Supabase dev project (solutiontee-dev) on 2026-11-03. Do not edit by hand.
 // Regenerate after schema changes (Supabase MCP generate_typescript_types or `supabase gen types`).
 // One hand fix to keep after regenerating: email_send_allowed p_ip_hash is `string | null` (the generator cannot express a nullable argument).
 export type Json =
@@ -978,6 +978,165 @@ export type Database = {
           },
         ]
       }
+      pay_attempts: {
+        Row: {
+          action: string
+          created_at: string
+          id: number
+          ok: boolean
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: never
+          ok: boolean
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: never
+          ok?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
+      payment_events: {
+        Row: {
+          created_at: string
+          data: Json
+          event_key: string | null
+          id: number
+          kind: string
+          note: string | null
+          ok: boolean
+          payment_id: string | null
+          provider: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json
+          event_key?: string | null
+          id?: never
+          kind: string
+          note?: string | null
+          ok: boolean
+          payment_id?: string | null
+          provider: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          event_key?: string | null
+          id?: never
+          kind?: string
+          note?: string | null
+          ok?: boolean
+          payment_id?: string | null
+          provider?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_events_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          amount_kobo: number
+          channel: string | null
+          code_id: string | null
+          created_at: string
+          currency: string
+          discount_kobo: number
+          entitlement_id: string | null
+          id: string
+          list_kobo: number
+          plan_id: number
+          provider: string
+          provider_data: Json
+          purchase_token: string | null
+          reference: string
+          refunded_at: string | null
+          source: string
+          status: Database["public"]["Enums"]["payment_status"]
+          updated_at: string
+          user_id: string | null
+          verified_at: string | null
+        }
+        Insert: {
+          amount_kobo: number
+          channel?: string | null
+          code_id?: string | null
+          created_at?: string
+          currency?: string
+          discount_kobo?: number
+          entitlement_id?: string | null
+          id?: string
+          list_kobo: number
+          plan_id: number
+          provider: string
+          provider_data?: Json
+          purchase_token?: string | null
+          reference: string
+          refunded_at?: string | null
+          source?: string
+          status?: Database["public"]["Enums"]["payment_status"]
+          updated_at?: string
+          user_id?: string | null
+          verified_at?: string | null
+        }
+        Update: {
+          amount_kobo?: number
+          channel?: string | null
+          code_id?: string | null
+          created_at?: string
+          currency?: string
+          discount_kobo?: number
+          entitlement_id?: string | null
+          id?: string
+          list_kobo?: number
+          plan_id?: number
+          provider?: string
+          provider_data?: Json
+          purchase_token?: string | null
+          reference?: string
+          refunded_at?: string | null
+          source?: string
+          status?: Database["public"]["Enums"]["payment_status"]
+          updated_at?: string
+          user_id?: string | null
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_code_id_fkey"
+            columns: ["code_id"]
+            isOneToOne: false
+            referencedRelation: "promo_codes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_entitlement_id_fkey"
+            columns: ["entitlement_id"]
+            isOneToOne: false
+            referencedRelation: "entitlements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       plans: {
         Row: {
           code: string
@@ -1064,6 +1223,118 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      promo_codes: {
+        Row: {
+          batch_id: string | null
+          code: string
+          created_at: string
+          created_by: string | null
+          ends_at: string | null
+          id: string
+          kind: Database["public"]["Enums"]["promo_kind"]
+          max_uses: number | null
+          new_only: boolean
+          note: string | null
+          paused: boolean
+          plan_ids: number[]
+          starts_at: string
+          updated_at: string
+          used_count: number
+          value: number
+        }
+        Insert: {
+          batch_id?: string | null
+          code: string
+          created_at?: string
+          created_by?: string | null
+          ends_at?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["promo_kind"]
+          max_uses?: number | null
+          new_only?: boolean
+          note?: string | null
+          paused?: boolean
+          plan_ids?: number[]
+          starts_at?: string
+          updated_at?: string
+          used_count?: number
+          value: number
+        }
+        Update: {
+          batch_id?: string | null
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          ends_at?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["promo_kind"]
+          max_uses?: number | null
+          new_only?: boolean
+          note?: string | null
+          paused?: boolean
+          plan_ids?: number[]
+          starts_at?: string
+          updated_at?: string
+          used_count?: number
+          value?: number
+        }
+        Relationships: []
+      }
+      promo_redemptions: {
+        Row: {
+          code_id: string
+          created_at: string
+          days: number | null
+          discount_kobo: number | null
+          entitlement_id: string | null
+          id: string
+          payment_id: string | null
+          user_id: string
+        }
+        Insert: {
+          code_id: string
+          created_at?: string
+          days?: number | null
+          discount_kobo?: number | null
+          entitlement_id?: string | null
+          id?: string
+          payment_id?: string | null
+          user_id: string
+        }
+        Update: {
+          code_id?: string
+          created_at?: string
+          days?: number | null
+          discount_kobo?: number | null
+          entitlement_id?: string | null
+          id?: string
+          payment_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promo_redemptions_code_id_fkey"
+            columns: ["code_id"]
+            isOneToOne: false
+            referencedRelation: "promo_codes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promo_redemptions_entitlement_id_fkey"
+            columns: ["entitlement_id"]
+            isOneToOne: false
+            referencedRelation: "entitlements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promo_redemptions_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       questions: {
         Row: {
@@ -1390,6 +1661,28 @@ export type Database = {
     }
     Functions: {
       admin_ai_health: { Args: never; Returns: Json }
+      admin_batch_codes: {
+        Args: { p_batch: string }
+        Returns: {
+          code: string
+          used: number
+        }[]
+      }
+      admin_codes: { Args: never; Returns: Json }
+      admin_create_code_batch: {
+        Args: {
+          p_count: number
+          p_ends: string
+          p_kind: Database["public"]["Enums"]["promo_kind"]
+          p_new_only?: boolean
+          p_note: string
+          p_plan_ids: number[]
+          p_prefix: string
+          p_starts: string
+          p_value: number
+        }
+        Returns: Json
+      }
       admin_dashboard: { Args: never; Returns: Json }
       admin_list_staff: {
         Args: never
@@ -1419,6 +1712,21 @@ export type Database = {
           state: string
           total: number
         }[]
+      }
+      admin_pause_codes: {
+        Args: { p_id: string; p_paused: boolean }
+        Returns: number
+      }
+      admin_payment: { Args: { p_id: string }; Returns: Json }
+      admin_payments: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_provider?: string
+          p_q?: string
+          p_status?: string
+        }
+        Returns: Json
       }
       admin_set_ai_key: {
         Args: { p_key: string; p_provider: string }
@@ -1462,6 +1770,7 @@ export type Database = {
       ai_quota: { Args: never; Returns: Json }
       ai_refund: { Args: { p_uid: string }; Returns: undefined }
       ai_take: { Args: { p_uid: string }; Returns: number }
+      am_money_admin: { Args: never; Returns: boolean }
       auth_user_status: { Args: { p_email: string }; Returns: string }
       can_upload_images: { Args: never; Returns: boolean }
       can_view_note_image: { Args: { p_key: string }; Returns: boolean }
@@ -1511,6 +1820,62 @@ export type Database = {
         }[]
       }
       my_plan: { Args: never; Returns: Json }
+      pay_note: {
+        Args: {
+          p_data?: Json
+          p_kind: string
+          p_note: string
+          p_ok: boolean
+          p_provider: string
+          p_reference: string
+        }
+        Returns: undefined
+      }
+      pay_paystack_result: {
+        Args: {
+          p_amount_kobo: number
+          p_channel: string
+          p_currency: string
+          p_data: Json
+          p_event_key?: string
+          p_kind: string
+          p_reference: string
+          p_status: string
+        }
+        Returns: Json
+      }
+      pay_play_confirm: {
+        Args: {
+          p_data: Json
+          p_order_id: string
+          p_product: string
+          p_token: string
+          p_uid: string
+        }
+        Returns: Json
+      }
+      pay_refunded: {
+        Args: {
+          p_data: Json
+          p_event_key: string
+          p_provider: string
+          p_reference: string
+          p_refund_kobo: number
+          p_token: string
+        }
+        Returns: Json
+      }
+      pay_start: {
+        Args: {
+          p_code: string
+          p_plan: string
+          p_source?: string
+          p_uid: string
+        }
+        Returns: Json
+      }
+      quote_price: { Args: { p_code?: string; p_plan: string }; Returns: Json }
+      redeem_code: { Args: { p_code: string }; Returns: Json }
       set_questions_status: {
         Args: {
           p_ids: string[]
@@ -1557,6 +1922,14 @@ export type Database = {
         | "code"
         | "referral"
         | "prize"
+      payment_status:
+        | "pending"
+        | "success"
+        | "failed"
+        | "abandoned"
+        | "needs_review"
+        | "refunded"
+      promo_kind: "pct" | "amt" | "days"
       staff_role: "super_admin" | "admin" | "editor" | "teacher"
       year_status: "draft" | "published"
     }
@@ -1697,6 +2070,15 @@ export const Constants = {
         "referral",
         "prize",
       ],
+      payment_status: [
+        "pending",
+        "success",
+        "failed",
+        "abandoned",
+        "needs_review",
+        "refunded",
+      ],
+      promo_kind: ["pct", "amt", "days"],
       staff_role: ["super_admin", "admin", "editor", "teacher"],
       year_status: ["draft", "published"],
     },

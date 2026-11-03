@@ -22,7 +22,8 @@ export function PlanCard({ plan: p, badge, priceLabel }: { plan: Plan; badge: Re
           <div className="space-y-1.5"><Label htmlFor={`days${p.id}`}>Days</Label><input id={`days${p.id}`} name="duration_days" type="number" min={1} defaultValue={p.duration_days ?? ""} placeholder="or end date" className={inputCls} /></div>
         </div>
         <div className="space-y-1.5"><Label htmlFor={`e${p.id}`}>Ends on (instead of days)</Label><input id={`e${p.id}`} name="ends_on" type="date" defaultValue={p.ends_on ?? ""} className={inputCls} /></div>
-        <div className="space-y-1.5"><Label htmlFor={`g${p.id}`}>Google Play product ID</Label><input id={`g${p.id}`} name="play_product_id" defaultValue={p.play_product_id ?? ""} placeholder={`premium_${p.code}`} className={`${inputCls} font-mono`} /></div>
+        <div className="space-y-1.5"><Label htmlFor={`g${p.id}`}>Google Play product ID</Label><input id={`g${p.id}`} name="play_product_id" defaultValue={p.play_product_id ?? ""} placeholder={`premium_${p.code}`} className={`${inputCls} font-mono`} />
+          <p className="text-xs text-muted-foreground">Create a one-time (consumable) product with this ID in Play Console. When you change the price here, change it there too: Google charges its own price.</p></div>
         <label className="flex items-center justify-between text-sm"><span>On sale</span><Switch name="is_active" defaultChecked={p.is_active} /></label>
       </RowForm>
     </section>
