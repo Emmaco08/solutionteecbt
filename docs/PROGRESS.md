@@ -105,6 +105,7 @@ Plan: `docs/plans/phase-4.md`.
   - [x] App: Notifications screen, bell with unread count, Settings switches, push service (off without Firebase), permission after the first test, Me badges, Bookmarks/Downloads/AI rows, profile photo. `flutter analyze` clean, tests 41/41
   - [!] Owner: Firebase project, `google-services.json`, `FIREBASE_SERVICE_ACCOUNT` (SETUP §15)
   - [ ] Phone test of a real push (after Firebase)
+- [x] Real app icon from `brand/favicon.svg`; /download updated automatically by GitHub after every app change (D-065)
 - [ ] 4E Challenges, referrals, leaderboard, question of the day, winners wall
 
 ## Phase 5 — Website, classes, community  (approval: `WEBSITE APPROVED`)

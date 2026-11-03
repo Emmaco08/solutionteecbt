@@ -33,6 +33,17 @@ export async function readJson<T>(key: string): Promise<T | null> {
   return r.ok ? ((await r.json()) as T) : null;
 }
 
+/** Size in bytes of a file in the bucket, or null when it is missing. */
+export async function objectSize(key: string): Promise<number | null> {
+  const r = await client().fetch(objectUrl(key), { method: "HEAD", cache: "no-store" });
+  return r.ok ? Number(r.headers.get("content-length")) : null;
+}
+/** Writes a small JSON file to the bucket (server only). */
+export async function writeJson(key: string, value: unknown): Promise<void> {
+  const r = await client().fetch(objectUrl(key), { method: "PUT", body: JSON.stringify(value), headers: { "content-type": "application/json" } });
+  if (!r.ok) throw new Error(`R2 write ${key}: HTTP ${r.status}`);
+}
+
 export const ALLOWED_TYPES: Record<string, string> = {
   "image/webp": "webp", "image/png": "png", "image/jpeg": "jpg", "image/svg+xml": "svg",
 };

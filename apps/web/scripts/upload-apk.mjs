@@ -1,4 +1,5 @@
-// Puts the Android test app on https://admin.solutiontee.com/download (D-059, D-060).
+// OLD manual way (D-059, D-060). Since D-065 the GitHub workflow android-apk.yml updates /download by itself;
+// use this only from the laptop in an emergency (its APK is signed with the laptop key, so phones must reinstall).
 // Uploads the APK to the private R2 bucket under apk/ and points apk/latest.json (or apk/test.json) at it.
 // Usage (from apps/web): node scripts/upload-apk.mjs [path-to-apk] [--channel main|test] [--branch name]
 // Keys come from .env.local on the laptop, or from environment variables on GitHub Actions. Never printed.

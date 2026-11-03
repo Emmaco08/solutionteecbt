@@ -39,7 +39,7 @@ Last updated: 2026-11-03, after milestone 4C (payments) on branch `claude/clever
 What works the same: reading and writing code, plans, docs, migrations, Edge Function code, web code, Dart code, git commits and pushes, and Supabase/Vercel changes **if** those connectors are enabled for the session.
 
 What does not work from the cloud, and what to do instead:
-- **No USB phone:** a cloud session cannot install on the owner's phone. Instead, pushing a branch with app changes triggers the GitHub workflow `android-apk.yml` (D-060), which builds the APK and puts it on https://admin.solutiontee.com/download?channel=test for the owner to install. Tell the owner when it is ready; check the run's result (analyzer and tests run there too).
+- **No USB phone:** a cloud session cannot install on the owner's phone. Instead, pushing app changes (`apps/mobile/`) to `main` or a `claude/*` branch runs the GitHub workflow `android-apk.yml` (D-065), which runs the analyzer and tests, builds the APK and puts it on https://admin.solutiontee.com/download. **Standing rule (owner, 2026-11-03): /download must always have the newest app.** After pushing app changes, check that the run passed and tell the owner when the new version is up. Never upload a laptop- or cloud-signed APK there by hand: only the workflow has the website APK's signing key.
 - **No `.env.local`:** the R2 upload script and `vercel` CLI need secrets that are only on the laptop. Do not ask for them in chat. Deploys can happen by the owner later, or by Vercel's Git integration if the owner connects the repo in the Vercel dashboard.
 - Say plainly what was not run or tested (CLAUDE.md "Never fake it").
 - Work on a branch, push it, and tell the owner the branch name so the laptop can pull it later.
@@ -49,7 +49,9 @@ What does not work from the cloud, and what to do instead:
 - Web checks (from `apps/web`): `npx tsc --noEmit -p .` and `npx eslint .`
 - App checks (from `apps/mobile`): `flutter analyze`, `dart format .`, `flutter test`
 - Icons: `python design/scripts/phosphor-to-dart.py`
-- Release APK (website build): `flutter build apk --release --flavor direct --target-platform android-arm64`, then from `apps/web` `node scripts/upload-apk.mjs`. Play Store: `flutter build appbundle --release --flavor play`.
+- Release APK (website build): only from GitHub (Actions → Android app, D-065). Local check build: `flutter build apk --release --flavor direct --target-platform android-arm64` (signed with a different key, so do not put it on /download).
+- Play Store: `flutter build appbundle --release --flavor play`.
+- App icon: `node design/scripts/make-app-icon.mjs` (from `brand/favicon.svg`).
 - Edge Functions with shared code: deploy with files `<name>/index.ts`, `_shared/pay.ts`, `_shared/paycrypto.ts` and entrypoint `<name>/index.ts`. `paystack-webhook` and `play-rtdn` use verify_jwt = false (they check a signature / URL token).
 - DB tests from a cloud session: paste a test file into Supabase `execute_sql`, replacing the final `select … rollback` with a `raise exception` that prints the results (the error rolls everything back).
 - DB tests: run `supabase/tests/*.test.sql` against the project (each runs inside `begin … rollback`).

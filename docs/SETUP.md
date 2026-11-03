@@ -405,24 +405,26 @@ node scripts/upload-apk.mjs
 
 The page picks up the new file at once (no website deploy needed). Testers install over the old version and keep their account.
 
-## 13. Automatic app builds on GitHub (2026-11-03)
+## 13. Automatic app builds on GitHub (2026-11-03, changed by D-065)
 
-Add these at **github.com/Emmaco08/solutionteecbt → Settings → Secrets and variables → Actions → New repository secret**. Type them yourself; never paste them in chat.
+**Nothing to add on GitHub.** Every push to `main` or a `claude/*` branch that changes `apps/mobile/` runs **Actions → Android app** (`.github/workflows/android-apk.yml`). It checks the code, runs the tests, builds the website APK and puts it on https://admin.solutiontee.com/download. About 10–15 minutes after the push, the page shows the new version. To build by hand: GitHub → **Actions → Android app → Run workflow**.
 
-| Secret name | Where to get the value on the laptop |
+How it gets what it needs without GitHub secrets: the run asks GitHub for a signed run token and shows it to `admin.solutiontee.com/api/ci/apk`. The website checks GitHub's signature, our repository, the workflow file and the branch, and only then gives the signing key and a 10-minute upload link.
+
+These are stored as hidden Vercel secrets (Vercel → solutiontee-cbt → Settings → Environment Variables, Production). Claude made them in the cloud; nobody has seen the values:
+
+| Name | What it is |
 |---|---|
-| `ANDROID_KEYSTORE_BASE64` | PowerShell: `[Convert]::ToBase64String([IO.File]::ReadAllBytes("C:\solutiontee-cbt\apps\mobile\android\app\upload-keystore.jks")) \| Set-Clipboard`, then paste |
-| `ANDROID_KEYSTORE_PASSWORD` | `apps/mobile/android/key.properties`, the `storePassword=` value |
-| `ANDROID_KEY_PASSWORD` | same file, the `keyPassword=` value |
-| `ANDROID_KEY_ALIAS` | `upload` |
-| `R2_ENDPOINT` | `apps/web/.env.local`, the `R2_ENDPOINT=` value |
-| `R2_BUCKET` | `apps/web/.env.local`, `R2_BUCKET=` |
-| `R2_ACCESS_KEY_ID` | `apps/web/.env.local`, `R2_ACCESS_KEY_ID=` |
-| `R2_SECRET_ACCESS_KEY` | `apps/web/.env.local`, `R2_SECRET_ACCESS_KEY=` |
+| `ANDROID_DIRECT_KEYSTORE_B64` | The website APK's permanent signing key (made 2026-11-03, alias `solutiontee`, valid ~27 years) |
+| `ANDROID_DIRECT_KEYSTORE_PASSWORD` | Its password |
+| `ANDROID_DIRECT_KEY_ALIAS` | `solutiontee` |
+| `GOOGLE_SERVICES_JSON_B64` | The Firebase app file (`google-services.json`), so the APK has push |
 
-Then on GitHub: **Actions → Android app → Run workflow**. About 10–15 minutes later the new app is at https://admin.solutiontee.com/download (main) or https://admin.solutiontee.com/download?channel=test (other branches).
+**Do not delete these.** If the signing key is lost, phones must uninstall once to get the next APK. If you change Firebase, replace `GOOGLE_SERVICES_JSON_B64` (base64 of the new file).
 
-**Back up the signing key:** copy `upload-keystore.jks` and `key.properties` to a private place (e.g. your own Google Drive). If it is lost, phones cannot update the app without uninstalling.
+The laptop's `upload-keystore.jks` (D-060) stays the **Play Store** upload key. APKs built on the laptop with it do not install over the website APK (different key): for the website APK use the GitHub build only.
+
+GitHub gives a private repository 2,000 free build minutes a month; one build takes about 10–15. Builds only run when app files change, and a newer push cancels a build still running.
 
 ## 14. Payments (milestone 4C, 2026-11-03)
 
