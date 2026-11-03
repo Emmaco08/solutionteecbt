@@ -632,6 +632,53 @@ export type Database = {
           },
         ]
       }
+      challenge_appeals: {
+        Row: {
+          admin_note: string | null
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          entry_id: string
+          id: string
+          image_path: string | null
+          reason: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          admin_note?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          entry_id: string
+          id?: string
+          image_path?: string | null
+          reason: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          admin_note?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          entry_id?: string
+          id?: string
+          image_path?: string | null
+          reason?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_appeals_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: true
+            referencedRelation: "challenge_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       challenge_entries: {
         Row: {
           challenge_id: string
@@ -715,33 +762,39 @@ export type Database = {
           body: string
           challenge_id: string
           created_at: string
+          difficulty: string
           explanation: string | null
           id: string
           options: Json
           position: number
           source_question_id: string | null
+          subject_id: number | null
         }
         Insert: {
           answer: string
           body: string
           challenge_id: string
           created_at?: string
+          difficulty?: string
           explanation?: string | null
           id?: string
           options: Json
           position?: number
           source_question_id?: string | null
+          subject_id?: number | null
         }
         Update: {
           answer?: string
           body?: string
           challenge_id?: string
           created_at?: string
+          difficulty?: string
           explanation?: string | null
           id?: string
           options?: Json
           position?: number
           source_question_id?: string | null
+          subject_id?: number | null
         }
         Relationships: [
           {
@@ -758,6 +811,13 @@ export type Database = {
             referencedRelation: "questions"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "challenge_questions_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
         ]
       }
       challenges: {
@@ -767,18 +827,23 @@ export type Database = {
           closed_at: string | null
           created_at: string
           created_by: string | null
+          end_notified_at: string | null
           ends_at: string
           exam_code: string | null
           icon: string
           id: string
           kind: string
+          mode: string
+          per_level: Json
           premium_days: number
           premium_top: number
           prizes: number[]
           published: boolean
           reward_text: string | null
           seconds_per_question: number
+          soon_notified_at: string | null
           starts_at: string
+          subject_id: number | null
           subtitle: string | null
           title: string
           updated_at: string
@@ -789,18 +854,23 @@ export type Database = {
           closed_at?: string | null
           created_at?: string
           created_by?: string | null
+          end_notified_at?: string | null
           ends_at: string
           exam_code?: string | null
           icon?: string
           id?: string
           kind?: string
+          mode?: string
+          per_level?: Json
           premium_days?: number
           premium_top?: number
           prizes?: number[]
           published?: boolean
           reward_text?: string | null
           seconds_per_question?: number
+          soon_notified_at?: string | null
           starts_at: string
+          subject_id?: number | null
           subtitle?: string | null
           title: string
           updated_at?: string
@@ -811,23 +881,36 @@ export type Database = {
           closed_at?: string | null
           created_at?: string
           created_by?: string | null
+          end_notified_at?: string | null
           ends_at?: string
           exam_code?: string | null
           icon?: string
           id?: string
           kind?: string
+          mode?: string
+          per_level?: Json
           premium_days?: number
           premium_top?: number
           prizes?: number[]
           published?: boolean
           reward_text?: string | null
           seconds_per_question?: number
+          soon_notified_at?: string | null
           starts_at?: string
+          subject_id?: number | null
           subtitle?: string | null
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "challenges_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       entitlements: {
         Row: {
@@ -2290,6 +2373,11 @@ export type Database = {
           used: number
         }[]
       }
+      admin_challenge_appeal: {
+        Args: { p_accept: boolean; p_appeal: string; p_note?: string }
+        Returns: Json
+      }
+      admin_challenge_appeals: { Args: never; Returns: Json }
       admin_challenge_close: { Args: { p_id: string }; Returns: Json }
       admin_challenge_entries: { Args: { p_id: string }; Returns: Json }
       admin_challenge_review: {
@@ -2432,6 +2520,10 @@ export type Database = {
       can_view_study_file: { Args: { p_key: string }; Returns: boolean }
       challenge_answer: {
         Args: { p_choice: string; p_entry: string; p_question: string }
+        Returns: Json
+      }
+      challenge_appeal: {
+        Args: { p_id: string; p_image?: string; p_reason: string }
         Returns: Json
       }
       challenge_detail: { Args: { p_id: string }; Returns: Json }

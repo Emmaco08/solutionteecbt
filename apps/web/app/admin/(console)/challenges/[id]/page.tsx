@@ -5,7 +5,8 @@ import { notFound } from "next/navigation";
 import { requireStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { ErrorState, PageHeader, PageSkeleton, Panel } from "@/components/admin/ui";
-import { ChallengeForm, CloseButton, EntriesList, QuestionsPanel, type ChallengeRow, type EntryRow, type QRow } from "../challenge-ui";
+import { ChallengeForm, CloseButton, EntriesList, QuestionsPanel, type ChallengeRow, type EntryRow, type QRow, type Subject } from "../challenge-ui";
+import { jambSubjects } from "../subjects";
 
 export const metadata: Metadata = { title: "Challenge" };
 
@@ -19,11 +20,13 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
 async function Edit({ params }: { params: Promise<{ id: string }> }) {
   const staff = await requireStaff(["super_admin", "admin", "editor"]);
   const { id } = await params;
+  const supabaseS = await createClient();
+  const subjects = await jambSubjects(supabaseS);
   if (id === "new") {
     return (
       <>
         <PageHeader title="New challenge" description="Save it first, then add the questions. Students only see it after you tick “Show to students”." />
-        <Panel title="Challenge"><ChallengeForm /></Panel>
+        <Panel title="Challenge"><ChallengeForm subjects={subjects} /></Panel>
       </>
     );
   }
@@ -31,7 +34,7 @@ async function Edit({ params }: { params: Promise<{ id: string }> }) {
   const supabase = await createClient();
   const [c, qs, entries] = await Promise.all([
     supabase.from("challenges").select("*").eq("id", id).maybeSingle(),
-    supabase.from("challenge_questions").select("id, position, body, options, answer").eq("challenge_id", id).order("position"),
+    supabase.from("challenge_questions").select("id, position, body, options, answer, subject_id, difficulty").eq("challenge_id", id).order("position"),
     supabase.rpc("admin_challenge_entries", { p_id: id }),
   ]);
   if (c.error) return <ErrorState message={c.error.message} />;
@@ -45,8 +48,8 @@ async function Edit({ params }: { params: Promise<{ id: string }> }) {
       <PageHeader title={ch.title} description={ch.closed_at ? "Ended. Winners are saved; pay them in Money → Winners & payouts." : live ? "Live now." : "Not live yet."}
         actions={<div className="flex gap-2"><Link href="/admin/challenges" className="text-sm text-muted-foreground hover:underline">All challenges</Link>{!ch.closed_at && ch.published ? <CloseButton id={ch.id} /> : null}</div>} />
       <div className="grid gap-4 xl:grid-cols-2">
-        <Panel title="Challenge">{ch.closed_at ? <p className="text-sm text-muted-foreground">It has ended, so it cannot be changed.</p> : <ChallengeForm c={ch} />}</Panel>
-        <Panel title={`Questions (${qs.data?.length ?? 0})`}><QuestionsPanel challengeId={ch.id} rows={(qs.data ?? []) as unknown as QRow[]} locked={rows.length > 0} /></Panel>
+        <Panel title="Challenge">{ch.closed_at ? <p className="text-sm text-muted-foreground">It has ended, so it cannot be changed.</p> : <ChallengeForm c={ch} subjects={subjects} />}</Panel>
+        <Panel title={`Questions (${qs.data?.length ?? 0})`}><QuestionsPanel challengeId={ch.id} rows={(qs.data ?? []) as unknown as QRow[]} locked={rows.length > 0} subjects={subjects as Subject[]} mode={ch.mode} perLevel={ch.per_level ?? {}} subjectId={ch.subject_id} /></Panel>
       </div>
       <Panel title={`Entries (${rows.length})`} className="mt-4" bodyClassName="p-0"><EntriesList challengeId={ch.id} rows={rows} canReview={canReview} closed={!!ch.closed_at} /></Panel>
     </>

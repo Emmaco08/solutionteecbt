@@ -1,0 +1,9 @@
+subject,difficulty,question,option_a,option_b,option_c,option_d,answer,explanation
+Use of English,easy,"Choose the word nearest in meaning to ""rapid"".",slow,quick,heavy,late,B,Rapid means quick.
+Use of English,medium,"Choose the correct option: Neither the teacher nor the students ___ here.",is,was,are,be,C,With neither/nor the verb agrees with the nearer subject (students).
+Mathematics,easy,Simplify $3x + 5x$.,$8x$,$15x$,$8x^2$,$2x$,A,Add the like terms: 3 + 5 = 8.
+Mathematics,hard,"Solve for $x$: $2^{x+1} = 32$.",3,4,5,6,B,32 = 2^5 so x + 1 = 5 and x = 4.
+Physics,medium,The SI unit of power is the,joule,newton,watt,pascal,C,Power is measured in watts (joules per second).
+Physics,very hard,"A body of mass 2 kg moves at 3 m/s. Its kinetic energy is",6 J,9 J,12 J,18 J,B,KE = ½mv² = ½ × 2 × 9 = 9 J.
+Chemistry,easy,The chemical symbol for sodium is,S,So,Na,N,C,Sodium comes from the Latin natrium.
+Chemistry,very hard,How many moles are in 22 g of CO2? (C = 12; O = 16),0.25,0.5,1.0,2.0,B,Molar mass of CO2 is 44 g/mol; 22 ÷ 44 = 0.5.
