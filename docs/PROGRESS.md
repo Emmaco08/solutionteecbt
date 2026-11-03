@@ -101,7 +101,7 @@ Plan: `docs/plans/phase-4.md`.
 - **4D Notifications + Me dashboard** (plan: `docs/plans/phase-4d.md`, D-063)
   - [x] Database: inbox, push tokens, topic switches, automatic messages (news, new years, Premium, daily streak), badges, dashboard; pg_cron every 5 minutes. Tests **30/30** (`supabase/tests/notifications.test.sql`)
   - [x] Edge Function `push` deployed (FCM HTTP v1, topics per plan, dead tokens removed); the schedule reaches it every 5 minutes (checked). Message tests 3/3
-  - [x] Admin: Notifications (write, who gets it, link, now or later, history, cancel), news "Send as a notification". `tsc` clean, `eslint` 0 errors. **Not deployed yet** (live deploy waits for the owner's OK)
+  - [x] Admin: Notifications (write, who gets it, link, now or later, history, cancel), news "Send as a notification". `tsc` clean, `eslint` 0 errors. Live at admin.solutiontee.com (owner: "deploy 4D", 2026-11-03)
   - [x] App: Notifications screen, bell with unread count, Settings switches, push service (off without Firebase), permission after the first test, Me badges, Bookmarks/Downloads/AI rows, profile photo. `flutter analyze` clean, tests 41/41
   - [!] Owner: Firebase project, `google-services.json`, `FIREBASE_SERVICE_ACCOUNT` (SETUP §15)
   - [ ] Phone test of a real push (after Firebase)
