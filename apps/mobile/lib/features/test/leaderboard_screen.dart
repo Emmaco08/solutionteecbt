@@ -9,6 +9,7 @@ import '../../theme/tokens.g.dart';
 import '../../ui/kit.dart';
 import '../../widgets/exam_logo.dart';
 import '../../widgets/phosphor.g.dart';
+import '../../widgets/r2_image.dart';
 import '../../widgets/states.dart';
 import '../profile/me_extras.dart' show MyAvatar;
 
@@ -275,7 +276,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                   child: Row(
                     children: [
                       SizedBox(width: 32, child: Text('${p['rank']}', style: context.ty.sm.bold.tnum.col(c.textMuted))),
-                      Avatar('${p['name']}', size: 36),
+                      Avatar('${p['name']}', size: 36, photo: _photo(p, 36)),
                       const Gap(Space.s3),
                       Expanded(
                         child: Column(
@@ -314,6 +315,13 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
   }
 }
 
+/// A student's profile photo, when they allow it on leaderboards (D-069); otherwise the avatar shows initials.
+Widget? _photo(Map<String, dynamic> p, double size) {
+  final key = p['photo'] as String?;
+  if (key == null || key.isEmpty) return null;
+  return R2Image(imageKey: key, decodeWidth: (size * 3).round(), semanticLabel: 'Photo of ${p['name']}');
+}
+
 /// Top 3 (`.podium`): 2nd, 1st, 3rd, with gold, silver and bronze rings.
 class _Podium extends StatelessWidget {
   const _Podium({required this.top});
@@ -338,7 +346,7 @@ class _Podium extends StatelessWidget {
                         shape: BoxShape.circle,
                         border: Border.all(color: ring[place]!, width: 3),
                       ),
-                      child: Avatar('${p['name']}', size: place == 1 ? 60 : 48),
+                      child: Avatar('${p['name']}', size: place == 1 ? 60 : 48, photo: _photo(p, place == 1 ? 60 : 48)),
                     ),
                     Positioned(
                       bottom: -8,

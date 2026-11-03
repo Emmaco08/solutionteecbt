@@ -2046,6 +2046,7 @@ export type Database = {
       am_money_admin: { Args: never; Returns: boolean }
       am_notifier: { Args: never; Returns: boolean }
       auth_user_status: { Args: { p_email: string }; Returns: string }
+      can_view_avatar: { Args: { p_key: string }; Returns: boolean }
       can_upload_images: { Args: never; Returns: boolean }
       can_view_note_image: { Args: { p_key: string }; Returns: boolean }
       can_view_question_image: { Args: { p_key: string }; Returns: boolean }

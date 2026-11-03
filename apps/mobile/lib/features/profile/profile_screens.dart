@@ -623,6 +623,19 @@ Future<void> _setOnLeaderboard(BuildContext context, WidgetRef ref, bool show) a
   }
 }
 
+Future<void> _setLeaderboardPhoto(BuildContext context, WidgetRef ref, bool show) async {
+  final sb = ref.read(supabaseProvider);
+  final uid = sb.auth.currentUser?.id;
+  if (uid == null) return;
+  try {
+    await sb.from('profiles').update({'show_photo_on_leaderboard': show}).eq('id', uid);
+    ref.invalidate(profileProvider);
+    if (context.mounted) toast(context, show ? 'Your photo shows on leaderboards' : 'Leaderboards show your initials');
+  } catch (_) {
+    if (context.mounted) toast(context, 'Could not save. Check your internet and try again.');
+  }
+}
+
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
   @override
@@ -701,6 +714,13 @@ class SettingsScreen extends ConsumerWidget {
                   'Only your first name and an initial are shown.',
                   ref.watch(profileProvider).value?['hide_on_leaderboard'] != true,
                   (v) => _setOnLeaderboard(context, ref, v),
+                ),
+                toggle(
+                  PhosphorIcons.userCircle(PhosphorIconsStyle.fill),
+                  'Show my photo on leaderboards',
+                  'Other students see your profile photo next to your name. Off: your initials.',
+                  ref.watch(profileProvider).value?['show_photo_on_leaderboard'] != false,
+                  (v) => _setLeaderboardPhoto(context, ref, v),
                 ),
               ],
             ),

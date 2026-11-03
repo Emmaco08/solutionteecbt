@@ -12,7 +12,8 @@ const Body = z.object({ key: z.string().min(3).max(300).regex(/^(q|n|a|public\/n
  * (public.can_view_question_image runs as the student, so the plan and year rules apply). D-045.
  * News pictures are signed when a news post the student can read (RLS: published, due) uses that key.
  * Note pictures (n/…) are signed when a study item the student can open uses that key (can_view_note_image).
- * Profile photos (a/<user id>/…) are signed only for their owner (D-063).
+ * Profile photos (a/<user id>/…): the owner's own (D-063), or another student's shown on a leaderboard with their
+ * permission (can_view_avatar, D-069).
  */
 export async function POST(req: Request) {
   if (!hasR2()) return json({ error: "Images are not available right now." }, 503);
@@ -29,7 +30,10 @@ export async function POST(req: Request) {
   if (key.startsWith("a/")) {
     const { data: who, error: e } = await asUser.auth.getUser(token);
     if (e || !who.user) return json({ error: "Please log in again." }, 401);
-    if (!key.startsWith(`a/${who.user.id}/`)) return json({ error: "This image is locked." }, 403);
+    if (!key.startsWith(`a/${who.user.id}/`)) {
+      const { data: may, error: e2 } = await asUser.rpc("can_view_avatar", { p_key: key });
+      if (e2 || !may) return json({ error: "This image is locked." }, 403);
+    }
     return json({ url: await presignGet(key), expiresIn: env.r2.signedUrlTtl });
   }
   const { data: ok, error } = key.startsWith("public/news/")
