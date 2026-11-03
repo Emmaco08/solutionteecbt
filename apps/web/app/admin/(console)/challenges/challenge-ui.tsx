@@ -196,7 +196,7 @@ function RandomPast({ challengeId, subjects, single, onDone }: { challengeId: st
   const toggle = (id: number) => setPicked(picked.includes(id) ? picked.filter((x) => x !== id) : [...picked, id]);
   return (
     <div className="space-y-3 rounded-xl bg-surface-alt p-3 text-sm">
-      <p className="text-muted-foreground">We pick random published past questions for each subject and set each one&apos;s level (its saved level, or from how students did on it). Only years Free students can open are used, so nothing locked reaches Free students. Change any level in the list after.</p>
+      <p className="text-muted-foreground">We pick random published past questions for each subject and set each one&apos;s level (its saved level, or from how students did on it). Any year is used, Free and Premium. Change any level in the list after.</p>
       {!single ? (
         <div className="flex flex-wrap gap-2">
           <Button type="button" size="sm" variant="ghost" onClick={() => setPicked(picked.length === subjects.length ? [] : subjects.map((x) => x.id))}>{picked.length === subjects.length ? "Clear all" : "All JAMB subjects"}</Button>
@@ -216,7 +216,7 @@ function RandomPast({ challengeId, subjects, single, onDone }: { challengeId: st
       </div>
       {result ? (
         <ul className="space-y-0.5 text-xs">{result.map((r) => (
-          <li key={r.subject}><b>{r.subject}</b>: {r.added} added{r.left === 0 ? " · no more Free past questions in this subject" : ` · ${r.left} more available`}</li>
+          <li key={r.subject}><b>{r.subject}</b>: {r.added} added{r.left === 0 ? " · no more past questions in this subject" : ` · ${r.left} more available`}</li>
         ))}</ul>
       ) : null}
     </div>

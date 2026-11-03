@@ -200,7 +200,7 @@ export async function decideAppeal(id: string, accept: boolean, note: string): P
   return { ok: true, message: accept ? "Accepted. The entry counts again." : "Rejected." };
 }
 
-/** Random past questions (Free years only, with levels) for the chosen subjects (D-074). */
+/** Random past questions (any year, Free and Premium, with levels) for the chosen subjects (D-074, D-077). */
 export async function addRandom(challengeId: string, subjectIds: number[], count: number): Promise<ActionResult<{ subject: string; added: number; left: number }[]>> {
   await editors();
   if (!uuid.test(challengeId)) return { ok: false, error: "Unknown challenge" };
@@ -213,7 +213,7 @@ export async function addRandom(challengeId: string, subjectIds: number[], count
   const rows = (data ?? []) as { subject: string; added: number; left: number }[];
   const added = rows.reduce((n, r) => n + r.added, 0);
   revalidatePath(`/admin/challenges/${challengeId}`);
-  return { ok: true, data: rows, message: added ? `${added} past questions added.` : "No more Free past questions left for these subjects." };
+  return { ok: true, data: rows, message: added ? `${added} past questions added.` : "No more past questions left for these subjects." };
 }
 
 export async function setLevel(challengeId: string, questionId: string, level: string): Promise<ActionResult> {

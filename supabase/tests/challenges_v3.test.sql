@@ -51,9 +51,9 @@ select tests.check((select (j -> 0 ->> 'added')::int from r1) = 8, 'random past 
 select tests.check((select count(*) from public.challenge_questions q where q.challenge_id = (select id from chs))
   = (select count(distinct source_question_id) from public.challenge_questions q where q.challenge_id = (select id from chs)),
   'the same past question is never added twice', (select j::text from r2));
-select tests.check(not exists (select 1 from public.challenge_questions cq join public.questions q on q.id = cq.source_question_id
+select tests.check(exists (select 1 from public.challenge_questions cq join public.questions q on q.id = cq.source_question_id
   where cq.challenge_id = (select id from chs) and not private.tier_year_open('free', q.exam_id, q.year, 'cbt')),
-  'only questions from years Free students can open are used');
+  'Premium years are used too (owner, D-077)');
 select tests.check((select (j -> 0 ->> 'left')::int from r2) = 0, 'it says how many are left');
 select tests.check(not exists (select 1 from public.challenge_questions q where q.challenge_id = (select id from chs)
   and q.difficulty not in ('easy', 'medium', 'hard', 'very_hard')), 'every question gets a level');

@@ -534,3 +534,9 @@ The owner asked to run the admin from Vercel instead of the laptop.
 - On Android 14+ a screenshot attempt shows "Screenshots are turned off in SolutionTee CBT to protect our questions." (tests, challenges and challenge reviews keep their own message). In challenges, attempts stay fair-play flags (D-075).
 - Briefly considered: screen recording on Android 15+ disqualifies a challenge entry (migration `challenges_v5`). Reverted at once (`challenges_v5_revert`) when the owner chose the whole-app block instead, so recording during a challenge is a fair-play flag, not a disqualification.
 - App tests 64/64.
+
+**D-077 · 2026-11-03 · Random past questions in challenges come from any year (owner)**
+- Owner decision: "Add random past questions" uses **any published year, Free and Premium** (replaces the Free-years-only rule of D-074 for this button). So a Free student can meet Premium-year questions inside a challenge (one at a time, screenshots blocked) and, if the admin leaves answer review on, in "Review my answers" after the end. Premium years stay locked everywhere else (past questions, CBT tests).
+- Still: published questions only, no passage or picture questions, A–D answers only, never the same question twice in one challenge.
+- "Pick from past questions" (one by one, the search shared with the question of the day) still lists Free years only.
+- DB check (rolled back): Mathematics now gives 69 questions instead of 15, 54 of them from Premium years. `challenges_v3.test.sql` updated.
