@@ -29,6 +29,8 @@ Last updated: 2026-11-03, after milestone 4C (payments) on branch `claude/clever
 - Owner's laptop has low RAM: no emulator; they test on a real Android phone over USB.
 - Explain things in simple English. Ask the owner only for decisions that are theirs (pricing, content, legal, brand).
 - Commit after each working milestone; end commit messages with the Co-Authored-By trailer.
+- **Commits are signed as the owner** (`git config user.name Emmaco08`, `user.email emmanuelakinbola08@gmail.com`, set per repo at the start of each session), still ending with the `Co-Authored-By: Claude` trailer. Why: Vercel blocks deploys whose latest commit author is not a team member (owner's choice, 2026-11-03).
+- **Website deploys from a cloud session:** `npx vercel@65.8.0 login` (the owner approves the device link on their phone), `npx vercel@65.8.0 link --yes --project solutiontee-cbt --scope solution-tee`, then `npx vercel@65.8.0 deploy --prod --yes --scope solution-tee` from the repo root. Project `solutiontee-cbt` serves admin.solutiontee.com.
 
 ## Working from a cloud session (no laptop)
 
