@@ -4,14 +4,14 @@
 // 2. charge.success is never trusted on its own: we call Paystack's verify endpoint, then apply the answer.
 // 3. Each body is applied once (event key = sha256 of the body), so Paystack's retries are harmless.
 // Deployed with verify_jwt = false (Paystack sends no Supabase token); the signature is the check.
-import { json, paystack, paystackKey, rpc } from "../_shared/pay.ts";
+import { json, paystack, rpc } from "../_shared/pay.ts";
 import { paystackSignatureOk, sha256Hex, trimPaystack } from "../_shared/paycrypto.ts";
 
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "POST only" }, 405);
   const raw = await req.text();
   if (raw.length > 200_000) return json({ error: "too large" }, 413);
-  if (!(await paystackSignatureOk(paystackKey(), raw, req.headers.get("x-paystack-signature")))) {
+  if (!(await paystackSignatureOk(Deno.env.get("PAYSTACK_SECRET_KEY") ?? "", raw, req.headers.get("x-paystack-signature")))) {
     return json({ error: "bad signature" }, 401);
   }
   let ev: { event?: string; data?: Record<string, unknown> };
