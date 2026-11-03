@@ -391,3 +391,16 @@ Everything is in **Admin → AI tutor** (https://admin.solutiontee.com/admin/ai)
 5. **Limits:** the daily prompts (Free 3, Premium 100) are in **Free vs Premium** ("AI tutor prompts").
 6. **Before launch:** check that NVIDIA's and Dahl's terms allow production use for SolutionTee, and plan paid capacity if usage grows (NVIDIA's free API is about 40 requests a minute per key).
 
+
+## 12. Test app download page (2026-11-03)
+
+Share **https://admin.solutiontee.com/download** with the team (Android only). To publish a new test version:
+
+```
+cd apps/mobile
+flutter build apk --release --target-platform android-arm64
+cd ../web
+node scripts/upload-apk.mjs
+```
+
+The page picks up the new file at once (no website deploy needed). Testers install over the old version and keep their account.

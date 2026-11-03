@@ -89,6 +89,7 @@ Plan: `docs/plans/phase-4.md`.
   - [x] App AI tab: streaming chat in the prototype design, photo questions, hint mode, subjects, copy, report, quota chip and countdown, past chats, "Ask AI" from Study and Review. 28/28 app tests, analyzer clean
   - [ ] Owner: press "Add new and edited notes" in Admin → AI tutor → Knowledge (builds the knowledge from the 360 notes)
   - [ ] Phone walk-through
+- [x] Test APK download page for the team: admin.solutiontee.com/download (private R2 + 10-minute link, D-059)
 - [ ] 4C Payments (Paystack test keys, Play Console)
 - [ ] 4D Push notifications + Me dashboard (needs Firebase)
 - [ ] 4E Challenges, referrals, leaderboard, question of the day, winners wall

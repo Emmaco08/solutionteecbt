@@ -397,3 +397,9 @@ The owner asked to run the admin from Vercel instead of the laptop.
 - **Photos** are shrunk on the phone (max 1280 px, JPEG about 72%), sent with that one message only, and not stored. The saved message notes that a photo was sent.
 - **Cache:** "Explain this question" answers from Review/Study are cached per question and hint mode, and still count as a prompt.
 
+
+**D-059 · 2026-11-03 · Test APK download page for the team**
+- https://admin.solutiontee.com/download is a public, not-indexed page (robots noindex) with one button. The APK sits in the **private** R2 bucket under `apk/`; `apk/latest.json` points at the newest file.
+- The button goes to `/download/apk`, which answers with a 10-minute signed link that saves as `SolutionTee-CBT-<version>.apk`. Nothing in the bucket becomes public.
+- Anyone with the link can install the test build. This is acceptable because the app itself still enforces every lock on the server (free users get only free questions). It is debug-signed for now; the Play Store build (4C/launch) will use the upload key, and testers will need to uninstall this one first then.
+- New version: build, then `node scripts/upload-apk.mjs` from `apps/web` (see SETUP §12). No redeploy needed.
