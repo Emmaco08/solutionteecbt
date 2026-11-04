@@ -17,9 +17,12 @@ String payChannel(PayMethod m, String bank) => switch (m) {
   PayMethod.card => 'card',
   PayMethod.transfer => 'transfer',
   PayMethod.ussd => 'ussd:$bank',
+  // Only inside Paystack's own screen (Paystack's API does not offer them to apps directly): it opens inside the app.
+  PayMethod.opay || PayMethod.pocketapp || PayMethod.zap || PayMethod.bankApp => 'page',
 };
 
-/// Choose how to pay (D-089): card (Paystack's secure sheet in the app), bank transfer or USSD (our own screens).
+/// Choose how to pay (D-089, D-092): card (Paystack's secure sheet in the app), bank transfer or USSD (our own screens),
+/// or an app (OPay, PocketApp, Zap, bank apps), which Paystack only offers inside its own screen (it opens in the app).
 class PayMethodPicker extends StatelessWidget {
   const PayMethodPicker({super.key, required this.method, required this.bank, required this.onChanged, this.enabled = true});
   final PayMethod method;
@@ -87,6 +90,28 @@ class PayMethodPicker extends StatelessWidget {
         option(PayMethod.card, PhosphorIcons.creditCard(PhosphorIconsStyle.fill), 'Card', 'Visa, Mastercard, Verve · opens a secure card form'),
         option(PayMethod.transfer, PhosphorIcons.bank(PhosphorIconsStyle.fill), 'Bank transfer', 'Send from any Nigerian bank app'),
         option(PayMethod.ussd, PhosphorIcons.hash(PhosphorIconsStyle.fill), 'USSD', 'Dial a code. Works on any phone, no data'),
+        const Gap(Space.s1),
+        Text('Pay with an app', style: context.ty.cap.bold.col(c.textMuted)),
+        const Gap(Space.s2),
+        option(PayMethod.opay, PhosphorIcons.wallet(PhosphorIconsStyle.fill), 'OPay', 'Approve in your OPay app'),
+        option(PayMethod.pocketapp, PhosphorIcons.piggyBank(PhosphorIconsStyle.fill), 'PocketApp', 'Pay from your PocketApp (PiggyVest) balance'),
+        option(PayMethod.zap, PhosphorIcons.lightning(PhosphorIconsStyle.fill), 'Zap', 'Pay with the Zap app'),
+        option(PayMethod.bankApp, PhosphorIcons.deviceMobile(PhosphorIconsStyle.fill), 'Bank app', 'Kuda, PalmPay and other bank apps'),
+        if (method.inPaystackScreen)
+          Padding(
+            padding: const EdgeInsets.only(bottom: Space.s2),
+            child: InfoBanner(
+              icon: PhosphorIcons.shieldCheck(PhosphorIconsStyle.fill),
+              child: Text(
+                'Paystack\'s secure payment screen opens inside the app. Tap ${switch (method) {
+                  PayMethod.opay => 'OPay',
+                  PayMethod.pocketapp => 'PocketApp',
+                  PayMethod.zap => 'Zap',
+                  _ => 'Bank',
+                }} there to finish. We add your Premium or XP as soon as it is paid.',
+              ),
+            ),
+          ),
         if (method == PayMethod.ussd) ...[
           const Gap(Space.s1),
           Text('Your bank', style: context.ty.cap.bold.col(c.textMuted)),

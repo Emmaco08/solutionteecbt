@@ -143,8 +143,25 @@ class PaystackSheet {
   }
 }
 
-/// The ways to pay with Paystack (D-089). USSD needs the student's bank.
-enum PayMethod { card, transfer, ussd }
+/// The ways to pay with Paystack (D-089, D-092). USSD needs the student's bank. OPay, PocketApp, Zap and bank apps
+/// (Kuda, PalmPay) are only offered inside Paystack's own secure screen, so they open it ("page") inside the app.
+enum PayMethod { card, transfer, ussd, opay, pocketapp, zap, bankApp }
+
+extension PayMethodText on PayMethod {
+  /// For "Pay ₦3,500 with …".
+  String get withText => switch (this) {
+    PayMethod.card => 'with card',
+    PayMethod.transfer => 'by transfer',
+    PayMethod.ussd => 'with USSD',
+    PayMethod.opay => 'with OPay',
+    PayMethod.pocketapp => 'with PocketApp',
+    PayMethod.zap => 'with Zap',
+    PayMethod.bankApp => 'with your bank app',
+  };
+
+  /// Opens Paystack's own screen (where this app is chosen) instead of our screen or the card form.
+  bool get inPaystackScreen => this == PayMethod.opay || this == PayMethod.pocketapp || this == PayMethod.zap || this == PayMethod.bankApp;
+}
 
 const ussdBanks = {'737': 'GTBank', '919': 'UBA', '822': 'Sterling Bank', '966': 'Zenith Bank'};
 
@@ -182,7 +199,7 @@ class PaystackProvider implements PaymentProvider {
   static Map<String, Object?> methodBody(String? channel) {
     final c = channel ?? 'card';
     if (c.startsWith('ussd')) return {'method': 'ussd', 'bank': c.contains(':') ? c.split(':')[1] : '737'};
-    return {'method': c == 'transfer' ? 'transfer' : 'card'};
+    return {'method': c == 'transfer' || c == 'page' ? c : 'card'};
   }
 
   /// What the server answered → what the student sees next: Paystack's sheet (card), our transfer / USSD screen,

@@ -6,7 +6,12 @@
 //   method (D-089): "card" (default) → {reference, url, access_code, public_key?, amount_kobo}: the app opens Paystack's own
 //                   payment sheet inside the app with access_code (public_key is PAYSTACK_PUBLIC_KEY), or `url` in an in-app tab;
 //                   "transfer" → {reference, amount_kobo, transfer:{account_number, account_name, bank, expires_at}} (Charge API);
-//                   "ussd" + bank ("737"|"919"|"822"|"966") → {reference, amount_kobo, ussd:{code, bank}} (Charge API).
+//                   "ussd" + bank ("737"|"919"|"822"|"966") → {reference, amount_kobo, ussd:{code, bank}} (Charge API);
+//                   "bank" + bank_code + account_number → {reference, amount_kobo, bank_charge:{status, text, url}} (Pay with Bank:
+//                   any bank or app such as OPay, PocketApp, Zap; the next step is an OTP, birthday, phone, a bank page or approval in the app);
+//                   "page" → like card, but Paystack's own screen shows every method Paystack offers (the backup).
+//   {action:"pay_banks"} → {banks:[{name, code}]}   banks and apps that support Pay with Bank (D-092)
+//   {action:"charge_submit", reference, step:"otp"|"birthday"|"phone", value} → {bank_charge:{…}}   the next Pay with Bank step
 //      Each start makes a new reference; the webhook + verify grant it, exactly like a checkout payment.
 //   {action:"check", reference}
 //      → {status: "pending"|"success"|"failed"|"needs_review"|"refunded", expires_at?}
@@ -43,7 +48,8 @@ function publicKey(): string | null {
 }
 
 /** Opens the payment with Paystack for a reference made by pay_start / xp_pack_start (the server's price). */
-async function openPayment(r: Record<string, unknown>, method: string, bank: string, meta: Record<string, unknown>, label: string) {
+async function openPayment(r: Record<string, unknown>, method: string, bank: string, meta: Record<string, unknown>, label: string,
+  bankAcct: { code: string; account_number: string } = { code: "", account_number: "" }) {
   const reference = String(r.reference), amount = Number(r.amount_kobo);
   const fail = async (status: number, body: Record<string, unknown> | undefined, kind: string) => {
     await rpc("pay_note", { p_reference: reference, p_provider: "paystack", p_kind: kind, p_ok: false,
@@ -52,6 +58,16 @@ async function openPayment(r: Record<string, unknown>, method: string, bank: str
       p_channel: null, p_data: {}, p_kind: kind, p_event_key: null });
   };
   const metadata = { ...meta, cancel_action: Deno.env.get("PAYSTACK_CALLBACK_URL") || undefined };
+
+  if (method === "bank") {
+    const ch = await paystack("/charge", { method: "POST", body: JSON.stringify({ email: r.email, amount, reference, metadata, bank: bankAcct }) });
+    if (!ch.ok && !(ch.body?.data && (ch.body.data as Record<string, unknown>).status)) {
+      await fail(ch.status, ch.body, "charge");
+      return json({ error: `Your bank could not start this payment: ${String(ch.body?.message ?? "try again")}. Try another way.`, code: "paystack" }, 502);
+    }
+    await rpc("pay_note", { p_reference: reference, p_provider: "paystack", p_kind: "charge", p_ok: true, p_note: `${label}: pay with bank ${bankAcct.code} started` });
+    return json({ reference, amount_kobo: amount, bank_charge: nextStep((ch.body.data ?? {}) as Record<string, unknown>) });
+  }
 
   if (method === "transfer" || method === "ussd") {
     const body: Record<string, unknown> = { email: r.email, amount, reference, metadata };
@@ -81,7 +97,8 @@ async function openPayment(r: Record<string, unknown>, method: string, bank: str
     method: "POST",
     body: JSON.stringify({
       email: r.email, amount, currency: "NGN", reference,
-      channels: ["card", "bank", "ussd", "bank_transfer"],
+      // Card: Paystack's sheet opens straight on the card form. Page: every method Paystack offers (the backup).
+      ...(method === "card" ? { channels: ["card"] } : {}),
       ...(Deno.env.get("PAYSTACK_CALLBACK_URL") ? { callback_url: Deno.env.get("PAYSTACK_CALLBACK_URL") } : {}),
       metadata,
     }),
@@ -93,6 +110,29 @@ async function openPayment(r: Record<string, unknown>, method: string, bank: str
   const d = init.body.data as Record<string, unknown>;
   await rpc("pay_note", { p_reference: reference, p_provider: "paystack", p_kind: "initialize", p_ok: true, p_note: `Paystack checkout opened (${label})` });
   return json({ reference, url: d.authorization_url, access_code: d.access_code, public_key: publicKey(), amount_kobo: amount });
+}
+
+/** What the student must do next in a Pay with Bank charge (D-092). */
+function nextStep(d: Record<string, unknown>) {
+  return {
+    status: String(d.status ?? "pending"), // send_otp | send_birthday | send_phone | open_url | pay_offline | pending | success | failed
+    text: String(d.display_text ?? d.message ?? d.gateway_response ?? ""),
+    // Paystack sends the bank's own page as `url` (open_url) or `redirect_url`.
+    url: [d.url, d.redirect_url].find((u) => typeof u === "string" && u.startsWith("https://")) as string | undefined ?? null,
+  };
+}
+
+let payBankCache: { at: number; banks: { name: string; code: string }[] } | null = null;
+async function payBanks() {
+  if (payBankCache && Date.now() - payBankCache.at < 6 * 3600_000) return payBankCache.banks;
+  const r = await paystack("/bank?country=nigeria&pay_with_bank=true&perPage=200");
+  if (!r.ok) throw new Error("pay banks: " + r.status);
+  const list = ((r.body.data ?? []) as Record<string, unknown>[])
+    .filter((b) => b.active !== false && b.is_deleted !== true && b.code)
+    .map((b) => ({ name: String(b.name), code: String(b.code) }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  payBankCache = { at: Date.now(), banks: list };
+  return list;
 }
 
 async function premiumUntil(uid: string): Promise<string | null> {
@@ -173,7 +213,9 @@ Deno.serve(async (req) => {
   if (req.method === "GET" && new URL(req.url).searchParams.get("health") === "1") {
     const sk = Deno.env.get("PAYSTACK_SECRET_KEY") ?? "", pk = Deno.env.get("PAYSTACK_PUBLIC_KEY") ?? "";
     const mode = (k: string) => (k.includes("_live_") ? "live" : k.includes("_test_") ? "test" : k ? "unknown" : "missing");
-    return json({ secret_key: mode(sk), public_key: mode(pk), public_key_usable: publicKey() !== null, payouts_on: await payoutsOn() });
+    // ?banks=1 also lists the public names of the banks and apps Paystack offers for Pay with Bank on this account.
+    const list = new URL(req.url).searchParams.get("banks") === "1" ? (await payBanks().catch(() => [])).map((b) => b.name) : undefined;
+    return json({ secret_key: mode(sk), public_key: mode(pk), public_key_usable: publicKey() !== null, payouts_on: await payoutsOn(), pay_with_bank: list });
   }
   if (req.method !== "POST") return json({ error: "POST only" }, 405);
   const user = await userFrom(req);
@@ -181,9 +223,13 @@ Deno.serve(async (req) => {
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return json({ error: "Bad request" }, 400); }
   const action = String(body.action ?? "");
-  const method = ["card", "transfer", "ussd"].includes(String(body.method)) ? String(body.method) : "card";
+  const method = ["card", "transfer", "ussd", "bank", "page"].includes(String(body.method)) ? String(body.method) : "card";
   const bank = String(body.bank ?? "737");
   if (method === "ussd" && !USSD_BANKS[bank]) return json({ error: "Choose your bank for USSD." }, 400);
+  const bankAcct = { code: String(body.bank_code ?? ""), account_number: String(body.account_number ?? "") };
+  if (method === "bank" && (!/^[0-9A-Za-z]{2,12}$/.test(bankAcct.code) || !/^[0-9]{10,11}$/.test(bankAcct.account_number))) {
+    return json({ error: "Choose your bank or app and enter your 10-digit account number." }, 400);
+  }
 
   try {
     if (action === "start") {
@@ -196,7 +242,7 @@ Deno.serve(async (req) => {
         return json({ error: message, code: e, plans: r.plans ?? null }, status);
       }
       if (r.free) return json({ free: true, reference: r.reference, expires_at: r.expires_at });
-      return await openPayment(r, method, bank, { payment_id: r.payment_id, plan }, "plan");
+      return await openPayment(r, method, bank, { payment_id: r.payment_id, plan }, "plan", bankAcct);
     }
 
     if (action === "start_xp") {
@@ -207,7 +253,31 @@ Deno.serve(async (req) => {
         const [status, message] = ERR[String(r.error ?? "")] ?? [400, "This XP pack cannot be bought right now."];
         return json({ error: message, code: r.error }, status);
       }
-      return await openPayment(r, method, bank, { payment_id: r.payment_id, xp_pack: xp }, "XP pack");
+      return await openPayment(r, method, bank, { payment_id: r.payment_id, xp_pack: xp }, "XP pack", bankAcct);
+    }
+
+    if (action === "pay_banks") {
+      return json({ banks: await payBanks() });
+    }
+
+    if (action === "charge_submit") {
+      const reference = String(body.reference ?? ""), step = String(body.step ?? ""), value = String(body.value ?? "").trim();
+      if (!/^st_[0-9a-f]{20}$/.test(reference)) return json({ error: "Bad reference" }, 400);
+      const rule: Record<string, RegExp> = { otp: /^[0-9]{4,8}$/, birthday: /^(19|20)[0-9]{2}-[01][0-9]-[0-3][0-9]$/, phone: /^\+?[0-9]{10,14}$/ };
+      if (!rule[step]) return json({ error: "Bad step" }, 400);
+      if (!rule[step].test(value)) {
+        return json({ error: step === "otp" ? "Enter the code your bank sent you." : step === "birthday" ? "Choose your date of birth." : "Enter your phone number." }, 400);
+      }
+      const { data: pay } = await admin.from("payments").select("user_id, status, provider").eq("reference", reference).maybeSingle();
+      if (!pay || pay.provider !== "paystack" || pay.user_id !== user.id) return json({ error: "Payment not found" }, 404);
+      if (pay.status !== "pending") return json({ bank_charge: { status: pay.status === "success" ? "success" : "failed", text: "", url: null } });
+      if (!allowed("submit:" + user.id, 12)) return json({ error: "Too many tries. Please wait a few minutes.", code: "too_many" }, 429);
+      const sub = await paystack(`/charge/submit_${step}`, { method: "POST", body: JSON.stringify({ [step]: value, reference }) });
+      const d = (sub.body?.data ?? {}) as Record<string, unknown>;
+      if (!sub.ok && !d.status) return json({ error: String(sub.body?.message ?? "Your bank did not accept that. Try again.") }, 400);
+      const next = nextStep(d);
+      if (next.status === "success" || next.status === "failed") await verifyAndApply(reference, "verify");
+      return json({ bank_charge: next });
     }
 
     if (action === "banks") {

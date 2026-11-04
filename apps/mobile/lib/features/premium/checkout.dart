@@ -290,14 +290,14 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> with WidgetsBin
           : FooterCta(
               child: Btn(
                 busy
-                    ? (paystack ? (_method == PayMethod.card ? 'Opening the card form' : 'Getting your payment details') : 'Opening Google Play')
-                    : (paystack
-                          ? 'Pay $total${switch (_method) {
-                              PayMethod.card => ' with card',
-                              PayMethod.transfer => ' by transfer',
-                              PayMethod.ussd => ' with USSD',
-                            }}'
-                          : 'Pay $total'),
+                    ? (paystack
+                          ? (_method == PayMethod.card
+                                ? 'Opening the card form'
+                                : _method.inPaystackScreen
+                                ? 'Opening Paystack'
+                                : 'Getting your payment details')
+                          : 'Opening Google Play')
+                    : (paystack ? 'Pay $total ${_method.withText}' : 'Pay $total'),
                 block: true,
                 loading: busy,
                 onPressed: busy ? null : _go,

@@ -654,3 +654,18 @@ The owner asked to run the admin from Vercel instead of the laptop.
 - Admin → a challenge → "Most players" (0 = no limit) and "Minimum score to win (%)" (0 = none).
 - When full, nobody else can start: the server checks under a lock, so two students cannot take the last place. The app shows "N of M places left" or "Full", and the button says "Full · look out for the next one". A student who already joined is never locked out.
 - Minimum score: 1st, 2nd or 3rd below the % of their questions get no cash prize, no Premium days and no XP prize (`challenge_reached_min` in `challenge_rank` and `xp_prize_job`). The app shows "Winners need 60% or more" before joining.
+
+**D-092 · 2026-11-04 · Every Paystack way to pay inside the app (owner: "have all those options in app")**
+- Research, from Paystack's own OpenAPI spec (github.com/PaystackOSS/openapi, `dist/paystack.yaml`; paystack.com refuses automated readers):
+  - The Initialize channels are only apple_pay, bank, bank_transfer, capitec_pay, card, eft, mobile_money, payattitude, qr and ussd. There is no OPay, PocketApp or Zap channel.
+  - USSD types 737, 919, 822 and 966 are all supported.
+  - Pay with Bank has follow-up steps (submit_otp / phone / birthday / pin / address, check pending).
+  - Our live account's Pay with Bank list (`GET /bank?pay_with_bank=true`, read through the new `?health=1&banks=1`) holds only **Kuda Bank and PalmPay**. So OPay, PocketApp and Zap are reachable only inside Paystack's own payment screen.
+- The app's picker now has **Card · Bank transfer · USSD**, then **Pay with an app: OPay · PocketApp · Zap · Bank app (Kuda, PalmPay…)**.
+  - Card opens Paystack's sheet straight on the card form (`channels: ["card"]`).
+  - Transfer and USSD stay on our own screens.
+  - The app options open Paystack's own secure screen inside the app (`method: "page"`, every channel on), with a note to tap that app there. The in-app tab is used only if the sheet cannot open.
+  - The checking and the server rules are the same as for every payment (webhook + verify, the price from the server).
+- The server also has a native Pay with Bank flow (`method: "bank"`, `pay_banks`, `charge_submit` for OTP / phone / birthday) for when Paystack offers more banks directly. The app does not use it yet: Kuda needs a Kuda app token, so Paystack's screen handles both banks better today.
+- Note (2026-11-04): the Paystack keys in Supabase are now **live** (`?health=1` shows secret and public both live). Test payments now use real money.
+- App tests 109/109.

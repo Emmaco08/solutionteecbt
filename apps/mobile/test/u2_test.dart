@@ -164,4 +164,37 @@ void main() {
     expect(Challenge({'joined': 999}).full, isFalse);
     expect(Challenge({'min_win_pct': 0}).minWinPct, isNull);
   });
+
+  test('OPay, PocketApp, Zap and bank apps open Paystack\'s own screen (all methods); card opens straight on the card form', () {
+    for (final m in [PayMethod.opay, PayMethod.pocketapp, PayMethod.zap, PayMethod.bankApp]) {
+      expect(payChannel(m, '737'), 'page');
+      expect(m.inPaystackScreen, isTrue);
+    }
+    expect(PaystackProvider.methodBody('page'), {'method': 'page'});
+    expect(PaystackProvider.methodBody('card'), {'method': 'card'});
+    expect(PayMethod.card.inPaystackScreen, isFalse);
+  });
+
+  testWidgets('the picker lists every way to pay and explains the Paystack screen for apps', (t) async {
+    var picked = PayMethod.card;
+    await t.pumpWidget(
+      MaterialApp(
+        theme: buildTheme(Brightness.light),
+        home: Scaffold(
+          body: StatefulBuilder(
+            builder: (_, set) => SingleChildScrollView(
+              child: PayMethodPicker(method: picked, bank: '737', onChanged: (m, _) => set(() => picked = m)),
+            ),
+          ),
+        ),
+      ),
+    );
+    for (final name in ['Card', 'Bank transfer', 'USSD', 'OPay', 'PocketApp', 'Zap', 'Bank app']) {
+      expect(find.text(name), findsOneWidget);
+    }
+    await t.tap(find.text('OPay'));
+    await t.pump(const Duration(milliseconds: 300));
+    expect(picked, PayMethod.opay);
+    expect(find.textContaining('Tap OPay there'), findsOneWidget);
+  });
 }
