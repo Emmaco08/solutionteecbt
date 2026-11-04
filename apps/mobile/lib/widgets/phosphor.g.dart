@@ -158,6 +158,8 @@ abstract final class PhosphorIcons {
       s == PhosphorIconsStyle.regular ? const IconData(0xe276, fontFamily: 'PhosphorRegular') : const IconData(0xe276, fontFamily: 'PhosphorFill');
   static IconData globeHemisphereWest([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe28c, fontFamily: 'PhosphorRegular') : const IconData(0xe28c, fontFamily: 'PhosphorFill');
+  static IconData googleLogo([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
+      s == PhosphorIconsStyle.regular ? const IconData(0xe292, fontFamily: 'PhosphorRegular') : const IconData(0xe292, fontFamily: 'PhosphorFill');
   static IconData googlePlayLogo([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe294, fontFamily: 'PhosphorRegular') : const IconData(0xe294, fontFamily: 'PhosphorFill');
   static IconData graduationCap([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>

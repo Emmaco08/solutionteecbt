@@ -617,3 +617,11 @@ The owner asked to run the admin from Vercel instead of the laptop.
 - **NECO:** "Coming soon" showed because no NECO years are uploaded (JAMB 17, WAEC 2, NECO 0). The label is now "No papers yet" and a tap explains it; NECO opens like WAEC once years are uploaded in Admin → Exams & years.
 - **Quick test:** questions stay grouped by subject in the student's subject order (an even share each, passages kept together) instead of mixed, so it moves through subjects like the real exam.
 - Tests: `supabase/tests/u1.test.sql` (bookmarks 2/2, motivation read + write refused); app tests 96/96 (`test/u1_test.dart`: OTP tap after the keyboard closes, tour reaching an off-screen 5th step and Done, Back, streak states).
+
+**D-087 · 2026-11-04 · Sign in with Google (owner)**
+- "Continue with Google" at the top of Create account and Log in, with an "or" line above the email form. It appears only when Admin → Flags & settings → Sign in with Google is on **and** a Web client ID is saved (`app_settings.google_auth`, public). The client secret lives only in Supabase Auth.
+- Native Android account picker (`google_sign_in` 7, Credential Manager), then `signInWithIdToken` in Supabase. A fresh random **nonce** each time: Google gets its SHA-256, Supabase checks the raw value. This means a copied ID token can't be replayed.
+- New Google accounts: name from Google, Terms consent recorded ("By continuing with Google you agree…" under the button, `terms_accepted_at`), the referral code applied if one was typed, the welcome email, then profile setup. Existing accounts with the same verified email are linked by Supabase, not duplicated.
+- Fraud rules unchanged: `nextRoute` refuses banned phones before sign-in, and `device_check_in` right after any sign-in blocks second accounts and banned phones (D-079).
+- Setup for the owner: SETUP §17. The APK's SHA-1 is read from the published APK.
+- Tests: app 99/99 (`u1_test.dart`: button hidden when off or without a client ID, shown when on, on both screens).

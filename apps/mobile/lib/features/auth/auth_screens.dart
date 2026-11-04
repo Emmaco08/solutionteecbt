@@ -17,6 +17,7 @@ import '../../theme/tokens.g.dart';
 import '../../ui/kit.dart';
 import '../../widgets/phosphor.g.dart';
 import '../onboarding/onboarding_screens.dart';
+import 'google_auth.dart';
 
 final _emailRe = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]{2,}$');
 final _pwRe = RegExp(r'^(?=.*[A-Za-z])(?=.*\d).{8,72}$');
@@ -116,6 +117,41 @@ Widget _centerLink(BuildContext context, String lead, String link, VoidCallback 
 );
 
 // ---------------------------------------------------------------- sign up (prototype: signup)
+/// Runs "Continue with Google" and moves on: new accounts go to setup, others like a normal log-in.
+Future<void> _google(BuildContext context, WidgetRef ref, String clientId, void Function(bool) busy, void Function(String) fail, {String? referral}) async {
+  busy(true);
+  try {
+    final r = await signInWithGoogle(ref, clientId: clientId, referralCode: referral);
+    if (r == GoogleResult.canceled || !context.mounted) return;
+    final next = await nextRoute(ref);
+    if (context.mounted) context.go(next == '/home' && r == GoogleResult.signedIn ? '/welcome-back' : next);
+  } on ApiError catch (e) {
+    fail(e.message);
+  } catch (_) {
+    fail('Google sign-in did not work. Check your internet and try again.');
+  } finally {
+    if (context.mounted) busy(false);
+  }
+}
+
+/// "By continuing with Google you agree to the Terms…" under the Google button.
+Widget _googleTerms(BuildContext context) {
+  final link = context.ty.cap.bold.col(context.c.link);
+  return Text.rich(
+    TextSpan(
+      style: context.ty.cap.col(context.c.textMuted),
+      children: [
+        const TextSpan(text: 'By continuing with Google you agree to the '),
+        TextSpan(text: 'Terms', style: link, recognizer: TapGestureRecognizer()..onTap = () => context.push('/legal?p=terms')),
+        const TextSpan(text: ' and '),
+        TextSpan(text: 'Privacy Policy', style: link, recognizer: TapGestureRecognizer()..onTap = () => context.push('/legal?p=privacy')),
+        const TextSpan(text: '. If you are under 18, your parent or guardian agrees too.'),
+      ],
+    ),
+    textAlign: TextAlign.center,
+  );
+}
+
 class SignUpScreen extends ConsumerStatefulWidget {
   const SignUpScreen({super.key});
   @override
@@ -124,7 +160,7 @@ class SignUpScreen extends ConsumerStatefulWidget {
 
 class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   final _email = TextEditingController(), _pw = TextEditingController(), _ref = TextEditingController();
-  bool _agree = false, _busy = false, _refOpen = false, _consentErr = false;
+  bool _agree = false, _busy = false, _refOpen = false, _consentErr = false, _gBusy = false;
   String? _emailErr, _pwErr, _refErr, _error;
   int _shake = 0;
 
@@ -180,6 +216,26 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
       subtitle: const Text('It takes one minute. We will send a code to your email.'),
       onBack: () => context.go('/welcome'),
       children: [
+        if (googleAuthConfig(ref).on) ...[
+          GoogleButton(
+            busy: _gBusy,
+            onPressed: _busy || _gBusy
+                ? null
+                : () {
+                    final code = _ref.text.trim().toUpperCase();
+                    _google(
+                      context,
+                      ref,
+                      googleAuthConfig(ref).clientId,
+                      (b) => setState(() => _gBusy = b),
+                      (m) => setState(() => _error = m),
+                      referral: _refRe.hasMatch(code) ? code : null,
+                    );
+                  },
+          ),
+          _googleTerms(context),
+          const OrDivider(),
+        ],
         _Shake(
           trigger: _shake,
           child: AutofillGroup(
@@ -478,8 +534,8 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _email = TextEditingController(), _pw = TextEditingController();
-  String? _emailErr, _pwErr;
-  bool _busy = false;
+  String? _emailErr, _pwErr, _gErr;
+  bool _busy = false, _gBusy = false;
   int _shake = 0;
 
   @override
@@ -519,6 +575,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     subtitle: const Text('Log in to continue your practice.'),
     onBack: () => context.go('/welcome'),
     children: [
+      if (googleAuthConfig(ref).on) ...[
+        GoogleButton(
+          busy: _gBusy,
+          onPressed: _busy || _gBusy
+              ? null
+              : () => _google(context, ref, googleAuthConfig(ref).clientId, (b) => setState(() => _gBusy = b), (m) => setState(() => _gErr = m)),
+        ),
+        if (_gErr != null) InfoBanner(kind: BannerKind.err, child: Text(_gErr!)),
+        const OrDivider(),
+      ],
       _Shake(
         trigger: _shake,
         child: AutofillGroup(

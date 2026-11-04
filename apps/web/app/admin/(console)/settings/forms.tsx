@@ -1,12 +1,12 @@
 "use client";
-import { useOptimistic, useTransition } from "react";
+import { useOptimistic, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Panel } from "@/components/admin/ui";
-import { saveSettings, setAppSwitch, setFlag } from "./actions";
+import { saveSettings, setAppSwitch, setFlag, setGoogleClientId } from "./actions";
 
 const LABELS: Record<string, string> = {
   challenges_enabled: "Challenges & events", referrals_enabled: "Referral programme", ai_photo_questions: "AI photo questions",
@@ -90,5 +90,25 @@ export function AppSwitch({ k, field, on: initial, title, text }: { k: string; f
         if (r.ok) { toast.success(`${title}: ${v ? "on" : "off"}. Phones get it the next time the app opens.`); router.refresh(); } else toast.error(r.error);
       })} />
     </label>
+  );
+}
+
+/** The Google Web client ID field (Continue with Google). */
+export function GoogleClientId({ value }: { value: string }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [v, setV] = useState(value);
+  return (
+    <div className="py-3.5">
+      <label htmlFor="gcid" className="block text-sm font-bold">Google Web client ID</label>
+      <small className="block text-[13px] text-muted-foreground">From Google Cloud → APIs &amp; Services → Credentials → the <b>Web application</b> client. Not a secret. Its secret goes only in Supabase → Authentication → Sign In / Providers → Google.</small>
+      <div className="mt-2 flex gap-2">
+        <input id="gcid" className="h-9 min-w-0 flex-1 rounded-md border bg-background px-3 font-mono text-xs" value={v} onChange={(e) => setV(e.target.value)} placeholder="1234567890-abc….apps.googleusercontent.com" />
+        <Button size="sm" disabled={pending || v === value} onClick={() => start(async () => {
+          const r = await setGoogleClientId(v);
+          if (r.ok) { toast.success(r.message ?? "Saved"); router.refresh(); } else toast.error(r.error);
+        })}>Save</Button>
+      </div>
+    </div>
   );
 }

@@ -53,7 +53,7 @@ export async function saveSettings(form: FormData): Promise<ActionResult> {
   return { ok: true };
 }
 
-const SWITCHES: Record<string, string[]> = { screen_protection: ["whole_app", "exams"], app_update: ["force"] };
+const SWITCHES: Record<string, string[]> = { screen_protection: ["whole_app", "exams"], app_update: ["force"], google_auth: ["enabled"] };
 
 /** One switch inside a JSON setting (D-080): screen protection and in-app updates. Logged by the settings trigger. */
 export async function setAppSwitch(key: string, field: string, on: boolean): Promise<ActionResult> {
@@ -67,4 +67,19 @@ export async function setAppSwitch(key: string, field: string, on: boolean): Pro
   if (error) return { ok: false, error: friendlyError(error) };
   revalidatePath("/admin", "layout");
   return { ok: true };
+}
+
+/** Google's Web client ID for "Continue with Google" (D-087). Public, not a secret: it is inside every app. */
+export async function setGoogleClientId(id: string): Promise<ActionResult> {
+  await requireStaff(["super_admin", "admin"]);
+  const v = id.trim();
+  if (v && !/^[0-9]{6,20}-[a-z0-9]{20,40}\.apps\.googleusercontent\.com$/.test(v))
+    return { ok: false, error: "That does not look like a Google client ID (it ends with .apps.googleusercontent.com)." };
+  const supabase = await createClient();
+  const { data } = await supabase.from("app_settings").select("value").eq("key", "google_auth").maybeSingle();
+  const value = { ...((data?.value as Record<string, unknown>) ?? { enabled: false }), web_client_id: v };
+  const { error } = await supabase.from("app_settings").upsert({ key: "google_auth", value, is_public: true });
+  if (error) return { ok: false, error: friendlyError(error) };
+  revalidatePath("/admin", "layout");
+  return { ok: true, message: v ? "Saved." : "Removed." };
 }

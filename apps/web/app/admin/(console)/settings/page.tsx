@@ -4,7 +4,7 @@ import { requireStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { hasBrevo, hasR2 } from "@/lib/env";
 import { ErrorState, PageHeader, PageSkeleton, Panel, Pill } from "@/components/admin/ui";
-import { AppSwitch, FlagRow, SettingsForm } from "./forms";
+import { AppSwitch, FlagRow, GoogleClientId, SettingsForm } from "./forms";
 import { readJson } from "@/lib/r2";
 import type { ApkInfo } from "@/app/download/apk/route";
 
@@ -38,6 +38,11 @@ async function Settings() {
               text="Off: students (and you) can take screenshots and screen recordings anywhere except the screens below." />
             <AppSwitch k="screen_protection" field="exams" on={sw("screen_protection", "exams", true)} title="Block in tests, challenges and Premium videos"
               text="CBT tests, challenges, challenge answer reviews and Premium videos. Recommended on, so questions are not shared." />
+          </Panel>
+          <Panel title="Sign in with Google" bodyClassName="divide-y py-1">
+            <AppSwitch k="google_auth" field="enabled" on={sw("google_auth", "enabled", false)} title="Show “Continue with Google”"
+              text="On: students can create an account and log in with their Google account on the sign-up and log-in screens. Turn on only after the Google setup in SETUP §17 is done." />
+            <GoogleClientId value={String((v.google_auth as Record<string, unknown> | undefined)?.web_client_id ?? "")} />
           </Panel>
           <Panel title="App updates (direct app)" bodyClassName="divide-y py-1">
             <AppSwitch k="app_update" field="force" on={sw("app_update", "force", true)} title="Students must update to the newest app"

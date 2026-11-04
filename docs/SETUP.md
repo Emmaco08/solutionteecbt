@@ -490,3 +490,39 @@ Everything else in 4D works without this: messages still appear on the app's Not
 3. In the app: Me → Settings → Notifications → switch **Announcements** off → send another announcement → it should not pop up (it still appears on the Notifications screen).
 
 **Streak reminders** go out once a day at 7 pm Lagos time to students who have a streak of 2 or more days and have not practised that day. To change the hour or turn them off, ask me (setting `push` in the database; an admin switch can follow).
+
+## 17. Sign in with Google (2026-11-04, D-087)
+Students can create an account and log in with Google. The button shows only after these steps, when you turn it on in the admin.
+Type the secret yourself in the Supabase dashboard. Never paste it in chat.
+
+1. **Google Cloud console** (https://console.cloud.google.com). Pick the same project as Firebase.
+   - **Google Auth Platform → Branding / OAuth consent screen:**
+     - User type **External**.
+     - App name "SolutionTee CBT".
+     - Support email info@solutiontee.com.
+     - Developer contact: your email.
+     - Scopes: only `email`, `profile` and `openid`. With only these, Google doesn't need to review the app.
+     - Then **Publish app** (status "In production").
+2. **Clients → Create client → Web application:**
+   - Name: "SolutionTee (Supabase)".
+   - Authorised redirect URI: `https://mxeemubacnmcmmmzteax.supabase.co/auth/v1/callback`
+   - Create it, and keep the page open. The **Client ID** is not a secret; the **Client secret** is.
+3. **Clients → Create client → Android:**
+   - Package name: `com.solutiontee.cbt`
+   - SHA-1 certificate fingerprint (from the app on /download): `59:D3:57:B6:FF:85:F4:E1:80:33:21:58:F6:D1:D1:7C:F9:38:E0:4B`
+   - Later, for the Play Store, add a second Android client with the **App signing key SHA-1** from Play Console → Test and release → App integrity.
+4. **Supabase dashboard → Authentication → Sign In / Providers → Google:**
+   - Turn on **Enable Sign in with Google**.
+   - Paste the Web **Client ID** into "Client IDs".
+   - Type the **Client secret**.
+   - Leave "Skip nonce checks" **off**.
+   - Save.
+5. **admin.solutiontee.com → Flags & settings → Sign in with Google:**
+   - Paste the Web Client ID and press Save.
+   - Turn on **Show "Continue with Google"**.
+   - Phones show the button the next time the app opens.
+
+Notes:
+- If a student already has an email account with the same Gmail address, Google sign-in opens that same account. Supabase links verified emails, so no second account is made.
+- Banned phones and second accounts on a phone are still stopped. The app checks the phone right after any sign-in (D-079).
+- Google sign-in works in the APK from /download (signed with the key above). A phone build made on your laptop uses a different key, so Google refuses it until you add that key's SHA-1 too (`keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android`).

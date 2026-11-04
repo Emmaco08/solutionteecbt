@@ -22,6 +22,7 @@ dependencies:
   flutter_secure_storage: ^11.2.0
   flutter_svg: ^2.3.2
   go_router: ^18.1.1
+  google_sign_in: ^7.2.0
   http: ^1.6.0
   image_picker: ^1.2.4
   in_app_purchase: ^3.3.1

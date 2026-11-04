@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:solutiontee_cbt/core/providers.dart';
 import 'package:solutiontee_cbt/features/auth/auth_screens.dart';
 import 'package:solutiontee_cbt/features/home/tour.dart';
 import 'package:solutiontee_cbt/features/xp/streak_ui.dart';
@@ -132,6 +134,28 @@ void main() {
     await t.pumpWidget(const SizedBox());
     await t.pump(const Duration(seconds: 2));
   });
+
+  for (final (name, setting, shown) in [
+    ('off', {'enabled': false, 'web_client_id': '123-abc.apps.googleusercontent.com'}, false),
+    ('on without a client ID', {'enabled': true, 'web_client_id': ''}, false),
+    ('on with a client ID', {'enabled': true, 'web_client_id': '123-abc.apps.googleusercontent.com'}, true),
+  ]) {
+    testWidgets('Continue with Google on log-in and sign-up: $name', (t) async {
+      for (final screen in const [LoginScreen(), SignUpScreen()]) {
+        await t.pumpWidget(
+          ProviderScope(
+            overrides: [
+              appSettingsProvider.overrideWith((ref) async => {'google_auth': setting}),
+            ],
+            child: MaterialApp(theme: buildTheme(Brightness.light), home: screen),
+          ),
+        );
+        await _settle(t);
+        expect(find.text('Continue with Google'), shown ? findsOneWidget : findsNothing);
+        if (screen is SignUpScreen) expect(find.textContaining('By continuing with Google'), shown ? findsOneWidget : findsNothing);
+      }
+    });
+  }
 }
 
 /// A long page with a target far below the screen, like Home's Upgrade card.
