@@ -586,3 +586,9 @@ The owner asked to run the admin from Vercel instead of the laptop.
 - **Me → My streak:** the flame (grows at 7 / 30 / 100 days), longest, this week (gold = practised, snowflake = saved), repair, freezes, bonuses. The Home streak chip opens it.
 - Animations: flutter_animate, no blur, simple versions under "reduce motion".
 - Tests: `supabase/tests/xp_streaks.test.sql` 12/12; app tests 85/85.
+
+**D-083 · 2026-11-04 · XP3: spending XP and XP prizes (owner)**
+- **Challenge entry fee in XP:** Admin → a challenge → "Entry fee in XP" (0 = free). Taken by the server in the same step as the entry (no entry, no XP taken). **Cash-prize challenges accept earned XP only** (D-081: Google Play and Nigerian gaming law); events and practice challenges take bought XP first. Not returned after a disqualification. XP switched off → the fee is ignored (free entry). The app shows "100 XP entry" and asks "Join for 100 XP?" before starting.
+- **Premium with XP:** Me → My XP → "Get Premium with XP" lists plans with an XP price (Admin → XP & streaks, default Monthly 3,000 · 3 Months 8,000 · Exam season 14,000); Premium starts now or when current Premium ends (same rules as paid plans, entitlement source `xp`). Bought XP counts here.
+- **XP prizes:** challenge 1st / 2nd / 3rd (default 200 / 100 / 50) after the close, fair entries only (every 15 minutes, once per entry); **weekly**: every Monday 00:05 Lagos the 3 best JAMB mocks of last week (leaderboard rules: full 400-mark mock, not held for a fast finish, not rejected, no staff or banned) get 300 / 150 / 75 XP, with a notification.
+- Tests: `supabase/tests/xp_spend.test.sql` 9/9; app tests 87/87.

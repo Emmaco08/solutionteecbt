@@ -14,7 +14,7 @@ import { addFromBank, addQuestion, addRandom, closeNow, decideAppeal, importQues
 export type ChallengeRow = {
   id: string; title: string; subtitle: string | null; kind: "cash" | "event" | "practice"; icon: string; exam_code: string | null;
   starts_at: string; ends_at: string; seconds_per_question: number; prizes: number[]; reward_text: string | null;
-  premium_days: number; premium_top: number; allowed_exits: number; published: boolean; closed_at: string | null;
+  premium_days: number; premium_top: number; allowed_exits: number; published: boolean; closed_at: string | null; xp_fee: number;
   mode: "mixed" | "subject" | "fixed"; subject_id: number | null; per_level: Record<string, number>; same_questions: boolean; allow_review: boolean;
 };
 export type QRow = { id: string; position: number; body: string; options: Record<string, string>; answer: string; subject_id: number | null; difficulty: string };
@@ -85,6 +85,9 @@ export function ChallengeForm({ c, subjects }: { c?: ChallengeRow; subjects: Sub
           <select id="cExits" name="allowed_exits" defaultValue={c?.allowed_exits ?? 0} className={inputCls}>
             <option value={0}>0 (leaving once disqualifies)</option><option value={1}>1</option><option value={2}>2</option><option value={3}>3</option>
           </select></div>
+        <div className="space-y-1.5"><Label htmlFor="cXp">Entry fee in XP (0 = free)</Label>
+          <input id="cXp" name="xp_fee" type="number" min={0} step={10} defaultValue={c?.xp_fee ?? 0} className={inputCls} />
+          <span className="text-xs text-muted-foreground">{kind === "cash" ? "Cash prize: only XP earned in the app is accepted, never bought XP." : "Earned and bought XP are both accepted."}</span></div>
         <div className="space-y-1.5"><Label htmlFor="cExam">Exam logo (optional)</Label>
           <select id="cExam" name="exam_code" defaultValue={c?.exam_code ?? ""} className={inputCls}><option value="">None</option><option>JAMB</option><option>WAEC</option><option>NECO</option></select></div>
       </div>

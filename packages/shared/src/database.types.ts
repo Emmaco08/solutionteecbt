@@ -847,6 +847,7 @@ export type Database = {
           published: boolean
           reward_text: string | null
           allow_review: boolean
+          xp_fee: number
           same_questions: boolean
           seconds_per_question: number
           soon_notified_at: string | null
@@ -876,6 +877,7 @@ export type Database = {
           published?: boolean
           reward_text?: string | null
           allow_review?: boolean
+          xp_fee?: number
           same_questions?: boolean
           seconds_per_question?: number
           soon_notified_at?: string | null
@@ -905,6 +907,7 @@ export type Database = {
           published?: boolean
           reward_text?: string | null
           allow_review?: boolean
+          xp_fee?: number
           same_questions?: boolean
           seconds_per_question?: number
           soon_notified_at?: string | null
@@ -2601,6 +2604,7 @@ export type Database = {
       my_referrals: { Args: never; Returns: Json }
       my_status: { Args: never; Returns: Json }
       my_xp: { Args: never; Returns: Json }
+      xp_buy_premium: { Args: { p_plan: string }; Returns: Json }
       xp_claim_daily: { Args: never; Returns: Json }
       referral_apply: { Args: { p_code: string }; Returns: Json }
       referral_claim: {
@@ -2817,6 +2821,7 @@ export type Database = {
         | "code"
         | "referral"
         | "prize"
+        | "xp"
       notif_topic:
         | "announcements"
         | "new_questions"
@@ -2971,6 +2976,7 @@ export const Constants = {
         "code",
         "referral",
         "prize",
+        "xp",
       ],
       notif_topic: [
         "announcements",

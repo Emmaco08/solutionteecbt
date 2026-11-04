@@ -65,6 +65,10 @@ class Challenge {
   bool get eligible => j['eligible'] != false;
   bool get sameQuestions => j['same_questions'] == true;
 
+  /// XP entry fee (0 = free). Cash-prize challenges take earned XP only (D-081, D-083).
+  int get xpFee => (j['xp_fee'] as num?)?.toInt() ?? 0;
+  bool get xpEarnedOnly => j['xp_earned_only'] == true;
+
   /// Questions per subject at each level, easiest first, skipping zeros: [('Easy', 3), ('Hard', 2)].
   List<(String, int)> get perLevel {
     final m = j['per_level'] is Map ? Map<String, dynamic>.from(j['per_level'] as Map) : const <String, dynamic>{};

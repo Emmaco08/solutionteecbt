@@ -13,6 +13,10 @@ Map<String, dynamic> wallet({bool enabled = true, bool claimed = false}) => {
   'daily_claim': 10,
   'today': 45,
   'daily_cap': 300,
+  'premium_options': [
+    {'code': 'monthly', 'name': 'Monthly', 'xp': 3000},
+    {'code': 'three_months', 'name': '3 Months', 'xp': 800},
+  ],
   'rules': {'daily_claim': 10, 'test': 5, 'mock': 30, 'qotd': 2, 'qotd_right': 3, 'challenge_finish': 20, 'referral': 50},
   'history': [
     {'amount': 10, 'kind': 'earned', 'reason': 'daily_claim', 'note': null, 'at': '2026-11-04T07:00:00Z'},
@@ -65,5 +69,13 @@ void main() {
     await settle(t);
     expect(find.text('1,250'), findsNothing);
     expect(find.textContaining('Claim +'), findsNothing);
+  });
+
+  testWidgets('Premium with XP: affordable plans can be bought, others show how much more is needed', (t) async {
+    await t.pumpWidget(wrap(const XpWalletScreen(), wallet()));
+    await settle(t);
+    await t.scrollUntilVisible(find.text('Get Premium with XP'), 300, scrollable: find.byType(Scrollable).first);
+    expect(find.text('1,750 XP more needed'), findsOneWidget);
+    expect(find.text('You have enough XP'), findsOneWidget);
   });
 }

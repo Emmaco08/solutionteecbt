@@ -278,7 +278,12 @@ class _Wallet extends StatelessWidget {
           ],
         ),
         const Gap(Space.s2),
-        Text('Spend XP on challenge entries, Premium and streak freezes — coming soon.', style: context.ty.cap.col(c.textSubtle), textAlign: TextAlign.center),
+        if (rows(d['premium_options']).isNotEmpty) ...[
+          const SectTitle('Get Premium with XP'),
+          _PremiumWithXp(options: rows(d['premium_options']), balance: _i(d['balance'])),
+        ],
+        const Gap(Space.s2),
+        Text('You can also spend XP on challenge entries and streak freezes.', style: context.ty.cap.col(c.textSubtle), textAlign: TextAlign.center),
         const Gap(Space.s3),
         const SectTitle('History'),
         if (history.isEmpty)
@@ -324,3 +329,81 @@ class _Wallet extends StatelessWidget {
 
 /// Used by Supabase errors in this file.
 String xpError(Object e) => e is PostgrestException && e.message.isNotEmpty ? e.message : 'Something went wrong. Check your internet and try again.';
+
+/// Premium paid with XP (D-083): the admin's XP price per plan; the server takes the XP and gives Premium.
+class _PremiumWithXp extends ConsumerStatefulWidget {
+  const _PremiumWithXp({required this.options, required this.balance});
+  final List<Map<String, dynamic>> options;
+  final int balance;
+  @override
+  ConsumerState<_PremiumWithXp> createState() => _PremiumWithXpState();
+}
+
+class _PremiumWithXpState extends ConsumerState<_PremiumWithXp> {
+  String? _busy;
+
+  Future<void> _buy(Map<String, dynamic> o) async {
+    final ok = await showAppDialog<bool>(
+      context,
+      title: 'Get ${o['name']} for ${xpText(_i(o['xp']))} XP?',
+      body: 'Premium starts now, or when your current Premium ends.',
+      icon: PhosphorIcons.crownSimple(PhosphorIconsStyle.fill),
+      tone: Tone.gold,
+      actions: [
+        Btn('Cancel', kind: BtnKind.ghost, onPressed: () => Navigator.pop(context, false)),
+        Btn('Pay ${xpText(_i(o['xp']))} XP', kind: BtnKind.accent, onPressed: () => Navigator.pop(context, true)),
+      ],
+    );
+    if (ok != true || !mounted) return;
+    setState(() => _busy = '${o['code']}');
+    try {
+      await ref.read(supabaseProvider).rpc('xp_buy_premium', params: {'p_plan': o['code']});
+      HapticFeedback.mediumImpact();
+      ref.invalidate(myXpProvider);
+      ref.invalidate(myPlanProvider);
+      if (mounted) toast(context, '${o['name']} is on. Enjoy every year and every exam!', icon: PhosphorIcons.crownSimple(PhosphorIconsStyle.fill));
+    } catch (e) {
+      if (mounted) toast(context, xpError(e), icon: PhosphorIcons.warningCircle(PhosphorIconsStyle.fill));
+    } finally {
+      if (mounted) setState(() => _busy = null);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    return ListCard(
+      children: [
+        for (final o in widget.options)
+          Padding(
+            padding: const EdgeInsets.all(Space.s3),
+            child: Row(
+              children: [
+                IconTile(PhosphorIcons.crownSimple(PhosphorIconsStyle.fill), tone: Tone.gold, size: 36, radius: 10, iconSize: 18),
+                const Gap(Space.s3),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('${o['name']}', style: context.ty.sm.bold),
+                      Text(
+                        widget.balance >= _i(o['xp']) ? 'You have enough XP' : '${xpText(_i(o['xp']) - widget.balance)} XP more needed',
+                        style: context.ty.cap.col(widget.balance >= _i(o['xp']) ? c.success : c.textMuted),
+                      ),
+                    ],
+                  ),
+                ),
+                Btn(
+                  '${xpText(_i(o['xp']))} XP',
+                  kind: widget.balance >= _i(o['xp']) ? BtnKind.accent : BtnKind.tonal,
+                  sm: true,
+                  loading: _busy == '${o['code']}',
+                  onPressed: _busy != null || widget.balance < _i(o['xp']) ? null : () => _buy(o),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}

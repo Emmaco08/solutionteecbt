@@ -477,7 +477,29 @@ class _ChallengeScreenState extends ConsumerState<ChallengeScreen> {
       toast(context, 'Tick the fair-play box first.', icon: PhosphorIcons.shieldWarning(PhosphorIconsStyle.fill));
       return;
     }
+    if (c.xpFee > 0) {
+      _confirmFee(c);
+      return;
+    }
     context.push('/challenges/${c.id}/play');
+  }
+
+  /// D-083: an XP entry fee is confirmed first; the server takes it when the challenge starts.
+  Future<void> _confirmFee(Challenge c) async {
+    final ok = await showAppDialog<bool>(
+      context,
+      title: 'Join for ${c.xpFee} XP?',
+      body: c.xpEarnedOnly
+          ? 'This is a cash-prize challenge, so only XP you earned in the app can be used (not bought XP). The XP is not returned if you are disqualified.'
+          : 'The XP is taken when you start. It is not returned if you are disqualified.',
+      icon: PhosphorIcons.coins(PhosphorIconsStyle.fill),
+      tone: Tone.gold,
+      actions: [
+        Btn('Cancel', kind: BtnKind.ghost, onPressed: () => Navigator.pop(context, false)),
+        Btn('Pay ${c.xpFee} XP and start', kind: BtnKind.accent, onPressed: () => Navigator.pop(context, true)),
+      ],
+    );
+    if (ok == true && mounted) context.push('/challenges/${c.id}/play');
   }
 
   @override
@@ -518,7 +540,11 @@ class _ChallengeScreenState extends ConsumerState<ChallengeScreen> {
             const Gap(Space.s4),
             Row(
               children: [
-                for (final (v, l) in [('${ch.questions}', 'questions'), ('${ch.seconds}s', 'per question'), ('Free', 'entry')])
+                for (final (v, l) in [
+                  ('${ch.questions}', 'questions'),
+                  ('${ch.seconds}s', 'per question'),
+                  (ch.xpFee > 0 ? '${ch.xpFee} XP' : 'Free', 'entry'),
+                ])
                   Expanded(
                     child: Container(
                       margin: const EdgeInsets.symmetric(horizontal: 3),

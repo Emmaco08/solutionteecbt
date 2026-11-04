@@ -10,6 +10,7 @@ import 'package:solutiontee_cbt/features/compete/challenges_screens.dart';
 import 'package:solutiontee_cbt/features/compete/compete_data.dart';
 import 'package:solutiontee_cbt/features/compete/results_screens.dart';
 import 'package:solutiontee_cbt/theme/theme.dart';
+import 'package:solutiontee_cbt/ui/kit.dart';
 
 /// Plays the server: two questions, answers checked "on the server", exits reported.
 class FakeApi implements ChallengeApi {
@@ -336,5 +337,22 @@ void main() {
     expect(DeviceEvents.ownMessage('/test/challenges/abc/review'), isTrue);
     expect(DeviceEvents.ownMessage('/home'), isFalse);
     expect(DeviceEvents.ownMessage('/test/challenges/abc/result'), isFalse);
+  });
+
+  testWidgets('an XP entry fee is shown and confirmed before the challenge starts (earned XP only for cash prizes)', (t) async {
+    final api = FakeApi();
+    await t.pumpWidget(app('/test/challenges/c1', api, ch: sample(extra: {'xp_fee': 100, 'xp_earned_only': true})));
+    await settle(t);
+    expect(find.text('100 XP'), findsOneWidget);
+    await t.scrollUntilVisible(find.byType(CheckRow), 300, scrollable: find.byType(Scrollable).first);
+    await t.tap(find.byType(CheckRow));
+    await settle(t);
+    await t.tap(find.text('Start challenge'));
+    await settle(t);
+    expect(find.text('Join for 100 XP?'), findsOneWidget);
+    expect(find.textContaining('only XP you earned'), findsOneWidget);
+    await t.tap(find.text('Cancel'));
+    await settle(t);
+    expect(find.text('Question number 1?', findRichText: true), findsNothing);
   });
 }
