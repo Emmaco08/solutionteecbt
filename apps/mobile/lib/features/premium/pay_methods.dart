@@ -10,6 +10,7 @@ import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
 import '../../ui/kit.dart';
 import '../../widgets/phosphor.g.dart';
+import 'pay_ui.dart';
 import 'paywall.dart';
 import 'payments.dart';
 
@@ -153,7 +154,8 @@ class PayMethodPicker extends StatelessWidget {
 }
 
 /// Our own "pay by bank transfer / USSD" screen. Checks the payment every 5 seconds while open and closes itself
-/// with the result when it is confirmed. Closing it early returns null (the payment can still be checked later).
+/// with the result when it is confirmed. Back asks first (D-095): "I have paid" closes with [PayPending] (still checked
+/// outside), "Leave" cancels the payment on the server and closes with [PayCancelled].
 Future<PayResult?> showPayOffline(BuildContext context, PayOffline o, PaystackProvider pay, {required String what}) =>
     Navigator.of(context, rootNavigator: true).push<PayResult>(
       MaterialPageRoute(
@@ -174,7 +176,7 @@ class PayOfflineScreen extends StatefulWidget {
 
 class _PayOfflineScreenState extends State<PayOfflineScreen> with WidgetsBindingObserver {
   Timer? _poll, _tick;
-  bool _sent = false, _checking = false;
+  bool _sent = false, _checking = false, _done = false, _leaving = false, _asking = false;
   String? _error;
 
   DateTime? get _expires => DateTime.tryParse('${widget.o.transfer?['expires_at'] ?? ''}')?.toLocal();
@@ -206,18 +208,47 @@ class _PayOfflineScreenState extends State<PayOfflineScreen> with WidgetsBinding
     _checking = true;
     final r = await widget.pay.check(widget.o.reference);
     _checking = false;
-    if (!mounted) return;
+    if (!mounted || _done) return;
     switch (r) {
       case PaySuccess():
         HapticFeedback.mediumImpact();
-        Navigator.of(context).pop(r);
+        _close(r);
       case PayFailed(:final code) when code == 'review':
-        Navigator.of(context).pop(r);
+        _close(r);
       case PayFailed(:final message):
         // A transfer that has not arrived is "pending", not failed; a real failure ends here.
         setState(() => _error = message);
       default:
         break;
+    }
+  }
+
+  void _close(PayResult r) {
+    if (_done || !mounted) return;
+    _done = true;
+    Navigator.of(context).pop(r);
+  }
+
+  /// Back or our back arrow: ask first. Stay → nothing; I have paid → check, then keep checking outside; Leave → cancel.
+  Future<void> _confirmLeave() async {
+    if (_done || _asking || _leaving) return;
+    _asking = true;
+    final choice = await confirmLeavePayment(context, via: widget.o.transfer != null ? 'Bank' : null, what: widget.what, transfer: true);
+    _asking = false;
+    if (!mounted || _done) return;
+    switch (choice) {
+      case LeaveChoice.stay:
+        break;
+      case LeaveChoice.paid:
+        await _check();
+        // Not here yet (transfers can take a minute): close, the plan / XP screen keeps checking.
+        _close(PayPending(widget.o.reference));
+      case LeaveChoice.leave:
+        setState(() => _leaving = true);
+        final r = await widget.pay
+            .cancel(widget.o.reference, reason: widget.o.transfer != null ? 'left the bank transfer' : 'left the USSD payment')
+            .timeout(const Duration(seconds: 10), onTimeout: () => const PayCancelled());
+        _close(r);
     }
   }
 
@@ -235,7 +266,6 @@ class _PayOfflineScreenState extends State<PayOfflineScreen> with WidgetsBinding
     final exp = _expires;
     final left = exp?.difference(DateTime.now());
     final expired = left != null && left.isNegative;
-    final rm = context.reduceMotion;
 
     Widget copyRow(String label, String value, {bool big = false, String? copyAs}) => Padding(
       padding: const EdgeInsets.symmetric(vertical: Space.s2),
@@ -362,8 +392,24 @@ class _PayOfflineScreenState extends State<PayOfflineScreen> with WidgetsBinding
       ),
     ];
 
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _confirmLeave();
+      },
+      child: Stack(
+        children: [
+          _scaffold(context, t, body),
+          if (_leaving) const Positioned.fill(child: PayBusyVeil(text: 'Cancelling payment…')),
+        ],
+      ),
+    );
+  }
+
+  Widget _scaffold(BuildContext context, Map<String, dynamic>? t, List<Widget> body) {
+    final rm = context.reduceMotion;
     return Scaffold(
-      appBar: TopBar(title: t != null ? 'Pay by bank transfer' : 'Pay with USSD', onBack: () => Navigator.of(context).pop()),
+      appBar: TopBar(title: t != null ? 'Pay by bank transfer' : 'Pay with USSD', onBack: _confirmLeave),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(Space.s5, Space.s2, Space.s5, Space.s6),
         children: [

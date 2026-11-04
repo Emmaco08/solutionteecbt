@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:solutiontee_cbt/features/compete/compete_data.dart';
 import 'package:solutiontee_cbt/features/premium/pay_methods.dart';
+import 'package:solutiontee_cbt/features/premium/pay_ui.dart';
 import 'package:solutiontee_cbt/features/premium/payments.dart';
 import 'package:solutiontee_cbt/features/premium/paystack_web.dart';
 import 'package:solutiontee_cbt/theme/theme.dart';
@@ -36,6 +37,14 @@ class FakeProvider extends PaystackProvider {
   Future<PayResult> check(String reference) async {
     checks++;
     return next;
+  }
+
+  final cancels = <String>[];
+  PayResult cancelAnswer = const PayCancelled();
+  @override
+  Future<PayResult> cancel(String reference, {String? reason}) async {
+    cancels.add(reason ?? '');
+    return cancelAnswer;
   }
 }
 
@@ -74,8 +83,10 @@ void main() {
 
   test('card: Paystack sheet cancelled or failed; no sheet → in-app page', () async {
     final cancelled = FakeSheet({'status': 'cancelled'});
-    expect(await FakeProvider(sheet: cancelled).openResult(card), isA<PayCancelled>());
+    final cp = FakeProvider(sheet: cancelled);
+    expect(await cp.openResult(card), isA<PayCancelled>());
     expect(cancelled.launches, 1);
+    expect(cp.cancels, ['closed the card sheet']); // the server is told at once (D-095)
 
     final failed = await FakeProvider(sheet: FakeSheet({'status': 'failed', 'message': 'Declined'})).openResult(card);
     expect((failed as PayFailed).message, 'Declined');
@@ -226,5 +237,135 @@ void main() {
     expect(js, contains("document.querySelectorAll('a, button, [role=\"button\"]')"));
     expect(js, contains("StApp.postMessage('notfound')"));
     expect(autoTapScript('Pocket App!'), contains('PocketApp')); // only letters reach the page
+  });
+
+  Future<void> openTransfer(WidgetTester t, FakeProvider p, void Function(PayResult?) got) async {
+    await t.pumpWidget(
+      MaterialApp(
+        theme: buildTheme(Brightness.dark),
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: TextButton(
+                onPressed: () async => got(
+                  await showPayOffline(
+                    context,
+                    const PayOffline(
+                      'st_0123456789abcdef0123',
+                      amountKobo: 350000,
+                      transfer: {'account_number': '1234567890', 'account_name': 'PAYSTACK-TITAN', 'bank': 'Titan Bank'},
+                    ),
+                    p,
+                    what: 'Premium · 3 Months',
+                  ),
+                ),
+                child: const Text('go'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await t.tap(find.text('go'));
+    for (var i = 0; i < 10; i++) {
+      await t.pump(const Duration(milliseconds: 100));
+    }
+  }
+
+  Future<void> pressBack(WidgetTester t) async {
+    await t.binding.handlePopRoute();
+    for (var i = 0; i < 6; i++) {
+      await t.pump(const Duration(milliseconds: 100));
+    }
+  }
+
+  testWidgets('back on a payment asks first: Stay keeps it, Leave cancels it on the server (D-095)', (t) async {
+    final p = FakeProvider();
+    var closed = false;
+    PayResult? got;
+    await openTransfer(t, p, (r) => (closed = true, got = r));
+    await pressBack(t);
+    expect(find.text('Leave this payment?'), findsOneWidget);
+    expect(find.text('Stay and pay'), findsOneWidget);
+    expect(find.text('I have paid · check now'), findsOneWidget);
+    expect(find.text('Leave and cancel payment'), findsOneWidget);
+
+    // Stay: the pop-up closes, the payment screen is still there, nothing is cancelled.
+    await t.tap(find.text('Stay and pay'));
+    for (var i = 0; i < 6; i++) {
+      await t.pump(const Duration(milliseconds: 100));
+    }
+    expect(find.text('Leave this payment?'), findsNothing);
+    expect(find.text('1234567890'), findsOneWidget);
+    expect(p.cancels, isEmpty);
+    expect(closed, isFalse);
+
+    // Our own back arrow asks too; Leave cancels and closes with "cancelled".
+    await t.tap(find.byTooltip('Back').first);
+    for (var i = 0; i < 6; i++) {
+      await t.pump(const Duration(milliseconds: 100));
+    }
+    expect(find.text('Leave this payment?'), findsOneWidget);
+    await t.tap(find.text('Leave and cancel payment'));
+    for (var i = 0; i < 8; i++) {
+      await t.pump(const Duration(milliseconds: 100));
+    }
+    expect(p.cancels, ['left the bank transfer']);
+    expect(got, isA<PayCancelled>());
+    expect(find.text('1234567890'), findsNothing);
+    await t.pumpWidget(const SizedBox());
+    await t.pump(const Duration(seconds: 3));
+  });
+
+  testWidgets('back, then "I have paid": checks now and keeps checking outside (no cancel)', (t) async {
+    final p = FakeProvider();
+    PayResult? got;
+    await openTransfer(t, p, (r) => got = r);
+    final before = p.checks;
+    await pressBack(t);
+    await t.tap(find.text('I have paid · check now'));
+    for (var i = 0; i < 8; i++) {
+      await t.pump(const Duration(milliseconds: 100));
+    }
+    expect(p.checks, greaterThan(before));
+    expect(p.cancels, isEmpty);
+    expect(got, isA<PayPending>());
+    await t.pumpWidget(const SizedBox());
+    await t.pump(const Duration(seconds: 3));
+  });
+
+  testWidgets('leaving after paying in the bank app: the server finds the payment and it counts', (t) async {
+    final p = FakeProvider()..cancelAnswer = PaySuccess(DateTime(2027));
+    PayResult? got;
+    await openTransfer(t, p, (r) => got = r);
+    await pressBack(t);
+    await t.tap(find.text('Leave and cancel payment'));
+    for (var i = 0; i < 8; i++) {
+      await t.pump(const Duration(milliseconds: 100));
+    }
+    expect(got, isA<PaySuccess>());
+    await t.pumpWidget(const SizedBox());
+    await t.pump(const Duration(seconds: 3));
+  });
+
+  testWidgets('opening screen: steps tick off as Paystack loads and the option opens', (t) async {
+    Widget at({bool loaded = false, bool ready = false}) => MaterialApp(
+      theme: buildTheme(Brightness.light),
+      home: Scaffold(
+        body: PayOpeningCover(via: 'OPay', what: 'Premium · 3 Months', loaded: loaded, ready: ready),
+      ),
+    );
+    await t.pumpWidget(at());
+    await t.pump(const Duration(milliseconds: 900));
+    expect(find.text('Opening OPay'), findsWidgets);
+    expect(find.text('Secure connection'), findsOneWidget);
+    expect(find.text('Ready to pay'), findsOneWidget);
+    await t.pumpWidget(at(loaded: true, ready: true));
+    for (var i = 0; i < 10; i++) {
+      await t.pump(const Duration(milliseconds: 100));
+    }
+    expect(find.text('All set'), findsOneWidget);
+    await t.pumpWidget(const SizedBox());
+    await t.pump(const Duration(seconds: 2));
   });
 }

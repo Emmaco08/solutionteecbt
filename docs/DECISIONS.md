@@ -705,3 +705,22 @@ The owner asked to run the admin from Vercel instead of the laptop.
   - a green tick and "OPay is ready" when the step is open, then a smooth fade to Paystack's OPay step.
 - New "No challenge right now" card on Home: a navy card with a floating, shining gold trophy and twinkling sparkles, "The next challenge is coming", Past winners and All challenges.
 - All animations stay still with reduce motion. App tests 112/112.
+
+**D-095 · 2026-11-04 · Leaving or cancelling a payment is detected at once; "Leave this payment?" pop-up; new "Opening OPay" screen (owner)**
+- Problem: closing Paystack's checkout (back button, our back arrow, Paystack's own "Cancel", closing the card sheet) left the app on "Checking payment" and the admin page on "Waiting", although nothing was paid.
+- Server:
+  - new `cancel` action in the `paystack` function and `pay_cancel(reference, user, note)` (service role only; migration `20261104214211_pay_cancel`);
+  - it asks Paystack first: if the payment went through after all (for example in the OPay app), Premium / XP is given and the app shows success;
+  - otherwise the payment becomes `abandoned` ("Not finished" in Admin → Payments) with a `cancelled` event saying how the student left;
+  - only the student who started it can cancel it; a cancelled payment that Paystack later reports as paid still counts (webhook or check);
+  - `check` re-checks abandoned payments with Paystack and answers `abandoned` while unpaid.
+- App:
+  - Back (phone button or our arrow) on the Paystack screen and on the bank transfer / USSD screen opens an animated pop-up (hourglass turning over in a breathing amber ring, with the OPay / Zap / bank logo): **Stay and pay** · **I have paid · check now** · **Leave and cancel payment**. Tapping outside = stay.
+  - Leave → "Cancelling payment…" → the server cancel → back on the plan / XP screen with "Payment cancelled. You were not charged." No more "checking".
+  - I have paid → checks at once; if not confirmed yet, the plan / XP screen keeps checking as before.
+  - Paystack's own "Cancel payment" and closing the card sheet cancel straight away (no second question).
+  - Inside a bank's own page (for example a card check) back still goes back one page; on Paystack's checkout it asks.
+  - The "Checking payment" card has a new **I did not pay · cancel** button.
+  - With no internet the app still leaves; the payment then ends as "Not finished" after a day (as before).
+- New "Opening OPay / Zap / your bank" screen (replaces the ripple design): SolutionTee's app icon and the partner's real logo joined by a dashed secure line with a gold light running along it; a shield in the middle turns into a green tick; three steps tick off (Secure connection → Opening OPay → Ready to pay), driven by the real page load and the tap; a sweeping progress bar; "Secured by Paystack · We never see your PIN". Light and dark mode from the theme tokens; everything still with reduce motion.
+- App tests 116/116 (new: leave pop-up choices, cancel on the server, paid-after-all, card sheet cancel, opening steps). DB check (rolled back): cancel → abandoned, stranger cannot cancel, later success → Premium given.

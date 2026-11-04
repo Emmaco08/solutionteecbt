@@ -94,7 +94,20 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> with WidgetsBin
     });
   }
 
-  bool _checking = false;
+  bool _checking = false, _cancelling = false;
+
+  /// "I did not pay": cancel on the server (it asks Paystack first, so a real payment still counts), D-095.
+  Future<void> _cancelWaiting() async {
+    final r = _reference, p = _pay;
+    if (r == null || p is! PaystackProvider) return _handle(const PayCancelled());
+    _poll?.cancel();
+    setState(() => _cancelling = true);
+    final res = await p.cancel(r, reason: 'tapped I did not pay');
+    if (!mounted) return;
+    setState(() => _cancelling = false);
+    _handle(res);
+  }
+
   Future<void> _checkNow({bool quiet = false}) async {
     final r = _reference;
     if (r == null || _checking || !mounted) return;
@@ -135,10 +148,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> with WidgetsBin
         if (p is! PaystackProvider) return;
         showPayOffline(context, r, p, what: 'Premium · ${plan['name']}').then((res) {
           if (!mounted) return;
-          if (res != null) {
-            _handle(res);
+          if (res == null || res is PayPending) {
+            _startPolling(); // "I have paid": keep checking here; "Check payment" stays available
           } else {
-            _startPolling(); // closed early: keep checking here; "Check payment" stays available
+            _handle(res);
           }
         });
       case PayWeb():
@@ -148,14 +161,18 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> with WidgetsBin
         if (p is! PaystackProvider) return;
         showPaystackWeb(context, r, p, what: 'Premium · ${plan['name']}', via: _method.viaName).then((res) {
           if (!mounted) return;
-          if (res is PaySuccess || res is PayFailed) {
-            _handle(res!);
+          if (res == null || res is PayPending) {
+            _startPolling(); // "I have paid" but not confirmed yet: keep checking here
           } else {
-            _startPolling(); // closed or not confirmed yet: keep checking here
+            _handle(res); // paid, failed, or left and cancelled (D-095)
           }
         });
       case PayCancelled():
-        setState(() => _stage = _Stage.idle);
+        // Left or cancelled before paying: stop checking, nothing is waiting any more (D-095).
+        final wasWaiting = _reference != null;
+        _poll?.cancel();
+        setState(() => (_stage = _Stage.idle, _reference = null));
+        if (wasWaiting) toast(context, 'Payment cancelled. You were not charged.', icon: PhosphorIcons.xCircle(PhosphorIconsStyle.fill));
       case PayFailed(:final message, :final code):
         _poll?.cancel();
         setState(() {
@@ -458,7 +475,17 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> with WidgetsBin
             leading: PhosphorIcons.arrowsClockwise(),
             onPressed: _checking ? null : () => _checkNow(),
           ),
-          const Gap(Space.s3),
+          const Gap(Space.s1),
+          TextButton.icon(
+            key: const ValueKey('checking-cancel'),
+            onPressed: _checking || _cancelling ? null : _cancelWaiting,
+            style: TextButton.styleFrom(foregroundColor: c.error, minimumSize: const Size.fromHeight(48)),
+            icon: _cancelling
+                ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: c.error))
+                : Icon(PhosphorIcons.xCircle(), size: 18),
+            label: Text('I did not pay · cancel', style: context.ty.sm.bold.col(c.error)),
+          ),
+          const Gap(Space.s2),
           Text(
             'Closed the page by mistake? Go back and tap Pay again. If money left your account, Premium turns on by itself once Paystack tells us; you are never charged twice for one checkout.',
             style: context.ty.cap.col(c.textMuted),

@@ -13,6 +13,8 @@
 //   {action:"pay_banks"} → {banks:[{name, code}]}   banks and apps that support Pay with Bank (D-092)
 //   {action:"charge_submit", reference, step:"otp"|"birthday"|"phone", value} → {bank_charge:{…}}   the next Pay with Bank step
 //      Each start makes a new reference; the webhook + verify grant it, exactly like a checkout payment.
+//   {action:"cancel", reference, reason?}   the student left or cancelled (D-095): asks Paystack first; if not paid, the
+//      payment becomes "abandoned" (a later success still counts) → {status: "abandoned"|"success"|…, expires_at?}
 //   {action:"check", reference}
 //      → {status: "pending"|"success"|"failed"|"needs_review"|"refunded", expires_at?}
 //   {action:"banks"} → {banks:[{name, code}]}   Nigerian banks for prize payouts (D-090)
@@ -352,6 +354,23 @@ Deno.serve(async (req) => {
       return json({ ok: true, status: r.status });
     }
 
+    if (action === "cancel") {
+      const reference = String(body.reference ?? "");
+      if (!/^st_[0-9a-f]{20}$/.test(reference)) return json({ error: "Bad reference" }, 400);
+      const { data: pay } = await admin.from("payments").select("user_id, status, provider").eq("reference", reference).maybeSingle();
+      if (!pay || pay.provider !== "paystack" || pay.user_id !== user.id) return json({ error: "Payment not found" }, 404);
+      if (pay.status !== "pending") return json({ status: pay.status, expires_at: pay.status === "success" ? await premiumUntil(user.id) : null });
+      // Paid after all (for example in the OPay app)? Then it counts, and nothing is cancelled.
+      const v = await verifyAndApply(reference, "verify");
+      if (v.status === "success" || v.status === "needs_review") {
+        return json({ status: v.status, expires_at: v.status === "success" ? await premiumUntil(user.id) : null });
+      }
+      const why = String(body.reason ?? "").slice(0, 120);
+      const r = await rpc<{ status: string }>("pay_cancel", { p_reference: reference, p_uid: user.id,
+        p_note: why ? `The student left the payment before paying (${why})` : null });
+      return json({ status: r.status });
+    }
+
     if (action === "check" || action === "refund") {
       const reference = String(body.reference ?? "");
       if (!/^st_[0-9a-f]{20}$/.test(reference)) return json({ error: "Bad reference" }, 400);
@@ -361,9 +380,11 @@ Deno.serve(async (req) => {
       if (pay.user_id !== user.id && !isAdmin) return json({ error: "Payment not found" }, 404);
 
       if (action === "check") {
-        const r = pay.status === "pending" || pay.status === "failed" ? await verifyAndApply(reference, isAdmin && pay.user_id !== user.id ? "admin_check" : "verify")
+        const r = pay.status === "pending" || pay.status === "failed" || pay.status === "abandoned" ? await verifyAndApply(reference, isAdmin && pay.user_id !== user.id ? "admin_check" : "verify")
           : { status: pay.status };
-        return json({ status: r.status, expires_at: r.status === "success" && pay.user_id ? await premiumUntil(pay.user_id) : null });
+        // A cancelled (abandoned) payment stays cancelled unless Paystack now says it was paid.
+        const status = pay.status === "abandoned" && r.status === "pending" ? "abandoned" : r.status;
+        return json({ status, expires_at: status === "success" && pay.user_id ? await premiumUntil(pay.user_id) : null });
       }
 
       if (!isAdmin) return json({ error: "Only admins with 2-step login can refund." }, 403);

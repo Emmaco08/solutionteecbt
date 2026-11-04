@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -11,6 +10,7 @@ import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
 import '../../ui/kit.dart';
 import '../../widgets/phosphor.g.dart';
+import 'pay_ui.dart';
 import 'payments.dart';
 
 /// What to do with a page the checkout wants to open (D-093). Kept apart so it can be tested.
@@ -119,7 +119,7 @@ class PaystackWebScreen extends StatefulWidget {
 class _PaystackWebScreenState extends State<PaystackWebScreen> with WidgetsBindingObserver {
   WebViewController? _web;
   int _progress = 0;
-  bool _failed = false, _checking = false, _done = false;
+  bool _failed = false, _checking = false, _done = false, _leaving = false, _asking = false;
   // Our cover over Paystack's list while we open the chosen option; the hint shows only if it could not be found.
   bool _covered = false, _tapped = false, _hint = false, _ready = false;
   Timer? _poll, _coverTimeout;
@@ -173,7 +173,8 @@ class _PaystackWebScreenState extends State<PaystackWebScreen> with WidgetsBindi
                   openOutside(u);
                   return NavigationDecision.prevent;
                 case WebNav.cancel:
-                  _close();
+                  // Paystack's own "Cancel payment": no need to ask again.
+                  _leave(reason: 'cancelled on Paystack\'s page');
                   return NavigationDecision.prevent;
                 case WebNav.closeAndCheck:
                   _check(finish: true);
@@ -221,10 +222,32 @@ class _PaystackWebScreenState extends State<PaystackWebScreen> with WidgetsBindi
     }
   }
 
-  void _close() {
-    if (_done || !mounted) return;
+  /// Back or our back arrow: ask first (D-095). Stay → nothing; I have paid → check now; Leave → cancel on the server.
+  Future<void> _confirmLeave() async {
+    if (_done || _asking || _leaving || !mounted) return;
+    _asking = true;
+    final choice = await confirmLeavePayment(context, via: widget.via, what: widget.what);
+    _asking = false;
+    if (!mounted || _done) return;
+    switch (choice) {
+      case LeaveChoice.stay:
+        break;
+      case LeaveChoice.paid:
+        await _check(finish: true);
+      case LeaveChoice.leave:
+        await _leave(reason: 'pressed back');
+    }
+  }
+
+  /// Cancel on the server (it asks Paystack first, so a payment made in the OPay app still counts), then close.
+  Future<void> _leave({required String reason}) async {
+    if (_done || _leaving || !mounted) return;
+    setState(() => _leaving = true);
+    final r = await widget.pay.cancel(widget.w.reference, reason: reason).timeout(const Duration(seconds: 10), onTimeout: () => const PayCancelled());
+    if (!mounted || _done) return;
     _done = true;
-    Navigator.of(context).pop();
+    if (r is PaySuccess) HapticFeedback.mediumImpact();
+    Navigator.of(context).pop(r);
   }
 
   void _uncover({bool hint = false}) {
@@ -247,11 +270,12 @@ class _PaystackWebScreenState extends State<PaystackWebScreen> with WidgetsBindi
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
-        if (web != null && await web.canGoBack()) return web.goBack();
-        _close();
+        // Inside a bank's own page (for example a card check), back goes back there; on Paystack's checkout we ask.
+        if (web != null && await web.canGoBack() && Uri.tryParse(await web.currentUrl() ?? '')?.host != 'checkout.paystack.com') return web.goBack();
+        _confirmLeave();
       },
       child: Scaffold(
-        appBar: TopBar(title: widget.via == null ? 'Pay' : 'Pay with ${widget.via}', onBack: _close),
+        appBar: TopBar(title: widget.via == null ? 'Pay' : 'Pay with ${widget.via}', onBack: _confirmLeave),
         body: Column(
           children: [
             AnimatedOpacity(
@@ -314,11 +338,19 @@ class _PaystackWebScreenState extends State<PaystackWebScreen> with WidgetsBindi
                                 duration: rm ? Duration.zero : const Duration(milliseconds: 420),
                                 switchOutCurve: Curves.easeIn,
                                 child: _covered
-                                    ? PayOpeningCover(key: const ValueKey('cover'), via: widget.via!, what: widget.what, ready: _ready, still: rm)
+                                    ? PayOpeningCover(
+                                        key: const ValueKey('cover'),
+                                        via: widget.via!,
+                                        what: widget.what,
+                                        loaded: _progress >= 100 || _tapped,
+                                        ready: _ready,
+                                        still: rm,
+                                      )
                                     : const SizedBox.shrink(key: ValueKey('none')),
                               ),
                             ),
                           ),
+                        if (_leaving) const Positioned.fill(child: PayBusyVeil(text: 'Cancelling payment…')),
                       ],
                     ),
             ),
@@ -367,253 +399,6 @@ class _Problem extends StatelessWidget {
         Btn('Try again', onPressed: onRetry),
         const Gap(Space.s2),
         Btn('Open in a secure tab', kind: BtnKind.ghost, onPressed: onTab),
-      ],
-    ),
-  );
-}
-
-/// Our cover while Paystack opens the chosen option: the real OPay / Zap logo with ripples and a turning gold arc,
-/// "Connecting securely… → Opening OPay…" with bouncing dots, and a green tick when the step is ready.
-class PayOpeningCover extends StatefulWidget {
-  const PayOpeningCover({super.key, required this.via, required this.what, this.ready = false, this.still = false});
-  final String via, what;
-  final bool ready, still;
-  @override
-  State<PayOpeningCover> createState() => _PayOpeningCoverState();
-}
-
-class _PayOpeningCoverState extends State<PayOpeningCover> with TickerProviderStateMixin {
-  late final AnimationController _spin = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600));
-  late final AnimationController _ripple = AnimationController(vsync: this, duration: const Duration(milliseconds: 2400));
-  bool _second = false;
-  Timer? _t;
-
-  @override
-  void initState() {
-    super.initState();
-    if (!widget.still) {
-      _spin.repeat();
-      _ripple.repeat();
-    }
-    _t = Timer(const Duration(milliseconds: 1400), () => mounted ? setState(() => _second = true) : null);
-  }
-
-  @override
-  void dispose() {
-    _t?.cancel();
-    _spin.dispose();
-    _ripple.dispose();
-    super.dispose();
-  }
-
-  Color get _brand => switch (widget.via) {
-    'OPay' => const Color(0xFF1DCF9F),
-    'Zap' => const Color(0xFF5B1A8C),
-    _ => const Color(0xFF2563B3),
-  };
-
-  Widget _logo() {
-    switch (widget.via) {
-      case 'OPay':
-        return Container(
-          width: 150,
-          height: 76,
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(22)),
-          child: SvgPicture.asset('assets/third_party/opay_logo.svg', semanticsLabel: 'OPay'),
-        );
-      case 'Zap':
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(26),
-          child: Image.asset('assets/third_party/zap_icon.png', width: 96, height: 96, semanticLabel: 'Zap'),
-        );
-      default:
-        return Container(
-          width: 96,
-          height: 96,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Palette.navy900, Color(0xFF1C4C9C)]),
-            borderRadius: BorderRadius.circular(26),
-          ),
-          child: Icon(PhosphorIcons.bank(PhosphorIconsStyle.fill), size: 46, color: Palette.gold400),
-        );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.c;
-    final still = widget.still;
-    final brand = _brand;
-    const box = 220.0;
-    final stage = widget.ready ? '${widget.via} is ready' : (_second ? 'Opening ${widget.via}' : 'Connecting securely');
-    return ColoredBox(
-      color: c.bg,
-      child: Stack(
-        children: [
-          // Soft brand light behind everything
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: RadialGradient(center: const Alignment(0, -.15), radius: .9, colors: [brand.withValues(alpha: .18), c.bg.withValues(alpha: 0)]),
-              ),
-            ),
-          ),
-          Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  width: box,
-                  height: box,
-                  child: AnimatedBuilder(
-                    animation: Listenable.merge([_spin, _ripple]),
-                    builder: (context, child) => Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        // Three ripples moving out one after another
-                        for (var k = 0; k < 3; k++)
-                          Builder(
-                            builder: (_) {
-                              final t = still ? .35 : (_ripple.value + k / 3) % 1;
-                              return Container(
-                                width: 110 + 110 * t,
-                                height: 110 + 110 * t,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: brand.withValues(alpha: (1 - t) * .45), width: 2),
-                                ),
-                              );
-                            },
-                          ),
-                        // Turning gold arc
-                        Transform.rotate(
-                          angle: _spin.value * 6.2832,
-                          child: CustomPaint(size: const Size(176, 176), painter: _ArcPainter(widget.ready ? c.success : Palette.gold400)),
-                        ),
-                        child!,
-                      ],
-                    ),
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        DecoratedBox(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(26),
-                            boxShadow: [BoxShadow(color: brand.withValues(alpha: .35), blurRadius: 28, offset: const Offset(0, 10))],
-                          ),
-                          child: _logo(),
-                        ).animate().scaleXY(begin: still ? 1 : .6, end: 1, duration: still ? 1.ms : 520.ms, curve: Curves.elasticOut),
-                        if (widget.ready)
-                          Positioned(
-                            right: -10,
-                            bottom: -10,
-                            child: Container(
-                              width: 34,
-                              height: 34,
-                              decoration: BoxDecoration(
-                                color: c.success,
-                                shape: BoxShape.circle,
-                                border: Border.all(color: c.bg, width: 3),
-                              ),
-                              child: Icon(PhosphorIcons.check(), size: 18, color: Colors.white),
-                            ).animate().scaleXY(begin: still ? 1 : 0, end: 1, duration: still ? 1.ms : 380.ms, curve: Curves.easeOutBack),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-                const Gap(Space.s4),
-                AnimatedSwitcher(
-                  duration: still ? Duration.zero : const Duration(milliseconds: 300),
-                  transitionBuilder: (w, a) => FadeTransition(
-                    opacity: a,
-                    child: SlideTransition(
-                      position: Tween(begin: const Offset(0, .3), end: Offset.zero).animate(a),
-                      child: w,
-                    ),
-                  ),
-                  child: Row(
-                    key: ValueKey(stage),
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(stage, style: context.ty.h2),
-                      if (!widget.ready) _Dots(color: c.text, still: still),
-                    ],
-                  ),
-                ),
-                const Gap(Space.s1),
-                Text(widget.what, style: context.ty.sm.col(c.textMuted)),
-                const Gap(Space.s6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: Space.s3, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: c.surface,
-                    borderRadius: BorderRadius.circular(99),
-                    border: Border.all(color: c.border),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(PhosphorIcons.lockSimple(PhosphorIconsStyle.fill), size: 14, color: c.success),
-                      const Gap(Space.s1),
-                      Text('Secured by Paystack', style: context.ty.cap.bold.col(c.textMuted)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ArcPainter extends CustomPainter {
-  _ArcPainter(this.color);
-  final Color color;
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
-    final p = Paint()
-      ..shader = SweepGradient(colors: [color.withValues(alpha: 0), color]).createShader(rect)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 4
-      ..strokeCap = StrokeCap.round;
-    canvas.drawArc(rect.deflate(2), 0, 4.4, false, p);
-  }
-
-  @override
-  bool shouldRepaint(_ArcPainter old) => old.color != color;
-}
-
-/// Three dots that bounce one after another.
-class _Dots extends StatelessWidget {
-  const _Dots({required this.color, this.still = false});
-  final Color color;
-  final bool still;
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(left: 4, top: 8),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (var i = 0; i < 3; i++)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 1.5),
-            child: still
-                ? Container(
-                    width: 5,
-                    height: 5,
-                    decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-                  )
-                : Container(
-                    width: 5,
-                    height: 5,
-                    decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-                  ).animate(onPlay: (a) => a.repeat(reverse: true), delay: (140 * i).ms).moveY(begin: 0, end: -5, duration: 380.ms, curve: Curves.easeOut),
-          ),
       ],
     ),
   );

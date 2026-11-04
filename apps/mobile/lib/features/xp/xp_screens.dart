@@ -495,20 +495,20 @@ class _BuyXpState extends ConsumerState<_BuyXp> with WidgetsBindingObserver {
         setState(() => (_reference = r.reference, _pendingXp = xp));
         showPayOffline(context, r, _pay, what: '${xpText(xp)} XP').then((res) {
           if (!mounted) return;
-          if (res != null) {
-            _done(res, xp);
-          } else {
+          if (res == null || res is PayPending) {
             _check();
+          } else {
+            _done(res, xp);
           }
         });
       case PayWeb():
         setState(() => (_reference = r.reference, _pendingXp = xp));
         showPaystackWeb(context, r, _pay, what: '${xpText(xp)} XP', via: via).then((res) {
           if (!mounted) return;
-          if (res is PaySuccess || res is PayFailed) {
-            _done(res!, xp);
-          } else {
+          if (res == null || res is PayPending) {
             _check();
+          } else {
+            _done(res, xp);
           }
         });
       case PayPending(:final reference):
@@ -521,7 +521,9 @@ class _BuyXpState extends ConsumerState<_BuyXp> with WidgetsBindingObserver {
         toast(context, message, icon: PhosphorIcons.warningCircle(PhosphorIconsStyle.fill));
         setState(() => _reference = null);
       case PayCancelled():
-        break;
+        // Left or cancelled before paying (D-095): nothing is waiting any more.
+        if (_reference != null) toast(context, 'Payment cancelled. You were not charged.', icon: PhosphorIcons.xCircle(PhosphorIconsStyle.fill));
+        setState(() => _reference = null);
     }
   }
 
@@ -540,6 +542,10 @@ class _BuyXpState extends ConsumerState<_BuyXp> with WidgetsBindingObserver {
       }
       if (res is PayFailed) {
         toast(context, res.message, icon: PhosphorIcons.warningCircle(PhosphorIconsStyle.fill));
+        setState(() => _reference = null);
+        return;
+      }
+      if (res is PayCancelled) {
         setState(() => _reference = null);
         return;
       }

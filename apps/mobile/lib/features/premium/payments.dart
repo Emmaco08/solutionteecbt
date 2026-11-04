@@ -240,7 +240,8 @@ class PaystackProvider implements PaymentProvider {
           final c = await check(reference);
           return c is PayFailed && c.code != 'review' ? PayPending(reference) : c;
         case 'cancelled':
-          return const PayCancelled();
+          // Closed Paystack's sheet: tell the server now, so the admin page does not show it waiting (D-095).
+          return await cancel(reference, reason: 'closed the card sheet');
         case 'failed':
           final m = '${s['message'] ?? ''}'.trim();
           return PayFailed(m.isEmpty ? 'The payment did not go through. You were not charged. Try again or use another way to pay.' : m);
@@ -295,10 +296,32 @@ class PaystackProvider implements PaymentProvider {
           code: 'review',
         ),
         'refunded' => const PayFailed('This payment was refunded.', code: 'refunded'),
+        'abandoned' => const PayCancelled(),
         _ => PayPending(reference),
       };
     } on PayFailed catch (e) {
       return e;
+    }
+  }
+
+  /// The student left or cancelled before paying (D-095). The server asks Paystack first: if it was paid after all
+  /// (for example in the OPay app) Premium / XP is given and this returns [PaySuccess]; otherwise the payment is
+  /// marked "Not finished" and this returns [PayCancelled]. Never throws; with no internet it still returns
+  /// [PayCancelled] (the payment then ends as "Not finished" after a day, and a late success still counts).
+  Future<PayResult> cancel(String reference, {String? reason}) async {
+    if (reference.isEmpty) return const PayCancelled();
+    try {
+      final r = await _call({'action': 'cancel', 'reference': reference, 'reason': ?reason});
+      return switch (r['status']) {
+        'success' => PaySuccess(_date(r['expires_at'])),
+        'needs_review' => const PayFailed(
+          'We are checking this payment. If you were charged, Premium turns on after our check, or contact support.',
+          code: 'review',
+        ),
+        _ => const PayCancelled(),
+      };
+    } on PayFailed {
+      return const PayCancelled();
     }
   }
 }
