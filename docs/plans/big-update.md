@@ -62,6 +62,12 @@ Each step ends with a phone test and an approval word (`U1 ok` … `U6 ok`). The
 - **Admin dashboard v2:** daily, weekly and monthly active users, new sign-ups, tests taken, AI use, revenue, retention, top subjects, countries and states (from the network, no GPS), devices, app versions, and when students study.
 - **Navigation:** a search across the app (subjects, notes, past questions, careers), the phone's back button that works the same everywhere, a double back to leave, tab re-tap to scroll to the top, and quick actions on the app icon (Continue test, Ask AI).
 
+## 2b. Owner decisions (2026-11-04)
+- **Card payments:** Paystack's official Flutter SDK sheet inside the app. Bank transfer and USSD are our own screens.
+- **Prize payouts:** the admin taps Approve and the money is sent through Paystack Transfers. The bank name is checked with Paystack first.
+- **Top 10 rewards:** XP + Premium days. Weekly: 1st 500 XP, 2nd 300, 3rd 200, 4th–10th 100. Monthly: 1st–3rd get 30 days of Premium, 4th–10th get 7 days. No cash. All of it is editable in the admin.
+- **Order:** U2 → U3 → U4 → U5 → U6, as planned.
+
 ## 3. Data changes (summary)
 - U1: `bookmarks.ref` → text; `motivation_quotes`.
 - U2: `payout_accounts`, `payouts`, `challenges.max_players` and `min_win_score`.
