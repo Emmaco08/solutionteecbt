@@ -73,6 +73,10 @@ jobs:
       - name: Build the APK
         run: |
           set -euo pipefail
+          # The owner's laptop keeps Gradle light (CLAUDE.md §2); GitHub's machine has 16 GB, and R8 with Paystack's
+          # Compose sheet needs more than 1.5 GB (D-089), so only this build gets a bigger heap.
+          sed -i 's/^org.gradle.jvmargs=.*/org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=1g/' android/gradle.properties
+          sed -i 's/^kotlin.daemon.jvmargs=.*/kotlin.daemon.jvmargs=-Xmx2g/' android/gradle.properties
           # Build number = minutes since 1970, so every build installs over the last one.
           BUILD=$(( $(date +%s) / 60 ))
           NAME=$(grep -E '^version:' pubspec.yaml | sed -E 's/^version:[[:space:]]*([0-9.]+).*/\1/')
