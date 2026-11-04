@@ -1,6 +1,6 @@
 # Plan — XP (game coins) and better daily streaks
 
-Status: **plan, waiting for the owner's decisions** (questions at the end). Nothing is built yet.
+Status: **approved plan** (owner, 2026-11-04): bought XP not for cash challenges; the streak needs one question a day; default prices to start; build in 4 steps (XP1–XP4).
 Decision log entry when built: D-081.
 
 ## 1. What the owner asked
