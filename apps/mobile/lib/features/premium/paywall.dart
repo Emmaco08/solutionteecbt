@@ -193,7 +193,7 @@ class _PaywallState extends ConsumerState<_Paywall> {
             const Gap(Space.s1),
             Flexible(
               child: Text(
-                usesPaystack(ref) ? 'Card · Transfer · USSD · OPay · Zap · PocketApp' : 'Paid securely with Google Play',
+                usesPaystack(ref) ? 'Card · Transfer · USSD · OPay · Zap · Bank apps' : 'Paid securely with Google Play',
                 style: context.ty.cap.bold.col(c.textMuted),
                 textAlign: TextAlign.center,
               ),

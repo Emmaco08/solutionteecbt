@@ -190,9 +190,10 @@ void main() {
         ),
       ),
     );
-    for (final name in ['Card', 'Bank transfer', 'USSD', 'OPay', 'PocketApp', 'Zap', 'Bank app']) {
+    for (final name in ['Card', 'Bank transfer', 'USSD', 'OPay', 'Zap', 'Bank app']) {
       expect(find.text(name), findsOneWidget);
     }
+    expect(find.text('PocketApp'), findsNothing); // hidden: not on this account's Paystack checkout
     await t.tap(find.text('OPay'));
     await t.pump(const Duration(milliseconds: 300));
     expect(picked, PayMethod.opay);

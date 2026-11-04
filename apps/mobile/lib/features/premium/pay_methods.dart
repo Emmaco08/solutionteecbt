@@ -22,7 +22,7 @@ String payChannel(PayMethod m, String bank) => switch (m) {
 };
 
 /// Choose how to pay (D-089, D-092): card (Paystack's secure sheet in the app), bank transfer or USSD (our own screens),
-/// or an app (OPay, PocketApp, Zap, bank apps), which Paystack only offers inside its own screen (it opens in the app).
+/// or an app (OPay, Zap, bank apps), which Paystack only offers inside its own screen (it opens in the app).
 class PayMethodPicker extends StatelessWidget {
   const PayMethodPicker({super.key, required this.method, required this.bank, required this.onChanged, this.enabled = true});
   final PayMethod method;
@@ -98,7 +98,7 @@ class PayMethodPicker extends StatelessWidget {
         Text('Pay with an app', style: context.ty.cap.bold.col(c.textMuted)),
         const Gap(Space.s2),
         option(PayMethod.opay, PhosphorIcons.wallet(PhosphorIconsStyle.fill), 'OPay', 'Approve in your OPay app'),
-        option(PayMethod.pocketapp, PhosphorIcons.piggyBank(PhosphorIconsStyle.fill), 'PocketApp', 'Pay from your PocketApp (PiggyVest) balance'),
+        // PocketApp is hidden: Paystack does not offer it on this account's checkout (owner, 2026-11-04). Add the line back when it does.
         option(PayMethod.zap, PhosphorIcons.lightning(PhosphorIconsStyle.fill), 'Zap', 'Pay with the Zap app'),
         option(PayMethod.bankApp, PhosphorIcons.deviceMobile(PhosphorIconsStyle.fill), 'Bank app', 'Kuda, PalmPay and other bank apps'),
         if (method.inPaystackScreen)
