@@ -118,6 +118,7 @@ class Btn extends StatelessWidget {
     this.icon,
     this.trailing,
     this.leading,
+    this.lead,
   });
   final String label;
   final VoidCallback? onPressed;
@@ -130,6 +131,9 @@ class Btn extends StatelessWidget {
   /// Icon before the label.
   final IconData? leading;
   final Widget? trailing;
+
+  /// A picture before the label (e.g. Google's G), when an icon is not enough.
+  final Widget? lead;
 
   @override
   Widget build(BuildContext context) {
@@ -151,7 +155,7 @@ class Btn extends StatelessWidget {
       mainAxisSize: block ? MainAxisSize.max : MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        if (leading != null) ...[Icon(leading, size: 20, color: fg), const Gap(Space.s2)],
+        if (leading != null) ...[Icon(leading, size: 20, color: fg), const Gap(Space.s2)] else if (lead != null) ...[lead!, const Gap(Space.s3)],
         Flexible(
           child: Text(label, style: style, maxLines: 1, overflow: TextOverflow.ellipsis),
         ),

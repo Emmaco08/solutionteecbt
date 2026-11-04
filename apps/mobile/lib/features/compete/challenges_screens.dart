@@ -12,6 +12,7 @@ import '../../theme/tokens.g.dart';
 import '../../ui/kit.dart';
 import '../../widgets/exam_logo.dart';
 import '../../widgets/phosphor.g.dart';
+import '../../widgets/r2_image.dart';
 import '../../widgets/states.dart';
 import 'compete_data.dart';
 
@@ -98,6 +99,58 @@ Widget _statusBadge(BuildContext context, Challenge c) => c.live
     ? Ticker(builder: (_) => Pill('Starts in ${untilShort(c.startsAt)}', icon: PhosphorIcons.clock(PhosphorIconsStyle.fill)))
     : const Pill('Ended', kind: BadgeKind.neutral);
 
+/// The admin's background picture for a challenge (light-mode or dark-mode one; either stands in for the other),
+/// under a shade so text stays readable. [strong]: white text on top (hero, details) → navy-blue shade in dark mode,
+/// a brighter blue one in light mode. Not strong: normal cards → a soft surface shade. No picture, or data saver on:
+/// just [fallback] (or nothing), so the card looks as before.
+class ChallengeBackdrop extends ConsumerWidget {
+  const ChallengeBackdrop({super.key, required this.c, required this.child, this.fallback, this.strong = true, this.padding});
+  final Challenge c;
+  final Widget child;
+  final Gradient? fallback;
+  final bool strong;
+  final EdgeInsets? padding;
+
+  /// The picture for this mode: its own one, else the other mode's.
+  static String? pick(Challenge c, {required bool dark}) => dark ? (c.bgDark ?? c.bgLight) : (c.bgLight ?? c.bgDark);
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final key = pick(c, dark: dark);
+    final show = key != null && !ref.watch(settingsProvider).dataSaver;
+    final cc = context.c;
+    final shade = strong
+        ? (dark
+              ? [Palette.navy900.withValues(alpha: .62), Palette.navy900.withValues(alpha: .93)]
+              : [const Color(0xFF2563B3).withValues(alpha: .58), Palette.navy900.withValues(alpha: .86)])
+        : (dark
+              ? [cc.surface.withValues(alpha: .80), cc.surface.withValues(alpha: .95)]
+              : [Colors.white.withValues(alpha: .80), const Color(0xFFEAF1FB).withValues(alpha: .94)]);
+    return Stack(
+      children: [
+        if (fallback != null)
+          Positioned.fill(
+            child: DecoratedBox(decoration: BoxDecoration(gradient: fallback)),
+          ),
+        if (show) ...[
+          Positioned.fill(
+            child: R2Image(imageKey: key, semanticLabel: '${c.title} picture', decodeWidth: 900),
+          ),
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: shade, begin: Alignment.topLeft, end: Alignment.bottomRight),
+              ),
+            ),
+          ),
+        ],
+        Padding(padding: padding ?? EdgeInsets.zero, child: child),
+      ],
+    );
+  }
+}
+
 /// Big navy card for a live challenge (prototype `.ch-hero`).
 class ChallengeHero extends StatelessWidget {
   const ChallengeHero({super.key, required this.c});
@@ -109,11 +162,10 @@ class ChallengeHero extends StatelessWidget {
       onTap: () => openRoute(context, '/test/challenges/${c.id}'),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(Radii.lg),
-        child: Container(
+        child: ChallengeBackdrop(
+          c: c,
           padding: const EdgeInsets.all(Space.s4),
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(colors: [Palette.navy900, Color(0xFF13306A)], begin: Alignment.topLeft, end: Alignment.bottomRight),
-          ),
+          fallback: const LinearGradient(colors: [Palette.navy900, Color(0xFF13306A)], begin: Alignment.topLeft, end: Alignment.bottomRight),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -127,7 +179,10 @@ class ChallengeHero extends StatelessWidget {
               const Gap(Space.s3),
               Text(c.title, style: context.ty.cap.bold.col(Palette.gold300)),
               Text(c.prizes.isNotEmpty ? 'Win ${nairaWhole(c.prizes.first)}' : (c.reward ?? c.title), style: context.ty.h1.col(Colors.white)),
-              Text('${c.questions} questions · ${c.seconds}s each · free for everyone', style: context.ty.sm.col(const Color(0xFFDCE4F2))),
+              Text(
+                '${c.questions} questions · ${c.seconds}s each · ${c.xpFee > 0 ? '${c.xpFee} XP to join' : 'free for everyone'}',
+                style: context.ty.sm.col(const Color(0xFFDCE4F2)),
+              ),
               const Gap(Space.s3),
               Row(
                 children: [
@@ -171,21 +226,28 @@ class ChallengeSection extends ConsumerWidget {
     } else if (featured != null) {
       top = AppCard(
         onTap: () => openRoute(context, '/test/challenges/${featured.id}'),
-        child: Row(
-          children: [
-            IconTile(challengeIcon(featured.icon), tone: Tone.blue, size: 48, radius: 14, iconSize: 24),
-            const Gap(Space.s3),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Ticker(builder: (_) => Text('Next: starts in ${untilShort(featured.startsAt)}', style: context.ty.cap.bold.col(c.onSecondarySoft))),
-                  Text(featured.title, style: context.ty.body.bold),
-                  Text('${featured.rewardText} · ${featured.entryText}', style: context.ty.cap.col(c.textMuted)),
-                ],
+        pad: false,
+        clip: true,
+        child: ChallengeBackdrop(
+          c: featured,
+          strong: false,
+          padding: const EdgeInsets.all(Space.s4),
+          child: Row(
+            children: [
+              IconTile(challengeIcon(featured.icon), tone: Tone.blue, size: 48, radius: 14, iconSize: 24),
+              const Gap(Space.s3),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Ticker(builder: (_) => Text('Next: starts in ${untilShort(featured.startsAt)}', style: context.ty.cap.bold.col(c.onSecondarySoft))),
+                    Text(featured.title, style: context.ty.body.bold),
+                    Text('${featured.rewardText} · ${featured.entryText}', style: context.ty.cap.col(c.textMuted)),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       );
     } else {
@@ -248,44 +310,50 @@ class _Mini extends StatelessWidget {
     final cc = context.c;
     return AppCard(
       onTap: () => openRoute(context, '/test/challenges/${c.id}'),
-      padding: const EdgeInsets.all(Space.s4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              IconTile(challengeIcon(c.icon), tone: Tone.navy, size: 32, radius: 9, iconSize: 18),
-              const Spacer(),
-              _statusBadge(context, c),
-            ],
-          ),
-          const Gap(Space.s2),
-          Text(c.title, style: context.ty.sm.bold, maxLines: 1, overflow: TextOverflow.ellipsis),
-          const Spacer(),
-          Divider(height: Space.s3, color: cc.border),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Prize', style: context.ty.cap.col(cc.textMuted)),
-                    Text(c.prizes.isNotEmpty ? nairaWhole(c.prizes.first) : (c.reward != null ? 'Reward' : 'Practice'), style: context.ty.sm.bold),
-                  ],
+      pad: false,
+      clip: true,
+      child: ChallengeBackdrop(
+        c: c,
+        strong: false,
+        padding: const EdgeInsets.all(Space.s4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                IconTile(challengeIcon(c.icon), tone: Tone.navy, size: 32, radius: 9, iconSize: 18),
+                const Spacer(),
+                _statusBadge(context, c),
+              ],
+            ),
+            const Gap(Space.s2),
+            Text(c.title, style: context.ty.sm.bold, maxLines: 1, overflow: TextOverflow.ellipsis),
+            const Spacer(),
+            Divider(height: Space.s3, color: cc.border),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Prize', style: context.ty.cap.col(cc.textMuted)),
+                      Text(c.prizes.isNotEmpty ? nairaWhole(c.prizes.first) : (c.reward != null ? 'Reward' : 'Practice'), style: context.ty.sm.bold),
+                    ],
+                  ),
                 ),
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Entry', style: context.ty.cap.col(cc.textMuted)),
-                    Text(c.xpFee > 0 ? '${c.xpFee} XP' : 'Free', style: context.ty.sm.bold),
-                  ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Entry', style: context.ty.cap.col(cc.textMuted)),
+                      Text(c.xpFee > 0 ? '${c.xpFee} XP' : 'Free', style: context.ty.sm.bold),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -323,23 +391,30 @@ class ChallengesScreen extends ConsumerWidget {
           final c = context.c;
           Widget card(Challenge x) => AppCard(
             onTap: () => openRoute(context, '/test/challenges/${x.id}'),
-            child: Row(
-              children: [
-                IconTile(challengeIcon(x.icon), tone: x.kind == 'cash' ? Tone.gold : Tone.navy, size: 48, radius: 14, iconSize: 24),
-                const Gap(Space.s3),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Wrap(spacing: Space.s2, runSpacing: Space.s1, children: [_statusBadge(context, x), _typeBadge(x), ?_modeBadge(x)]),
-                      const Gap(Space.s1),
-                      Text(x.title, style: context.ty.sm.bold),
-                      Text('${x.rewardText} · ${x.entryText}', style: context.ty.cap.col(c.textMuted)),
-                    ],
+            pad: false,
+            clip: true,
+            child: ChallengeBackdrop(
+              c: x,
+              strong: false,
+              padding: const EdgeInsets.all(Space.s4),
+              child: Row(
+                children: [
+                  IconTile(challengeIcon(x.icon), tone: x.kind == 'cash' ? Tone.gold : Tone.navy, size: 48, radius: 14, iconSize: 24),
+                  const Gap(Space.s3),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Wrap(spacing: Space.s2, runSpacing: Space.s1, children: [_statusBadge(context, x), _typeBadge(x), ?_modeBadge(x)]),
+                        const Gap(Space.s1),
+                        Text(x.title, style: context.ty.sm.bold),
+                        Text('${x.rewardText} · ${x.entryText}', style: context.ty.cap.col(c.textMuted)),
+                      ],
+                    ),
                   ),
-                ),
-                Icon(PhosphorIcons.caretRight(), size: 18, color: c.textSubtle),
-              ],
+                  Icon(PhosphorIcons.caretRight(), size: 18, color: c.textSubtle),
+                ],
+              ),
             ),
           );
           final sections = <Widget>[
@@ -518,23 +593,26 @@ class _ChallengeScreenState extends ConsumerState<ChallengeScreen> {
         (ch) => ListView(
           padding: const EdgeInsets.fromLTRB(Space.s5, 0, Space.s5, Space.s8),
           children: [
-            Container(
-              height: 140,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
+            ClipRRect(
+              borderRadius: BorderRadius.circular(Radii.lg),
+              child: ChallengeBackdrop(
+                c: ch,
+                fallback: LinearGradient(
                   colors: ch.kind == 'cash' ? const [Palette.navy900, Color(0xFF3A2C05)] : const [Palette.navy900, Color(0xFF13306A)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.circular(Radii.lg),
-              ),
-              alignment: Alignment.center,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(challengeIcon(ch.icon), size: 56, color: Palette.gold500),
-                  if (ch.exam != null) ...[const Gap(Space.s4), ExamLogo(ch.exam!, size: LogoSize.md)],
-                ],
+                child: SizedBox(
+                  height: ch.bgLight != null || ch.bgDark != null ? 170 : 140,
+                  width: double.infinity,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(challengeIcon(ch.icon), size: 56, color: Palette.gold500),
+                      if (ch.exam != null) ...[const Gap(Space.s4), ExamLogo(ch.exam!, size: LogoSize.md)],
+                    ],
+                  ),
+                ),
               ),
             ),
             const Gap(Space.s4),

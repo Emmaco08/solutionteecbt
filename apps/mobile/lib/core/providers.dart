@@ -157,6 +157,22 @@ Session? currentSession(Ref ref) => ref.watch(sessionProvider).value ?? Supabase
 /// Per-account cache key, so one account's cached data never shows for another on a shared phone.
 String _mine(Ref ref, String key) => '$key:${currentSession(ref)?.user.id ?? 'anon'}';
 
+/// Today's Lagos date as YYYY-MM-DD (Nigeria is UTC+1 all year).
+String lagosToday() => DateTime.now().toUtc().add(const Duration(hours: 1)).toIso8601String().substring(0, 10);
+
+/// Questions answered today in tests saved on the server from any phone (the Home daily goal), or null when
+/// logged out or unknown (offline with no answer from today). The app adds its own tests not synced yet.
+Future<int?> serverPracticeToday(Ref ref) async {
+  try {
+    if (currentSession(ref) == null) return null;
+    final m = await cached(ref, _mine(ref, 'practice_today'), (s) => s.rpc('my_practice_today'), (j) => Map<String, dynamic>.from(j as Map));
+    if (m['day'] != lagosToday()) return null; // a cached answer from another day
+    return (m['answered'] as num?)?.toInt();
+  } catch (_) {
+    return null;
+  }
+}
+
 final openYearsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) {
   return cached(ref, _mine(ref, 'open_years'), (s) => s.rpc('my_open_years'), rows);
 });

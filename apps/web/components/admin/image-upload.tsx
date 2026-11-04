@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
 /** Uploads one image to R2 through a presigned link and keeps its key in a hidden form field. */
-export function ImageUpload({ name, kind, defaultKey }: { name: string; kind: "question" | "news" | "cover" | "receipt"; defaultKey?: string | null }) {
+export function ImageUpload({ name, kind, defaultKey }: { name: string; kind: "question" | "news" | "cover" | "receipt" | "challenge"; defaultKey?: string | null }) {
   const [key, setKey] = useState(defaultKey ?? "");
   const [preview, setPreview] = useState(defaultKey ? `/admin/api/${kind === "cover" ? "study-file" : "image"}?key=${encodeURIComponent(defaultKey)}` : "");
   const [busy, setBusy] = useState(false);

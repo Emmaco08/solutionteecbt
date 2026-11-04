@@ -10,7 +10,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/api.dart';
 import '../../core/providers.dart';
 import '../../ui/kit.dart';
-import '../../widgets/phosphor.g.dart';
 
 /// "Continue with Google" (D-087). Shown only when Admin → Flags & settings → Sign in with Google is on
 /// and a Web client ID is saved. The client secret never comes to the app (it lives in Supabase Auth).
@@ -85,13 +84,19 @@ Future<GoogleResult> signInWithGoogle(WidgetRef ref, {required String clientId, 
   return isNew ? GoogleResult.created : GoogleResult.signedIn;
 }
 
-/// The white "Continue with Google" button (Google's own G logo glyph from the icon font, not redrawn).
+/// The "Continue with Google" button with Google's official G (assets/third_party, from Google's sign-in assets).
 class GoogleButton extends StatelessWidget {
   const GoogleButton({super.key, required this.onPressed, this.busy = false, this.label = 'Continue with Google'});
   final VoidCallback? onPressed;
   final bool busy;
   final String label;
   @override
-  Widget build(BuildContext context) =>
-      Btn(label, kind: BtnKind.google, block: true, loading: busy, leading: PhosphorIcons.googleLogo(PhosphorIconsStyle.fill), onPressed: onPressed);
+  Widget build(BuildContext context) => Btn(
+    label,
+    kind: BtnKind.google,
+    block: true,
+    loading: busy,
+    lead: Image.asset('assets/third_party/google_g.png', width: 22, height: 22, filterQuality: FilterQuality.medium, semanticLabel: 'Google'),
+    onPressed: onPressed,
+  );
 }

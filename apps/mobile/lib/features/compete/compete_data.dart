@@ -72,6 +72,10 @@ class Challenge {
   /// The admin lets students use the calculator in this challenge (D-085).
   bool get calculator => j['calculator'] == true;
 
+  /// The admin's background pictures (R2 keys) for light and dark mode; either may be missing.
+  String? get bgLight => (j['bg_light'] as String?)?.isNotEmpty == true ? j['bg_light'] as String : null;
+  String? get bgDark => (j['bg_dark'] as String?)?.isNotEmpty == true ? j['bg_dark'] as String : null;
+
   /// "Free to join" or "100 XP to join".
   String get entryText => xpFee > 0 ? '$xpFee XP to join' : 'Free to join';
 

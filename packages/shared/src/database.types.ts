@@ -847,6 +847,8 @@ export type Database = {
           published: boolean
           reward_text: string | null
           allow_calculator: boolean
+          bg_dark: string | null
+          bg_light: string | null
           allow_review: boolean
           xp_fee: number
           same_questions: boolean
@@ -878,6 +880,8 @@ export type Database = {
           published?: boolean
           reward_text?: string | null
           allow_calculator?: boolean
+          bg_dark?: string | null
+          bg_light?: string | null
           allow_review?: boolean
           xp_fee?: number
           same_questions?: boolean
@@ -909,6 +913,8 @@ export type Database = {
           published?: boolean
           reward_text?: string | null
           allow_calculator?: boolean
+          bg_dark?: string | null
+          bg_light?: string | null
           allow_review?: boolean
           xp_fee?: number
           same_questions?: boolean
@@ -2583,6 +2589,8 @@ export type Database = {
       am_money_admin: { Args: never; Returns: boolean }
       am_notifier: { Args: never; Returns: boolean }
       auth_user_status: { Args: { p_email: string }; Returns: string }
+      can_view_challenge_image: { Args: { p_key: string }; Returns: boolean }
+      my_practice_today: { Args: never; Returns: Json }
       can_upload_images: { Args: never; Returns: boolean }
       can_view_avatar: { Args: { p_key: string }; Returns: boolean }
       can_view_note_image: { Args: { p_key: string }; Returns: boolean }

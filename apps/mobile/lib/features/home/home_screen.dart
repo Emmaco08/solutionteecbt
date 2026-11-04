@@ -53,15 +53,21 @@ final practiceStatsProvider = FutureProvider<PracticeStats>((ref) async {
   DateTime day(DateTime d) => DateTime(d.year, d.month, d.day);
   final now = DateTime.now(), today = day(now);
   final days = <DateTime>{};
-  var answeredToday = 0;
+  var answeredToday = 0, notSyncedToday = 0;
   for (final a in list) {
     final d = day(a.submittedAt!.toLocal());
     days.add(d);
     if (d == today) {
       final s = a.clientScoreJson == null ? null : jsonDecode(a.clientScoreJson!) as Map<String, dynamic>;
-      answeredToday += (s?['answered'] as num?)?.toInt() ?? 0;
+      final n = (s?['answered'] as num?)?.toInt() ?? 0;
+      answeredToday += n;
+      if (!a.synced) notSyncedToday += n;
     }
   }
+  // The server knows every test saved today from any phone (it survives logging out); add this phone's
+  // tests that have not reached it yet. Offline with nothing from today: this phone's count only.
+  final server = await serverPracticeToday(ref);
+  if (server != null) answeredToday = server + notSyncedToday;
   var streak = 0;
   var cur = days.contains(today) ? today : today.subtract(const Duration(days: 1));
   while (days.contains(cur)) {
@@ -195,6 +201,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ref.invalidate(newsProvider);
     ref.invalidate(openYearsProvider);
     ref.invalidate(unfinishedProvider);
+    ref.invalidate(practiceStatsProvider);
     ref.invalidate(qotdProvider);
     ref.invalidate(challengesProvider);
     ref.invalidate(myXpProvider);

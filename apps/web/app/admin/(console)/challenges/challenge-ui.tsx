@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { inputCls } from "@/components/admin/row-form";
 import { MathText } from "@/components/admin/math-text";
 import { Pill, when } from "@/components/admin/ui";
+import { ImageUpload } from "@/components/admin/image-upload";
 import { findQuestions, type Candidate } from "../qotd/actions";
 import { addFromBank, addQuestion, addRandom, closeNow, decideAppeal, importQuestions, removeQuestion, reviewEntry, saveChallenge, setLevel, type ImportRow } from "./actions";
 
@@ -15,7 +16,7 @@ export type ChallengeRow = {
   id: string; title: string; subtitle: string | null; kind: "cash" | "event" | "practice"; icon: string; exam_code: string | null;
   starts_at: string; ends_at: string; seconds_per_question: number; prizes: number[]; reward_text: string | null;
   premium_days: number; premium_top: number; allowed_exits: number; published: boolean; closed_at: string | null; xp_fee: number;
-  mode: "mixed" | "subject" | "fixed"; subject_id: number | null; per_level: Record<string, number>; same_questions: boolean; allow_review: boolean; allow_calculator: boolean;
+  mode: "mixed" | "subject" | "fixed"; subject_id: number | null; per_level: Record<string, number>; same_questions: boolean; allow_review: boolean; allow_calculator: boolean; bg_light: string | null; bg_dark: string | null;
 };
 export type QRow = { id: string; position: number; body: string; options: Record<string, string>; answer: string; subject_id: number | null; difficulty: string };
 export type Subject = { id: number; name: string };
@@ -105,6 +106,14 @@ export function ChallengeForm({ c, subjects }: { c?: ChallengeRow; subjects: Sub
           <input id="cPd" name="premium_days" type="number" min={0} max={366} defaultValue={c?.premium_days ?? 0} className={inputCls} /></div>
         <div className="space-y-1.5"><Label htmlFor="cPt">…for the top</Label>
           <input id="cPt" name="premium_top" type="number" min={0} max={100} defaultValue={c?.premium_top ?? 0} className={inputCls} /></div>
+      </div>
+      <div className="space-y-2 rounded-xl border p-3">
+        <b className="block text-sm">Background pictures (optional)</b>
+        <span className="block text-xs text-muted-foreground">Shown behind the challenge card and the challenge page in the app. The app lays a blue shade over it so the white text stays easy to read. Add one for light mode and one for dark mode. If you add only one, both modes use it. Use a wide picture (about 1200 × 600), WebP or JPG, under 2 MB.</span>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1.5"><Label>Light mode picture</Label><ImageUpload name="bg_light" kind="challenge" defaultKey={c?.bg_light} /></div>
+          <div className="space-y-1.5"><Label>Dark mode picture</Label><ImageUpload name="bg_dark" kind="challenge" defaultKey={c?.bg_dark} /></div>
+        </div>
       </div>
       <label className="flex items-start gap-3 text-sm"><input type="checkbox" name="allow_calculator" defaultChecked={c?.allow_calculator ?? false} className="mt-1" />
         <span><b>Students can use the calculator</b><span className="block text-muted-foreground">A calculator button on every question (the app&apos;s own calculator; opening it does not count as leaving the challenge). Leave it off for mental-maths or speed challenges.</span></span></label>

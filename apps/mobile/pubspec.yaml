@@ -50,6 +50,7 @@ flutter:
   assets:
     - assets/brand/
     - assets/brand/exam-bodies/
+    - assets/third_party/
   fonts:
     - family: PlusJakartaSans
       fonts:

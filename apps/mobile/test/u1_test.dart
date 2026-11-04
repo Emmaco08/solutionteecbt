@@ -4,6 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:solutiontee_cbt/core/providers.dart';
 import 'package:solutiontee_cbt/features/auth/auth_screens.dart';
 import 'package:solutiontee_cbt/features/home/tour.dart';
+import 'package:solutiontee_cbt/features/home/top_card.dart';
+import 'package:solutiontee_cbt/features/compete/challenges_screens.dart';
+import 'package:solutiontee_cbt/features/compete/compete_data.dart';
 import 'package:solutiontee_cbt/features/xp/streak_ui.dart';
 import 'package:solutiontee_cbt/theme/theme.dart';
 
@@ -156,6 +159,38 @@ void main() {
       }
     });
   }
+
+  test('challenge background: each mode uses its own picture, else the other one', () {
+    const l = 'public/challenges/2026/11/a.webp', d = 'public/challenges/2026/11/b.webp';
+    expect(ChallengeBackdrop.pick(Challenge({'bg_light': l, 'bg_dark': d}), dark: true), d);
+    expect(ChallengeBackdrop.pick(Challenge({'bg_light': l, 'bg_dark': d}), dark: false), l);
+    expect(ChallengeBackdrop.pick(Challenge({'bg_light': l}), dark: true), l);
+    expect(ChallengeBackdrop.pick(Challenge({'bg_dark': d}), dark: false), d);
+    expect(ChallengeBackdrop.pick(Challenge({'bg_light': ''}), dark: false), isNull);
+  });
+
+  testWidgets('goal ring: shows the count while going, and the reached badge at the goal', (t) async {
+    await t.pumpWidget(
+      MaterialApp(
+        theme: buildTheme(Brightness.dark),
+        home: const Scaffold(body: GoalRing(done: 12, goal: 20)),
+      ),
+    );
+    await _settle(t);
+    expect(find.text('12'), findsOneWidget);
+    expect(find.bySemanticsLabel('12 of 20 questions today'), findsOneWidget);
+    await t.pumpWidget(
+      MaterialApp(
+        theme: buildTheme(Brightness.dark),
+        home: const Scaffold(body: GoalRing(done: 20, goal: 20)),
+      ),
+    );
+    await _settle(t);
+    expect(find.bySemanticsLabel('Daily goal reached'), findsOneWidget);
+    expect(find.text('20'), findsNothing);
+    await t.pumpWidget(const SizedBox());
+    await t.pump(const Duration(seconds: 3));
+  });
 }
 
 /// A long page with a target far below the screen, like Home's Upgrade card.

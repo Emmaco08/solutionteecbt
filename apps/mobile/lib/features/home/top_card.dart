@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -204,11 +205,7 @@ class TodayCard extends ConsumerWidget {
             ),
             child: Row(
               children: [
-                Ring(
-                  value: stats.today / goal,
-                  size: 40,
-                  label: left == 0 ? Icon(PhosphorIcons.check(PhosphorIconsStyle.bold), size: 16, color: c.success) : null,
-                ),
+                GoalRing(done: stats.today, goal: goal, size: 48),
                 const Gap(Space.s3),
                 Expanded(
                   child: Column(
@@ -227,4 +224,154 @@ class TodayCard extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// The daily goal ring: today's count inside while going, and when the goal is reached a gold badge pops in,
+/// a check mark draws itself and three sparkles twinkle around it (still with reduce motion).
+class GoalRing extends StatefulWidget {
+  const GoalRing({super.key, required this.done, required this.goal, this.size = 48});
+  final int done, goal;
+  final double size;
+  @override
+  State<GoalRing> createState() => _GoalRingState();
+}
+
+class _GoalRingState extends State<GoalRing> with TickerProviderStateMixin {
+  late final AnimationController _win = AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
+  late final AnimationController _loop = AnimationController(vsync: this, duration: const Duration(milliseconds: 2400));
+
+  bool get _reached => widget.done >= widget.goal;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _sync(first: true));
+  }
+
+  @override
+  void didUpdateWidget(GoalRing old) {
+    super.didUpdateWidget(old);
+    if (old.done != widget.done || old.goal != widget.goal) _sync();
+  }
+
+  void _sync({bool first = false}) {
+    if (!mounted) return;
+    final rm = context.reduceMotion;
+    if (_reached) {
+      if (rm) {
+        _win.value = 1;
+      } else if (_win.value < 1) {
+        _win.forward(from: first ? 0 : _win.value).then((_) {
+          if (mounted && !context.reduceMotion) _loop.repeat();
+        });
+      }
+    } else {
+      _loop.stop();
+      _win.value = 0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _win.dispose();
+    _loop.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    final s = widget.size;
+    final frac = widget.goal == 0 ? 0.0 : widget.done / widget.goal;
+    return Semantics(
+      label: _reached ? 'Daily goal reached' : '${widget.done} of ${widget.goal} questions today',
+      excludeSemantics: true,
+      child: SizedBox(
+        width: s,
+        height: s,
+        child: AnimatedBuilder(
+          animation: Listenable.merge([_win, _loop]),
+          builder: (context, _) {
+            final w = _win.value;
+            final pop = Curves.elasticOut.transform((w / .7).clamp(0.0, 1.0));
+            final tick = Curves.easeOutCubic.transform(((w - .35) / .65).clamp(0.0, 1.0));
+            final glow = _reached ? (.5 + .5 * math.sin(_loop.value * 2 * math.pi)) : 0.0;
+            return Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.center,
+              children: [
+                Ring(value: frac, size: s, color: _reached ? Palette.gold400 : c.accent),
+                if (!_reached)
+                  Text('${widget.done}', style: context.ty.sm.bold.tnum.copyWith(fontSize: s * .3, height: 1))
+                else ...[
+                  // Gold badge with a soft breathing glow.
+                  Transform.scale(
+                    scale: .2 + .8 * pop,
+                    child: Container(
+                      width: s * .62,
+                      height: s * .62,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFFFE08A), Palette.gold500]),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Palette.gold400.withValues(alpha: .25 + .3 * glow),
+                            blurRadius: 6 + 8 * glow,
+                            spreadRadius: .5 + 1.5 * glow,
+                          ),
+                        ],
+                      ),
+                      child: CustomPaint(painter: _TickPainter(tick, Palette.navy900)),
+                    ),
+                  ),
+                  // Three sparkles that twinkle one after another.
+                  for (final (i, (dx, dy, k)) in const [(.46, -.40, 1.0), (-.48, -.30, .8), (.40, .44, .7)].indexed)
+                    Positioned(
+                      left: s / 2 + dx * s - (s * .1).clamp(5.0, 9.0),
+                      top: s / 2 + dy * s - (s * .1).clamp(5.0, 9.0),
+                      child: Opacity(
+                        opacity: (w < 1 ? tick : (.25 + .75 * (.5 + .5 * math.sin((_loop.value + i / 3) * 2 * math.pi)))).clamp(0.0, 1.0),
+                        child: Transform.scale(
+                          scale: k * (w < 1 ? tick : (.7 + .3 * (.5 + .5 * math.sin((_loop.value + i / 3) * 2 * math.pi)))),
+                          child: Icon(PhosphorIcons.sparkle(PhosphorIconsStyle.fill), size: (s * .2).clamp(10.0, 18.0), color: Palette.gold400),
+                        ),
+                      ),
+                    ),
+                ],
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+/// A check mark drawn from left to right as [t] goes 0 → 1.
+class _TickPainter extends CustomPainter {
+  _TickPainter(this.t, this.color);
+  final double t;
+  final Color color;
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (t <= 0) return;
+    final w = size.width;
+    final path = Path()
+      ..moveTo(w * .28, w * .52)
+      ..lineTo(w * .44, w * .67)
+      ..lineTo(w * .73, w * .36);
+    final m = path.computeMetrics().first;
+    canvas.drawPath(
+      m.extractPath(0, m.length * t),
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = w * .12
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_TickPainter old) => old.t != t || old.color != color;
 }

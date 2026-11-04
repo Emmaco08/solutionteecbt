@@ -28,6 +28,8 @@ const Ch = z.object({
   published: z.boolean(),
   same_questions: z.boolean(),
   allow_calculator: z.boolean(),
+  bg_light: z.string().trim().max(220).regex(/^(public\/challenges\/[A-Za-z0-9/_.-]+)?$/, "Upload the picture again").optional().default(""),
+  bg_dark: z.string().trim().max(220).regex(/^(public\/challenges\/[A-Za-z0-9/_.-]+)?$/, "Upload the picture again").optional().default(""),
   mode: z.enum(["mixed", "subject", "fixed"]),
   subject_id: z.coerce.number().int().min(0),
   easy: z.coerce.number().int().min(0).max(50), medium: z.coerce.number().int().min(0).max(50),
@@ -56,6 +58,8 @@ export async function saveChallenge(form: FormData): Promise<ActionResult<{ id: 
     per_level: { easy: c.easy, medium: c.medium, hard: c.hard, very_hard: c.very_hard },
     same_questions: c.mode !== "fixed" && c.same_questions,
     allow_calculator: c.allow_calculator,
+    bg_light: c.bg_light || null,
+    bg_dark: c.bg_dark || null,
   };
   const supabase = await createClient();
   const r = c.id && uuid.test(c.id)

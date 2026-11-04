@@ -625,3 +625,11 @@ The owner asked to run the admin from Vercel instead of the laptop.
 - Fraud rules unchanged: `nextRoute` refuses banned phones before sign-in, and `device_check_in` right after any sign-in blocks second accounts and banned phones (D-079).
 - Setup for the owner: SETUP §17. The APK's SHA-1 is read from the published APK.
 - Tests: app 99/99 (`u1_test.dart`: button hidden when off or without a client ID, shown when on, on both screens).
+
+**D-088 · 2026-11-04 · U1 fixes after the owner's phone test (owner: "after you fix that, U1 ok")**
+- **Google logo:** the button now shows Google's official "G" (`assets/third_party/google_g.png`), cut from Google's own sign-in asset pack (`signin-assets.zip`, Light / no text / square SVG) with the button frame removed and rendered at 192 px with a clear background. It is not redrawn. The source is noted in `assets/third_party/README.md`.
+- **Goal ring:** while going, it shows today's number inside. At the goal, a gold badge pops in, a check mark draws itself, three sparkles twinkle and a soft glow breathes. It stays still with reduce motion.
+- **Today's questions from the server:** `my_practice_today()` counts answered questions in tests saved today (Lagos day) from any phone. The app adds its own finished tests not synced yet, so nothing is counted twice and the count survives logging out and changing phones. Offline with no answer from today, it uses the phone's own count.
+- **Challenge background pictures:** Admin → a challenge → "Light mode picture" and "Dark mode picture" (`challenges.bg_light` / `bg_dark`, R2 `public/challenges/…`, WebP / PNG / JPG under 2 MB). If one is missing, the other is used. In the app, the live hero card and the challenge page lay a blue shade over the picture: navy in dark mode, brighter blue in light mode. The white text stays readable. Smaller cards (Home mini cards, the list and "Next" card) use a soft surface shade instead. Data saver hides the pictures. Links are signed only for published challenges (`can_view_challenge_image`).
+- The hero card no longer says "free for everyone" when the challenge has an XP entry fee.
+- Tests: `supabase/tests/u1.test.sql` (pictures, today's count); app 101/101.
