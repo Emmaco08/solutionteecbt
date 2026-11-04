@@ -15,6 +15,7 @@
 //   {action:"payout_check", claim_id}   admins with 2-step: asks Paystack whose account it is → {verified_name}
 //   {action:"payout_send", claim_id}    admins with 2-step: sends the prize by Paystack Transfer (needs transfer OTP off)
 //   {action:"payout_verify", claim_id}  admins with 2-step: asks Paystack again how the transfer went
+//   (payout_check / payout_send need the paystack_payouts flag on; GET ?health=1 says whether the keys are set, never the keys)
 //   {action:"refund", reference}   admins with 2-step only
 //      → {requested:true}; Premium is removed when Paystack's refund.processed webhook arrives.
 // The app never sends an amount: the price comes from pay_start() on the server.
@@ -160,8 +161,20 @@ async function verifyPayout(ref: string) {
     p_note: (d.failures as string) ?? (d.reason as string) ?? null });
 }
 
+/** Is the Paystack payouts switch on (Admin → Flags & settings → paystack_payouts)? Off until the business is registered. */
+async function payoutsOn(): Promise<boolean> {
+  const { data } = await admin.from("feature_flags").select("enabled").eq("key", "paystack_payouts").maybeSingle();
+  return data?.enabled === true;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
+  // Setup check for the owner (GET ?health=1): says only whether the keys are set and in the same mode, never the keys.
+  if (req.method === "GET" && new URL(req.url).searchParams.get("health") === "1") {
+    const sk = Deno.env.get("PAYSTACK_SECRET_KEY") ?? "", pk = Deno.env.get("PAYSTACK_PUBLIC_KEY") ?? "";
+    const mode = (k: string) => (k.includes("_live_") ? "live" : k.includes("_test_") ? "test" : k ? "unknown" : "missing");
+    return json({ secret_key: mode(sk), public_key: mode(pk), public_key_usable: publicKey() !== null, payouts_on: await payoutsOn() });
+  }
   if (req.method !== "POST") return json({ error: "POST only" }, 405);
   const user = await userFrom(req);
   if (!user) return json({ error: "Please log in again.", code: "auth" }, 401);
@@ -217,6 +230,9 @@ Deno.serve(async (req) => {
       if (!/^[0-9a-f-]{36}$/.test(id)) return json({ error: "Bad claim" }, 400);
       const c = await claimRow(id);
       if (!c) return json({ error: "Claim not found" }, 404);
+      if (action !== "payout_verify" && !(await payoutsOn())) {
+        return json({ error: "Paystack payouts are switched off (Flags & settings → paystack_payouts). Pay by hand, then tap “I paid it myself”." }, 409);
+      }
 
       if (action === "payout_check") {
         if (!c.bank_code) return json({ error: "This winner sent the bank as text (older app). Pay by hand, or ask them to update the app and send it again." }, 409);

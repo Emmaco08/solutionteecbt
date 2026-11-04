@@ -536,3 +536,5 @@ Notes:
    - Keep enough money in the **Paystack balance** for the prizes (Paystack → Balance → Top up).
    - The webhook you set already gets transfer events (same URL). Nothing else to add.
    - Test mode: transfers to Paystack's test bank account succeed without real money.
+   - Then turn on **paystack_payouts** in admin → Flags & settings. Until then, Winners & payouts works as before: pay by hand, then tap "I have paid".
+4. **Check your keys** at any time (shows only "test", "live" or "missing", never the keys): `GET https://mxeemubacnmcmmmzteax.supabase.co/functions/v1/paystack?health=1` with the anon key. Checked 2026-11-04: secret key test, public key test, usable; payouts off.

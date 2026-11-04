@@ -19,7 +19,7 @@ export type WallRow = { id: string; challenge_title: string; name: string; state
 
 const naira = (n: number) => "₦" + n.toLocaleString("en-NG");
 
-export function ClaimsList({ rows }: { rows: ClaimRow[] }) {
+export function ClaimsList({ rows, payouts = false }: { rows: ClaimRow[]; payouts?: boolean }) {
   const [open, setOpen] = useState<string | null>(null);
   return (
     <ul className="divide-y">
@@ -44,10 +44,13 @@ export function ClaimsList({ rows }: { rows: ClaimRow[] }) {
                 {!r.claim.adult ? <span className="sm:col-span-2"><span className="text-muted-foreground">Guardian:</span> {r.claim.guardian_name} · {r.claim.guardian_phone}</span> : null}
               </div>
               <p className="mt-2 text-xs text-muted-foreground">Check that the name on the account matches the winner (or their guardian) before you pay.</p>
-              <Payout claim={r.claim} winner={r.name} />
+              {payouts || r.claim.payout_status === "sending" ? <Payout claim={r.claim} winner={r.name} /> : null}
               {r.claim.status === "submitted" ? (
                 open === r.claim.id ? <PayForm claim={r.claim} onDone={() => setOpen(null)} /> : (
-                  <div className="mt-2 flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => setOpen(r.claim!.id)}>I paid it myself</Button><Reject id={r.claim.id} /></div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Button size="sm" variant={payouts ? "outline" : "default"} onClick={() => setOpen(r.claim!.id)}>{payouts ? "I paid it myself" : "I have paid"}</Button>
+                    <Reject id={r.claim.id} />
+                  </div>
                 )
               ) : null}
             </div>
