@@ -10,6 +10,7 @@ import 'package:solutiontee_cbt/features/compete/challenges_screens.dart';
 import 'package:solutiontee_cbt/features/compete/compete_data.dart';
 import 'package:solutiontee_cbt/features/compete/results_screens.dart';
 import 'package:solutiontee_cbt/theme/theme.dart';
+import 'package:solutiontee_cbt/widgets/phosphor.g.dart';
 import 'package:solutiontee_cbt/ui/kit.dart';
 
 /// Plays the server: two questions, answers checked "on the server", exits reported.
@@ -406,5 +407,16 @@ void main() {
     await t.tap(find.text('Pay 100 XP and start'));
     await settle(t);
     expect(find.text('PLAYING'), findsOneWidget);
+  });
+
+  testWidgets('the calculator shows during a challenge only when the admin allows it', (t) async {
+    final api = FakeApi();
+    await t.pumpWidget(app('/challenges/c1/play', api, ch: sample(extra: {'calculator': true})));
+    await settle(t);
+    expect(find.byIcon(PhosphorIcons.calculator()), findsOneWidget);
+    await t.pumpWidget(const SizedBox());
+    await t.pumpWidget(app('/challenges/c1/play', FakeApi(), ch: sample()));
+    await settle(t);
+    expect(find.byIcon(PhosphorIcons.calculator()), findsNothing);
   });
 }

@@ -15,7 +15,7 @@ export type ChallengeRow = {
   id: string; title: string; subtitle: string | null; kind: "cash" | "event" | "practice"; icon: string; exam_code: string | null;
   starts_at: string; ends_at: string; seconds_per_question: number; prizes: number[]; reward_text: string | null;
   premium_days: number; premium_top: number; allowed_exits: number; published: boolean; closed_at: string | null; xp_fee: number;
-  mode: "mixed" | "subject" | "fixed"; subject_id: number | null; per_level: Record<string, number>; same_questions: boolean; allow_review: boolean;
+  mode: "mixed" | "subject" | "fixed"; subject_id: number | null; per_level: Record<string, number>; same_questions: boolean; allow_review: boolean; allow_calculator: boolean;
 };
 export type QRow = { id: string; position: number; body: string; options: Record<string, string>; answer: string; subject_id: number | null; difficulty: string };
 export type Subject = { id: number; name: string };
@@ -106,6 +106,8 @@ export function ChallengeForm({ c, subjects }: { c?: ChallengeRow; subjects: Sub
         <div className="space-y-1.5"><Label htmlFor="cPt">…for the top</Label>
           <input id="cPt" name="premium_top" type="number" min={0} max={100} defaultValue={c?.premium_top ?? 0} className={inputCls} /></div>
       </div>
+      <label className="flex items-start gap-3 text-sm"><input type="checkbox" name="allow_calculator" defaultChecked={c?.allow_calculator ?? false} className="mt-1" />
+        <span><b>Students can use the calculator</b><span className="block text-muted-foreground">A calculator button on every question (the app&apos;s own calculator; opening it does not count as leaving the challenge). Leave it off for mental-maths or speed challenges.</span></span></label>
       <label className="flex items-start gap-3 text-sm"><input type="checkbox" name="published" defaultChecked={c?.published ?? false} className="mt-1" />
         <span><b>Show to students</b><span className="block text-muted-foreground">Students see it on Home and in Test → Challenges. When it starts, everyone gets a “… is live” notification.</span></span></label>
       <div className="flex justify-end"><Button type="submit" disabled={pending}>{pending ? <SpinnerGap size={16} className="animate-spin" /> : null} Save</Button></div>

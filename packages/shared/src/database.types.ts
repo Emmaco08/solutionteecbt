@@ -846,6 +846,7 @@ export type Database = {
           prizes: number[]
           published: boolean
           reward_text: string | null
+          allow_calculator: boolean
           allow_review: boolean
           xp_fee: number
           same_questions: boolean
@@ -876,6 +877,7 @@ export type Database = {
           prizes?: number[]
           published?: boolean
           reward_text?: string | null
+          allow_calculator?: boolean
           allow_review?: boolean
           xp_fee?: number
           same_questions?: boolean
@@ -906,6 +908,7 @@ export type Database = {
           prizes?: number[]
           published?: boolean
           reward_text?: string | null
+          allow_calculator?: boolean
           allow_review?: boolean
           xp_fee?: number
           same_questions?: boolean

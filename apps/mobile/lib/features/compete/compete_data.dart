@@ -69,6 +69,9 @@ class Challenge {
   int get xpFee => (j['xp_fee'] as num?)?.toInt() ?? 0;
   bool get xpEarnedOnly => j['xp_earned_only'] == true;
 
+  /// The admin lets students use the calculator in this challenge (D-085).
+  bool get calculator => j['calculator'] == true;
+
   /// "Free to join" or "100 XP to join".
   String get entryText => xpFee > 0 ? '$xpFee XP to join' : 'Free to join';
 

@@ -13,6 +13,7 @@ import '../../theme/tokens.g.dart';
 import '../../ui/kit.dart';
 import '../../widgets/math_text.dart';
 import '../../widgets/phosphor.g.dart';
+import '../cbt/calculator.dart' show showCalculator;
 import '../cbt/cbt_screen.dart' show OptionRow, OptState;
 import 'compete_data.dart';
 
@@ -299,6 +300,8 @@ class _ChallengePlayScreenState extends ConsumerState<ChallengePlayScreen> with 
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
+              if (ref.watch(challengeProvider(widget.id)).value?.calculator == true)
+                IconBtn(PhosphorIcons.calculator(), label: 'Calculator', onPressed: () => showCalculator(context)),
               Text('${elapsed ~/ 60}:${(elapsed % 60).toString().padLeft(2, '0')}', style: context.ty.cap.tnum.col(c.textMuted)),
             ],
           ),

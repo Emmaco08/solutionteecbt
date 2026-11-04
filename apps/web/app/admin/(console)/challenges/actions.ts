@@ -27,6 +27,7 @@ const Ch = z.object({
   xp_fee: z.coerce.number().int().min(0, "XP fee cannot be below 0").max(1_000_000),
   published: z.boolean(),
   same_questions: z.boolean(),
+  allow_calculator: z.boolean(),
   mode: z.enum(["mixed", "subject", "fixed"]),
   subject_id: z.coerce.number().int().min(0),
   easy: z.coerce.number().int().min(0).max(50), medium: z.coerce.number().int().min(0).max(50),
@@ -36,7 +37,7 @@ const Ch = z.object({
 /** Create or update a challenge. Returns its id. */
 export async function saveChallenge(form: FormData): Promise<ActionResult<{ id: string }>> {
   await editors();
-  const p = Ch.safeParse({ ...Object.fromEntries(form), published: form.get("published") === "on", same_questions: form.get("same_questions") === "on" });
+  const p = Ch.safeParse({ ...Object.fromEntries(form), published: form.get("published") === "on", same_questions: form.get("same_questions") === "on", allow_calculator: form.get("allow_calculator") === "on" });
   if (!p.success) return { ok: false, error: p.error.issues[0]?.message ?? "Check the challenge" };
   const c = p.data;
   const starts = lagos(c.starts), ends = lagos(c.ends);
@@ -54,6 +55,7 @@ export async function saveChallenge(form: FormData): Promise<ActionResult<{ id: 
     mode: c.mode, subject_id: c.mode === "subject" ? c.subject_id : null,
     per_level: { easy: c.easy, medium: c.medium, hard: c.hard, very_hard: c.very_hard },
     same_questions: c.mode !== "fixed" && c.same_questions,
+    allow_calculator: c.allow_calculator,
   };
   const supabase = await createClient();
   const r = c.id && uuid.test(c.id)
