@@ -688,3 +688,20 @@ The owner asked to run the admin from Vercel instead of the laptop.
 - Tests: app 111/111 (embedded checkout link rules, `intent://` targets, web result for app options).
 - Phone test 2 (owner): no "tap OPay below" step, and no strip. Paystack's checkout has no link that opens it on a chosen method, so once it has loaded the app taps that option itself (`autoTapScript`, a `StApp` JavaScript channel). Meanwhile our own animated cover shows: a pulsing icon, "Opening OPay…", what is being paid for, a moving bar and "Secured by Paystack". So students go straight to the OPay / Zap / Bank step. The cover always lifts (after the tap, or after 10 s). If the option is not on the account (PocketApp today), a small notice says so and the student picks another way on Paystack's page. Checked in Chromium against a copy of Paystack's list: OPay, Zap and Bank tap the right row, "Bank" does not match "Pay with Transfer", PocketApp reports not found. App tests 112/112.
 - PocketApp is hidden from our list (owner, 2026-11-04): Paystack does not offer it on this account's checkout. Add its line back in `pay_methods.dart` when it does.
+
+**D-094 · 2026-11-04 · OPay / Zap / Bank open on their own step (fixed and tested on Paystack's real page), real logos, new loading and empty-challenge designs (owner)**
+- Phone test: the cover showed, but Paystack's list stayed. Paystack's real checkout (read from a real checkout page) is `li.nav__item > a > span.text > span.mobile-only "Pay with OPay"`, and only the `<a>` listens for taps. The old script tapped the outer `<li>`, so Paystack never got it. The new script taps the `<a>` / button itself, with a fallback for rows without links. Checked in Chromium on a copy built from the real page:
+  - the old script reported "clicked" but nothing reached Paystack (the bug, reproduced);
+  - the new script reaches "Pay with OPay", "NEW Pay with Zap" and "Pay with Bank".
+  - Paystack's Cloudflare check stopped further automated loads of the live page; the phone's WebView is not affected.
+- A one-channel checkout was tried first (a temporary, token-guarded `pay-probe` function, now a 404 stub): Paystack answers "No active channel" for `opay` and `zap`; `bank` works. So the tap is the only way to open OPay and Zap directly.
+- Real logos (`assets/third_party`, sources in its README):
+  - OPay's official SVG from opayweb.com (the full wordmark, plus its ring symbol for small tiles, only re-framed);
+  - the "Zap by Paystack" app icon from Apple's App Store lookup (seller Paystack Payments Limited).
+  - Used in the payment list and the loading screen.
+- New loading screen:
+  - the real logo pops in, with brand-coloured ripples moving out and a turning gold arc;
+  - "Connecting securely… → Opening OPay…" with bouncing dots;
+  - a green tick and "OPay is ready" when the step is open, then a smooth fade to Paystack's OPay step.
+- New "No challenge right now" card on Home: a navy card with a floating, shining gold trophy and twinkling sparkles, "The next challenge is coming", Past winners and All challenges.
+- All animations stay still with reduce motion. App tests 112/112.

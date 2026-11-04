@@ -251,32 +251,7 @@ class ChallengeSection extends ConsumerWidget {
         ),
       );
     } else {
-      top = Container(
-        padding: const EdgeInsets.all(Space.s4),
-        decoration: BoxDecoration(
-          color: c.surface,
-          borderRadius: BorderRadius.circular(Radii.lg),
-          border: Border.all(color: c.border),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            IconTile(PhosphorIcons.trophy(PhosphorIconsStyle.fill), tone: Tone.gold, size: 44, radius: 12),
-            const Gap(Space.s3),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('No challenge right now', style: context.ty.body.bold),
-                  Text('New challenges with prizes come every week. We tell you the moment one starts.', style: context.ty.sm.col(c.textMuted)),
-                  const Gap(Space.s2),
-                  Btn('Past winners', kind: BtnKind.ghost, sm: true, onPressed: () => openRoute(context, '/test/winners-wall')),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
+      top = const NoChallengeCard();
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -298,6 +273,132 @@ class ChallengeSection extends ConsumerWidget {
         ],
       ],
     );
+  }
+}
+
+/// Home, when no challenge is live or coming: a navy card with a floating, shining gold trophy and twinkling sparkles,
+/// "The next challenge is coming", and Past winners / All challenges.
+class NoChallengeCard extends StatelessWidget {
+  const NoChallengeCard({super.key});
+  @override
+  Widget build(BuildContext context) {
+    final rm = context.reduceMotion;
+    Widget trophy = Container(
+      width: 64,
+      height: 64,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFFFD66B), Palette.gold500]),
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [BoxShadow(color: Palette.gold400.withValues(alpha: .4), blurRadius: 18, offset: const Offset(0, 6))],
+      ),
+      child: Icon(PhosphorIcons.trophy(PhosphorIconsStyle.fill), size: 34, color: Palette.navy900),
+    );
+    if (!rm) {
+      trophy = trophy
+          .animate(onPlay: (a) => a.repeat())
+          .shimmer(delay: 1600.ms, duration: 1100.ms, color: Colors.white.withValues(alpha: .6))
+          .animate(onPlay: (a) => a.repeat(reverse: true))
+          .moveY(begin: -3, end: 3, duration: 1700.ms, curve: Curves.easeInOut);
+    }
+    Widget spark(double size, int delay) {
+      final w = Icon(PhosphorIcons.sparkle(PhosphorIconsStyle.fill), size: size, color: Palette.gold300);
+      return rm
+          ? w
+          : w
+                .animate(onPlay: (a) => a.repeat(reverse: true), delay: delay.ms)
+                .fade(begin: .2, end: 1, duration: 900.ms)
+                .scaleXY(begin: .6, end: 1.1, duration: 900.ms, curve: Curves.easeInOut);
+    }
+
+    final card = ClipRRect(
+      borderRadius: BorderRadius.circular(Radii.lg),
+      child: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Palette.navy900, Color(0xFF17346E)]),
+        ),
+        child: Stack(
+          children: [
+            Positioned(
+              right: -40,
+              top: -50,
+              child: Container(
+                width: 170,
+                height: 170,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(colors: [Color.fromRGBO(242, 178, 51, .28), Color.fromRGBO(242, 178, 51, 0)]),
+                ),
+              ),
+            ),
+            Positioned(right: 26, top: 18, child: spark(14, 0)),
+            Positioned(right: 64, top: 46, child: spark(10, 400)),
+            Positioned(right: 34, bottom: 56, child: spark(12, 800)),
+            Padding(
+              padding: const EdgeInsets.all(Space.s4),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      trophy,
+                      const Gap(Space.s4),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(color: Colors.white.withValues(alpha: .1), borderRadius: BorderRadius.circular(99)),
+                              child: Text('NO CHALLENGE RIGHT NOW', style: context.ty.over.col(Palette.gold300)),
+                            ),
+                            const Gap(Space.s2),
+                            Text('The next challenge is coming', style: context.ty.h3.col(Colors.white)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Gap(Space.s3),
+                  Text(
+                    'New challenges with prizes come every week. We tell you the moment one starts, so keep practising.',
+                    style: context.ty.sm.col(const Color(0xFFC9D5EA)),
+                  ),
+                  const Gap(Space.s4),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Btn(
+                          'Past winners',
+                          kind: BtnKind.accent,
+                          sm: true,
+                          leading: PhosphorIcons.sealCheck(PhosphorIconsStyle.fill),
+                          onPressed: () => openRoute(context, '/test/winners-wall'),
+                        ),
+                      ),
+                      const Gap(Space.s2),
+                      Expanded(
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            side: BorderSide(color: Colors.white.withValues(alpha: .35)),
+                            minimumSize: const Size.fromHeight(40),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Radii.sm)),
+                          ),
+                          onPressed: () => openRoute(context, '/test/challenges'),
+                          child: Text('All challenges', style: context.ty.sm.bold.col(Colors.white)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    return rm ? card : card.animate().fadeIn(duration: 320.ms).slideY(begin: .05, end: 0, curve: Curves.easeOutCubic);
   }
 }
 

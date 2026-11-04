@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../theme/theme.dart';
@@ -57,7 +58,11 @@ class PayMethodPicker extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: Space.s3, vertical: Space.s3),
               child: Row(
                 children: [
-                  IconTile(icon, tone: on ? Tone.blue : Tone.navy, size: 40, radius: 12, iconSize: 20),
+                  PayBrandTile(
+                    method: m,
+                    size: 40,
+                    fallback: IconTile(icon, tone: on ? Tone.blue : Tone.navy, size: 40, radius: 12, iconSize: 20),
+                  ),
                   const Gap(Space.s3),
                   Expanded(
                     child: Column(
@@ -107,12 +112,12 @@ class PayMethodPicker extends StatelessWidget {
             child: InfoBanner(
               icon: PhosphorIcons.shieldCheck(PhosphorIconsStyle.fill),
               child: Text(
-                'Paystack\'s secure payment screen opens inside the app. Tap ${switch (method) {
+                'Opens straight on ${switch (method) {
                   PayMethod.opay => 'OPay',
                   PayMethod.pocketapp => 'PocketApp',
                   PayMethod.zap => 'Zap',
-                  _ => 'Bank',
-                }} there to finish. We add your Premium or XP as soon as it is paid.',
+                  _ => 'your bank app',
+                }}, on Paystack\'s secure page inside the app. We add your Premium or XP as soon as it is paid.',
               ),
             ),
           ),
@@ -380,5 +385,39 @@ class _PayOfflineScreenState extends State<PayOfflineScreen> with WidgetsBinding
         ),
       ),
     );
+  }
+}
+
+/// The real OPay / Zap marks (assets/third_party, from the companies' own sources) for their payment options;
+/// other ways to pay use [fallback] (our icon tile).
+class PayBrandTile extends StatelessWidget {
+  const PayBrandTile({super.key, required this.method, this.size = 40, required this.fallback});
+  final PayMethod method;
+  final double size;
+  final Widget fallback;
+  @override
+  Widget build(BuildContext context) {
+    final r = BorderRadius.circular(size * .3);
+    switch (method) {
+      case PayMethod.opay:
+        return Container(
+          width: size,
+          height: size,
+          padding: EdgeInsets.all(size * .16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: r,
+            border: Border.all(color: const Color(0x14000000)),
+          ),
+          child: SvgPicture.asset('assets/third_party/opay_mark.svg', semanticsLabel: 'OPay'),
+        );
+      case PayMethod.zap:
+        return ClipRRect(
+          borderRadius: r,
+          child: Image.asset('assets/third_party/zap_icon.png', width: size, height: size, semanticLabel: 'Zap', filterQuality: FilterQuality.medium),
+        );
+      default:
+        return fallback;
+    }
   }
 }

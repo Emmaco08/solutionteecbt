@@ -197,7 +197,7 @@ void main() {
     await t.tap(find.text('OPay'));
     await t.pump(const Duration(milliseconds: 300));
     expect(picked, PayMethod.opay);
-    expect(find.textContaining('Tap OPay there'), findsOneWidget);
+    expect(find.textContaining('Opens straight on OPay'), findsOneWidget);
   });
 
   test('OPay / Zap / PocketApp / bank apps: Paystack\'s web checkout in our own screen', () async {
@@ -222,6 +222,8 @@ void main() {
     final js = autoTapScript('OPay');
     expect(js, contains("new RegExp('(^| )(pay with +)?OPay *\$', 'i')"));
     expect(js, contains("StApp.postMessage('clicked')"));
+    // The tap goes to the link itself: Paystack listens on the <a> inside each row (phone test 2026-11-04).
+    expect(js, contains("document.querySelectorAll('a, button, [role=\"button\"]')"));
     expect(js, contains("StApp.postMessage('notfound')"));
     expect(autoTapScript('Pocket App!'), contains('PocketApp')); // only letters reach the page
   });

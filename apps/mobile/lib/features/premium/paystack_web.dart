@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -71,13 +72,21 @@ String autoTapScript(String via) {
 (function () {
   var re = new RegExp('(^| )(pay with +)?$name *\$', 'i'); // spaces: the text is squashed to single spaces below
   var tries = 0;
+  function text(e) { return (e.innerText || '').replace(/\\s+/g, ' ').trim(); }
   function tap() {
-    var els = document.querySelectorAll('button, a, li, [role="button"], [tabindex], div, span, p');
-    for (var i = 0; i < els.length; i++) {
-      var t = (els[i].innerText || '').replace(/\\s+/g, ' ').trim();
-      if (t.length > 0 && t.length < 40 && re.test(t)) {
-        var c = els[i].closest('button, a, li, [role="button"], [tabindex]') || els[i];
-        c.click();
+    // Tap the link or button itself: Paystack listens on the <a> inside each <li class="nav__item">,
+    // and a tap on the outer <li> never reaches it (phone test, 2026-11-04).
+    var hits = document.querySelectorAll('a, button, [role="button"]');
+    for (var i = 0; i < hits.length; i++) {
+      var t = text(hits[i]);
+      if (t.length > 0 && t.length < 40 && re.test(t)) { hits[i].click(); return true; }
+    }
+    // Fallback: a row without a link: tap the clickable thing inside it, else the row.
+    var rows = document.querySelectorAll('li, div, span');
+    for (var j = 0; j < rows.length; j++) {
+      var u = text(rows[j]);
+      if (u.length > 0 && u.length < 40 && re.test(u)) {
+        (rows[j].querySelector('a, button, [role="button"]') || rows[j]).click();
         return true;
       }
     }
@@ -112,7 +121,7 @@ class _PaystackWebScreenState extends State<PaystackWebScreen> with WidgetsBindi
   int _progress = 0;
   bool _failed = false, _checking = false, _done = false;
   // Our cover over Paystack's list while we open the chosen option; the hint shows only if it could not be found.
-  bool _covered = false, _tapped = false, _hint = false;
+  bool _covered = false, _tapped = false, _hint = false, _ready = false;
   Timer? _poll, _coverTimeout;
 
   @override
@@ -135,8 +144,9 @@ class _PaystackWebScreenState extends State<PaystackWebScreen> with WidgetsBindi
           'StApp',
           onMessageReceived: (m) {
             if (m.message == 'clicked') {
-              // Let Paystack draw the OPay / Zap / Bank step, then lift the cover.
-              Future<void>.delayed(const Duration(milliseconds: 900), () => _uncover());
+              // Show the tick, let Paystack draw the OPay / Zap / Bank step, then lift the cover.
+              if (mounted) setState(() => _ready = true);
+              Future<void>.delayed(const Duration(milliseconds: 1100), () => _uncover());
             } else {
               _uncover(hint: true);
             }
@@ -296,9 +306,18 @@ class _PaystackWebScreenState extends State<PaystackWebScreen> with WidgetsBindi
                               ),
                             ),
                           ).animate().fadeIn(duration: rm ? 1.ms : 250.ms).slideY(begin: rm ? 0 : -.4, end: 0, curve: Curves.easeOutBack),
-                        if (_covered)
+                        if (widget.via != null)
                           Positioned.fill(
-                            child: _Opening(via: widget.via!, what: widget.what, still: rm),
+                            child: IgnorePointer(
+                              ignoring: !_covered,
+                              child: AnimatedSwitcher(
+                                duration: rm ? Duration.zero : const Duration(milliseconds: 420),
+                                switchOutCurve: Curves.easeIn,
+                                child: _covered
+                                    ? PayOpeningCover(key: const ValueKey('cover'), via: widget.via!, what: widget.what, ready: _ready, still: rm)
+                                    : const SizedBox.shrink(key: ValueKey('none')),
+                              ),
+                            ),
                           ),
                       ],
                     ),
@@ -353,63 +372,249 @@ class _Problem extends StatelessWidget {
   );
 }
 
-/// Our cover while Paystack opens the chosen option: what is being paid for, a pulsing icon and a moving bar.
-class _Opening extends StatelessWidget {
-  const _Opening({required this.via, required this.what, this.still = false});
+/// Our cover while Paystack opens the chosen option: the real OPay / Zap logo with ripples and a turning gold arc,
+/// "Connecting securely… → Opening OPay…" with bouncing dots, and a green tick when the step is ready.
+class PayOpeningCover extends StatefulWidget {
+  const PayOpeningCover({super.key, required this.via, required this.what, this.ready = false, this.still = false});
   final String via, what;
-  final bool still;
+  final bool ready, still;
+  @override
+  State<PayOpeningCover> createState() => _PayOpeningCoverState();
+}
+
+class _PayOpeningCoverState extends State<PayOpeningCover> with TickerProviderStateMixin {
+  late final AnimationController _spin = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600));
+  late final AnimationController _ripple = AnimationController(vsync: this, duration: const Duration(milliseconds: 2400));
+  bool _second = false;
+  Timer? _t;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!widget.still) {
+      _spin.repeat();
+      _ripple.repeat();
+    }
+    _t = Timer(const Duration(milliseconds: 1400), () => mounted ? setState(() => _second = true) : null);
+  }
+
+  @override
+  void dispose() {
+    _t?.cancel();
+    _spin.dispose();
+    _ripple.dispose();
+    super.dispose();
+  }
+
+  Color get _brand => switch (widget.via) {
+    'OPay' => const Color(0xFF1DCF9F),
+    'Zap' => const Color(0xFF5B1A8C),
+    _ => const Color(0xFF2563B3),
+  };
+
+  Widget _logo() {
+    switch (widget.via) {
+      case 'OPay':
+        return Container(
+          width: 150,
+          height: 76,
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(22)),
+          child: SvgPicture.asset('assets/third_party/opay_logo.svg', semanticsLabel: 'OPay'),
+        );
+      case 'Zap':
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(26),
+          child: Image.asset('assets/third_party/zap_icon.png', width: 96, height: 96, semanticLabel: 'Zap'),
+        );
+      default:
+        return Container(
+          width: 96,
+          height: 96,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Palette.navy900, Color(0xFF1C4C9C)]),
+            borderRadius: BorderRadius.circular(26),
+          ),
+          child: Icon(PhosphorIcons.bank(PhosphorIconsStyle.fill), size: 46, color: Palette.gold400),
+        );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.c;
-    final icon = switch (via) {
-      'OPay' => PhosphorIcons.wallet(PhosphorIconsStyle.fill),
-      'Zap' => PhosphorIcons.lightning(PhosphorIconsStyle.fill),
-      'PocketApp' => PhosphorIcons.piggyBank(PhosphorIconsStyle.fill),
-      _ => PhosphorIcons.bank(PhosphorIconsStyle.fill),
-    };
-    Widget tile = Container(
-      width: 76,
-      height: 76,
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Palette.navy900, Color(0xFF1C4C9C)]),
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: [BoxShadow(color: c.secondary.withValues(alpha: .35), blurRadius: 24, offset: const Offset(0, 8))],
-      ),
-      child: Icon(icon, size: 38, color: Palette.gold400),
-    );
-    if (!still) {
-      tile = tile.animate(onPlay: (a) => a.repeat(reverse: true)).scaleXY(begin: 1, end: 1.07, duration: 900.ms, curve: Curves.easeInOut);
-    }
-    final body = Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        tile,
-        const Gap(Space.s5),
-        Text('Opening $via…', style: context.ty.h2),
-        const Gap(Space.s1),
-        Text(what, style: context.ty.sm.col(c.textMuted)),
-        const Gap(Space.s5),
-        SizedBox(
-          width: 160,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(9),
-            child: LinearProgressIndicator(minHeight: 5, color: Palette.gold400, backgroundColor: c.surfaceSunken),
-          ),
-        ),
-        const Gap(Space.s6),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(PhosphorIcons.lockSimple(PhosphorIconsStyle.fill), size: 14, color: c.success),
-            const Gap(Space.s1),
-            Text('Secured by Paystack', style: context.ty.cap.bold.col(c.textMuted)),
-          ],
-        ),
-      ],
-    );
+    final still = widget.still;
+    final brand = _brand;
+    const box = 220.0;
+    final stage = widget.ready ? '${widget.via} is ready' : (_second ? 'Opening ${widget.via}' : 'Connecting securely');
     return ColoredBox(
       color: c.bg,
-      child: still ? body : body.animate().fadeIn(duration: 220.ms).slideY(begin: .04, end: 0, curve: Curves.easeOutCubic),
+      child: Stack(
+        children: [
+          // Soft brand light behind everything
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(center: const Alignment(0, -.15), radius: .9, colors: [brand.withValues(alpha: .18), c.bg.withValues(alpha: 0)]),
+              ),
+            ),
+          ),
+          Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: box,
+                  height: box,
+                  child: AnimatedBuilder(
+                    animation: Listenable.merge([_spin, _ripple]),
+                    builder: (context, child) => Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        // Three ripples moving out one after another
+                        for (var k = 0; k < 3; k++)
+                          Builder(
+                            builder: (_) {
+                              final t = still ? .35 : (_ripple.value + k / 3) % 1;
+                              return Container(
+                                width: 110 + 110 * t,
+                                height: 110 + 110 * t,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: brand.withValues(alpha: (1 - t) * .45), width: 2),
+                                ),
+                              );
+                            },
+                          ),
+                        // Turning gold arc
+                        Transform.rotate(
+                          angle: _spin.value * 6.2832,
+                          child: CustomPaint(size: const Size(176, 176), painter: _ArcPainter(widget.ready ? c.success : Palette.gold400)),
+                        ),
+                        child!,
+                      ],
+                    ),
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(26),
+                            boxShadow: [BoxShadow(color: brand.withValues(alpha: .35), blurRadius: 28, offset: const Offset(0, 10))],
+                          ),
+                          child: _logo(),
+                        ).animate().scaleXY(begin: still ? 1 : .6, end: 1, duration: still ? 1.ms : 520.ms, curve: Curves.elasticOut),
+                        if (widget.ready)
+                          Positioned(
+                            right: -10,
+                            bottom: -10,
+                            child: Container(
+                              width: 34,
+                              height: 34,
+                              decoration: BoxDecoration(
+                                color: c.success,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: c.bg, width: 3),
+                              ),
+                              child: Icon(PhosphorIcons.check(), size: 18, color: Colors.white),
+                            ).animate().scaleXY(begin: still ? 1 : 0, end: 1, duration: still ? 1.ms : 380.ms, curve: Curves.easeOutBack),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+                const Gap(Space.s4),
+                AnimatedSwitcher(
+                  duration: still ? Duration.zero : const Duration(milliseconds: 300),
+                  transitionBuilder: (w, a) => FadeTransition(
+                    opacity: a,
+                    child: SlideTransition(
+                      position: Tween(begin: const Offset(0, .3), end: Offset.zero).animate(a),
+                      child: w,
+                    ),
+                  ),
+                  child: Row(
+                    key: ValueKey(stage),
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(stage, style: context.ty.h2),
+                      if (!widget.ready) _Dots(color: c.text, still: still),
+                    ],
+                  ),
+                ),
+                const Gap(Space.s1),
+                Text(widget.what, style: context.ty.sm.col(c.textMuted)),
+                const Gap(Space.s6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: Space.s3, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: c.surface,
+                    borderRadius: BorderRadius.circular(99),
+                    border: Border.all(color: c.border),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(PhosphorIcons.lockSimple(PhosphorIconsStyle.fill), size: 14, color: c.success),
+                      const Gap(Space.s1),
+                      Text('Secured by Paystack', style: context.ty.cap.bold.col(c.textMuted)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
+}
+
+class _ArcPainter extends CustomPainter {
+  _ArcPainter(this.color);
+  final Color color;
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final p = Paint()
+      ..shader = SweepGradient(colors: [color.withValues(alpha: 0), color]).createShader(rect)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4
+      ..strokeCap = StrokeCap.round;
+    canvas.drawArc(rect.deflate(2), 0, 4.4, false, p);
+  }
+
+  @override
+  bool shouldRepaint(_ArcPainter old) => old.color != color;
+}
+
+/// Three dots that bounce one after another.
+class _Dots extends StatelessWidget {
+  const _Dots({required this.color, this.still = false});
+  final Color color;
+  final bool still;
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(left: 4, top: 8),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var i = 0; i < 3; i++)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 1.5),
+            child: still
+                ? Container(
+                    width: 5,
+                    height: 5,
+                    decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                  )
+                : Container(
+                    width: 5,
+                    height: 5,
+                    decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                  ).animate(onPlay: (a) => a.repeat(reverse: true), delay: (140 * i).ms).moveY(begin: 0, end: -5, duration: 380.ms, curve: Curves.easeOut),
+          ),
+      ],
+    ),
+  );
 }
