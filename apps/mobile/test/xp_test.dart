@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:solutiontee_cbt/features/xp/xp_screens.dart';
 import 'package:solutiontee_cbt/theme/theme.dart';
 
@@ -91,5 +92,37 @@ void main() {
     expect(find.text('550 XP'), findsOneWidget);
     expect(find.text('₦500'), findsOneWidget);
     expect(find.text('₦1,000'), findsOneWidget);
+  });
+
+  testWidgets('inside the tabs (like the app), the Premium-with-XP pop-up opens and Cancel closes it', (t) async {
+    final router = GoRouter(
+      initialLocation: '/me/xp',
+      routes: [
+        ShellRoute(
+          builder: (_, _, child) => Scaffold(
+            body: child,
+            bottomNavigationBar: const SizedBox(height: 56, child: Text('TABS')),
+          ),
+          routes: [GoRoute(path: '/me/xp', builder: (_, _) => const XpWalletScreen())],
+        ),
+      ],
+    );
+    await t.pumpWidget(
+      ProviderScope(
+        overrides: [myXpProvider.overrideWith((ref) async => wallet())],
+        child: MaterialApp.router(theme: buildTheme(Brightness.light), routerConfig: router),
+      ),
+    );
+    await settle(t);
+    await t.scrollUntilVisible(find.text('You have enough XP'), 300, scrollable: find.byType(Scrollable).first);
+    await Scrollable.ensureVisible(t.element(find.text('800 XP')), alignment: .5);
+    await t.pump();
+    await t.tap(find.text('800 XP'));
+    await settle(t);
+    expect(find.text('Get 3 Months for 800 XP?'), findsOneWidget);
+    await t.tap(find.text('Cancel'));
+    await settle(t);
+    expect(find.text('Get 3 Months for 800 XP?'), findsNothing);
+    expect(find.byType(XpWalletScreen), findsOneWidget);
   });
 }
