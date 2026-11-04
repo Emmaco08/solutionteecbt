@@ -592,3 +592,10 @@ The owner asked to run the admin from Vercel instead of the laptop.
 - **Premium with XP:** Me → My XP → "Get Premium with XP" lists plans with an XP price (Admin → XP & streaks, default Monthly 3,000 · 3 Months 8,000 · Exam season 14,000); Premium starts now or when current Premium ends (same rules as paid plans, entitlement source `xp`). Bought XP counts here.
 - **XP prizes:** challenge 1st / 2nd / 3rd (default 200 / 100 / 50) after the close, fair entries only (every 15 minutes, once per entry); **weekly**: every Monday 00:05 Lagos the 3 best JAMB mocks of last week (leaderboard rules: full 400-mark mock, not held for a fast finish, not rejected, no staff or banned) get 300 / 150 / 75 XP, with a notification.
 - Tests: `supabase/tests/xp_spend.test.sql` 9/9; app tests 87/87.
+
+**D-084 · 2026-11-04 · XP4: buying XP packs (owner)**
+- Me → My XP → **Buy XP**: the admin's packs (default 200 XP ₦200 · 550 XP ₦500 · 1,200 XP ₦1,000 · 3,200 XP ₦2,500). Paystack in the direct app and the website (and the Play app only when the admin turns on "Paystack in the Play Store app"); the Play app shows "coming soon" until Google Play products are set up (Play Console).
+- Same safety as Premium payments: the price comes from the server (`xp_pack_start`, the app never sends an amount), Paystack's webhook (HMAC-SHA512) and verify must agree on the amount, and the XP is added **once** per payment (ledger key `pack:<payment>`); a wrong amount goes to "needs review" with no XP. A refund takes back the pack's bought XP that is still unspent.
+- `payments.plan_id` may now be empty for XP packs (`xp_pack` holds the XP); Admin → Payments shows them as "550 XP pack".
+- Bought XP is kept apart in the wallet and never pays a cash-prize challenge entry (D-081).
+- Tests: `supabase/tests/xp_buy.test.sql` 6/6; app tests 88/88.

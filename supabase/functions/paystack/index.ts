@@ -2,6 +2,8 @@
 // POST /functions/v1/paystack   Authorization: Bearer <access token>
 //   {action:"start", plan, code?, source?: "app"|"web"}
 //      → {free:true, expires_at} when a 100% code covers it, else {reference, url, amount_kobo}
+//   {action:"start_xp", xp, source?: "app"|"web"}   an XP pack (D-084); the price comes from xp_pack_start()
+//      → {reference, url, amount_kobo}
 //   {action:"check", reference}
 //      → {status: "pending"|"success"|"failed"|"needs_review"|"refunded", expires_at?}
 //   {action:"refund", reference}   admins with 2-step only
@@ -16,6 +18,8 @@ const ERR: Record<string, [number, string]> = {
   too_many_tries: [429, "Too many wrong codes. Please wait an hour and try again."],
   plan: [400, "This plan is not on sale any more. Pick another plan."],
   covered: [409, "Your Premium already covers this plan's end date."],
+  pack: [400, "This XP pack is not on sale any more. Pick another one."],
+  xp_off: [400, "XP is paused right now."],
 };
 
 async function premiumUntil(uid: string): Promise<string | null> {
@@ -82,6 +86,38 @@ Deno.serve(async (req) => {
       }
       const d = init.body.data as Record<string, unknown>;
       await rpc("pay_note", { p_reference: r.reference, p_provider: "paystack", p_kind: "initialize", p_ok: true, p_note: "Paystack checkout opened" });
+      return json({ reference: r.reference, url: d.authorization_url, amount_kobo: r.amount_kobo });
+    }
+
+    if (action === "start_xp") {
+      const xp = Number(body.xp ?? 0);
+      if (!Number.isInteger(xp) || xp <= 0) return json({ error: "Choose an XP pack." }, 400);
+      const r = await rpc<Record<string, unknown>>("xp_pack_start", { p_uid: user.id, p_xp: xp, p_source: body.source === "web" ? "web" : "app" });
+      if (!r.ok) {
+        const [status, message] = ERR[String(r.error ?? "")] ?? [400, "This XP pack cannot be bought right now."];
+        return json({ error: message, code: r.error }, status);
+      }
+      const init = await paystack("/transaction/initialize", {
+        method: "POST",
+        body: JSON.stringify({
+          email: r.email,
+          amount: r.amount_kobo,
+          currency: "NGN",
+          reference: r.reference,
+          channels: ["card", "bank", "ussd", "bank_transfer"],
+          ...(Deno.env.get("PAYSTACK_CALLBACK_URL") ? { callback_url: Deno.env.get("PAYSTACK_CALLBACK_URL") } : {}),
+          metadata: { payment_id: r.payment_id, xp_pack: xp, cancel_action: Deno.env.get("PAYSTACK_CALLBACK_URL") || undefined },
+        }),
+      });
+      if (!init.ok) {
+        await rpc("pay_note", { p_reference: r.reference, p_provider: "paystack", p_kind: "initialize", p_ok: false,
+          p_note: `Paystack answered ${init.status}: ${String(init.body?.message ?? "").slice(0, 200)}` });
+        await rpc("pay_paystack_result", { p_reference: r.reference, p_status: "failed", p_amount_kobo: null, p_currency: null,
+          p_channel: null, p_data: {}, p_kind: "initialize", p_event_key: null });
+        return json({ error: "Paystack is not answering right now. Please try again in a moment.", code: "paystack" }, 502);
+      }
+      const d = init.body.data as Record<string, unknown>;
+      await rpc("pay_note", { p_reference: r.reference, p_provider: "paystack", p_kind: "initialize", p_ok: true, p_note: "Paystack checkout opened (XP pack)" });
       return json({ reference: r.reference, url: d.authorization_url, amount_kobo: r.amount_kobo });
     }
 

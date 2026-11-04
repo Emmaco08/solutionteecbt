@@ -11,6 +11,7 @@ import '../../theme/tokens.g.dart';
 import '../../ui/kit.dart';
 import '../../widgets/phosphor.g.dart';
 import '../../widgets/states.dart';
+import '../premium/payments.dart';
 
 /// XP — the app's game coin (D-081, plan `docs/plans/xp-streaks.md`). Earned by practising, spent on challenge
 /// entries, Premium and streak freezes. The server gives and takes every XP; the phone only shows it.
@@ -282,6 +283,7 @@ class _Wallet extends StatelessWidget {
           const SectTitle('Get Premium with XP'),
           _PremiumWithXp(options: rows(d['premium_options']), balance: _i(d['balance'])),
         ],
+        if (rows(d['packs']).isNotEmpty) ...[const SectTitle('Buy XP'), _BuyXp(packs: rows(d['packs']))],
         const Gap(Space.s2),
         Text('You can also spend XP on challenge entries and streak freezes.', style: context.ty.cap.col(c.textSubtle), textAlign: TextAlign.center),
         const Gap(Space.s3),
@@ -403,6 +405,130 @@ class _PremiumWithXpState extends ConsumerState<_PremiumWithXp> {
               ],
             ),
           ),
+      ],
+    );
+  }
+}
+
+/// XP packs for money (D-084): Paystack in the direct app (and the Play app only when the admin allows Paystack there).
+/// The server sets the price and adds the XP only after Paystack confirms the payment. Bought XP never enters cash challenges.
+class _BuyXp extends ConsumerStatefulWidget {
+  const _BuyXp({required this.packs});
+  final List<Map<String, dynamic>> packs;
+  @override
+  ConsumerState<_BuyXp> createState() => _BuyXpState();
+}
+
+class _BuyXpState extends ConsumerState<_BuyXp> with WidgetsBindingObserver {
+  int? _busy;
+  String? _reference;
+  int? _pendingXp;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState s) {
+    if (s == AppLifecycleState.resumed && _reference != null) _check();
+  }
+
+  PaystackProvider get _pay => ref.read(paymentProvider(true)) as PaystackProvider;
+
+  Future<void> _buy(int xp) async {
+    setState(() => _busy = xp);
+    final r = await _pay.buyXp(xp);
+    if (!mounted) return;
+    setState(() => _busy = null);
+    switch (r) {
+      case PayPending(:final reference):
+        setState(() {
+          _reference = reference;
+          _pendingXp = xp;
+        });
+      case PayFailed(:final message):
+        toast(context, message, icon: PhosphorIcons.warningCircle(PhosphorIconsStyle.fill));
+      default:
+        break;
+    }
+  }
+
+  Future<void> _check() async {
+    final r = _reference;
+    if (r == null) return;
+    for (var i = 0; i < 24 && mounted && _reference == r; i++) {
+      final res = await _pay.check(r);
+      if (!mounted) return;
+      if (res is PaySuccess) {
+        HapticFeedback.mediumImpact();
+        ref.invalidate(myXpProvider);
+        toast(context, '+${_pendingXp ?? ''} XP added. Thank you!', icon: PhosphorIcons.coins(PhosphorIconsStyle.fill));
+        setState(() => _reference = null);
+        return;
+      }
+      if (res is PayFailed) {
+        toast(context, res.message, icon: PhosphorIcons.warningCircle(PhosphorIconsStyle.fill));
+        setState(() => _reference = null);
+        return;
+      }
+      await Future<void>.delayed(const Duration(seconds: 5));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    if (!usesPaystackNow(ref)) {
+      return Text('Buying XP in the Play Store app is coming soon.', style: context.ty.cap.col(c.textMuted));
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (_reference != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: Space.s3),
+            child: InfoBanner(
+              icon: PhosphorIcons.hourglass(PhosphorIconsStyle.fill),
+              child: Row(
+                children: [
+                  const Expanded(child: Text('Finish paying on the Paystack page. We add your XP as soon as Paystack confirms it.')),
+                  TextButton(onPressed: _check, child: const Text('Check')),
+                ],
+              ),
+            ),
+          ),
+        ListCard(
+          children: [
+            for (final p in widget.packs)
+              Padding(
+                padding: const EdgeInsets.all(Space.s3),
+                child: Row(
+                  children: [
+                    const XpCoin(size: 32),
+                    const Gap(Space.s3),
+                    Expanded(child: Text('${xpText(_i(p['xp']))} XP', style: context.ty.body.bold.tnum)),
+                    Btn(
+                      '₦${xpText(_i(p['naira']))}',
+                      kind: BtnKind.tonal,
+                      sm: true,
+                      loading: _busy == _i(p['xp']),
+                      onPressed: _busy != null || _reference != null ? null : () => _buy(_i(p['xp'])),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+        const Gap(Space.s2),
+        Text('Bought XP can be spent on Premium, events and streak freezes, but not on cash-prize challenges.', style: context.ty.cap.col(c.textSubtle)),
       ],
     );
   }

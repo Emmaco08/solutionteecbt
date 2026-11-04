@@ -13,6 +13,10 @@ Map<String, dynamic> wallet({bool enabled = true, bool claimed = false}) => {
   'daily_claim': 10,
   'today': 45,
   'daily_cap': 300,
+  'packs': [
+    {'xp': 550, 'naira': 500},
+    {'xp': 1200, 'naira': 1000},
+  ],
   'premium_options': [
     {'code': 'monthly', 'name': 'Monthly', 'xp': 3000},
     {'code': 'three_months', 'name': '3 Months', 'xp': 800},
@@ -77,5 +81,15 @@ void main() {
     await t.scrollUntilVisible(find.text('Get Premium with XP'), 300, scrollable: find.byType(Scrollable).first);
     expect(find.text('1,750 XP more needed'), findsOneWidget);
     expect(find.text('You have enough XP'), findsOneWidget);
+  });
+
+  testWidgets('Buy XP: packs with the admin\'s naira prices, and the rule about cash challenges', (t) async {
+    await t.pumpWidget(wrap(const XpWalletScreen(), wallet()));
+    await settle(t);
+    await t.scrollUntilVisible(find.text('Buy XP'), 300, scrollable: find.byType(Scrollable).first);
+    await t.scrollUntilVisible(find.textContaining('not on cash-prize challenges'), 300, scrollable: find.byType(Scrollable).first);
+    expect(find.text('550 XP'), findsOneWidget);
+    expect(find.text('₦500'), findsOneWidget);
+    expect(find.text('₦1,000'), findsOneWidget);
   });
 }

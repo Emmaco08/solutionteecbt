@@ -147,6 +147,20 @@ class PaystackProvider implements PaymentProvider {
     }
   }
 
+  /// An XP pack (D-084): the server sets the price from the admin's packs; Paystack page opens like a plan payment.
+  Future<PayResult> buyXp(int xp) async {
+    try {
+      final r = await _call({'action': 'start_xp', 'xp': xp, 'source': 'app'});
+      final url = Uri.tryParse('${r['url'] ?? ''}');
+      if (url == null || !url.isScheme('https')) return const PayFailed('Paystack did not open. Please try again.');
+      final opened = await open(url);
+      if (!opened) return const PayFailed('Could not open Paystack on this phone. Please try again.');
+      return PayPending(r['reference'] as String?);
+    } on PayFailed catch (e) {
+      return e;
+    }
+  }
+
   @override
   Future<PayResult> check(String reference) async {
     try {
