@@ -1,0 +1,326 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../core/nav.dart';
+import '../../core/providers.dart';
+import '../../theme/theme.dart';
+import '../../theme/tokens.g.dart';
+import '../../ui/kit.dart';
+import '../../widgets/phosphor.g.dart';
+import '../../widgets/states.dart';
+
+/// XP — the app's game coin (D-081, plan `docs/plans/xp-streaks.md`). Earned by practising, spent on challenge
+/// entries, Premium and streak freezes. The server gives and takes every XP; the phone only shows it.
+
+final myXpProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+  if (currentSession(ref) == null) return const {'enabled': false};
+  final j = await ref.read(supabaseProvider).rpc('my_xp').timeout(const Duration(seconds: 15));
+  return Map<String, dynamic>.from(j as Map);
+});
+
+int _i(Object? v) => (v as num?)?.toInt() ?? 0;
+String xpText(num n) => n.round().toString().replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => ',');
+
+const _reasons = {
+  'daily_claim': 'Daily claim',
+  'test': 'Test finished',
+  'mock': 'Mock finished',
+  'qotd': 'Question of the day',
+  'challenge': 'Challenge finished',
+  'referral': 'Friend joined',
+  'admin': 'From SolutionTee',
+  'pack': 'Bought XP',
+  'premium': 'Premium with XP',
+  'entry': 'Challenge entry',
+  'streak': 'Streak bonus',
+  'freeze': 'Streak freeze',
+};
+
+/// The gold XP coin.
+class XpCoin extends StatelessWidget {
+  const XpCoin({super.key, this.size = 18});
+  final double size;
+  @override
+  Widget build(BuildContext context) => Container(
+    width: size,
+    height: size,
+    alignment: Alignment.center,
+    decoration: const BoxDecoration(
+      shape: BoxShape.circle,
+      gradient: LinearGradient(colors: [Color(0xFFFFD66B), Palette.gold500], begin: Alignment.topLeft, end: Alignment.bottomRight),
+    ),
+    child: Text(
+      'XP',
+      style: TextStyle(fontSize: size * .38, fontWeight: FontWeight.w800, color: Palette.navy900, height: 1),
+    ),
+  );
+}
+
+/// Home header: the XP balance (tap → My XP). Hidden when XP is off.
+class XpChip extends ConsumerWidget {
+  const XpChip({super.key});
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final d = ref.watch(myXpProvider).value;
+    if (d == null || d['enabled'] != true) return const SizedBox.shrink();
+    final c = context.c;
+    return Padding(
+      padding: const EdgeInsets.only(right: Space.s2),
+      child: Semantics(
+        button: true,
+        label: '${d['balance']} XP',
+        child: GestureDetector(
+          onTap: () => openRoute(context, '/me/xp'),
+          child: Container(
+            height: 36,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(color: c.accentSoft, borderRadius: BorderRadius.circular(99)),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const XpCoin(),
+                const SizedBox(width: 5),
+                Text(xpText(_i(d['balance'])), style: context.ty.label.bold.tnum.col(c.onAccentSoft)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Claims today's XP (once a Lagos day). Returns the XP given (0 = already claimed or XP off).
+Future<int> claimDailyXp(WidgetRef ref) async {
+  final j = Map<String, dynamic>.from(await ref.read(supabaseProvider).rpc('xp_claim_daily').timeout(const Duration(seconds: 15)) as Map);
+  ref.invalidate(myXpProvider);
+  return _i(j['given']);
+}
+
+/// Home: "Claim +10 XP" until today's XP is claimed.
+class DailyClaimCard extends ConsumerStatefulWidget {
+  const DailyClaimCard({super.key});
+  @override
+  ConsumerState<DailyClaimCard> createState() => _DailyClaimCardState();
+}
+
+class _DailyClaimCardState extends ConsumerState<DailyClaimCard> {
+  bool _busy = false;
+  int? _got;
+
+  Future<void> _claim() async {
+    setState(() => _busy = true);
+    try {
+      final g = await claimDailyXp(ref);
+      HapticFeedback.mediumImpact();
+      if (mounted) setState(() => _got = g);
+    } catch (_) {
+      if (mounted) toast(context, 'Could not claim. Check your internet and try again.', icon: PhosphorIcons.wifiSlash());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final d = ref.watch(myXpProvider).value;
+    if (_got != null) {
+      return AppCard(
+        child: Row(
+          children: [
+            const XpCoin(size: 36),
+            const Gap(Space.s3),
+            Expanded(child: Text(_got! > 0 ? '+$_got XP claimed. See you tomorrow!' : 'Already claimed today.', style: context.ty.sm.bold)),
+          ],
+        ),
+      ).animate().fadeIn(duration: Motion.base).scale(begin: const Offset(.96, .96), end: const Offset(1, 1), curve: Motion.out);
+    }
+    if (d == null || d['enabled'] != true || d['claimed_today'] == true) return const SizedBox.shrink();
+    final c = context.c;
+    return Container(
+          padding: const EdgeInsets.all(Space.s4),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(colors: [Palette.navy900, Color(0xFF13306A)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+            borderRadius: BorderRadius.circular(Radii.lg),
+          ),
+          child: Row(
+            children: [
+              const XpCoin(size: 40)
+                  .animate(onPlay: (a) => context.reduceMotion ? null : a.repeat(reverse: true))
+                  .scale(begin: const Offset(1, 1), end: const Offset(1.08, 1.08), duration: 900.ms, curve: Curves.easeInOut),
+              const Gap(Space.s3),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Your daily XP is ready', style: context.ty.sm.bold.col(Colors.white)),
+                    Text('Claim it every day you open the app.', style: context.ty.cap.col(const Color(0xFFDCE4F2))),
+                  ],
+                ),
+              ),
+              Btn('Claim +${_i(d['daily_claim'])}', kind: BtnKind.accent, sm: true, loading: _busy, onPressed: _busy ? null : _claim),
+            ],
+          ),
+        )
+        .animate()
+        .fadeIn(duration: Motion.base)
+        .slideY(begin: .1, end: 0, curve: Motion.out, duration: Motion.base)
+        .then()
+        .shimmer(duration: context.reduceMotion ? 1.ms : 1400.ms, color: c.accent.withValues(alpha: .25));
+  }
+}
+
+/// Me → My XP: balance, today's progress, ways to earn, history.
+class XpWalletScreen extends ConsumerWidget {
+  const XpWalletScreen({super.key});
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final v = ref.watch(myXpProvider);
+    return Scaffold(
+      appBar: const TopBar(title: 'My XP'),
+      body: asyncView(
+        v,
+        (d) => RefreshIndicator(
+          onRefresh: () async => ref.invalidate(myXpProvider),
+          child: _Wallet(d: d),
+        ),
+        loading: ListView(
+          padding: const EdgeInsets.all(Space.s5),
+          children: const [
+            Skeleton(height: 170, radius: Radii.lg),
+            Gap(Space.s3),
+            Skeleton(height: 220, radius: Radii.lg),
+          ],
+        ),
+        onRetry: () => ref.invalidate(myXpProvider),
+      ),
+    );
+  }
+}
+
+class _Wallet extends StatelessWidget {
+  const _Wallet({required this.d});
+  final Map<String, dynamic> d;
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    if (d['enabled'] != true) {
+      return ListView(
+        children: [
+          const Gap(Space.s8),
+          StateBlock(icon: PhosphorIcons.coins(PhosphorIconsStyle.fill), tone: Tone.gold, title: 'XP is paused', text: 'Your XP is safe. Check back soon.'),
+        ],
+      );
+    }
+    final rules = d['rules'] is Map ? Map<String, dynamic>.from(d['rules'] as Map) : const <String, dynamic>{};
+    final today = _i(d['today']), cap = _i(d['daily_cap']);
+    final history = rows(d['history']);
+    final ways = <(IconData, String, String)>[
+      (PhosphorIcons.calendarCheck(PhosphorIconsStyle.fill), 'Open the app and claim', '+${_i(rules['daily_claim'])} XP a day'),
+      (PhosphorIcons.exam(PhosphorIconsStyle.fill), 'Finish a test', '+${_i(rules['test'])} XP, more for a good score'),
+      (PhosphorIcons.trophy(PhosphorIconsStyle.fill), 'Finish a full mock', '+${_i(rules['mock'])} XP'),
+      (PhosphorIcons.lightbulb(PhosphorIconsStyle.fill), 'Question of the day', '+${_i(rules['qotd']) + _i(rules['qotd_right'])} XP when right'),
+      (PhosphorIcons.flagCheckered(PhosphorIconsStyle.fill), 'Finish a challenge', '+${_i(rules['challenge_finish'])} XP'),
+      (PhosphorIcons.gift(PhosphorIconsStyle.fill), 'A friend joins with your code', '+${_i(rules['referral'])} XP'),
+    ];
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(Space.s5, Space.s2, Space.s5, Space.s8),
+      children: [
+        Container(
+          padding: const EdgeInsets.all(Space.s5),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(colors: [Palette.navy900, Color(0xFF13306A)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+            borderRadius: BorderRadius.circular(Radii.lg),
+          ),
+          child: Column(
+            children: [
+              const XpCoin(size: 56).animate().scale(begin: const Offset(.6, .6), end: const Offset(1, 1), duration: Motion.slow, curve: Curves.elasticOut),
+              const Gap(Space.s3),
+              Text(xpText(_i(d['balance'])), style: context.ty.display.tnum.col(Colors.white)),
+              Text('XP', style: context.ty.sm.bold.col(Palette.gold500)),
+              if (_i(d['bought']) > 0) ...[
+                const Gap(Space.s1),
+                Text('${xpText(_i(d['bought']))} bought · ${xpText(_i(d['earned']))} earned', style: context.ty.cap.col(const Color(0xFFDCE4F2))),
+              ],
+              const Gap(Space.s4),
+              Row(
+                children: [
+                  Expanded(child: Text('Earned today', style: context.ty.cap.col(const Color(0xFFDCE4F2)))),
+                  Text('${xpText(today)} / ${xpText(cap)}', style: context.ty.cap.bold.tnum.col(Colors.white)),
+                ],
+              ),
+              const Gap(Space.s1),
+              ProgressBar(cap == 0 ? 0 : today / cap, color: Palette.gold500, track: Colors.white.withValues(alpha: .15)),
+            ],
+          ),
+        ),
+        const Gap(Space.s3),
+        const DailyClaimCard(),
+        const Gap(Space.s3),
+        const SectTitle('Ways to earn XP'),
+        ListCard(
+          children: [
+            for (final (ic, t, x) in ways)
+              Padding(
+                padding: const EdgeInsets.all(Space.s3),
+                child: Row(
+                  children: [
+                    IconTile(ic, tone: Tone.gold, size: 36, radius: 10, iconSize: 18),
+                    const Gap(Space.s3),
+                    Expanded(child: Text(t, style: context.ty.sm.bold)),
+                    Text(x, style: context.ty.cap.col(c.textMuted)),
+                  ],
+                ),
+              ),
+          ],
+        ),
+        const Gap(Space.s2),
+        Text('Spend XP on challenge entries, Premium and streak freezes — coming soon.', style: context.ty.cap.col(c.textSubtle), textAlign: TextAlign.center),
+        const Gap(Space.s3),
+        const SectTitle('History'),
+        if (history.isEmpty)
+          Text('No XP yet. Claim your daily XP or finish a test.', style: context.ty.sm.col(c.textMuted))
+        else
+          ListCard(
+            children: [
+              for (final h in history)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: Space.s3, vertical: Space.s2),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(_reasons[h['reason']] ?? '${h['reason']}', style: context.ty.sm.bold),
+                            if ((h['note'] ?? '').toString().isNotEmpty) Text('${h['note']}', style: context.ty.cap.col(c.textMuted)),
+                            Text(_when('${h['at']}'), style: context.ty.cap.col(c.textSubtle)),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        '${_i(h['amount']) > 0 ? '+' : ''}${xpText(_i(h['amount']))}',
+                        style: context.ty.body.bold.tnum.col(_i(h['amount']) > 0 ? c.success : c.error),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+      ],
+    );
+  }
+
+  static String _when(String iso) {
+    final t = DateTime.tryParse(iso)?.toLocal();
+    if (t == null) return '';
+    const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${t.day} ${m[t.month - 1]}, ${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+  }
+}
+
+/// Used by Supabase errors in this file.
+String xpError(Object e) => e is PostgrestException && e.message.isNotEmpty ? e.message : 'Something went wrong. Check your internet and try again.';

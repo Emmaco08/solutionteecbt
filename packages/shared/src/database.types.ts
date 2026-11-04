@@ -2415,6 +2415,10 @@ export type Database = {
         Returns: undefined
       }
       admin_unban_device: { Args: { p_hash: string }; Returns: Json }
+      admin_xp_adjust: { Args: { p_amount: number; p_reason: string; p_user: string }; Returns: Json }
+      admin_xp_overview: { Args: never; Returns: Json }
+      admin_xp_settings: { Args: { p: Json }; Returns: undefined }
+      admin_xp_user: { Args: { p_query: string }; Returns: Json }
       admin_challenge_add_random: {
         Args: { p_count: number; p_id: string; p_subjects: number[] }
         Returns: Json
@@ -2596,6 +2600,8 @@ export type Database = {
       device_status: { Args: { p_ids: string[] }; Returns: Json }
       my_referrals: { Args: never; Returns: Json }
       my_status: { Args: never; Returns: Json }
+      my_xp: { Args: never; Returns: Json }
+      xp_claim_daily: { Args: never; Returns: Json }
       referral_apply: { Args: { p_code: string }; Returns: Json }
       referral_claim: {
         Args: { p_account_name: string; p_account_number: string; p_bank: string; p_reward: string }

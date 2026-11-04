@@ -21,6 +21,7 @@ import '../premium/paywall.dart';
 import '../profile/me_extras.dart';
 import '../compete/challenges_screens.dart';
 import '../invite/invite_screens.dart';
+import '../xp/xp_screens.dart';
 import '../compete/compete_data.dart';
 import 'qotd_card.dart';
 
@@ -147,6 +148,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ref.invalidate(unfinishedProvider);
     ref.invalidate(qotdProvider);
     ref.invalidate(challengesProvider);
+    ref.invalidate(myXpProvider);
     await ref.read(examsProvider.future).catchError((_) => <Map<String, dynamic>>[]);
   }
 
@@ -198,6 +200,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ],
         ),
       ),
+      const DailyClaimCard(),
       if (unfinished != null) ContinueCard(a: unfinished),
       if (ref.watch(challengesProvider).value?['on'] == true) const ChallengeSection(),
       const InviteCard(),
@@ -281,6 +284,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ],
                       ),
                     ),
+                    const XpChip(),
                     Semantics(
                       label: '${stats.streak}-day streak',
                       child: Container(

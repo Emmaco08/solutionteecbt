@@ -567,3 +567,11 @@ The owner asked to run the admin from Vercel instead of the laptop.
 - Builds published before this have no build number: the build time decides, with 30 minutes of slack. Developer builds (versionCode 1) are never asked.
 - This first version with the updater must be installed once from /download; after that, updates happen in the app.
 - App tests 78/78.
+
+**D-081 · 2026-11-04 · XP, the app's game coin — step XP1 (owner; plan `docs/plans/xp-streaks.md`)**
+- Owner decisions: bought XP is never used for cash-prize challenges (Google Play's real-money contest rule and Nigerian state gaming law); the streak needs one question a day (opening the app gives the daily XP only); default prices to start; build in 4 steps (XP1 core, XP2 streaks and welcome-back, XP3 spending, XP4 buying).
+- **Wallet:** `profiles.xp_earned` and `xp_bought` (never below 0) with an append-only `xp_ledger` (unique key per action, so nothing is given twice). Only the server gives or takes XP (`private.xp_add` / `private.xp_take`, atomic, bought XP spent first where allowed).
+- **Earning (all numbers in Admin → XP & streaks, `app_settings.xp`):** daily claim 10 (once per Lagos day), test 5 (at least 10 questions and 2 minutes, 10 a day) + 1 per 10% above 50%, full mock 30 (2 a day), question of the day 2 (+3 when right), challenge finished 20, friend counted 50; most 300 XP a day (daily claim, streak bonuses and admin gifts not counted). Banned, phone-banned and second accounts earn nothing.
+- **Admin:** XP on/off (off hides XP everywhere, balances kept), every number, prizes, streak prices, Premium XP prices, packs; totals; a 30-day "given vs spent" chart (watch for inflation); top students; a student's wallet with give/take and a reason (audit log).
+- **App:** XP chip on Home, "Your daily XP is ready → Claim" card, Me → My XP (balance, earned/bought, today against the limit, ways to earn, history).
+- Tests: `supabase/tests/xp_core.test.sql` 14/14; app tests 82/82.

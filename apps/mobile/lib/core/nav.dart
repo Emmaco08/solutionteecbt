@@ -13,13 +13,14 @@ String tabRoute(String route) {
   if (route == '/winners-wall') return '/test/winners-wall';
   if (route == '/winnings') return '/me/winnings';
   if (route == '/invite') return '/me/invite';
+  if (route == '/xp') return '/me/xp';
   return route;
 }
 
 /// Which tab a path belongs to, or null for a full-screen page.
 String? tabOf(String path) {
   const roots = ['/home', '/study', '/test', '/ai', '/me'];
-  const nested = ['/test/challenges', '/test/winners-wall', '/me/winnings', '/me/invite'];
+  const nested = ['/test/challenges', '/test/winners-wall', '/me/winnings', '/me/invite', '/me/xp'];
   if (roots.contains(path)) return path;
   for (final n in nested) {
     if (path == n || path.startsWith('$n/')) return n.substring(0, n.indexOf('/', 1));
