@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:solutiontee_cbt/features/compete/compete_data.dart';
 import 'package:solutiontee_cbt/features/premium/pay_methods.dart';
 import 'package:solutiontee_cbt/features/premium/payments.dart';
+import 'package:solutiontee_cbt/features/premium/paystack_web.dart';
 import 'package:solutiontee_cbt/theme/theme.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -196,5 +197,23 @@ void main() {
     await t.pump(const Duration(milliseconds: 300));
     expect(picked, PayMethod.opay);
     expect(find.textContaining('Tap OPay there'), findsOneWidget);
+  });
+
+  test('OPay / Zap / PocketApp / bank apps: Paystack\'s web checkout in our own screen', () async {
+    final w = await FakeProvider().openResult({'reference': 'st_1', 'url': 'https://checkout.paystack.com/abc'}, web: true);
+    expect(w, isA<PayWeb>());
+    expect((w as PayWeb).url.host, 'checkout.paystack.com');
+    expect(PayMethod.opay.viaName, 'OPay');
+    expect(PayMethod.card.viaName, isNull);
+  });
+
+  test('embedded checkout: app links open the app, Paystack close cancels, our done page checks', () {
+    expect(paystackNav(Uri.parse('https://checkout.paystack.com/abc')), WebNav.stay);
+    expect(paystackNav(Uri.parse('https://standard.paystack.co/close')), WebNav.cancel);
+    expect(paystackNav(Uri.parse('https://admin.solutiontee.com/pay/done?reference=st_1')), WebNav.closeAndCheck);
+    expect(paystackNav(Uri.parse('intent://pay?x=1#Intent;scheme=opay;package=team.opay.pay;end')), WebNav.openApp);
+    expect(paystackNav(Uri.parse('tel:*737#')), WebNav.openApp);
+    final t = intentTargets(Uri.parse('intent://pay?x=1#Intent;scheme=opay;package=team.opay.pay;S.browser_fallback_url=https%3A%2F%2Fopay.ng%2Fpay;end'));
+    expect(t.map((u) => u.toString()).toList(), ['opay://pay?x=1', 'https://opay.ng/pay', 'market://details?id=team.opay.pay']);
   });
 }

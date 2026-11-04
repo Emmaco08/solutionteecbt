@@ -33,9 +33,12 @@ class PayMethodPicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.c;
+    final rm = context.reduceMotion;
+    var n = 0;
     Widget option(PayMethod m, IconData icon, String title, String caption) {
       final on = m == method;
-      return Semantics(
+      final i = n++;
+      final card = Semantics(
         selected: on,
         button: true,
         label: title,
@@ -80,6 +83,7 @@ class PayMethodPicker extends StatelessWidget {
           ),
         ),
       );
+      return rm ? card : card.animate().fadeIn(delay: (40 * i).ms, duration: 260.ms).slideX(begin: .06, end: 0, curve: Curves.easeOutCubic);
     }
 
     return Column(

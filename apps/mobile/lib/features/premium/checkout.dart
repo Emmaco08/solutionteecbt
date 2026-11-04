@@ -16,6 +16,7 @@ import '../../widgets/exam_logo.dart';
 import '../../widgets/phosphor.g.dart';
 import '../../widgets/states.dart';
 import 'pay_methods.dart';
+import 'paystack_web.dart';
 import 'paywall.dart';
 import 'payments.dart';
 
@@ -138,6 +139,19 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> with WidgetsBin
             _handle(res);
           } else {
             _startPolling(); // closed early: keep checking here; "Check payment" stays available
+          }
+        });
+      case PayWeb():
+        // OPay, PocketApp, Zap, bank apps: Paystack's web checkout inside our own screen.
+        setState(() => (_reference = r.reference, _stage = _Stage.checking));
+        final p = _pay;
+        if (p is! PaystackProvider) return;
+        showPaystackWeb(context, r, p, what: 'Premium · ${plan['name']}', via: _method.viaName).then((res) {
+          if (!mounted) return;
+          if (res is PaySuccess || res is PayFailed) {
+            _handle(res!);
+          } else {
+            _startPolling(); // closed or not confirmed yet: keep checking here
           }
         });
       case PayCancelled():

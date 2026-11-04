@@ -12,6 +12,7 @@ import '../../ui/kit.dart';
 import '../../widgets/phosphor.g.dart';
 import '../../widgets/states.dart';
 import '../premium/pay_methods.dart';
+import '../premium/paystack_web.dart';
 import '../premium/payments.dart';
 
 /// XP — the app's game coin (D-081, plan `docs/plans/xp-streaks.md`). Earned by practising, spent on challenge
@@ -480,10 +481,10 @@ class _BuyXpState extends ConsumerState<_BuyXp> with WidgetsBindingObserver {
     final r = await p.buyXp(xp, channel: payChannel(method, bank));
     if (!mounted) return;
     setState(() => _busy = null);
-    _done(r, xp);
+    _done(r, xp, via: method.viaName);
   }
 
-  void _done(PayResult r, int xp) {
+  void _done(PayResult r, int xp, {String? via}) {
     switch (r) {
       case PaySuccess():
         HapticFeedback.mediumImpact();
@@ -496,6 +497,16 @@ class _BuyXpState extends ConsumerState<_BuyXp> with WidgetsBindingObserver {
           if (!mounted) return;
           if (res != null) {
             _done(res, xp);
+          } else {
+            _check();
+          }
+        });
+      case PayWeb():
+        setState(() => (_reference = r.reference, _pendingXp = xp));
+        showPaystackWeb(context, r, _pay, what: '${xpText(xp)} XP', via: via).then((res) {
+          if (!mounted) return;
+          if (res is PaySuccess || res is PayFailed) {
+            _done(res!, xp);
           } else {
             _check();
           }

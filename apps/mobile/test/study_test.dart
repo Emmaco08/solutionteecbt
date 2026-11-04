@@ -106,15 +106,23 @@ void main() {
       ),
     );
     await t.tap(find.text('open'));
-    await t.pumpAndSettle();
+    // The crown and "Best value" shine keep moving, so wait a fixed time instead of for every animation to stop.
+    for (var i = 0; i < 15; i++) {
+      await t.pump(const Duration(milliseconds: 100));
+    }
     expect(find.text('This video is Premium'), findsOneWidget);
     expect(find.text('SAMPLE PRICES'), findsOneWidget);
     expect(find.text('Best value'), findsOneWidget);
     expect(find.text('Until 31 Jul 2027'), findsOneWidget);
-    expect(find.text('Continue with 3 Months · ₦3,500'), findsOneWidget);
+    expect(find.text('Continue · ₦3,500'), findsOneWidget);
+    await t.ensureVisible(find.text('Monthly'));
     await t.tap(find.text('Monthly'));
-    await t.pumpAndSettle();
-    expect(find.text('Continue with Monthly · ₦1,500'), findsOneWidget);
+    for (var i = 0; i < 10; i++) {
+      await t.pump(const Duration(milliseconds: 100));
+    }
+    expect(find.text('Continue · ₦1,500'), findsOneWidget);
+    await t.pumpWidget(const SizedBox());
+    await t.pump(const Duration(seconds: 4));
   });
 
   testWidgets('note body renders headings, lists, tips and bold text', (t) async {

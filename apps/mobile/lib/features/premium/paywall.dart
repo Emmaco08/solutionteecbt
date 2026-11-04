@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -27,7 +28,7 @@ const _reasons = {
 /// Opens the Premium paywall bottom sheet (prototype `paywall`).
 Future<void> showPaywall(BuildContext context, {String? reason}) {
   final head = _reasons[reason] ?? (RegExp(r'\d{4}$').hasMatch(reason ?? '') ? '$reason is Premium' : 'Go Premium');
-  return showSheet<void>(context, builder: (_) => _Paywall(head: head));
+  return showSheet<void>(context, closeButton: false, builder: (_) => _Paywall(head: head));
 }
 
 /// How long a plan lasts, e.g. "3 months" or "Until 31 Jul 2027".
@@ -86,80 +87,157 @@ class _PaywallState extends ConsumerState<_Paywall> {
     final benefits = premiumBenefits(rules);
     final pick = firstOr(plans, (p) => p['code'] == (_pick ?? 'three_months'), fallbackFirst: true);
     final rm = context.reduceMotion;
+    Widget enter(Widget w, int i) =>
+        rm ? w : w.animate().fadeIn(delay: (60 + 45 * i).ms, duration: 320.ms).slideY(begin: .12, end: 0, curve: Curves.easeOutCubic);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(color: Palette.gold400, borderRadius: BorderRadius.circular(14)),
-              child: Icon(PhosphorIcons.crownSimple(PhosphorIconsStyle.fill), size: 28, color: Palette.navy900),
+        // Navy hero with a floating, shining crown
+        ClipRRect(
+          borderRadius: BorderRadius.circular(Radii.lg),
+          child: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Palette.navy900, Color(0xFF173A7A)]),
             ),
-            const Gap(Space.s3),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(widget.head, style: context.ty.h2),
-                  Text('Unlock everything and practise without limits.', style: context.ty.sm.col(c.textMuted)),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const Gap(Space.s4),
-        for (final (i, b) in benefits.indexed)
-          Padding(
-            padding: const EdgeInsets.only(bottom: Space.s3),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Stack(
               children: [
-                Icon(PhosphorIcons.checkCircle(PhosphorIconsStyle.fill), size: 20, color: c.success),
-                const Gap(Space.s3),
-                Expanded(
-                  child: Text(b, style: context.ty.sm.copyWith(height: 20 / 14)),
+                Positioned(
+                  right: -40,
+                  top: -50,
+                  child: Container(
+                    width: 170,
+                    height: 170,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(colors: [Color.fromRGBO(242, 178, 51, .35), Color.fromRGBO(242, 178, 51, 0)]),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(Space.s4),
+                  child: Row(
+                    children: [
+                      _Crown(still: rm),
+                      const Gap(Space.s4),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(widget.head, style: context.ty.h2.col(Colors.white)),
+                            const SizedBox(height: 2),
+                            Text('Unlock everything and practise without limits.', style: context.ty.sm.col(const Color(0xFFC9D5EA))),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
-          ).animate(target: rm ? 0 : 1).fadeIn(delay: (40 * i).ms, duration: Motion.base).slideY(begin: .2, end: 0),
-        const Gap(Space.s1),
+          ),
+        ).animate().fadeIn(duration: rm ? 1.ms : 300.ms).scaleXY(begin: rm ? 1 : .97, end: 1, duration: rm ? 1.ms : 380.ms, curve: Curves.easeOutBack),
+        const Gap(Space.s4),
+        for (final (i, b) in benefits.indexed)
+          enter(
+            Padding(
+              padding: const EdgeInsets.only(bottom: Space.s2),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(color: c.successSoft, shape: BoxShape.circle),
+                    child: Icon(PhosphorIcons.check(), size: 14, color: c.success),
+                  ),
+                  const Gap(Space.s3),
+                  Expanded(
+                    child: Text(b, style: context.ty.sm.copyWith(height: 20 / 14)),
+                  ),
+                ],
+              ),
+            ),
+            i,
+          ),
+        const Gap(Space.s3),
         Row(
           children: [
-            Expanded(child: Text('Choose a plan', style: context.ty.label)),
+            Expanded(child: Text('Choose a plan', style: context.ty.h3)),
             if (sample) const Pill('SAMPLE PRICES', kind: BadgeKind.sample),
           ],
         ),
-        const Gap(Space.s3),
-        for (final p in plans) ...[
-          _PlanRow(plan: p, price: price(p), on: identical(p, pick), onTap: () => setState(() => _pick = p['code'] as String)),
-          const Gap(Space.s3),
+        const Gap(Space.s4),
+        for (final (i, p) in plans.indexed) ...[
+          enter(_PlanRow(plan: p, price: price(p), on: identical(p, pick), onTap: () => setState(() => _pick = p['code'] as String)), benefits.length + i),
+          const Gap(Space.s4),
         ],
-        const Gap(Space.s1),
         Btn(
-          pick.isEmpty ? 'Continue' : 'Continue with ${pick['name']} · ${price(pick)}',
+          pick.isEmpty ? 'Continue' : 'Continue · ${price(pick)}',
+          kind: BtnKind.accent,
           block: true,
+          icon: PhosphorIcons.arrowRight(PhosphorIconsStyle.bold),
           onPressed: pick.isEmpty
               ? null
               : () {
+                  HapticFeedback.selectionClick();
                   final router = GoRouter.of(context);
                   Navigator.of(context).pop();
                   router.push('/checkout?plan=${Uri.encodeQueryComponent('${pick['code']}')}');
                 },
         ),
         const Gap(Space.s3),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(PhosphorIcons.lockSimple(PhosphorIconsStyle.fill), size: 14, color: c.textMuted),
+            const Gap(Space.s1),
+            Flexible(
+              child: Text(
+                usesPaystack(ref) ? 'Card · Transfer · USSD · OPay · Zap · PocketApp' : 'Paid securely with Google Play',
+                style: context.ty.cap.bold.col(c.textMuted),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
+        ),
+        const Gap(Space.s1),
         Text(
-          'Secure payment. Premium starts as soon as payment is confirmed.${usesPaystack(ref) ? ' Have a discount code? Add it at checkout.' : ''}',
+          'Premium starts as soon as the payment is confirmed.${usesPaystack(ref) ? ' Have a discount code? Add it at checkout.' : ''}',
           textAlign: TextAlign.center,
-          style: context.ty.cap.col(c.textMuted),
+          style: context.ty.cap.col(c.textSubtle),
         ),
       ],
     );
   }
 }
 
-/// `.plan` row: radio, name + note, price + period; "Best value" badge on the 3-month plan.
+/// The gold crown tile: floats gently, with a shine passing over it now and then.
+class _Crown extends StatelessWidget {
+  const _Crown({this.still = false});
+  final bool still;
+  @override
+  Widget build(BuildContext context) {
+    final tile = Container(
+      width: 56,
+      height: 56,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFFFD66B), Palette.gold500]),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Palette.gold400.withValues(alpha: .4), blurRadius: 16, offset: const Offset(0, 4))],
+      ),
+      child: Icon(PhosphorIcons.crownSimple(PhosphorIconsStyle.fill), size: 30, color: Palette.navy900),
+    );
+    if (still) return tile;
+    return tile
+        .animate(onPlay: (a) => a.repeat())
+        .shimmer(delay: 1800.ms, duration: 1200.ms, color: Colors.white.withValues(alpha: .55))
+        .animate(onPlay: (a) => a.repeat(reverse: true))
+        .moveY(begin: -2, end: 2, duration: 1600.ms, curve: Curves.easeInOut);
+  }
+}
+
+/// A plan card: name + note, price + period (and the price per month for longer plans), a tick that pops in, a gold
+/// glow and a small lift when chosen; "Best value" ribbon on the 3-month plan.
 class _PlanRow extends StatelessWidget {
   const _PlanRow({required this.plan, required this.price, required this.on, required this.onTap});
   final Map<String, dynamic> plan;
@@ -169,59 +247,105 @@ class _PlanRow extends StatelessWidget {
 
   String get _per => planPeriod(plan);
 
+  /// "₦1,167 a month" for plans of 2 months or more.
+  String? get _monthly {
+    final d = (plan['duration_days'] as num?)?.toInt();
+    final k = (plan['price_kobo'] as num?)?.toInt();
+    if (d == null || k == null || d < 60) return null;
+    return '${naira(k / (d / 30))} a month';
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.c;
+    final rm = context.reduceMotion;
+    final best = plan['code'] == 'three_months';
     final note = '${plan['description'] ?? ''}'.replaceFirst(RegExp(r'^SAMPLE price\.\s*'), '');
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Pressable(
-          onTap: onTap,
-          scale: .985,
-          borderRadius: BorderRadius.circular(Radii.lg),
-          child: AnimatedContainer(
-            duration: Motion.fast,
-            padding: const EdgeInsets.all(Space.s4),
-            decoration: BoxDecoration(
-              color: on ? c.primarySoft : c.surface,
+    final monthly = _monthly;
+    return Semantics(
+      selected: on,
+      button: true,
+      label: '${plan['name']}, $price',
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          AnimatedScale(
+            scale: on ? 1 : .985,
+            duration: rm ? Duration.zero : Motion.base,
+            curve: Curves.easeOutBack,
+            child: Pressable(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                onTap();
+              },
+              scale: .98,
               borderRadius: BorderRadius.circular(Radii.lg),
-              border: Border.all(color: on ? c.primary : c.border, width: on ? 2 : 1.5),
-            ),
-            child: Row(
-              children: [
-                AnimatedContainer(
-                  duration: Motion.fast,
-                  width: 22,
-                  height: 22,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: on ? c.primary : c.borderStrong, width: on ? 7 : 2),
-                  ),
+              child: AnimatedContainer(
+                duration: rm ? Duration.zero : Motion.base,
+                curve: Curves.easeOutCubic,
+                padding: const EdgeInsets.fromLTRB(Space.s4, Space.s4 + 2, Space.s4, Space.s4),
+                decoration: BoxDecoration(
+                  color: on ? c.primarySoft : c.surface,
+                  borderRadius: BorderRadius.circular(Radii.lg),
+                  border: Border.all(color: on ? Palette.gold400 : c.border, width: on ? 2 : 1.5),
+                  boxShadow: on ? [BoxShadow(color: Palette.gold400.withValues(alpha: .22), blurRadius: 18, spreadRadius: 1)] : null,
                 ),
-                const Gap(Space.s3),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('${plan['name']}', style: context.ty.body.bold),
-                      if (note.isNotEmpty) Text(note, style: context.ty.cap.col(c.textMuted)),
-                    ],
-                  ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                child: Row(
                   children: [
-                    Text(price, style: context.ty.body.bold.tnum.copyWith(fontSize: 18)),
-                    Text(_per, style: context.ty.cap.col(c.textMuted)),
+                    AnimatedContainer(
+                      duration: rm ? Duration.zero : Motion.fast,
+                      width: 26,
+                      height: 26,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: on ? Palette.gold400 : Colors.transparent,
+                        border: Border.all(color: on ? Palette.gold400 : c.borderStrong, width: 2),
+                      ),
+                      child: on
+                          ? Icon(
+                              PhosphorIcons.check(),
+                              size: 15,
+                              color: Palette.navy900,
+                            ).animate().scaleXY(begin: rm ? 1 : .3, end: 1, duration: rm ? 1.ms : 260.ms, curve: Curves.easeOutBack)
+                          : null,
+                    ),
+                    const Gap(Space.s3),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('${plan['name']}', style: context.ty.body.bold),
+                          if (note.isNotEmpty) ...[const SizedBox(height: 2), Text(note, style: context.ty.cap.col(c.textMuted))],
+                        ],
+                      ),
+                    ),
+                    const Gap(Space.s2),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(price, style: context.ty.h3.tnum),
+                        Text(_per, style: context.ty.cap.col(c.textMuted)),
+                        if (monthly != null) Text(monthly, style: context.ty.cap.bold.col(c.success)),
+                      ],
+                    ),
                   ],
                 ),
-              ],
+              ),
             ),
           ),
-        ),
-        if (plan['code'] == 'three_months') const Positioned(top: -11, left: 16, child: Pill('Best value', kind: BadgeKind.gold)),
-      ],
+          if (best)
+            Positioned(
+              top: -12,
+              left: 16,
+              child: rm
+                  ? const Pill('Best value', kind: BadgeKind.gold)
+                  : const Pill(
+                      'Best value',
+                      kind: BadgeKind.gold,
+                    ).animate(onPlay: (a) => a.repeat()).shimmer(delay: 2200.ms, duration: 1100.ms, color: Colors.white.withValues(alpha: .7)),
+            ),
+        ],
+      ),
     );
   }
 }

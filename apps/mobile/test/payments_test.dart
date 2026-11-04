@@ -250,10 +250,16 @@ void main() {
     );
     await t.pumpWidget(_app(router, FakeCodes()));
     await t.tap(find.text('open'));
-    await t.pumpAndSettle();
+    // The crown and "Best value" shine keep moving, so wait a fixed time instead of for every animation to stop.
+    for (var i = 0; i < 15; i++) {
+      await t.pump(const Duration(milliseconds: 100));
+    }
     expect(find.text('SAMPLE PRICES'), findsOneWidget);
-    await t.tap(find.textContaining('Continue with 3 Months'));
-    await t.pumpAndSettle();
+    await t.ensureVisible(find.textContaining('Continue · ₦3,500'));
+    await t.tap(find.textContaining('Continue · ₦3,500'));
+    for (var i = 0; i < 10; i++) {
+      await t.pump(const Duration(milliseconds: 100));
+    }
     expect(opened, 'three_months');
     expect(find.text('CHECKOUT'), findsOneWidget);
   });

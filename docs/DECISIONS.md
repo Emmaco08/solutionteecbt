@@ -669,3 +669,20 @@ The owner asked to run the admin from Vercel instead of the laptop.
 - The server also has a native Pay with Bank flow (`method: "bank"`, `pay_banks`, `charge_submit` for OTP / phone / birthday) for when Paystack offers more banks directly. The app does not use it yet: Kuda needs a Kuda app token, so Paystack's screen handles both banks better today.
 - Note (2026-11-04): the Paystack keys in Supabase are now **live** (`?health=1` shows secret and public both live). Test payments now use real money.
 - App tests 109/109.
+
+**D-093 · 2026-11-04 · OPay, PocketApp, Zap and bank apps in an embedded Paystack checkout; new plan sheet (owner: "after you have done and fixed this, U2 ok")**
+- Phone test: Paystack's Android sheet (0.1.8) offers only Card, Bank Transfer and Zap, so OPay and the others were missing when tapped. These four options now open **Paystack's web checkout inside our own screen**, an embedded WebView (`webview_flutter`), where Paystack shows every method on the account. The screen has:
+  - our top bar and back button (the phone's back goes back a page first, then closes);
+  - a "secured by Paystack · tap OPay below" strip and a loading bar;
+  - a check every 4 seconds, which closes the screen as soon as the server confirms the payment;
+  - an "I have paid" button, and a retry or secure-tab fallback when the page cannot load.
+- Links the checkout sends to bank or wallet apps (`intent://`, `opay://`, `tel:`, …) open the real app: an `intent://` link tries the app's own link, then its fallback page, then the app in the Play Store. Paystack's `standard.paystack.co/close` cancels, and our `/pay/done` callback page closes and checks.
+- Card still opens Paystack's native sheet straight on the card form. Transfer and USSD stay on our own screens. The server rules are unchanged.
+- **Plan sheet redesign:**
+  - no close (X) button (swipe down or back still close it);
+  - a navy hero with a floating, shining gold crown;
+  - benefits with tick badges that slide in one by one;
+  - plan cards that lift with a gold glow and pop a tick in when chosen, a "per month" price for longer plans, and a shimmering "Best value" ribbon;
+  - a gold "Continue · ₦3,500" button, and a row listing every way to pay.
+- The payment options slide in one by one. All of it stays still with reduce motion.
+- Tests: app 111/111 (embedded checkout link rules, `intent://` targets, web result for app options).

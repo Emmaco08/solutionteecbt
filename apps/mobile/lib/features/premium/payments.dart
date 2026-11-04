@@ -74,6 +74,14 @@ class PayOffline extends PayResult {
   final Map<String, dynamic>? ussd;
 }
 
+/// Pay inside Paystack's web checkout, embedded in our own screen (D-093): OPay, PocketApp, Zap and bank apps
+/// are only offered there, not in Paystack's card sheet.
+class PayWeb extends PayResult {
+  const PayWeb(this.reference, this.url);
+  final String reference;
+  final Uri url;
+}
+
 class PayCancelled extends PayResult {
   const PayCancelled();
 }
@@ -159,6 +167,15 @@ extension PayMethodText on PayMethod {
     PayMethod.bankApp => 'with your bank app',
   };
 
+  /// What to tap on Paystack's page, e.g. "OPay" (null for our own screens and the card form).
+  String? get viaName => switch (this) {
+    PayMethod.opay => 'OPay',
+    PayMethod.pocketapp => 'PocketApp',
+    PayMethod.zap => 'Zap',
+    PayMethod.bankApp => 'Bank',
+    _ => null,
+  };
+
   /// Opens Paystack's own screen (where this app is chosen) instead of our screen or the card form.
   bool get inPaystackScreen => this == PayMethod.opay || this == PayMethod.pocketapp || this == PayMethod.zap || this == PayMethod.bankApp;
 }
@@ -205,8 +222,12 @@ class PaystackProvider implements PaymentProvider {
   /// What the server answered → what the student sees next: Paystack's sheet (card), our transfer / USSD screen,
   /// or Paystack's page in an in-app tab when the sheet is not available.
   @visibleForTesting
-  Future<PayResult> openResult(Map<String, dynamic> r) async {
+  Future<PayResult> openResult(Map<String, dynamic> r, {bool web = false}) async {
     final reference = '${r['reference'] ?? ''}';
+    if (web) {
+      final u = Uri.tryParse('${r['url'] ?? ''}');
+      return u != null && u.isScheme('https') ? PayWeb(reference, u) : const PayFailed('Paystack did not open. Please try again.');
+    }
     final amount = (r['amount_kobo'] as num?)?.toInt() ?? 0;
     if (r['transfer'] is Map) return PayOffline(reference, amountKobo: amount, transfer: Map<String, dynamic>.from(r['transfer'] as Map));
     if (r['ussd'] is Map) return PayOffline(reference, amountKobo: amount, ussd: Map<String, dynamic>.from(r['ussd'] as Map));
@@ -247,7 +268,7 @@ class PaystackProvider implements PaymentProvider {
         ...methodBody(channel),
       });
       if (r['free'] == true) return PaySuccess(_date(r['expires_at']), free: true);
-      return await openResult(r);
+      return await openResult(r, web: channel == 'page');
     } on PayFailed catch (e) {
       return e;
     }
@@ -256,7 +277,7 @@ class PaystackProvider implements PaymentProvider {
   /// An XP pack (D-084): the server sets the price from the admin's packs; paid like a plan.
   Future<PayResult> buyXp(int xp, {String? channel}) async {
     try {
-      return await openResult(await _call({'action': 'start_xp', 'xp': xp, 'source': 'app', ...methodBody(channel)}));
+      return await openResult(await _call({'action': 'start_xp', 'xp': xp, 'source': 'app', ...methodBody(channel)}), web: channel == 'page');
     } on PayFailed catch (e) {
       return e;
     }
