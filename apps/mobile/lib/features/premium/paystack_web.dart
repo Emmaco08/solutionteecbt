@@ -61,6 +61,37 @@ Future<PayResult?> showPaystackWeb(BuildContext context, PayWeb w, PaystackProvi
       ),
     );
 
+/// Paystack's checkout has no link that opens it on OPay / Zap / Bank directly, so once it has loaded we tap that
+/// option for the student (behind our own "Opening OPay…" cover). [via] is the name we look for ("OPay", "Zap",
+/// "PocketApp", "Bank"); the row text may be "Pay with OPay" or "NEW Pay with Zap". The script tells the app through
+/// the `StApp` channel: "clicked" or "notfound" (then the cover lifts and a hint says what to tap).
+String autoTapScript(String via) {
+  final name = via.replaceAll(RegExp(r'[^A-Za-z]'), '');
+  return '''
+(function () {
+  var re = new RegExp('(^| )(pay with +)?$name *\$', 'i'); // spaces: the text is squashed to single spaces below
+  var tries = 0;
+  function tap() {
+    var els = document.querySelectorAll('button, a, li, [role="button"], [tabindex], div, span, p');
+    for (var i = 0; i < els.length; i++) {
+      var t = (els[i].innerText || '').replace(/\\s+/g, ' ').trim();
+      if (t.length > 0 && t.length < 40 && re.test(t)) {
+        var c = els[i].closest('button, a, li, [role="button"], [tabindex]') || els[i];
+        c.click();
+        return true;
+      }
+    }
+    return false;
+  }
+  var timer = setInterval(function () {
+    tries++;
+    if (tap()) { clearInterval(timer); StApp.postMessage('clicked'); }
+    else if (tries > 40) { clearInterval(timer); StApp.postMessage('notfound'); }
+  }, 250);
+})();
+''';
+}
+
 class PaystackWebScreen extends StatefulWidget {
   const PaystackWebScreen({super.key, required this.w, required this.pay, required this.what, this.via, this.controller});
   final PayWeb w;
@@ -80,14 +111,19 @@ class _PaystackWebScreenState extends State<PaystackWebScreen> with WidgetsBindi
   WebViewController? _web;
   int _progress = 0;
   bool _failed = false, _checking = false, _done = false;
-  Timer? _poll;
+  // Our cover over Paystack's list while we open the chosen option; the hint shows only if it could not be found.
+  bool _covered = false, _tapped = false, _hint = false;
+  Timer? _poll, _coverTimeout;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _covered = widget.via != null;
     _web = widget.controller ?? _make();
     _poll = Timer.periodic(const Duration(seconds: 4), (_) => _check());
+    // Never leave the student behind the cover: lift it after 10 s whatever happens.
+    if (_covered) _coverTimeout = Timer(const Duration(seconds: 10), () => _uncover(hint: true));
   }
 
   WebViewController? _make() {
@@ -95,9 +131,26 @@ class _PaystackWebScreenState extends State<PaystackWebScreen> with WidgetsBindi
       return WebViewController()
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
         ..setBackgroundColor(Colors.white)
+        ..addJavaScriptChannel(
+          'StApp',
+          onMessageReceived: (m) {
+            if (m.message == 'clicked') {
+              // Let Paystack draw the OPay / Zap / Bank step, then lift the cover.
+              Future<void>.delayed(const Duration(milliseconds: 900), () => _uncover());
+            } else {
+              _uncover(hint: true);
+            }
+          },
+        )
         ..setNavigationDelegate(
           NavigationDelegate(
             onProgress: (p) => mounted ? setState(() => _progress = p) : null,
+            onPageFinished: (url) {
+              final via = widget.via;
+              if (via == null || _tapped || Uri.tryParse(url)?.host != 'checkout.paystack.com') return;
+              _tapped = true;
+              _web?.runJavaScript(autoTapScript(via)).catchError((_) => _uncover(hint: true));
+            },
             onPageStarted: (_) => mounted ? setState(() => _failed = false) : null,
             onWebResourceError: (e) {
               if (e.isForMainFrame == true && mounted) setState(() => _failed = true);
@@ -131,6 +184,7 @@ class _PaystackWebScreenState extends State<PaystackWebScreen> with WidgetsBindi
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _poll?.cancel();
+    _coverTimeout?.cancel();
     super.dispose();
   }
 
@@ -163,6 +217,13 @@ class _PaystackWebScreenState extends State<PaystackWebScreen> with WidgetsBindi
     Navigator.of(context).pop();
   }
 
+  void _uncover({bool hint = false}) {
+    _coverTimeout?.cancel();
+    if (!mounted || !_covered) return;
+    setState(() => (_covered = false, _hint = hint));
+    if (hint) Timer(const Duration(seconds: 7), () => mounted ? setState(() => _hint = false) : null);
+  }
+
   Future<void> _openTab() async {
     await launchUrl(widget.w.url, mode: LaunchMode.inAppBrowserView).catchError((_) => false);
   }
@@ -183,25 +244,6 @@ class _PaystackWebScreenState extends State<PaystackWebScreen> with WidgetsBindi
         appBar: TopBar(title: widget.via == null ? 'Pay' : 'Pay with ${widget.via}', onBack: _close),
         body: Column(
           children: [
-            // Secure strip + what is being paid for
-            Container(
-              padding: const EdgeInsets.fromLTRB(Space.s5, Space.s2, Space.s5, Space.s2),
-              color: c.surfaceAlt,
-              child: Row(
-                children: [
-                  Icon(PhosphorIcons.lockSimple(PhosphorIconsStyle.fill), size: 16, color: c.success),
-                  const Gap(Space.s2),
-                  Expanded(
-                    child: Text(
-                      '${widget.what} · secured by Paystack${widget.via == null ? '' : ' · tap ${widget.via} below'}',
-                      style: context.ty.cap.col(c.textMuted),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ),
             AnimatedOpacity(
               opacity: _progress < 100 && !_failed ? 1 : 0,
               duration: rm ? Duration.zero : Motion.fast,
@@ -224,7 +266,42 @@ class _PaystackWebScreenState extends State<PaystackWebScreen> with WidgetsBindi
                             },
                       onTab: _openTab,
                     )
-                  : WebViewWidget(controller: web),
+                  : Stack(
+                      children: [
+                        WebViewWidget(controller: web),
+                        if (_hint && widget.via != null)
+                          Positioned(
+                            top: Space.s3,
+                            left: Space.s5,
+                            right: Space.s5,
+                            child: IgnorePointer(
+                              child: Center(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: Space.s4, vertical: Space.s2),
+                                  decoration: BoxDecoration(color: Palette.navy900, borderRadius: BorderRadius.circular(99), boxShadow: context.shadow(3)),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(PhosphorIcons.handTap(PhosphorIconsStyle.fill), size: 18, color: Palette.gold400),
+                                      const Gap(Space.s2),
+                                      Flexible(
+                                        child: Text(
+                                          '${widget.via} is not offered right now. Choose another way below.',
+                                          style: context.ty.sm.bold.col(Colors.white),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ).animate().fadeIn(duration: rm ? 1.ms : 250.ms).slideY(begin: rm ? 0 : -.4, end: 0, curve: Curves.easeOutBack),
+                        if (_covered)
+                          Positioned.fill(
+                            child: _Opening(via: widget.via!, what: widget.what, still: rm),
+                          ),
+                      ],
+                    ),
             ),
             // Always-there way out + status
             SafeArea(
@@ -274,4 +351,65 @@ class _Problem extends StatelessWidget {
       ],
     ),
   );
+}
+
+/// Our cover while Paystack opens the chosen option: what is being paid for, a pulsing icon and a moving bar.
+class _Opening extends StatelessWidget {
+  const _Opening({required this.via, required this.what, this.still = false});
+  final String via, what;
+  final bool still;
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    final icon = switch (via) {
+      'OPay' => PhosphorIcons.wallet(PhosphorIconsStyle.fill),
+      'Zap' => PhosphorIcons.lightning(PhosphorIconsStyle.fill),
+      'PocketApp' => PhosphorIcons.piggyBank(PhosphorIconsStyle.fill),
+      _ => PhosphorIcons.bank(PhosphorIconsStyle.fill),
+    };
+    Widget tile = Container(
+      width: 76,
+      height: 76,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Palette.navy900, Color(0xFF1C4C9C)]),
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [BoxShadow(color: c.secondary.withValues(alpha: .35), blurRadius: 24, offset: const Offset(0, 8))],
+      ),
+      child: Icon(icon, size: 38, color: Palette.gold400),
+    );
+    if (!still) {
+      tile = tile.animate(onPlay: (a) => a.repeat(reverse: true)).scaleXY(begin: 1, end: 1.07, duration: 900.ms, curve: Curves.easeInOut);
+    }
+    final body = Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        tile,
+        const Gap(Space.s5),
+        Text('Opening $via…', style: context.ty.h2),
+        const Gap(Space.s1),
+        Text(what, style: context.ty.sm.col(c.textMuted)),
+        const Gap(Space.s5),
+        SizedBox(
+          width: 160,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(9),
+            child: LinearProgressIndicator(minHeight: 5, color: Palette.gold400, backgroundColor: c.surfaceSunken),
+          ),
+        ),
+        const Gap(Space.s6),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(PhosphorIcons.lockSimple(PhosphorIconsStyle.fill), size: 14, color: c.success),
+            const Gap(Space.s1),
+            Text('Secured by Paystack', style: context.ty.cap.bold.col(c.textMuted)),
+          ],
+        ),
+      ],
+    );
+    return ColoredBox(
+      color: c.bg,
+      child: still ? body : body.animate().fadeIn(duration: 220.ms).slideY(begin: .04, end: 0, curve: Curves.easeOutCubic),
+    );
+  }
 }

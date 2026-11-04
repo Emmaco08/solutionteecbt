@@ -164,6 +164,8 @@ abstract final class PhosphorIcons {
       s == PhosphorIconsStyle.regular ? const IconData(0xe294, fontFamily: 'PhosphorRegular') : const IconData(0xe294, fontFamily: 'PhosphorFill');
   static IconData graduationCap([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe62c, fontFamily: 'PhosphorRegular') : const IconData(0xe62c, fontFamily: 'PhosphorFill');
+  static IconData handTap([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
+      s == PhosphorIconsStyle.regular ? const IconData(0xec90, fontFamily: 'PhosphorRegular') : const IconData(0xec90, fontFamily: 'PhosphorFill');
   static IconData hash([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe2a2, fontFamily: 'PhosphorRegular') : const IconData(0xe2a2, fontFamily: 'PhosphorFill');
   static IconData highDefinition([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>

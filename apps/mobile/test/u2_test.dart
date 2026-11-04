@@ -216,4 +216,12 @@ void main() {
     final t = intentTargets(Uri.parse('intent://pay?x=1#Intent;scheme=opay;package=team.opay.pay;S.browser_fallback_url=https%3A%2F%2Fopay.ng%2Fpay;end'));
     expect(t.map((u) => u.toString()).toList(), ['opay://pay?x=1', 'https://opay.ng/pay', 'market://details?id=team.opay.pay']);
   });
+
+  test('the tap script looks for the chosen option by name and reports back', () {
+    final js = autoTapScript('OPay');
+    expect(js, contains("new RegExp('(^| )(pay with +)?OPay *\$', 'i')"));
+    expect(js, contains("StApp.postMessage('clicked')"));
+    expect(js, contains("StApp.postMessage('notfound')"));
+    expect(autoTapScript('Pocket App!'), contains('PocketApp')); // only letters reach the page
+  });
 }
