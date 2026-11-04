@@ -181,7 +181,7 @@ class ChallengeSection extends ConsumerWidget {
                 children: [
                   Ticker(builder: (_) => Text('Next: starts in ${untilShort(featured.startsAt)}', style: context.ty.cap.bold.col(c.onSecondarySoft))),
                   Text(featured.title, style: context.ty.body.bold),
-                  Text('${featured.rewardText} · Free to join', style: context.ty.cap.col(c.textMuted)),
+                  Text('${featured.rewardText} · ${featured.entryText}', style: context.ty.cap.col(c.textMuted)),
                 ],
               ),
             ),
@@ -279,7 +279,7 @@ class _Mini extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('Entry', style: context.ty.cap.col(cc.textMuted)),
-                    Text('Free', style: context.ty.sm.bold),
+                    Text(c.xpFee > 0 ? '${c.xpFee} XP' : 'Free', style: context.ty.sm.bold),
                   ],
                 ),
               ),
@@ -334,7 +334,7 @@ class ChallengesScreen extends ConsumerWidget {
                       Wrap(spacing: Space.s2, runSpacing: Space.s1, children: [_statusBadge(context, x), _typeBadge(x), ?_modeBadge(x)]),
                       const Gap(Space.s1),
                       Text(x.title, style: context.ty.sm.bold),
-                      Text('${x.rewardText} · Free to join', style: context.ty.cap.col(c.textMuted)),
+                      Text('${x.rewardText} · ${x.entryText}', style: context.ty.cap.col(c.textMuted)),
                     ],
                   ),
                 ),
@@ -495,8 +495,13 @@ class _ChallengeScreenState extends ConsumerState<ChallengeScreen> {
       icon: PhosphorIcons.coins(PhosphorIconsStyle.fill),
       tone: Tone.gold,
       actions: [
-        Btn('Cancel', kind: BtnKind.ghost, onPressed: () => Navigator.pop(context, false)),
-        Btn('Pay ${c.xpFee} XP and start', kind: BtnKind.accent, onPressed: () => Navigator.pop(context, true)),
+        // The dialog sits on the app's top navigator, above the tabs: close it with its own context (not the screen's).
+        Builder(
+          builder: (ctx) => Btn('Cancel', kind: BtnKind.ghost, onPressed: () => Navigator.pop(ctx, false)),
+        ),
+        Builder(
+          builder: (ctx) => Btn('Pay ${c.xpFee} XP and start', kind: BtnKind.accent, onPressed: () => Navigator.pop(ctx, true)),
+        ),
       ],
     );
     if (ok == true && mounted) context.push('/challenges/${c.id}/play');

@@ -355,4 +355,56 @@ void main() {
     await settle(t);
     expect(find.text('Question number 1?', findRichText: true), findsNothing);
   });
+
+  testWidgets('inside the tabs (like the app), the XP pop-up buttons work: Cancel closes it, Pay starts the challenge', (t) async {
+    final api = FakeApi();
+    final shellKey = GlobalKey<NavigatorState>();
+    final router = GoRouter(
+      initialLocation: '/test/challenges/c1',
+      routes: [
+        ShellRoute(
+          navigatorKey: shellKey,
+          builder: (_, _, child) => Scaffold(
+            body: child,
+            bottomNavigationBar: const SizedBox(height: 56, child: Text('TABS')),
+          ),
+          routes: [
+            GoRoute(
+              path: '/test/challenges/:id',
+              builder: (_, s) => ChallengeScreen(id: s.pathParameters['id']!),
+            ),
+          ],
+        ),
+        GoRoute(
+          path: '/challenges/:id/play',
+          builder: (_, _) => const Scaffold(body: Text('PLAYING')),
+        ),
+      ],
+    );
+    await t.pumpWidget(
+      ProviderScope(
+        overrides: [
+          challengeApiProvider.overrideWithValue(api),
+          challengeProvider.overrideWith((ref, id) async => sample(extra: {'xp_fee': 100, 'xp_earned_only': false})),
+        ],
+        child: MaterialApp.router(theme: buildTheme(Brightness.light), routerConfig: router),
+      ),
+    );
+    await settle(t);
+    expect(find.text('100 XP'), findsOneWidget);
+    await t.scrollUntilVisible(find.byType(CheckRow), 300, scrollable: find.byType(Scrollable).first);
+    await t.tap(find.byType(CheckRow));
+    await settle(t);
+    await t.tap(find.text('Start challenge'));
+    await settle(t);
+    await t.tap(find.text('Cancel'));
+    await settle(t);
+    expect(find.text('Join for 100 XP?'), findsNothing);
+    expect(find.byType(ChallengeScreen), findsOneWidget, reason: 'the details screen stays');
+    await t.tap(find.text('Start challenge'));
+    await settle(t);
+    await t.tap(find.text('Pay 100 XP and start'));
+    await settle(t);
+    expect(find.text('PLAYING'), findsOneWidget);
+  });
 }

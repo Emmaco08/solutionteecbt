@@ -69,6 +69,9 @@ class Challenge {
   int get xpFee => (j['xp_fee'] as num?)?.toInt() ?? 0;
   bool get xpEarnedOnly => j['xp_earned_only'] == true;
 
+  /// "Free to join" or "100 XP to join".
+  String get entryText => xpFee > 0 ? '$xpFee XP to join' : 'Free to join';
+
   /// Questions per subject at each level, easiest first, skipping zeros: [('Easy', 3), ('Hard', 2)].
   List<(String, int)> get perLevel {
     final m = j['per_level'] is Map ? Map<String, dynamic>.from(j['per_level'] as Map) : const <String, dynamic>{};

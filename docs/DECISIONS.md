@@ -599,3 +599,4 @@ The owner asked to run the admin from Vercel instead of the laptop.
 - `payments.plan_id` may now be empty for XP packs (`xp_pack` holds the XP); Admin → Payments shows them as "550 XP pack".
 - Bought XP is kept apart in the wallet and never pays a cash-prize challenge entry (D-081).
 - Tests: `supabase/tests/xp_buy.test.sql` 6/6; app tests 88/88.
+- Fix (owner report, 2026-11-04): the "Join for 100 XP?" and "Get Premium with XP" buttons closed the screen behind the pop-up instead of the pop-up (inside the tabs the screen's navigator is not the pop-up's); both now close the pop-up with its own context. Challenge cards on Home, the list and the details now say "100 XP to join" / "Entry 100 XP" instead of "Free". A test with the tabs (ShellRoute) catches it; it fails with the old code.

@@ -352,8 +352,12 @@ class _PremiumWithXpState extends ConsumerState<_PremiumWithXp> {
       icon: PhosphorIcons.crownSimple(PhosphorIconsStyle.fill),
       tone: Tone.gold,
       actions: [
-        Btn('Cancel', kind: BtnKind.ghost, onPressed: () => Navigator.pop(context, false)),
-        Btn('Pay ${xpText(_i(o['xp']))} XP', kind: BtnKind.accent, onPressed: () => Navigator.pop(context, true)),
+        Builder(
+          builder: (ctx) => Btn('Cancel', kind: BtnKind.ghost, onPressed: () => Navigator.pop(ctx, false)),
+        ),
+        Builder(
+          builder: (ctx) => Btn('Pay ${xpText(_i(o['xp']))} XP', kind: BtnKind.accent, onPressed: () => Navigator.pop(ctx, true)),
+        ),
       ],
     );
     if (ok != true || !mounted) return;
