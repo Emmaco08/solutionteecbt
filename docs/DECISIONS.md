@@ -575,3 +575,14 @@ The owner asked to run the admin from Vercel instead of the laptop.
 - **Admin:** XP on/off (off hides XP everywhere, balances kept), every number, prizes, streak prices, Premium XP prices, packs; totals; a 30-day "given vs spent" chart (watch for inflation); top students; a student's wallet with give/take and a reason (audit log).
 - **App:** XP chip on Home, "Your daily XP is ready → Claim" card, Me → My XP (balance, earned/bought, today against the limit, ways to earn, history).
 - Tests: `supabase/tests/xp_core.test.sql` 14/14; app tests 82/82.
+
+**D-082 · 2026-11-04 · XP2: streaks, the daily claim pop-up and the new welcome-back (owner)**
+- **One question a day keeps the streak** (owner): a finished test, the question of the day or a challenge, counted on the server (`private.practice_days`), so the streak is the same on every phone and includes the question of the day. Offline the app falls back to the tests on the phone.
+- **Milestones** 3 / 7 / 14 / 30 / 60 / 100 days (admin sets the XP): the bonus is given once per streak run (not capped by the daily limit); the app shows a full-screen celebration (confetti, the flame, the bonus) once (`streak_seen`).
+- **Streak freeze:** bought with XP (default 50, hold up to 2). Every night at 00:20 Lagos a missed yesterday is saved by a held freeze; the student gets "Your streak freeze saved your streak" in the morning.
+- **Streak repair:** the day after missing, the lost streak can be brought back for XP (default 200; admin can turn it off).
+- **Daily claim pop-up:** the first app open of each day (after the account check): photo in a gold ring, the flame and streak, this week, the next bonus, "Claim +10 XP" with a coin burst and a vibration; "Later" keeps the Home card.
+- **Welcome-back screen** (owner's screenshot): the student's photo in a gold ring that fills when today is done, a flame badge with the streak number, staggered entrance, the streak card with the animated week and the next bonus, the XP card with Claim; "Start practising" or "Continue my test".
+- **Me → My streak:** the flame (grows at 7 / 30 / 100 days), longest, this week (gold = practised, snowflake = saved), repair, freezes, bonuses. The Home streak chip opens it.
+- Animations: flutter_animate, no blur, simple versions under "reduce motion".
+- Tests: `supabase/tests/xp_streaks.test.sql` 12/12; app tests 85/85.

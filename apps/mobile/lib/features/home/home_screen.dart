@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/nav.dart';
 import '../../core/providers.dart';
 import '../../data/db.dart';
 import '../../data/notifications_repo.dart';
@@ -21,6 +22,7 @@ import '../premium/paywall.dart';
 import '../profile/me_extras.dart';
 import '../compete/challenges_screens.dart';
 import '../invite/invite_screens.dart';
+import '../xp/streak_ui.dart';
 import '../xp/xp_screens.dart';
 import '../compete/compete_data.dart';
 import 'qotd_card.dart';
@@ -149,6 +151,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ref.invalidate(qotdProvider);
     ref.invalidate(challengesProvider);
     ref.invalidate(myXpProvider);
+    ref.invalidate(myStreakProvider);
     await ref.read(examsProvider.future).catchError((_) => <Map<String, dynamic>>[]);
   }
 
@@ -163,6 +166,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final unfinished = ref.watch(unfinishedProvider).value;
     final news = ref.watch(newsProvider).value ?? const [];
     final stats = ref.watch(practiceStatsProvider).value ?? const PracticeStats(today: 0, streak: 0, week: {});
+    // The server's streak (tests, question of the day, challenges, freezes) when known; this phone's tests offline.
+    final streakDays = (ref.watch(myStreakProvider).value?['current'] as num?)?.toInt() ?? stats.streak;
     final open = ref.watch(openYearsProvider).value;
     final rm = context.reduceMotion;
 
@@ -286,18 +291,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                     const XpChip(),
                     Semantics(
-                      label: '${stats.streak}-day streak',
-                      child: Container(
-                        height: 36,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(color: c.accentSoft, borderRadius: BorderRadius.circular(99)),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(PhosphorIcons.fire(PhosphorIconsStyle.fill), size: 18, color: Palette.gold500),
-                            const SizedBox(width: 4),
-                            Text('${stats.streak}', style: context.ty.label.bold.tnum.col(c.onAccentSoft)),
-                          ],
+                      button: true,
+                      label: '$streakDays-day streak',
+                      child: GestureDetector(
+                        onTap: () => openRoute(context, '/me/streak'),
+                        child: Container(
+                          height: 36,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(color: c.accentSoft, borderRadius: BorderRadius.circular(99)),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(PhosphorIcons.fire(PhosphorIconsStyle.fill), size: 18, color: Palette.gold500),
+                              const SizedBox(width: 4),
+                              Text('$streakDays', style: context.ty.label.bold.tnum.col(c.onAccentSoft)),
+                            ],
+                          ),
                         ),
                       ),
                     ),

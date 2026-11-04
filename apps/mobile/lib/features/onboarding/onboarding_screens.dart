@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -17,6 +18,8 @@ import '../../widgets/exam_logo.dart';
 import '../../widgets/phosphor.g.dart';
 import '../auth/auth_screens.dart';
 import '../home/home_screen.dart';
+import '../xp/xp_screens.dart';
+import '../xp/streak_ui.dart';
 import 'onboarding_art.dart';
 import '../../ui/confetti.dart';
 import '../../ui/subject_icons.dart';
@@ -677,12 +680,36 @@ class _AvatarBadge extends StatelessWidget {
 Widget _pop(bool rm, Widget w, int delayMs) =>
     rm ? w : w.animate().scale(delay: delayMs.ms, begin: const Offset(.85, .85), duration: Motion.slow, curve: Motion.emphasized).fadeIn(delay: delayMs.ms);
 
-// ---------------------------------------------------------------- welcome back (prototype: welcome-back)
-/// After log in: greeting with a waving hand, this week's practice days, "Continue my test" when one is unfinished.
-class WelcomeBackScreen extends ConsumerWidget {
+// ---------------------------------------------------------------- welcome back (prototype: welcome-back, D-082)
+/// After log in: the student's photo in a gold streak ring, the flame, this week, today's XP to claim and the next
+/// streak bonus, then "Start practising" (or "Continue my test"). The server's streak when online; this phone's
+/// tests when offline.
+class WelcomeBackScreen extends ConsumerStatefulWidget {
   const WelcomeBackScreen({super.key});
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<WelcomeBackScreen> createState() => _WelcomeBackScreenState();
+}
+
+class _WelcomeBackScreenState extends ConsumerState<WelcomeBackScreen> {
+  bool _busy = false;
+  int? _got;
+
+  Future<void> _claim() async {
+    setState(() => _busy = true);
+    try {
+      final g = await claimDailyXp(ref);
+      HapticFeedback.mediumImpact();
+      ref.invalidate(myStreakProvider);
+      if (mounted) setState(() => _got = g);
+    } catch (_) {
+      if (mounted) toast(context, 'Could not claim. Check your internet and try again.', icon: PhosphorIcons.wifiSlash());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final c = context.c;
     final name = (ref.watch(profileProvider).value?['full_name'] as String?) ?? '';
     final first = name.split(' ').first;
@@ -693,71 +720,104 @@ class WelcomeBackScreen extends ConsumerWidget {
         ? 'Good afternoon'
         : 'Good evening';
     final unfinished = ref.watch(unfinishedProvider).value;
-    final week = ref.watch(practiceWeekProvider).value ?? const <int>{};
-    final today = DateTime.now().weekday - 1; // Monday = 0
-    final streak = ref.watch(practiceStreakProvider).value ?? 0;
+    final st = ref.watch(myStreakProvider).value ?? const <String, dynamic>{};
+    final local = ref.watch(practiceStatsProvider).value;
+    final today = DateTime.now().weekday - 1;
+    final week = st['week'] is List
+        ? rows(st['week'])
+        : [
+            for (var k = 0; k < 7; k++) {'done': local?.week.contains(k) ?? false, 'today': k == today},
+          ];
+    final days = (st['current'] as num?)?.toInt() ?? local?.streak ?? 0;
+    final todayDone = st['today_done'] == true || (local?.week.contains(today) ?? false);
+    final xp = st['xp'] is Map ? Map<String, dynamic>.from(st['xp'] as Map) : const <String, dynamic>{};
+    final next = st['next'] is Map ? Map<String, dynamic>.from(st['next'] as Map) : null;
     final rm = context.reduceMotion;
-    const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    Widget enter(Widget w, int i) =>
+        rm ? w : w.animate(delay: (Motion.stagger * i) + 200.ms).fadeIn(duration: Motion.slow).slideY(begin: .12, curve: Motion.out);
 
-    final cards = <Widget>[
-      AppCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(color: c.accentSoft, borderRadius: BorderRadius.circular(12)),
-                  child: Icon(PhosphorIcons.fire(PhosphorIconsStyle.fill), size: 24, color: Palette.gold500),
+    final streakCard = AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              StreakFlame(days: days, size: 40, lit: days > 0),
+              const Gap(Space.s3),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(days > 0 ? '$days-day streak' : 'Start your streak', style: context.ty.h3),
+                    Text(
+                      todayDone ? 'You practised today. Well done!' : 'Answer one question today to ${days > 0 ? 'make it ${days + 1}' : 'start it'}.',
+                      style: context.ty.sm.col(c.textMuted),
+                    ),
+                  ],
                 ),
-                const Gap(Space.s3),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(streak > 0 ? '$streak-day streak' : 'Start your streak', style: context.ty.body.bold),
-                      Text(
-                        week.contains(today)
-                            ? 'You practised today. Well done!'
-                            : 'Answer one question today to ${streak > 0 ? 'make it ${streak + 1}' : 'start it'}.',
-                        style: context.ty.sm.col(c.textMuted),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
+          ),
+          const Gap(Space.s4),
+          StreakWeek(week: week),
+          if (next != null) ...[
             const Gap(Space.s3),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                for (var k = 0; k < 7; k++)
-                  Column(
-                    children: [
-                      Container(
-                        width: 30,
-                        height: 30,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: week.contains(k) ? c.accent : c.surfaceSunken,
-                          shape: BoxShape.circle,
-                          border: k == today && !week.contains(k) ? Border.all(color: c.accent, width: 2) : null,
-                        ),
-                        child: week.contains(k) ? Icon(PhosphorIcons.check(PhosphorIconsStyle.fill), size: 14, color: c.onAccent) : null,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(days[k], style: context.ty.cap.bold.copyWith(fontSize: 11).col(k == today ? c.text : c.textSubtle)),
-                    ],
+                Icon(PhosphorIcons.target(PhosphorIconsStyle.fill), size: 16, color: Palette.gold500),
+                const Gap(Space.s2),
+                Expanded(
+                  child: Text(
+                    '${next['left']} ${next['left'] == 1 ? 'day' : 'days'} to your ${next['days']}-day bonus${xp['enabled'] == true ? ' (+${next['xp']} XP)' : ''}',
+                    style: context.ty.cap.col(c.textMuted),
                   ),
+                ),
               ],
             ),
           ],
-        ),
+        ],
       ),
-      if (unfinished != null) ContinueCard(a: unfinished),
-    ];
+    );
+
+    final xpCard = xp['enabled'] != true
+        ? null
+        : Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(Space.s4),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [Palette.navy900, Color(0xFF13306A)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                  borderRadius: BorderRadius.circular(Radii.lg),
+                ),
+                child: Row(
+                  children: [
+                    const XpCoin(size: 44),
+                    const Gap(Space.s3),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('${xpText(((xp['balance'] as num?) ?? 0) + (_got ?? 0))} XP', style: context.ty.h3.tnum.col(Colors.white)),
+                          Text(
+                            _got != null || xp['claimed_today'] == true ? 'Today\'s XP claimed. See you tomorrow!' : 'Your daily XP is ready',
+                            style: context.ty.cap.col(const Color(0xFFB8C4DA)),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (_got == null && xp['claimed_today'] != true)
+                      Btn('Claim +${xp['daily_claim']}', kind: BtnKind.accent, sm: true, loading: _busy, onPressed: _busy ? null : _claim)
+                    else
+                      Icon(PhosphorIcons.checkCircle(PhosphorIconsStyle.fill), color: Palette.gold500),
+                  ],
+                ),
+              ),
+              if ((_got ?? 0) > 0) const Positioned.fill(child: CoinBurst(count: 10)),
+            ],
+          );
+
+    final cards = <Widget>[streakCard, ?xpCard, if (unfinished != null) ContinueCard(a: unfinished)];
 
     return Scaffold(
       body: SafeArea(
@@ -767,37 +827,18 @@ class WelcomeBackScreen extends ConsumerWidget {
               child: ListView(
                 children: [
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(Space.s6, Space.s7, Space.s6, Space.s5),
+                    padding: const EdgeInsets.fromLTRB(Space.s6, Space.s6, Space.s6, Space.s5),
                     child: Column(
                       children: [
-                        _pop(
-                          rm,
-                          SizedBox(
-                            width: 124,
-                            height: 116,
-                            child: Stack(
-                              clipBehavior: Clip.none,
-                              children: [
-                                Avatar(name, size: 112),
-                                Positioned(
-                                  right: -10,
-                                  bottom: -4,
-                                  child: Container(
-                                    width: 48,
-                                    height: 48,
-                                    decoration: BoxDecoration(color: c.surface, shape: BoxShape.circle, boxShadow: context.shadow(2)),
-                                    child: Icon(PhosphorIcons.handWaving(PhosphorIconsStyle.fill), size: 26, color: Palette.gold500),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          0,
-                        ),
-                        const Gap(Space.s3),
-                        Text('$hello,', style: context.ty.lg.col(c.textMuted)),
-                        const Gap(Space.s3),
-                        Text(first.isEmpty ? 'Welcome back' : 'Welcome back, $first', style: context.ty.display, textAlign: TextAlign.center),
+                        _pop(rm, StreakPhoto(name: name, days: days, todayDone: todayDone), 0),
+                        const Gap(Space.s4),
+                        Text('$hello,', style: context.ty.lg.col(c.textMuted)).animate().fadeIn(delay: 150.ms, duration: Motion.slow),
+                        const Gap(Space.s2),
+                        Text(
+                          first.isEmpty ? 'Welcome back' : 'Welcome back, $first',
+                          style: context.ty.display,
+                          textAlign: TextAlign.center,
+                        ).animate().fadeIn(delay: 250.ms, duration: Motion.slow).slideY(begin: .2, curve: Motion.out),
                       ],
                     ),
                   ),
@@ -805,10 +846,7 @@ class WelcomeBackScreen extends ConsumerWidget {
                     padding: const EdgeInsets.symmetric(horizontal: Space.s5),
                     child: Column(
                       children: [
-                        for (var i = 0; i < cards.length; i++) ...[
-                          if (i > 0) const Gap(Space.s4),
-                          rm ? cards[i] : cards[i].animate(delay: Motion.stagger * i).fadeIn(duration: Motion.slow).slideY(begin: .1, curve: Motion.out),
-                        ],
+                        for (var i = 0; i < cards.length; i++) ...[if (i > 0) const Gap(Space.s3), enter(cards[i], i)],
                       ],
                     ),
                   ),
@@ -826,7 +864,7 @@ class WelcomeBackScreen extends ConsumerWidget {
                         Btn('Go to Home', kind: BtnKind.ghost, onPressed: () => context.go('/home')),
                       ],
                     )
-                  : Btn('Start practising', block: true, onPressed: () => context.go('/home')),
+                  : Btn(todayDone ? 'Go to Home' : 'Start practising', block: true, onPressed: () => context.go('/home')),
             ),
           ],
         ),

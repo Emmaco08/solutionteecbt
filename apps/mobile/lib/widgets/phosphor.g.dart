@@ -160,8 +160,6 @@ abstract final class PhosphorIcons {
       s == PhosphorIconsStyle.regular ? const IconData(0xe294, fontFamily: 'PhosphorRegular') : const IconData(0xe294, fontFamily: 'PhosphorFill');
   static IconData graduationCap([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe62c, fontFamily: 'PhosphorRegular') : const IconData(0xe62c, fontFamily: 'PhosphorFill');
-  static IconData handWaving([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
-      s == PhosphorIconsStyle.regular ? const IconData(0xe580, fontFamily: 'PhosphorRegular') : const IconData(0xe580, fontFamily: 'PhosphorFill');
   static IconData hash([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe2a2, fontFamily: 'PhosphorRegular') : const IconData(0xe2a2, fontFamily: 'PhosphorFill');
   static IconData highDefinition([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
@@ -272,6 +270,8 @@ abstract final class PhosphorIcons {
       s == PhosphorIconsStyle.regular ? const IconData(0xe42a, fontFamily: 'PhosphorRegular') : const IconData(0xe42a, fontFamily: 'PhosphorFill');
   static IconData smileySad([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe43e, fontFamily: 'PhosphorRegular') : const IconData(0xe43e, fontFamily: 'PhosphorFill');
+  static IconData snowflake([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
+      s == PhosphorIconsStyle.regular ? const IconData(0xe5aa, fontFamily: 'PhosphorRegular') : const IconData(0xe5aa, fontFamily: 'PhosphorFill');
   static IconData sparkle([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe6a2, fontFamily: 'PhosphorRegular') : const IconData(0xe6a2, fontFamily: 'PhosphorFill');
   static IconData squaresFour([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>

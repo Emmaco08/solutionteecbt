@@ -20,6 +20,7 @@ import '../../theme/tokens.g.dart';
 import '../../ui/kit.dart';
 import '../../core/device.dart';
 import '../invite/invite_screens.dart';
+import '../xp/streak_ui.dart';
 import '../notifications/turn_on_sheet.dart';
 import '../premium/payments.dart';
 
@@ -73,6 +74,30 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
   }
 
   StreamSubscription<MethodCall>? _secure;
+  bool _popupsShown = false;
+
+  /// D-082: a milestone celebration (once), else the daily claim pop-up on the first open of the day.
+  Future<void> _dailyPopups() async {
+    if (_popupsShown || !mounted) return;
+    _popupsShown = true;
+    try {
+      ref.invalidate(myStreakProvider);
+      final st = await ref.read(myStreakProvider.future).timeout(const Duration(seconds: 10));
+      if (!mounted || st.isEmpty) return;
+      final cel = st['celebrate'];
+      if (cel is Map) {
+        await showMilestone(context, ref, Map<String, dynamic>.from(cel));
+        return;
+      }
+      final xp = st['xp'];
+      if (xp is! Map || xp['enabled'] != true || xp['claimed_today'] == true) return;
+      final db = ref.read(dbProvider);
+      final now = DateTime.now(), today = '${now.year}-${now.month}-${now.day}';
+      if (await db.kvGet('claim_sheet_day') == today || !mounted) return;
+      await db.kvSet('claim_sheet_day', today);
+      if (mounted) await showDailyClaim(context, ref, st);
+    } catch (_) {}
+  }
 
   /// One account per phone and bans (D-078): save this phone (hashed id) and ask the server about this account.
   /// Offline or any error: carry on (the server still refuses a banned account's data).
@@ -92,6 +117,8 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
         context.go('/banned');
       } else if (st['phone_taken'] == true) {
         context.go('/phone-taken');
+      } else {
+        await _dailyPopups();
       }
     } catch (_) {}
   }
