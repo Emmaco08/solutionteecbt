@@ -82,61 +82,230 @@ class StreakWeek extends StatelessWidget {
   const StreakWeek({super.key, required this.week, this.onDark = false});
   final List<Map<String, dynamic>> week;
   final bool onDark;
+
+  /// done · frozen (streak saver) · missed (a past day with no practice) · today (done or not yet) · future.
+  static String stateOf(List<Map<String, dynamic>> week, int k) {
+    final d = k < week.length ? week[k] : const <String, dynamic>{};
+    final todayAt = week.indexWhere((w) => w['today'] == true);
+    if (d['today'] == true) return d['done'] == true ? 'today_done' : 'today';
+    if (d['done'] == true) return 'done';
+    if (d['saved'] != null) return 'frozen';
+    if (todayAt >= 0 && k < todayAt) return 'missed';
+    return 'future';
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.c;
     final rm = context.reduceMotion;
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        for (var k = 0; k < 7; k++)
-          Builder(
-            builder: (context) {
-              final d = k < week.length ? week[k] : const <String, dynamic>{};
-              final done = d['done'] == true, saved = d['saved'] != null, today = d['today'] == true;
-              Widget dot = Container(
-                width: 34,
-                height: 34,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: done ? const LinearGradient(colors: [Color(0xFFFFD66B), Palette.gold500]) : null,
-                  color: done
-                      ? null
-                      : (saved ? const Color(0xFF2563B3).withValues(alpha: .2) : (onDark ? Colors.white.withValues(alpha: .08) : c.surfaceSunken)),
-                  border: today && !done ? Border.all(color: Palette.gold500, width: 2) : null,
-                ),
-                child: done
-                    ? Icon(PhosphorIcons.fire(PhosphorIconsStyle.fill), size: 18, color: Palette.navy900)
-                    : saved
-                    ? Icon(PhosphorIcons.snowflake(PhosphorIconsStyle.fill), size: 16, color: const Color(0xFF7FB2FF))
-                    : null,
-              );
-              if (!rm) {
-                dot = dot
-                    .animate(delay: (60 * k).ms)
-                    .fadeIn(duration: 250.ms)
-                    .scale(begin: const Offset(.6, .6), end: const Offset(1, 1), curve: Curves.easeOutBack);
-                if (today && !done) {
-                  dot = dot.animate(onPlay: (a) => a.repeat(reverse: true)).scale(begin: const Offset(1, 1), end: const Offset(1.1, 1.1), duration: 800.ms);
-                }
-              }
-              return Column(
-                children: [
-                  dot,
-                  const SizedBox(height: 6),
-                  Text(
-                    _days[k],
-                    style: context.ty.cap.bold
-                        .copyWith(fontSize: 11)
-                        .col(today ? (onDark ? Colors.white : c.text) : (onDark ? const Color(0xFF8FA0BE) : c.textSubtle)),
+    final states = [for (var k = 0; k < 7; k++) stateOf(week, k)];
+    bool lit(String s) => s == 'done' || s == 'today_done' || s == 'frozen';
+    return LayoutBuilder(
+      builder: (context, box) {
+        const dot = 36.0, big = 44.0;
+        final slot = box.maxWidth / 7;
+        return SizedBox(
+          height: big + 24,
+          child: Stack(
+            children: [
+              // The streak chain: a gold bar joins days in a row that kept the streak.
+              for (var k = 0; k < 6; k++)
+                if (lit(states[k]) && lit(states[k + 1]))
+                  Positioned(
+                    left: slot * k + slot / 2,
+                    width: slot,
+                    top: big / 2 - 3,
+                    height: 6,
+                    child:
+                        Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(3),
+                                gradient: LinearGradient(
+                                  colors: [
+                                    states[k] == 'frozen' ? const Color(0xFF7FB2FF) : Palette.gold500,
+                                    states[k + 1] == 'frozen' ? const Color(0xFF7FB2FF) : Palette.gold500,
+                                  ],
+                                ),
+                              ),
+                            )
+                            .animate(delay: rm ? 0.ms : (70 * k + 200).ms)
+                            .scaleX(begin: rm ? 1 : 0, end: 1, alignment: Alignment.centerLeft, duration: rm ? 1.ms : 260.ms),
                   ),
+              Row(
+                children: [
+                  for (var k = 0; k < 7; k++)
+                    SizedBox(
+                      width: slot,
+                      child: Column(
+                        children: [
+                          SizedBox(
+                            height: big,
+                            child: Center(
+                              child: _DayDot(state: states[k], size: states[k].startsWith('today') ? big : dot, onDark: onDark, still: rm, index: k),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            _days[k],
+                            style: context.ty.cap.bold
+                                .copyWith(fontSize: 11)
+                                .col(
+                                  states[k].startsWith('today')
+                                      ? (onDark ? Colors.white : c.text)
+                                      : states[k] == 'missed'
+                                      ? (onDark ? const Color(0xFF8FA0BE) : c.textMuted)
+                                      : (onDark ? const Color(0xFF8FA0BE) : c.textSubtle),
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
-              );
-            },
+              ),
+            ],
           ),
-      ],
+        );
+      },
     );
+  }
+}
+
+/// One day in the week strip, animated by its state (all still with reduce motion).
+class _DayDot extends StatelessWidget {
+  const _DayDot({required this.state, required this.size, required this.onDark, required this.still, required this.index});
+  final String state;
+  final double size;
+  final bool onDark, still;
+  final int index;
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    final empty = onDark ? Colors.white.withValues(alpha: .08) : c.surfaceSunken;
+    Widget icon(IconData i, double s, Color col) => Icon(i, size: s, color: col);
+    Widget body;
+    switch (state) {
+      case 'done':
+        body = _circle(
+          gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFFFFD66B), Palette.gold500]),
+          child: _flicker(icon(PhosphorIcons.fire(PhosphorIconsStyle.fill), size * .52, Palette.navy900), still, index),
+        );
+      case 'today_done':
+        body = _circle(
+          gradient: const RadialGradient(colors: [Color(0xFFFFE08A), Color(0xFFF59E0B)]),
+          glow: const Color(0xFFF59E0B),
+          border: Border.all(color: Colors.white.withValues(alpha: onDark ? .9 : .0), width: 2),
+          child: _flicker(icon(PhosphorIcons.fire(PhosphorIconsStyle.fill), size * .56, const Color(0xFFB91C1C)), still, index, strong: true),
+        );
+        if (!still) {
+          body = body
+              .animate(onPlay: (a) => a.repeat(reverse: true))
+              .custom(
+                duration: 1100.ms,
+                builder: (_, v, child) => DecoratedBox(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFF59E0B).withValues(alpha: .25 + .35 * v),
+                        blurRadius: 10 + 12 * v,
+                        spreadRadius: 1 + 2 * v,
+                      ),
+                    ],
+                  ),
+                  child: child,
+                ),
+              );
+        }
+      case 'today':
+        body = _circle(
+          color: empty,
+          border: Border.all(color: Palette.gold500, width: 2.5),
+          child: icon(PhosphorIcons.fire(), size * .46, Palette.gold500),
+        );
+        if (!still) {
+          body = body
+              .animate(onPlay: (a) => a.repeat(reverse: true))
+              .scaleXY(begin: 1, end: 1.08, duration: 850.ms, curve: Curves.easeInOut)
+              .custom(
+                duration: 850.ms,
+                builder: (_, v, child) => DecoratedBox(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Palette.gold500.withValues(alpha: .15 + .3 * v),
+                        blurRadius: 6 + 10 * v,
+                      ),
+                    ],
+                  ),
+                  child: child,
+                ),
+              );
+        }
+      case 'frozen':
+        body = _circle(
+          color: const Color(0xFF2563B3).withValues(alpha: onDark ? .28 : .16),
+          border: Border.all(color: const Color(0xFF7FB2FF).withValues(alpha: .6), width: 1.5),
+          child: still
+              ? icon(PhosphorIcons.snowflake(PhosphorIconsStyle.fill), size * .46, const Color(0xFF7FB2FF))
+              : icon(
+                  PhosphorIcons.snowflake(PhosphorIconsStyle.fill),
+                  size * .46,
+                  const Color(0xFF7FB2FF),
+                ).animate(onPlay: (a) => a.repeat()).rotate(begin: 0, end: 1, duration: 6.seconds),
+        );
+      case 'missed':
+        final col = onDark ? const Color(0xFF8FA0BE) : c.textMuted;
+        final cloud = icon(PhosphorIcons.cloudRain(PhosphorIconsStyle.fill), size * .5, col);
+        body = _circle(
+          color: onDark ? const Color(0xFF1E2A44) : c.surfaceAlt,
+          border: Border.all(color: col.withValues(alpha: .35), width: 1.5),
+          child: still
+              ? cloud
+              : cloud
+                    .animate(onPlay: (a) => a.repeat(reverse: true), delay: (index * 120).ms)
+                    .moveY(begin: -1.5, end: 1.5, duration: 1400.ms, curve: Curves.easeInOut),
+        );
+      default:
+        body = _circle(color: empty);
+    }
+    final sized = SizedBox(width: size, height: size, child: body);
+    if (still) return Semantics(label: _label(state), child: sized);
+    return Semantics(
+      label: _label(state),
+      child: sized.animate(delay: (70 * index).ms).fadeIn(duration: 250.ms).scaleXY(begin: .5, end: 1, curve: Curves.easeOutBack, duration: 380.ms),
+    );
+  }
+
+  static String _label(String s) => switch (s) {
+    'done' => 'practised',
+    'today_done' => 'today, practised',
+    'today' => 'today, not yet',
+    'frozen' => 'saved by a streak saver',
+    'missed' => 'missed',
+    _ => 'coming up',
+  };
+
+  Widget _circle({Color? color, Gradient? gradient, BoxBorder? border, Color? glow, Widget? child}) => Container(
+    alignment: Alignment.center,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      color: color,
+      gradient: gradient,
+      border: border,
+      boxShadow: glow == null ? null : [BoxShadow(color: glow.withValues(alpha: .45), blurRadius: 14, spreadRadius: 1)],
+    ),
+    child: child,
+  );
+
+  /// A flame that flickers: a small, uneven sway and stretch.
+  static Widget _flicker(Widget flame, bool still, int i, {bool strong = false}) {
+    if (still) return flame;
+    final a = strong ? 1.0 : .6;
+    return flame
+        .animate(onPlay: (c) => c.repeat(reverse: true), delay: (i * 90).ms)
+        .scaleY(begin: 1, end: 1 + .12 * a, alignment: Alignment.bottomCenter, duration: (520 + i * 40).ms, curve: Curves.easeInOut)
+        .rotate(begin: -.012 * a, end: .012 * a, alignment: Alignment.bottomCenter, duration: (380 + i * 30).ms);
   }
 }
 
@@ -257,6 +426,8 @@ class CoinBurst extends StatelessWidget {
 /// The daily claim pop-up (first app open each day): photo, flame, week, today's XP, the next milestone, Claim.
 Future<void> showDailyClaim(BuildContext context, WidgetRef ref, Map<String, dynamic> st) => showModalBottomSheet<void>(
   context: context,
+  useRootNavigator: true,
+  useSafeArea: true,
   isScrollControlled: true,
   backgroundColor: Colors.transparent,
   builder: (_) => DailyClaimSheet(st: st),

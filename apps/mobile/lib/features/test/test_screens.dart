@@ -148,7 +148,12 @@ class TestHubScreen extends ConsumerWidget {
                       final locked = y.all > 0 && y.open == 0;
                       return AppCard(
                         padding: const EdgeInsets.symmetric(horizontal: Space.s4, vertical: Space.s3),
-                        onTap: locked ? () => showPaywall(context, reason: b) : () => context.push('/test/setup?exam=$b'),
+                        onTap: locked
+                            ? () => showPaywall(context, reason: b)
+                            : y.all == 0
+                            ? () =>
+                                  toast(context, '$b papers are being added. Practise JAMB or WAEC for now.', icon: PhosphorIcons.info(PhosphorIconsStyle.fill))
+                            : () => context.push('/test/setup?exam=$b'),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -159,7 +164,7 @@ class TestHubScreen extends ConsumerWidget {
                             locked
                                 ? Pill('Premium', kind: BadgeKind.neutral, icon: PhosphorIcons.lockSimple(PhosphorIconsStyle.fill))
                                 : y.all == 0
-                                ? const Pill('Coming soon', kind: BadgeKind.neutral)
+                                ? const Pill('No papers yet', kind: BadgeKind.neutral)
                                 : y.open == y.all
                                 ? Pill('All years', kind: BadgeKind.success, icon: PhosphorIcons.lockSimpleOpen(PhosphorIconsStyle.fill))
                                 : Pill('${y.open} year${y.open == 1 ? '' : 's'} free', icon: PhosphorIcons.lockSimpleOpen(PhosphorIconsStyle.fill)),
@@ -387,7 +392,7 @@ class _TestSetupScreenState extends ConsumerState<TestSetupScreen> {
           label: 'Topics',
           labelNote: ' (pick one or more)',
           child: subjectTopics.isEmpty
-              ? Text('Topics for this subject are coming soon.', style: context.ty.sm.col(c.textMuted))
+              ? Text('No topics for this subject yet.', style: context.ty.sm.col(c.textMuted))
               : Wrap(
                   spacing: Space.s2,
                   runSpacing: Space.s2,

@@ -427,64 +427,10 @@ class _VerifyCodeScreenState extends ConsumerState<VerifyCodeScreen> {
         ),
       ),
       children: [
-        // One hidden field drives the boxes, so the keyboard, autofill and paste all work.
+        // The real field sits on top of the boxes (invisible), so tap, typing, long-press paste and autofill all work.
         _Shake(
           trigger: _shake,
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: Opacity(
-                  opacity: 0,
-                  child: TextField(
-                    controller: _code,
-                    focusNode: _focus,
-                    autofocus: true,
-                    maxLength: _len,
-                    keyboardType: TextInputType.number,
-                    autofillHints: const [AutofillHints.oneTimeCode],
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  ),
-                ),
-              ),
-              GestureDetector(
-                onTap: () => _focus.requestFocus(),
-                child: Semantics(
-                  label: 'Code, ${_code.text.length} of $_len digits entered',
-                  child: Row(
-                    children: [
-                      for (var i = 0; i < _len; i++) ...[
-                        if (i > 0) const SizedBox(width: 8),
-                        Expanded(
-                          child: AnimatedContainer(
-                            duration: Motion.fast,
-                            height: 58,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: c.surface,
-                              borderRadius: BorderRadius.circular(Radii.md),
-                              border: Border.all(
-                                color: _ok
-                                    ? c.success
-                                    : bad
-                                    ? c.error
-                                    : i < _code.text.length
-                                    ? c.primary
-                                    : i == _code.text.length && _focus.hasFocus
-                                    ? c.secondary
-                                    : c.borderStrong,
-                                width: i <= _code.text.length || _ok || bad ? 2 : 1.5,
-                              ),
-                            ),
-                            child: Text(i < _code.text.length ? _code.text[i] : '', style: context.ty.h1.copyWith(fontSize: _len > 6 ? 20 : 24)),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
+          child: CodeBoxes(controller: _code, focus: _focus, length: _len, ok: _ok, bad: bad),
         ),
         if (_error != null) ErrText(_error!),
         Btn('Paste code', kind: BtnKind.tonal, block: true, leading: PhosphorIcons.clipboardText(PhosphorIconsStyle.fill), onPressed: _paste),
@@ -778,5 +724,160 @@ class _NewPasswordScreenState extends ConsumerState<NewPasswordScreen> {
         Btn('Save new password', block: true, loading: _busy, onPressed: _save),
       ],
     );
+  }
+}
+
+/// Big code boxes (two groups for 8 digits) with a blinking cursor; the real text field lies on top of them.
+class CodeBoxes extends StatefulWidget {
+  const CodeBoxes({super.key, required this.controller, required this.focus, required this.length, this.ok = false, this.bad = false});
+  final TextEditingController controller;
+  final FocusNode focus;
+  final int length;
+  final bool ok, bad;
+  @override
+  State<CodeBoxes> createState() => _CodeBoxesState();
+}
+
+class _CodeBoxesState extends State<CodeBoxes> {
+  @override
+  void initState() {
+    super.initState();
+    widget.focus.addListener(_redraw);
+    widget.controller.addListener(_redraw);
+  }
+
+  @override
+  void dispose() {
+    widget.focus.removeListener(_redraw);
+    widget.controller.removeListener(_redraw);
+    super.dispose();
+  }
+
+  void _redraw() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    final text = widget.controller.text;
+    final n = widget.length;
+    final split = n == 8 ? 4 : (n >= 8 ? n ~/ 2 : null); // 8 digits read as 4 + 4
+    final rm = context.reduceMotion;
+    return LayoutBuilder(
+      builder: (context, box) {
+        const gap = 6.0, dash = 18.0;
+        final w = ((box.maxWidth - gap * (n - 1) - (split != null ? dash : 0)) / n).clamp(30.0, 64.0);
+        final h = (w * 1.3).clamp(54.0, 72.0);
+        Widget cell(int i) {
+          final filled = i < text.length;
+          final active = i == text.length && widget.focus.hasFocus && !widget.ok;
+          final border = widget.ok
+              ? c.success
+              : widget.bad
+              ? c.error
+              : active
+              ? c.secondary
+              : filled
+              ? c.primary
+              : c.borderStrong;
+          return AnimatedContainer(
+            duration: Motion.fast,
+            curve: Motion.out,
+            width: w,
+            height: h,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: widget.ok ? c.successSoft : (filled || active ? c.surface : c.surfaceAlt),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: border, width: active || filled || widget.ok || widget.bad ? 2 : 1.5),
+              boxShadow: active ? [BoxShadow(color: c.secondary.withValues(alpha: .28), blurRadius: 12, spreadRadius: 1)] : null,
+            ),
+            child: filled
+                ? Text(
+                    text[i],
+                    style: context.ty.h1.copyWith(fontSize: (w * .52).clamp(20.0, 30.0), height: 1),
+                  ).animate(key: ValueKey('d$i${text[i]}')).scaleXY(begin: rm ? 1 : .6, end: 1, duration: rm ? 1.ms : 180.ms, curve: Curves.easeOutBack)
+                : active
+                ? _Caret(color: c.secondary, height: h * .42, still: rm)
+                : null,
+          );
+        }
+
+        final row = <Widget>[];
+        for (var i = 0; i < n; i++) {
+          if (i > 0) row.add(SizedBox(width: split != null && i == split ? 0 : gap));
+          if (split != null && i == split) {
+            row.add(
+              SizedBox(
+                width: dash + gap,
+                child: Center(
+                  child: Container(
+                    width: 10,
+                    height: 3,
+                    decoration: BoxDecoration(color: c.borderStrong, borderRadius: BorderRadius.circular(2)),
+                  ),
+                ),
+              ),
+            );
+          }
+          row.add(cell(i));
+        }
+        return Semantics(
+          label: 'Code, ${text.length} of $n digits entered',
+          child: Stack(
+            children: [
+              Row(mainAxisAlignment: MainAxisAlignment.center, children: row),
+              Positioned.fill(
+                child: TextSelectionTheme(
+                  data: const TextSelectionThemeData(selectionColor: Colors.transparent, cursorColor: Colors.transparent),
+                  child: TextField(
+                    key: const ValueKey('code-field'),
+                    controller: widget.controller,
+                    focusNode: widget.focus,
+                    autofocus: true,
+                    maxLength: n,
+                    showCursor: false,
+                    keyboardType: TextInputType.number,
+                    textInputAction: TextInputAction.done,
+                    autofillHints: const [AutofillHints.oneTimeCode],
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(n)],
+                    style: const TextStyle(color: Colors.transparent, fontSize: 1, height: 1),
+                    decoration: const InputDecoration(
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      filled: false,
+                      counterText: '',
+                      contentPadding: EdgeInsets.zero,
+                      isCollapsed: true,
+                    ),
+                    expands: true,
+                    maxLines: null,
+                    minLines: null,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _Caret extends StatelessWidget {
+  const _Caret({required this.color, required this.height, this.still = false});
+  final Color color;
+  final double height;
+  final bool still;
+  @override
+  Widget build(BuildContext context) {
+    final bar = Container(
+      width: 2.5,
+      height: height,
+      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
+    );
+    return still ? bar : bar.animate(onPlay: (a) => a.repeat(reverse: true)).fade(begin: 1, end: 0, duration: 520.ms, curve: Curves.easeInOut);
   }
 }

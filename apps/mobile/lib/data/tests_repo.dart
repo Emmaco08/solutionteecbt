@@ -136,10 +136,25 @@ class TestsRepo {
     ]..sort((a, b) => b.compareTo(a));
   }
 
+  /// Keeps questions that share a passage next to each other (in the order the passage first appears).
+  static List<CachedQuestion> groupPassages(List<CachedQuestion> qs) {
+    final out = <CachedQuestion>[];
+    final seen = <String>{};
+    for (final q in qs) {
+      final p = q.passageId;
+      if (p == null) {
+        out.add(q);
+      } else if (seen.add(p)) {
+        out.addAll(qs.where((x) => x.passageId == p));
+      }
+    }
+    return out;
+  }
+
   /// Builds a test, saves it on the phone (so it can be resumed) and returns its id.
   Future<String> start(TestRequest r, {required int Function(int subjectId) countFor, required double minutesPerQuestion}) async {
     final picked = <CachedQuestion>[];
-    for (final sid in r.subjectIds) {
+    for (final (si, sid) in r.subjectIds.indexed) {
       final years = r.year != null ? [r.year!] : await openYears(r.examId, sid);
       if (years.isEmpty) throw ApiError('No open years for this subject yet.');
       List<CachedQuestion> pool;
@@ -153,10 +168,11 @@ class TestsRepo {
           pool.sort((a, b) => (a.number ?? 999).compareTo(b.number ?? 999));
           if (r.mode != TestMode.year) pool = pool.take(countFor(sid)).toList();
         case TestMode.quick:
-          // Mixed: an even share from each subject, from a random open year.
+          // An even share from each subject (the first subjects take any remainder), from a random open year.
+          // Subjects stay in order, like a real exam: finish one subject, then the next.
           final y = years[_rnd.nextInt(years.length)];
-          pool = (await paper(r.examId, sid, y))..shuffle(_rnd);
-          pool = pool.take((r.count / r.subjectIds.length).ceil()).toList();
+          final share = r.count ~/ r.subjectIds.length + (si < r.count % r.subjectIds.length ? 1 : 0);
+          pool = groupPassages((await paper(r.examId, sid, y))..shuffle(_rnd)).take(share).toList();
         case TestMode.topic:
           pool = [];
           for (final y in r.year != null ? [r.year!] : years) {
@@ -166,10 +182,6 @@ class TestsRepo {
           pool = (pool..shuffle(_rnd)).take(r.count).toList();
       }
       picked.addAll(pool);
-    }
-    if (r.mode == TestMode.quick) {
-      picked.shuffle(_rnd);
-      if (picked.length > r.count) picked.removeRange(r.count, picked.length);
     }
     if (picked.isEmpty) {
       throw ApiError(r.mode == TestMode.topic ? 'No questions for these topics yet. Try other topics.' : 'No questions found for this choice yet.');

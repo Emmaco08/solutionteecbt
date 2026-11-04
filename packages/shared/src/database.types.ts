@@ -1215,6 +1215,12 @@ export type Database = {
           },
         ]
       }
+      motivation_quotes: {
+        Row: { active: boolean; author: string | null; body: string; created_at: string; id: number; kind: string; sort: number }
+        Insert: { active?: boolean; author?: string | null; body: string; created_at?: string; id?: never; kind?: string; sort?: number }
+        Update: { active?: boolean; author?: string | null; body?: string; created_at?: string; id?: never; kind?: string; sort?: number }
+        Relationships: []
+      }
       news_posts: {
         Row: {
           body: string | null
@@ -2696,6 +2702,7 @@ export type Database = {
         }[]
       }
       my_plan: { Args: never; Returns: Json }
+      today_motivation: { Args: never; Returns: Json }
       my_winnings: { Args: never; Returns: Json }
       pay_note: {
         Args: {

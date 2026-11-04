@@ -1121,33 +1121,57 @@ class Avatar extends StatelessWidget {
 
 // ---------------------------------------------------------------- bottom sheet (.sheet)
 /// Opens a prototype-style sheet: 28 radius, grab handle, body padding 20.
-Future<T?> showSheet<T>(BuildContext context, {required Widget Function(BuildContext) builder, bool scroll = false}) => showModalBottomSheet<T>(
-  context: context,
-  isScrollControlled: true,
-  showDragHandle: false,
-  backgroundColor: context.c.surface,
-  shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.sheet))),
-  builder: (ctx) => ConstrainedBox(
-    constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(ctx).height * .92),
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 40,
-          height: 5,
-          margin: const EdgeInsets.fromLTRB(0, 10, 0, 2),
-          decoration: BoxDecoration(color: ctx.c.borderStrong, borderRadius: BorderRadius.circular(9)),
+/// Bottom sheet above the bottom tabs (root navigator), inside the safe area, with a handle and a close (X) button.
+/// The phone's back button closes it too.
+Future<T?> showSheet<T>(BuildContext context, {required Widget Function(BuildContext) builder, bool scroll = false, bool closeButton = true}) =>
+    showModalBottomSheet<T>(
+      context: context,
+      useRootNavigator: true,
+      useSafeArea: true,
+      isScrollControlled: true,
+      showDragHandle: false,
+      backgroundColor: context.c.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.sheet))),
+      builder: (ctx) => ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(ctx).height * .92),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              height: closeButton ? 44 : 17,
+              child: Stack(
+                alignment: Alignment.topCenter,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 5,
+                    margin: const EdgeInsets.fromLTRB(0, 10, 0, 2),
+                    decoration: BoxDecoration(color: ctx.c.borderStrong, borderRadius: BorderRadius.circular(9)),
+                  ),
+                  if (closeButton)
+                    Positioned(
+                      right: 6,
+                      top: 2,
+                      child: IconButton(
+                        key: const ValueKey('sheet-close'),
+                        tooltip: 'Close',
+                        onPressed: () => Navigator.of(ctx).maybePop(),
+                        icon: Icon(PhosphorIcons.x(), size: 20, color: ctx.c.textMuted),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            Flexible(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(Space.s5, closeButton ? 0 : Space.s3, Space.s5, Space.s6 + MediaQuery.paddingOf(ctx).bottom),
+                child: builder(ctx),
+              ),
+            ),
+          ],
         ),
-        Flexible(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.fromLTRB(Space.s5, Space.s3, Space.s5, Space.s6 + MediaQuery.paddingOf(ctx).bottom),
-            child: builder(ctx),
-          ),
-        ),
-      ],
-    ),
-  ),
-);
+      ),
+    );
 
 /// Prototype dialog: 24 radius, 24/20 padding, title + body + actions stacked.
 Future<T?> showAppDialog<T>(

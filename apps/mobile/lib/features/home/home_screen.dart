@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -26,6 +27,8 @@ import '../xp/streak_ui.dart';
 import '../xp/xp_screens.dart';
 import '../compete/compete_data.dart';
 import 'qotd_card.dart';
+import 'top_card.dart';
+import 'tour.dart';
 
 /// The unfinished test on this phone (if any), for the "Continue your test" card.
 final unfinishedProvider = FutureProvider<LocalAttempt?>((ref) => ref.watch(dbProvider).unfinishedAttempt());
@@ -84,7 +87,8 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  final _startKey = GlobalKey(), _upgradeKey = GlobalKey();
+  final _startKey = GlobalKey(), _upgradeKey = GlobalKey(), _topKey = GlobalKey(), _challengeKey = GlobalKey(), _chipsKey = GlobalKey();
+  final _scroll = ScrollController();
   OverlayEntry? _tour;
 
   @override
@@ -101,6 +105,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   void dispose() {
+    _scroll.dispose();
     _tour?.remove();
     super.dispose();
   }
@@ -112,20 +117,62 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     _tour = OverlayEntry(
       builder: (ctx) => TourOverlay(
         steps: [
-          TourStep(target: () => _rectOf(_startKey), title: 'Start a test here', text: 'Tap JAMB, WAEC or NECO to start a timed CBT practice.'),
-          TourStep(target: () => _navRect(ctx, 'study'), title: 'Study anytime', text: 'Past questions, video solutions, lesson notes, novels and syllabuses.'),
           TourStep(
-            target: () => _navRect(ctx, 'test'),
+            key: _topKey,
+            icon: PhosphorIcons.sunHorizon(PhosphorIconsStyle.fill),
+            title: 'Your day starts here',
+            text: 'A new motivation or study tip every day, your daily goal, and the test you left unfinished.',
+          ),
+          TourStep(
+            key: _chipsKey,
+            icon: PhosphorIcons.fire(PhosphorIconsStyle.fill),
+            title: 'XP and streak',
+            text: 'Earn XP for every test and keep your streak alive by practising each day. Tap to see more.',
+          ),
+          if (ref.read(challengesProvider).value?['on'] == true)
+            TourStep(
+              key: _challengeKey,
+              icon: PhosphorIcons.trophy(PhosphorIconsStyle.fill),
+              title: 'Challenges and events',
+              text: 'Join live challenges, climb the leaderboard and win rewards.',
+            ),
+          TourStep(
+            key: _startKey,
+            icon: PhosphorIcons.play(PhosphorIconsStyle.fill),
+            title: 'Start a test here',
+            text: 'Tap JAMB, WAEC or NECO to start a timed CBT practice.',
+          ),
+          TourStep(
+            rect: () => _navRect(ctx, 'study'),
+            icon: PhosphorIcons.bookOpenText(PhosphorIconsStyle.fill),
+            title: 'Study anytime',
+            text: 'Past questions, video solutions, lesson notes, novels and syllabuses.',
+          ),
+          TourStep(
+            rect: () => _navRect(ctx, 'test'),
+            icon: PhosphorIcons.exam(PhosphorIconsStyle.fill),
             title: 'All test modes',
             text: 'Full exam, single subject, topic drills, quick tests and practice by year.',
           ),
-          TourStep(target: () => _navRect(ctx, 'ai_chat'), title: 'Ask SolutionTee AI', text: 'Get step-by-step help on any question.'),
-          if (!premium) TourStep(target: () => _rectOf(_upgradeKey), title: 'Unlock everything', text: 'Go Premium for all years and all exams.'),
+          TourStep(
+            rect: () => _navRect(ctx, 'ai_chat'),
+            icon: PhosphorIcons.sparkle(PhosphorIconsStyle.fill),
+            title: 'Ask SolutionTee AI',
+            text: 'Get step-by-step help on any question.',
+          ),
+          if (!premium)
+            TourStep(
+              key: _upgradeKey,
+              icon: PhosphorIcons.crownSimple(PhosphorIconsStyle.fill),
+              title: 'Unlock everything',
+              text: 'Go Premium for all years and all exams.',
+            ),
         ],
         onDone: () {
           _tour?.remove();
           _tour = null;
           ref.read(settingsProvider.notifier).update((s) => s.copyWith(toured: true));
+          if (_scroll.hasClients) _scroll.animateTo(0, duration: const Duration(milliseconds: 400), curve: Curves.easeOutCubic);
           if (mounted) toast(context, 'Tour finished. Replay it any time from Me, then Help.', icon: PhosphorIcons.flagCheckered(PhosphorIconsStyle.fill));
         },
       ),
@@ -171,44 +218,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final open = ref.watch(openYearsProvider).value;
     final rm = context.reduceMotion;
 
-    final goalLeft = (PracticeStats.dailyGoal - stats.today).clamp(0, PracticeStats.dailyGoal);
     final sections = <Widget>[
-      // Daily goal strip
-      Container(
-        padding: const EdgeInsets.fromLTRB(Space.s3, Space.s2, Space.s2, Space.s2),
-        decoration: BoxDecoration(
-          color: c.surface,
-          borderRadius: BorderRadius.circular(Radii.lg),
-          border: Border.all(color: c.border),
-        ),
-        child: Row(
-          children: [
-            Ring(value: stats.today / PracticeStats.dailyGoal, size: 44),
-            const Gap(Space.s3),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Today: ${stats.today} of ${PracticeStats.dailyGoal} questions', style: context.ty.sm.bold),
-                  Text(
-                    goalLeft == 0
-                        ? 'Goal reached. Great work!'
-                        : stats.streak > 0
-                        ? '$goalLeft more keeps your ${stats.streak}-day streak'
-                        : 'Answer $goalLeft questions to start a streak',
-                    style: context.ty.cap.col(c.textMuted),
-                  ),
-                ],
-              ),
-            ),
-            Btn('Practise', kind: BtnKind.tonal, sm: true, onPressed: () => context.push('/test/setup?exam=JAMB&mode=quick')),
-          ],
-        ),
-      ),
+      HomeTopCard(key: _topKey, unfinished: unfinished, stats: stats),
       const DailyClaimCard(),
-      if (unfinished != null) ContinueCard(a: unfinished),
-      if (ref.watch(challengesProvider).value?['on'] == true) const ChallengeSection(),
-      const InviteCard(),
+      if (ref.watch(challengesProvider).value?['on'] == true) ChallengeSection(key: _challengeKey),
       Column(
         key: _startKey,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -239,6 +252,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ],
       ),
       if (ref.watch(qotdProvider).isLoading || ref.watch(qotdProvider).value?.question != null) const QotdCard(),
+      const InviteCard(),
       if (news.isNotEmpty)
         Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -267,6 +281,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         child: RefreshIndicator(
           onRefresh: _refresh,
           child: ListView(
+            controller: _scroll,
+            // Build the whole (short) Home so the tour can find and scroll to every card.
+            scrollCacheExtent: const ScrollCacheExtent.pixels(4000),
             padding: const EdgeInsets.only(bottom: Space.s8),
             children: [
               // Home head: avatar, greeting, name, streak
@@ -289,26 +306,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ],
                       ),
                     ),
-                    const XpChip(),
-                    Semantics(
-                      button: true,
-                      label: '$streakDays-day streak',
-                      child: GestureDetector(
-                        onTap: () => openRoute(context, '/me/streak'),
-                        child: Container(
-                          height: 36,
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          decoration: BoxDecoration(color: c.accentSoft, borderRadius: BorderRadius.circular(99)),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(PhosphorIcons.fire(PhosphorIconsStyle.fill), size: 18, color: Palette.gold500),
-                              const SizedBox(width: 4),
-                              Text('$streakDays', style: context.ty.label.bold.tnum.col(c.onAccentSoft)),
-                            ],
+                    Row(
+                      key: _chipsKey,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const XpChip(),
+                        Semantics(
+                          button: true,
+                          label: '$streakDays-day streak',
+                          child: GestureDetector(
+                            onTap: () => openRoute(context, '/me/streak'),
+                            child: Container(
+                              height: 36,
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              decoration: BoxDecoration(color: c.accentSoft, borderRadius: BorderRadius.circular(99)),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(PhosphorIcons.fire(PhosphorIconsStyle.fill), size: 18, color: Palette.gold500),
+                                  const SizedBox(width: 4),
+                                  Text('$streakDays', style: context.ty.label.bold.tnum.col(c.onAccentSoft)),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ),
                     const Gap(Space.s2),
                     Consumer(
@@ -368,12 +391,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
       ),
     );
-  }
-
-  Rect? _rectOf(GlobalKey k) {
-    final box = k.currentContext?.findRenderObject() as RenderBox?;
-    if (box == null || !box.attached) return null;
-    return box.localToGlobal(Offset.zero) & box.size;
   }
 
   /// Where a tab sits in the bottom bar (same list and order the bar is built from); null if it is hidden.
@@ -567,121 +584,4 @@ class UpgradeBanner extends StatelessWidget {
       ),
     ),
   );
-}
-
-// ---------------------------------------------------------------- guided tour (prototype: tour)
-class TourStep {
-  const TourStep({required this.target, required this.title, required this.text});
-  final Rect? Function() target;
-  final String title, text;
-}
-
-/// Coach marks: a spotlight hole with a gold ring and a tip card (Skip tour / Next / Done).
-class TourOverlay extends StatefulWidget {
-  const TourOverlay({super.key, required this.steps, required this.onDone});
-  final List<TourStep> steps;
-  final VoidCallback onDone;
-  @override
-  State<TourOverlay> createState() => _TourOverlayState();
-}
-
-class _TourOverlayState extends State<TourOverlay> {
-  int _k = 0;
-
-  @override
-  Widget build(BuildContext context) {
-    final steps = widget.steps;
-    var rect = steps[_k].target();
-    if (rect == null) {
-      // Skip steps that are not on screen.
-      WidgetsBinding.instance.addPostFrameCallback((_) => _k < steps.length - 1 ? setState(() => _k++) : widget.onDone());
-      return const SizedBox.shrink();
-    }
-    rect = rect.inflate(6);
-    final size = MediaQuery.sizeOf(context);
-    final below = rect.center.dy < size.height / 2;
-    final c = context.c;
-    return Material(
-      type: MaterialType.transparency,
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: GestureDetector(
-              onTap: () {},
-              child: CustomPaint(painter: _HolePainter(rect, c.scrim)),
-            ),
-          ),
-          AnimatedPositioned(
-            duration: Motion.slow,
-            curve: Motion.out,
-            left: rect.left - 6,
-            top: rect.top - 6,
-            width: rect.width + 12,
-            height: rect.height + 12,
-            child: IgnorePointer(
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Palette.gold400, width: 2),
-                ),
-              ),
-            ),
-          ),
-          AnimatedPositioned(
-            duration: Motion.slow,
-            curve: Motion.out,
-            left: 20,
-            right: 20,
-            top: below ? rect.bottom + 22 : null,
-            bottom: below ? null : size.height - rect.top + 22,
-            child: Container(
-              padding: const EdgeInsets.all(Space.s4),
-              decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(Radii.lg), boxShadow: context.shadow(4)),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(child: Text('STEP ${_k + 1} OF ${steps.length}', style: context.ty.over)),
-                      Btn('Skip tour', kind: BtnKind.ghost, sm: true, onPressed: widget.onDone),
-                    ],
-                  ),
-                  const Gap(Space.s2),
-                  Text(steps[_k].title, style: context.ty.h3),
-                  const Gap(Space.s2),
-                  Text(steps[_k].text, style: context.ty.sm.col(c.textMuted)),
-                  const Gap(Space.s4),
-                  Row(
-                    children: [
-                      Dots(count: steps.length, index: _k),
-                      const Spacer(),
-                      Btn(_k == steps.length - 1 ? 'Done' : 'Next', sm: true, onPressed: () => _k == steps.length - 1 ? widget.onDone() : setState(() => _k++)),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HolePainter extends CustomPainter {
-  _HolePainter(this.hole, this.scrim);
-  final Rect hole;
-  final Color scrim;
-  @override
-  void paint(Canvas canvas, Size size) {
-    final p = Path()
-      ..addRect(Offset.zero & size)
-      ..addRRect(RRect.fromRectAndRadius(hole, const Radius.circular(16)))
-      ..fillType = PathFillType.evenOdd;
-    canvas.drawPath(p, Paint()..color = scrim);
-  }
-
-  @override
-  bool shouldRepaint(_HolePainter old) => old.hole != hole || old.scrim != scrim;
 }

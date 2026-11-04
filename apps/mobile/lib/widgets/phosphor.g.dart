@@ -100,6 +100,8 @@ abstract final class PhosphorIcons {
       s == PhosphorIconsStyle.regular ? const IconData(0xe1ae, fontFamily: 'PhosphorRegular') : const IconData(0xe1ae, fontFamily: 'PhosphorFill');
   static IconData cloudCheck([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe1b0, fontFamily: 'PhosphorRegular') : const IconData(0xe1b0, fontFamily: 'PhosphorFill');
+  static IconData cloudRain([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
+      s == PhosphorIconsStyle.regular ? const IconData(0xe1b4, fontFamily: 'PhosphorRegular') : const IconData(0xe1b4, fontFamily: 'PhosphorFill');
   static IconData cloudWarning([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xea98, fontFamily: 'PhosphorRegular') : const IconData(0xea98, fontFamily: 'PhosphorFill');
   static IconData coins([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
@@ -246,6 +248,8 @@ abstract final class PhosphorIcons {
       s == PhosphorIconsStyle.regular ? const IconData(0xe3e2, fontFamily: 'PhosphorRegular') : const IconData(0xe3e2, fontFamily: 'PhosphorFill');
   static IconData question([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe3e8, fontFamily: 'PhosphorRegular') : const IconData(0xe3e8, fontFamily: 'PhosphorFill');
+  static IconData quotes([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
+      s == PhosphorIconsStyle.regular ? const IconData(0xe660, fontFamily: 'PhosphorRegular') : const IconData(0xe660, fontFamily: 'PhosphorFill');
   static IconData ranking([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xed62, fontFamily: 'PhosphorRegular') : const IconData(0xed62, fontFamily: 'PhosphorFill');
   static IconData rewind([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
@@ -282,6 +286,10 @@ abstract final class PhosphorIcons {
       s == PhosphorIconsStyle.regular ? const IconData(0xe46c, fontFamily: 'PhosphorRegular') : const IconData(0xe46c, fontFamily: 'PhosphorFill');
   static IconData storefront([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe470, fontFamily: 'PhosphorRegular') : const IconData(0xe470, fontFamily: 'PhosphorFill');
+  static IconData sun([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
+      s == PhosphorIconsStyle.regular ? const IconData(0xe472, fontFamily: 'PhosphorRegular') : const IconData(0xe472, fontFamily: 'PhosphorFill');
+  static IconData sunHorizon([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
+      s == PhosphorIconsStyle.regular ? const IconData(0xe5b6, fontFamily: 'PhosphorRegular') : const IconData(0xe5b6, fontFamily: 'PhosphorFill');
   static IconData target([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe47c, fontFamily: 'PhosphorRegular') : const IconData(0xe47c, fontFamily: 'PhosphorFill');
   static IconData textAa([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
