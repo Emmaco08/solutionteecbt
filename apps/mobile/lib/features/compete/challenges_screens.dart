@@ -643,6 +643,23 @@ class _ChallengeScreenState extends ConsumerState<ChallengeScreen> {
                   ),
               ],
             ),
+            if (ch.maxPlayers != null || ch.minWinPct != null) ...[
+              const Gap(Space.s3),
+              Wrap(
+                spacing: Space.s2,
+                runSpacing: Space.s2,
+                children: [
+                  if (ch.maxPlayers != null)
+                    Pill(
+                      ch.full ? 'Full · ${ch.maxPlayers} players' : '${ch.placesLeft} of ${ch.maxPlayers} places left',
+                      kind: ch.full ? BadgeKind.neutral : BadgeKind.soft,
+                      icon: PhosphorIcons.users(PhosphorIconsStyle.fill),
+                    ),
+                  if (ch.minWinPct != null)
+                    Pill('Winners need ${ch.minWinPct}% or more', kind: BadgeKind.warning, icon: PhosphorIcons.target(PhosphorIconsStyle.fill)),
+                ],
+              ),
+            ],
             const Gap(Space.s4),
             if (ch.ineligibleText != null) ...[
               InfoBanner(kind: BannerKind.warn, icon: PhosphorIcons.lockSimple(PhosphorIconsStyle.fill), child: Text(ch.ineligibleText!)),
@@ -854,6 +871,8 @@ class _Footer extends StatelessWidget {
       child = c.mode == 'subject'
           ? Btn('Not one of your subjects', kind: BtnKind.tonal, block: true, leading: PhosphorIcons.lockSimple(PhosphorIconsStyle.fill), onPressed: null)
           : Btn('Choose my JAMB subjects', block: true, onPressed: () => context.push('/subjects'));
+    } else if (c.full) {
+      child = Btn('Full · look out for the next one', kind: BtnKind.tonal, block: true, leading: PhosphorIcons.users(PhosphorIconsStyle.fill), onPressed: null);
     } else {
       child = Btn('Start challenge', block: true, leading: PhosphorIcons.play(PhosphorIconsStyle.fill), onPressed: c.questions == 0 ? null : onStart);
     }

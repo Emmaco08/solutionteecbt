@@ -9,14 +9,21 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import android.view.WindowManager
-import io.flutter.embedding.android.FlutterActivity
+import android.os.Bundle
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.util.UUID
 import java.util.function.Consumer
 
-class MainActivity : FlutterActivity() {
+// FlutterFragmentActivity (a ComponentActivity) so Paystack's payment sheet can open inside the app (D-089).
+class MainActivity : FlutterFragmentActivity() {
     private var device: MethodChannel? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        PaystackBridge.register(this)
+    }
 
     // Screenshot (Android 14+) and screen-recording (Android 15+) detection (D-075). FLAG_SECURE already blocks the
     // picture where it matters; this tells Flutter so it can warn the student and flag a challenge entry.
@@ -112,6 +119,7 @@ class MainActivity : FlutterActivity() {
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+        PaystackBridge.attach(flutterEngine)
         super.configureFlutterEngine(flutterEngine)
         // Phone id (hashed in Dart) and fair-play signals (lib/features/compete/device.dart).
         device = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "solutiontee/device").also { ch ->

@@ -11,6 +11,7 @@ import '../../theme/tokens.g.dart';
 import '../../ui/kit.dart';
 import '../../widgets/phosphor.g.dart';
 import '../../widgets/states.dart';
+import '../premium/pay_methods.dart';
 import '../premium/payments.dart';
 
 /// XP — the app's game coin (D-081, plan `docs/plans/xp-streaks.md`). Earned by practising, spent on challenge
@@ -447,20 +448,68 @@ class _BuyXpState extends ConsumerState<_BuyXp> with WidgetsBindingObserver {
 
   PaystackProvider get _pay => ref.read(paymentProvider(true)) as PaystackProvider;
 
-  Future<void> _buy(int xp) async {
+  /// Pick how to pay (card in Paystack's sheet, bank transfer or USSD on our screen), then pay.
+  Future<void> _buy(int xp, int nairaPrice) async {
+    var method = PayMethod.card;
+    var bank = '737';
+    final go = await showSheet<bool>(
+      context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, set) => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                const XpCoin(size: 36),
+                const Gap(Space.s3),
+                Expanded(child: Text('${xpText(xp)} XP', style: ctx.ty.h3.tnum)),
+                Text('₦${xpText(nairaPrice)}', style: ctx.ty.h3.tnum),
+              ],
+            ),
+            const Gap(Space.s4),
+            PayMethodPicker(method: method, bank: bank, onChanged: (m, b) => set(() => (method = m, bank = b))),
+            const Gap(Space.s4),
+            Btn('Pay ₦${xpText(nairaPrice)}', block: true, onPressed: () => Navigator.pop(ctx, true)),
+          ],
+        ),
+      ),
+    );
+    if (go != true || !mounted) return;
     setState(() => _busy = xp);
-    final r = await _pay.buyXp(xp);
+    final p = _pay..dark = Theme.of(context).brightness == Brightness.dark;
+    final r = await p.buyXp(xp, channel: payChannel(method, bank));
     if (!mounted) return;
     setState(() => _busy = null);
+    _done(r, xp);
+  }
+
+  void _done(PayResult r, int xp) {
     switch (r) {
+      case PaySuccess():
+        HapticFeedback.mediumImpact();
+        ref.invalidate(myXpProvider);
+        toast(context, '+${xpText(xp)} XP added. Thank you!', icon: PhosphorIcons.coins(PhosphorIconsStyle.fill));
+        setState(() => _reference = null);
+      case PayOffline():
+        setState(() => (_reference = r.reference, _pendingXp = xp));
+        showPayOffline(context, r, _pay, what: '${xpText(xp)} XP').then((res) {
+          if (!mounted) return;
+          if (res != null) {
+            _done(res, xp);
+          } else {
+            _check();
+          }
+        });
       case PayPending(:final reference):
         setState(() {
           _reference = reference;
           _pendingXp = xp;
         });
+        _check();
       case PayFailed(:final message):
         toast(context, message, icon: PhosphorIcons.warningCircle(PhosphorIconsStyle.fill));
-      default:
+        setState(() => _reference = null);
+      case PayCancelled():
         break;
     }
   }
@@ -503,7 +552,7 @@ class _BuyXpState extends ConsumerState<_BuyXp> with WidgetsBindingObserver {
               icon: PhosphorIcons.hourglass(PhosphorIconsStyle.fill),
               child: Row(
                 children: [
-                  const Expanded(child: Text('Finish paying on the Paystack page. We add your XP as soon as Paystack confirms it.')),
+                  const Expanded(child: Text('Waiting for your payment. We add your XP as soon as it is confirmed.')),
                   TextButton(onPressed: _check, child: const Text('Check')),
                 ],
               ),
@@ -524,7 +573,7 @@ class _BuyXpState extends ConsumerState<_BuyXp> with WidgetsBindingObserver {
                       kind: BtnKind.tonal,
                       sm: true,
                       loading: _busy == _i(p['xp']),
-                      onPressed: _busy != null || _reference != null ? null : () => _buy(_i(p['xp'])),
+                      onPressed: _busy != null || _reference != null ? null : () => _buy(_i(p['xp']), _i(p['naira'])),
                     ),
                   ],
                 ),

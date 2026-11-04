@@ -15,6 +15,7 @@ import '../../ui/kit.dart';
 import '../../widgets/exam_logo.dart';
 import '../../widgets/phosphor.g.dart';
 import '../../widgets/states.dart';
+import 'pay_methods.dart';
 import 'paywall.dart';
 import 'payments.dart';
 
@@ -43,6 +44,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> with WidgetsBin
   final _codeCtl = TextEditingController();
   _Stage _stage = _Stage.idle;
   String? _reference;
+  PayMethod _method = PayMethod.card;
+  String _bank = '737';
   Timer? _poll;
   int _polls = 0;
 
@@ -124,6 +127,19 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> with WidgetsBin
         if (tapped && _stage == _Stage.checking) {
           toast(context, 'Not confirmed yet. If you have paid, give it a minute.', icon: PhosphorIcons.hourglass(PhosphorIconsStyle.fill));
         }
+      case PayOffline():
+        // Bank transfer / USSD: our own screen shows where to pay and checks by itself.
+        setState(() => (_reference = r.reference, _stage = _Stage.checking));
+        final p = _pay;
+        if (p is! PaystackProvider) return;
+        showPayOffline(context, r, p, what: 'Premium · ${plan['name']}').then((res) {
+          if (!mounted) return;
+          if (res != null) {
+            _handle(res);
+          } else {
+            _startPolling(); // closed early: keep checking here; "Check payment" stays available
+          }
+        });
       case PayCancelled():
         setState(() => _stage = _Stage.idle);
       case PayFailed(:final message, :final code):
@@ -157,7 +173,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> with WidgetsBin
   Future<void> _go() async {
     setState(() => (_stage = _Stage.opening, _payErr = null));
     final plan = _plan;
-    final r = await _pay.buy(plan, code: (_quote?.discountKobo ?? 0) > 0 ? _quote?.code : null);
+    final p = _pay;
+    if (p is PaystackProvider) p.dark = Theme.of(context).brightness == Brightness.dark;
+    final r = await p.buy(plan, code: (_quote?.discountKobo ?? 0) > 0 ? _quote?.code : null, channel: payChannel(_method, _bank));
     if (!mounted) return;
     _handle(r);
   }
@@ -271,7 +289,15 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> with WidgetsBin
           ? null
           : FooterCta(
               child: Btn(
-                busy ? (paystack ? 'Opening Paystack' : 'Opening Google Play') : 'Pay $total',
+                busy
+                    ? (paystack ? (_method == PayMethod.card ? 'Opening the card form' : 'Getting your payment details') : 'Opening Google Play')
+                    : (paystack
+                          ? 'Pay $total${switch (_method) {
+                              PayMethod.card => ' with card',
+                              PayMethod.transfer => ' by transfer',
+                              PayMethod.ussd => ' with USSD',
+                            }}'
+                          : 'Pay $total'),
                 block: true,
                 loading: busy,
                 onPressed: busy ? null : _go,
@@ -369,25 +395,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> with WidgetsBin
     );
   }
 
-  Widget _paystackMethods(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      Text('Pay with Paystack', style: context.ty.label),
-      const Gap(Space.s3),
-      ListCard(
-        children: [
-          ListRow(icon: PhosphorIcons.creditCard(PhosphorIconsStyle.fill), title: 'Card', caption: 'Visa, Mastercard, Verve', caret: false),
-          ListRow(icon: PhosphorIcons.bank(PhosphorIconsStyle.fill), title: 'Bank transfer', caption: 'Pay from any Nigerian bank', caret: false),
-          ListRow(icon: PhosphorIcons.hash(PhosphorIconsStyle.fill), title: 'USSD', caption: 'Dial a code on any phone', caret: false),
-        ],
-      ),
-      const Gap(Space.s3),
-      Text(
-        'You choose how to pay on the Paystack page, which opens securely in the app. Premium turns on after we confirm the payment with Paystack.',
-        style: context.ty.cap.col(context.c.textMuted),
-      ),
-    ],
-  );
+  Widget _paystackMethods(BuildContext context) =>
+      PayMethodPicker(method: _method, bank: _bank, enabled: _stage == _Stage.idle, onChanged: (m, b) => setState(() => (_method = m, _bank = b)));
 
   Widget _playMethod(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,

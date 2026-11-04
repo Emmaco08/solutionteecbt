@@ -63,3 +63,25 @@ export async function setWallPost(id: string, published: boolean): Promise<Actio
   revalidatePath("/admin/winners");
   return { ok: true, message: published ? "Shown on the Winners wall." : "Hidden from the Winners wall." };
 }
+
+/** Prize payout by Paystack Transfer (D-090): "check" asks Paystack whose account it is, "send" sends the money,
+ *  "verify" asks how it went. The paystack Edge Function checks that this admin has 2-step login. */
+export async function payout(claimId: string, step: "check" | "send" | "verify"): Promise<ActionResult<{ verified_name?: string; status?: string }>> {
+  await money();
+  if (!/^[0-9a-f-]{36}$/.test(claimId)) return { ok: false, error: "Bad claim" };
+  const supabase = await createClient();
+  const { data, error } = await supabase.functions.invoke("paystack", { body: { action: `payout_${step}`, claim_id: claimId } });
+  if (error) {
+    let msg = "Paystack did not answer. Try again.";
+    try { msg = (await (error as { context?: Response }).context?.json())?.error ?? msg; } catch { /* keep the default */ }
+    return { ok: false, error: msg };
+  }
+  revalidatePath("/admin/winners");
+  const d = (data ?? {}) as { verified_name?: string; status?: string };
+  return {
+    ok: true, data: d,
+    message: step === "check" ? `Paystack says the account belongs to ${d.verified_name}.`
+      : d.status === "sent" ? "Sent. The winner has been told." : d.status === "failed" ? "Paystack could not send it. See the reason below."
+      : "Sent to Paystack. It usually arrives within minutes; this page updates when Paystack confirms.",
+  };
+}

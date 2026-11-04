@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
-import 'package:flutter/services.dart' show appFlavor;
+import 'package:flutter/services.dart' show MethodChannel, appFlavor;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
@@ -61,6 +61,19 @@ class PayPending extends PayResult {
   final String? reference;
 }
 
+/// Pay by bank transfer or USSD on our own screen (D-089): the account to send to, or the code to dial.
+class PayOffline extends PayResult {
+  const PayOffline(this.reference, {required this.amountKobo, this.transfer, this.ussd});
+  final String reference;
+  final int amountKobo;
+
+  /// {account_number, account_name, bank, expires_at}
+  final Map<String, dynamic>? transfer;
+
+  /// {code, bank}
+  final Map<String, dynamic>? ussd;
+}
+
 class PayCancelled extends PayResult {
   const PayCancelled();
 }
@@ -106,12 +119,45 @@ String? _fnCode(FunctionException e) {
 }
 
 // ---------------------------------------------------------------- Paystack (direct build)
+/// Paystack's own payment sheet inside the app (android/app/src/direct/…/PaystackBridge.kt). Replaced in tests.
+class PaystackSheet {
+  const PaystackSheet();
+  static const _ch = MethodChannel('solutiontee/paystack');
+
+  Future<bool> available() async {
+    try {
+      return await _ch.invokeMethod<bool>('available') ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// {status: success|cancelled|failed|unavailable|busy|unknown, reference?, message?}
+  Future<Map<String, dynamic>> launch({required String publicKey, required String accessCode, bool dark = false}) async {
+    try {
+      final r = await _ch.invokeMethod<Map<Object?, Object?>>('launch', {'publicKey': publicKey, 'accessCode': accessCode, 'dark': dark});
+      return {for (final e in (r ?? const {}).entries) '${e.key}': e.value};
+    } catch (_) {
+      return {'status': 'unavailable'};
+    }
+  }
+}
+
+/// The ways to pay with Paystack (D-089). USSD needs the student's bank.
+enum PayMethod { card, transfer, ussd }
+
+const ussdBanks = {'737': 'GTBank', '919': 'UBA', '822': 'Sterling Bank', '966': 'Zenith Bank'};
+
 class PaystackProvider implements PaymentProvider {
-  PaystackProvider(this._sb, {this.open = _openTab});
+  PaystackProvider(this._sb, {this.open = _openTab, this.sheet = const PaystackSheet()});
   final SupabaseClient _sb;
 
-  /// Opens Paystack's checkout page. Replaced in tests.
+  /// Opens Paystack's checkout page (when the in-app sheet cannot be used). Replaced in tests.
   final Future<bool> Function(Uri) open;
+  final PaystackSheet sheet;
+
+  /// Paystack's sheet follows the app's light or dark look; the screen sets this before paying.
+  bool dark = false;
 
   static Future<bool> _openTab(Uri u) => launchUrl(u, mode: LaunchMode.inAppBrowserView);
 
@@ -132,30 +178,68 @@ class PaystackProvider implements PaymentProvider {
     }
   }
 
+  /// "card", "transfer" or "ussd:737" (the [channel] of [buy]) → what the server needs.
+  static Map<String, Object?> methodBody(String? channel) {
+    final c = channel ?? 'card';
+    if (c.startsWith('ussd')) return {'method': 'ussd', 'bank': c.contains(':') ? c.split(':')[1] : '737'};
+    return {'method': c == 'transfer' ? 'transfer' : 'card'};
+  }
+
+  /// What the server answered → what the student sees next: Paystack's sheet (card), our transfer / USSD screen,
+  /// or Paystack's page in an in-app tab when the sheet is not available.
+  @visibleForTesting
+  Future<PayResult> openResult(Map<String, dynamic> r) async {
+    final reference = '${r['reference'] ?? ''}';
+    final amount = (r['amount_kobo'] as num?)?.toInt() ?? 0;
+    if (r['transfer'] is Map) return PayOffline(reference, amountKobo: amount, transfer: Map<String, dynamic>.from(r['transfer'] as Map));
+    if (r['ussd'] is Map) return PayOffline(reference, amountKobo: amount, ussd: Map<String, dynamic>.from(r['ussd'] as Map));
+    final pk = r['public_key'], code = r['access_code'];
+    if (pk is String && pk.isNotEmpty && code is String && code.isNotEmpty && await sheet.available()) {
+      final s = await sheet.launch(publicKey: pk, accessCode: code, dark: dark);
+      switch (s['status']) {
+        case 'success':
+          // Paystack says paid: confirm with the server (verify), which gives Premium or XP.
+          final c = await check(reference);
+          return c is PayFailed && c.code != 'review' ? PayPending(reference) : c;
+        case 'cancelled':
+          return const PayCancelled();
+        case 'failed':
+          final m = '${s['message'] ?? ''}'.trim();
+          return PayFailed(m.isEmpty ? 'The payment did not go through. You were not charged. Try again or use another way to pay.' : m);
+        case 'unknown':
+          return PayPending(reference);
+        default:
+          break; // unavailable or busy: use the page instead
+      }
+    }
+    final url = Uri.tryParse('${r['url'] ?? ''}');
+    if (url == null || !url.isScheme('https')) return const PayFailed('Paystack did not open. Please try again.');
+    final opened = await open(url);
+    if (!opened) return const PayFailed('Could not open Paystack on this phone. Please try again.');
+    return PayPending(reference);
+  }
+
   @override
   Future<PayResult> buy(Map<String, dynamic> plan, {String? code, String? channel}) async {
     try {
-      final r = await _call({'action': 'start', 'plan': plan['code'], if (code != null && code.isNotEmpty) 'code': code, 'source': 'app'});
+      final r = await _call({
+        'action': 'start',
+        'plan': plan['code'],
+        if (code != null && code.isNotEmpty) 'code': code,
+        'source': 'app',
+        ...methodBody(channel),
+      });
       if (r['free'] == true) return PaySuccess(_date(r['expires_at']), free: true);
-      final url = Uri.tryParse('${r['url'] ?? ''}');
-      if (url == null || !url.isScheme('https')) return const PayFailed('Paystack did not open. Please try again.');
-      final opened = await open(url);
-      if (!opened) return const PayFailed('Could not open Paystack on this phone. Please try again.');
-      return PayPending(r['reference'] as String?);
+      return await openResult(r);
     } on PayFailed catch (e) {
       return e;
     }
   }
 
-  /// An XP pack (D-084): the server sets the price from the admin's packs; Paystack page opens like a plan payment.
-  Future<PayResult> buyXp(int xp) async {
+  /// An XP pack (D-084): the server sets the price from the admin's packs; paid like a plan.
+  Future<PayResult> buyXp(int xp, {String? channel}) async {
     try {
-      final r = await _call({'action': 'start_xp', 'xp': xp, 'source': 'app'});
-      final url = Uri.tryParse('${r['url'] ?? ''}');
-      if (url == null || !url.isScheme('https')) return const PayFailed('Paystack did not open. Please try again.');
-      final opened = await open(url);
-      if (!opened) return const PayFailed('Could not open Paystack on this phone. Please try again.');
-      return PayPending(r['reference'] as String?);
+      return await openResult(await _call({'action': 'start_xp', 'xp': xp, 'source': 'app', ...methodBody(channel)}));
     } on PayFailed catch (e) {
       return e;
     }

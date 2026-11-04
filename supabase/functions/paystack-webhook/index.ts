@@ -3,6 +3,7 @@
 // 1. The x-paystack-signature header must be HMAC-SHA512(raw body, secret key); anything else gets 401.
 // 2. charge.success is never trusted on its own: we call Paystack's verify endpoint, then apply the answer.
 // 3. Each body is applied once (event key = sha256 of the body), so Paystack's retries are harmless.
+// 4. transfer.success / failed / reversed (prize payouts, D-090) are checked with Paystack's transfer verify.
 // Deployed with verify_jwt = false (Paystack sends no Supabase token); the signature is the check.
 import { json, paystack, rpc } from "../_shared/pay.ts";
 import { paystackSignatureOk, sha256Hex, trimPaystack } from "../_shared/paycrypto.ts";
@@ -59,6 +60,17 @@ Deno.serve(async (req) => {
           p_note: ev.event === "refund.failed" ? "Paystack could not finish the refund" : "Refund is being processed by Paystack" });
       }
       return json({ noted: true });
+    }
+
+    // Prize payouts (D-090): never trusted on their own either; Paystack's transfer verify decides.
+    if (ev.event === "transfer.success" || ev.event === "transfer.failed" || ev.event === "transfer.reversed") {
+      const reference = String(d.reference ?? "");
+      if (!reference.startsWith("po_")) return json({ ignored: "not ours" });
+      const v = await paystack(`/transfer/verify/${encodeURIComponent(reference)}`);
+      if (!v.ok) return json({ retry: true }, 503);
+      const t = (v.body.data ?? {}) as Record<string, unknown>;
+      return json(await rpc("payout_result", { p_ref: reference, p_status: String(t.status ?? ""), p_transfer_code: (t.transfer_code as string) ?? null,
+        p_note: (t.failures as string) ?? (t.reason as string) ?? null }));
     }
 
     return json({ ignored: ev.event ?? "unknown" });

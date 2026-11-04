@@ -2,6 +2,7 @@
 // Secrets (Edge Function secrets, never in the app):
 //   PAYSTACK_SECRET_KEY            sk_test_… / sk_live_…
 //   PAYSTACK_CALLBACK_URL          optional page Paystack returns to after paying
+//   PAYSTACK_PUBLIC_KEY            pk_test_… / pk_live_… (public; lets the app open Paystack's own sheet inside the app, D-089)
 //   GOOGLE_PLAY_SERVICE_ACCOUNT    the service account JSON key (one line)
 //   PLAY_PACKAGE_NAME              optional, default com.solutiontee.cbt
 //   PLAY_RTDN_TOKEN                random secret in the Pub/Sub push URL

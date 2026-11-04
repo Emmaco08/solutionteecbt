@@ -849,6 +849,8 @@ export type Database = {
           allow_calculator: boolean
           bg_dark: string | null
           bg_light: string | null
+          max_players: number | null
+          min_win_pct: number | null
           allow_review: boolean
           xp_fee: number
           same_questions: boolean
@@ -882,6 +884,8 @@ export type Database = {
           allow_calculator?: boolean
           bg_dark?: string | null
           bg_light?: string | null
+          max_players?: number | null
+          min_win_pct?: number | null
           allow_review?: boolean
           xp_fee?: number
           same_questions?: boolean
@@ -915,6 +919,8 @@ export type Database = {
           allow_calculator?: boolean
           bg_dark?: string | null
           bg_light?: string | null
+          max_players?: number | null
+          min_win_pct?: number | null
           allow_review?: boolean
           xp_fee?: number
           same_questions?: boolean
@@ -1668,6 +1674,15 @@ export type Database = {
           admin_note: string | null
           adult: boolean
           amount: number
+          payout_at: string | null
+          payout_by: string | null
+          payout_error: string | null
+          recipient_code: string | null
+          transfer_code: string | null
+          payout_ref: string | null
+          payout_status: string
+          verified_name: string | null
+          bank_code: string | null
           bank_name: string
           created_at: string
           entry_id: string
@@ -1702,6 +1717,15 @@ export type Database = {
           admin_note?: string | null
           adult?: boolean
           amount?: number
+          payout_at?: string | null
+          payout_by?: string | null
+          payout_error?: string | null
+          recipient_code?: string | null
+          transfer_code?: string | null
+          payout_ref?: string | null
+          payout_status?: string
+          verified_name?: string | null
+          bank_code?: string | null
           bank_name?: string
           created_at?: string
           entry_id?: string
@@ -2589,6 +2613,7 @@ export type Database = {
       am_money_admin: { Args: never; Returns: boolean }
       am_notifier: { Args: never; Returns: boolean }
       auth_user_status: { Args: { p_email: string }; Returns: string }
+      prize_claim_v2: { Args: { p_id: string; p_adult: boolean; p_bank: string; p_bank_code: string; p_account_number: string; p_account_name: string; p_guardian_name?: string; p_guardian_phone?: string }; Returns: Json }
       can_view_challenge_image: { Args: { p_key: string }; Returns: boolean }
       my_practice_today: { Args: never; Returns: Json }
       can_upload_images: { Args: never; Returns: boolean }

@@ -28,6 +28,8 @@ const Ch = z.object({
   published: z.boolean(),
   same_questions: z.boolean(),
   allow_calculator: z.boolean(),
+  max_players: z.coerce.number().int().min(0, "Players cannot be below 0").max(1_000_000),
+  min_win_pct: z.coerce.number().int().min(0).max(100, "The minimum score is a percentage (0 to 100)"),
   bg_light: z.string().trim().max(220).regex(/^(public\/challenges\/[A-Za-z0-9/_.-]+)?$/, "Upload the picture again").optional().default(""),
   bg_dark: z.string().trim().max(220).regex(/^(public\/challenges\/[A-Za-z0-9/_.-]+)?$/, "Upload the picture again").optional().default(""),
   mode: z.enum(["mixed", "subject", "fixed"]),
@@ -58,6 +60,8 @@ export async function saveChallenge(form: FormData): Promise<ActionResult<{ id: 
     per_level: { easy: c.easy, medium: c.medium, hard: c.hard, very_hard: c.very_hard },
     same_questions: c.mode !== "fixed" && c.same_questions,
     allow_calculator: c.allow_calculator,
+    max_players: c.max_players > 0 ? c.max_players : null,
+    min_win_pct: c.min_win_pct > 0 ? c.min_win_pct : null,
     bg_light: c.bg_light || null,
     bg_dark: c.bg_dark || null,
   };

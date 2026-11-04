@@ -85,4 +85,6 @@ flutter {
 dependencies {
     // FileProvider for the in-app update of the direct app (D-080).
     implementation("androidx.core:core-ktx:1.13.1")
+    // Paystack's own payment sheet inside the direct app (D-089). The Play app pays with Google Play Billing.
+    "directImplementation"("com.paystack.android:paystack-ui:0.1.8")
 }

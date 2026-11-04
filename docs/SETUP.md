@@ -526,3 +526,13 @@ Notes:
 - If a student already has an email account with the same Gmail address, Google sign-in opens that same account. Supabase links verified emails, so no second account is made.
 - Banned phones and second accounts on a phone are still stopped. The app checks the phone right after any sign-in (D-079).
 - Google sign-in works in the APK from /download (signed with the key above). A phone build made on your laptop uses a different key, so Google refuses it until you add that key's SHA-1 too (`keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android`).
+
+## 18. Payments inside the app and automatic prize payouts (2026-11-04, D-089, D-090)
+1. **Card form inside the app:** Supabase → Edge Functions → Secrets → add **PAYSTACK_PUBLIC_KEY**. Copy it from Paystack → Settings → API Keys & Webhooks: Test Public Key (`pk_test_…`) while testing, Live Public Key (`pk_live_…`) when you go live, the same mode as the secret key. It is a public key, but type it there yourself. Without it, card payments open Paystack's page in an in-app tab (as before).
+2. **Bank transfer and USSD** need "Pay with Transfer" and "USSD" turned on for your Paystack business (Paystack → Settings → Preferences → Payment channels). In test mode, Paystack shows a test bank account and test USSD codes.
+3. **Prize payouts (Transfers):**
+   - The business must be **registered** on Paystack (Starter businesses cannot send transfers).
+   - Turn off **transfer OTP**: Paystack → Settings → Preferences → Transfers → untick "Confirm transfers before sending" (Paystack sends an OTP to your phone to confirm the change).
+   - Keep enough money in the **Paystack balance** for the prizes (Paystack → Balance → Top up).
+   - The webhook you set already gets transfer events (same URL). Nothing else to add.
+   - Test mode: transfers to Paystack's test bank account succeed without real money.

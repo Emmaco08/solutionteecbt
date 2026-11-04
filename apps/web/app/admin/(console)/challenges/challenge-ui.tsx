@@ -16,7 +16,7 @@ export type ChallengeRow = {
   id: string; title: string; subtitle: string | null; kind: "cash" | "event" | "practice"; icon: string; exam_code: string | null;
   starts_at: string; ends_at: string; seconds_per_question: number; prizes: number[]; reward_text: string | null;
   premium_days: number; premium_top: number; allowed_exits: number; published: boolean; closed_at: string | null; xp_fee: number;
-  mode: "mixed" | "subject" | "fixed"; subject_id: number | null; per_level: Record<string, number>; same_questions: boolean; allow_review: boolean; allow_calculator: boolean; bg_light: string | null; bg_dark: string | null;
+  mode: "mixed" | "subject" | "fixed"; subject_id: number | null; per_level: Record<string, number>; same_questions: boolean; allow_review: boolean; allow_calculator: boolean; bg_light: string | null; bg_dark: string | null; max_players: number | null; min_win_pct: number | null;
 };
 export type QRow = { id: string; position: number; body: string; options: Record<string, string>; answer: string; subject_id: number | null; difficulty: string };
 export type Subject = { id: number; name: string };
@@ -106,6 +106,14 @@ export function ChallengeForm({ c, subjects }: { c?: ChallengeRow; subjects: Sub
           <input id="cPd" name="premium_days" type="number" min={0} max={366} defaultValue={c?.premium_days ?? 0} className={inputCls} /></div>
         <div className="space-y-1.5"><Label htmlFor="cPt">…for the top</Label>
           <input id="cPt" name="premium_top" type="number" min={0} max={100} defaultValue={c?.premium_top ?? 0} className={inputCls} /></div>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1.5"><Label htmlFor="cMax">Most players (0 = no limit)</Label>
+          <input id="cMax" name="max_players" type="number" min={0} max={1000000} defaultValue={c?.max_players ?? 0} className={inputCls} />
+          <span className="text-xs text-muted-foreground">When this many students have joined, the challenge shows &ldquo;Full&rdquo; and nobody else can start.</span></div>
+        <div className="space-y-1.5"><Label htmlFor="cMin">Minimum score to win (%)</Label>
+          <input id="cMin" name="min_win_pct" type="number" min={0} max={100} defaultValue={c?.min_win_pct ?? 0} className={inputCls} />
+          <span className="text-xs text-muted-foreground">0 = none. If 1st, 2nd or 3rd score below this, that place gets no prize (cash, Premium days or XP). Students see it before they join.</span></div>
       </div>
       <div className="space-y-2 rounded-xl border p-3">
         <b className="block text-sm">Background pictures (optional)</b>

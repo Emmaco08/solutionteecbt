@@ -142,7 +142,7 @@ void main() {
 
     expect(find.text('SolutionTee Premium'), findsOneWidget);
     expect(find.text('Until 1 Feb 2027'), findsOneWidget);
-    expect(find.text('Pay ₦3,500'), findsOneWidget);
+    expect(find.text('Pay ₦3,500 with card'), findsOneWidget);
 
     // A wrong code shows the server's reason; the right one lowers the total.
     await t.tap(find.text('Have a discount code?'));
@@ -155,9 +155,9 @@ void main() {
     await t.tap(find.text('Apply'));
     await t.pumpAndSettle();
     expect(find.text('TST20 applied'), findsOneWidget);
-    expect(find.text('Pay ₦2,800'), findsOneWidget);
+    expect(find.text('Pay ₦2,800 with card'), findsOneWidget);
 
-    await t.tap(find.text('Pay ₦2,800'));
+    await t.tap(find.text('Pay ₦2,800 with card'));
     await t.pump();
     await t.pump(const Duration(milliseconds: 500)); // the checking card spins, so no pumpAndSettle
     expect(pay.boughtWith, 'three_months:TST20');
@@ -187,14 +187,14 @@ void main() {
     );
     await t.pumpWidget(_app(router, FakeCodes()));
     await t.pumpAndSettle();
-    await t.tap(find.text('Pay ₦1,500'));
+    await t.tap(find.text('Pay ₦1,500 with card'));
     await t.pump();
     await t.pump(const Duration(milliseconds: 500));
     await t.tap(find.text('I have paid, check now'));
     await t.pump();
     await t.pump(const Duration(milliseconds: 500));
     expect(find.text('The payment did not go through.'), findsOneWidget);
-    expect(find.text('Pay ₦1,500'), findsOneWidget);
+    expect(find.text('Pay ₦1,500 with card'), findsOneWidget);
   });
 
   testWidgets('redeem a code: free days added, or the reason it failed', (t) async {

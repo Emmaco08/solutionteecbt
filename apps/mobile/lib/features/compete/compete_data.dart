@@ -76,6 +76,14 @@ class Challenge {
   String? get bgLight => (j['bg_light'] as String?)?.isNotEmpty == true ? j['bg_light'] as String : null;
   String? get bgDark => (j['bg_dark'] as String?)?.isNotEmpty == true ? j['bg_dark'] as String : null;
 
+  /// Player limit and minimum winning score (D-091); null = none.
+  int? get maxPlayers => (j['max_players'] as num?)?.toInt();
+  int? get minWinPct => ((j['min_win_pct'] as num?)?.toInt() ?? 0) > 0 ? (j['min_win_pct'] as num).toInt() : null;
+
+  /// Full: the limit is reached and this student has not joined yet.
+  bool get full => maxPlayers != null && joined >= maxPlayers! && mine == null;
+  int? get placesLeft => maxPlayers == null ? null : (maxPlayers! - joined).clamp(0, maxPlayers!);
+
   /// "Free to join" or "100 XP to join".
   String get entryText => xpFee > 0 ? '$xpFee XP to join' : 'Free to join';
 

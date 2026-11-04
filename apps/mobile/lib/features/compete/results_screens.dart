@@ -278,6 +278,18 @@ const banks = [
   'Zenith Bank',
 ];
 
+/// Nigerian banks from Paystack (name + code), so a prize can be sent by Paystack Transfer (D-090).
+/// Empty when it cannot load: the form then falls back to the short list above (paid by hand).
+final payoutBanksProvider = FutureProvider<List<({String name, String code})>>((ref) async {
+  try {
+    final r = await ref.read(supabaseProvider).functions.invoke('paystack', body: {'action': 'banks'}).timeout(const Duration(seconds: 20));
+    final list = (r.data as Map)['banks'] as List;
+    return [for (final b in list) (name: '${(b as Map)['name']}', code: '${b['code']}')];
+  } catch (_) {
+    return const [];
+  }
+});
+
 /// Claim the prize (prototype `claim-prize`): age, guardian for under-18, bank and the 10-digit account. Never a PIN.
 class ClaimPrizeScreen extends ConsumerStatefulWidget {
   const ClaimPrizeScreen({super.key, required this.id});
@@ -288,7 +300,9 @@ class ClaimPrizeScreen extends ConsumerStatefulWidget {
 
 class _ClaimPrizeScreenState extends ConsumerState<ClaimPrizeScreen> {
   bool _adult = true;
-  String? _bank;
+  String? _bank, _bankCode, _found, _findErr;
+  bool _finding = false;
+  int _lookup = 0;
   final _acc = TextEditingController(), _name = TextEditingController(), _gName = TextEditingController(), _gPhone = TextEditingController();
   String? _err;
   bool _busy = false;
@@ -314,11 +328,12 @@ class _ClaimPrizeScreenState extends ConsumerState<ClaimPrizeScreen> {
       await ref
           .read(supabaseProvider)
           .rpc(
-            'prize_claim',
+            _bankCode != null ? 'prize_claim_v2' : 'prize_claim',
             params: {
               'p_id': widget.id,
               'p_adult': _adult,
               'p_bank': _bank,
+              if (_bankCode != null) 'p_bank_code': _bankCode,
               'p_account_number': acc,
               'p_account_name': _name.text.trim(),
               'p_guardian_name': _adult ? null : _gName.text.trim(),
@@ -338,11 +353,75 @@ class _ClaimPrizeScreenState extends ConsumerState<ClaimPrizeScreen> {
     }
   }
 
+  /// Asks Paystack whose account it is (bank + 10 digits) and fills in the name. A help only: the server
+  /// checks the account again before any money is sent.
+  Future<void> _find() async {
+    final acc = _acc.text.replaceAll(RegExp(r'\s'), '');
+    if (_bankCode == null || !RegExp(r'^\d{10}$').hasMatch(acc)) return setState(() => (_found = null, _findErr = null));
+    final n = ++_lookup;
+    setState(() => (_finding = true, _findErr = null, _found = null));
+    try {
+      final r = await ref
+          .read(supabaseProvider)
+          .functions
+          .invoke('paystack', body: {'action': 'resolve', 'account_number': acc, 'bank_code': _bankCode})
+          .timeout(const Duration(seconds: 20));
+      if (!mounted || n != _lookup) return;
+      final name = '${(r.data as Map)['account_name'] ?? ''}';
+      setState(() => _found = name);
+      if (_name.text.trim().isEmpty) _name.text = name;
+    } on FunctionException catch (e) {
+      if (!mounted || n != _lookup) return;
+      final m = e.details is Map ? '${(e.details as Map)['error'] ?? ''}' : '';
+      setState(() => _findErr = m.isEmpty ? 'We could not check this account. Check the number and the bank.' : m);
+    } catch (_) {
+      if (mounted && n == _lookup) setState(() => _findErr = 'Could not check the account. Check your internet.');
+    } finally {
+      if (mounted && n == _lookup) setState(() => _finding = false);
+    }
+  }
+
+  Future<void> _pickBank(List<({String name, String code})> list) async {
+    final q = TextEditingController();
+    final picked = await showSheet<({String name, String code})>(
+      context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, set) {
+          final f = q.text.trim().toLowerCase();
+          final shown = [
+            for (final b in list)
+              if (f.isEmpty || b.name.toLowerCase().contains(f)) b,
+          ];
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Choose your bank', style: ctx.ty.h3),
+              const Gap(Space.s3),
+              Field(label: 'Search', controller: q, icon: PhosphorIcons.magnifyingGlass(), autofocus: true, onChanged: (_) => set(() {})),
+              const Gap(Space.s2),
+              for (final b in shown.take(60)) ListRow(title: b.name, onTap: () => Navigator.pop(ctx, b)),
+              if (shown.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(Space.s4),
+                  child: Text('No bank with that name.', style: ctx.ty.sm),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+    q.dispose();
+    if (picked == null || !mounted) return;
+    setState(() => (_bank = picked.name, _bankCode = picked.code));
+    _find();
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.c;
     final d = ref.watch(challengeResultProvider(widget.id)).value;
     final prize = (d?['mine'] is Map ? (d!['mine'] as Map)['prize'] as num? : null) ?? 0;
+    final paystackBanks = ref.watch(payoutBanksProvider).value ?? const [];
     return Scaffold(
       appBar: const TopBar(title: 'Get your prize'),
       body: ListView(
@@ -390,14 +469,48 @@ class _ClaimPrizeScreenState extends ConsumerState<ClaimPrizeScreen> {
           const Gap(Space.s4),
           Text('Bank', style: context.ty.label),
           const Gap(Space.s2),
-          DropdownButtonFormField<String>(
-            initialValue: _bank,
-            items: [for (final b in banks) DropdownMenuItem(value: b, child: Text(b))],
-            onChanged: (v) => setState(() => _bank = v),
-            decoration: const InputDecoration(hintText: 'Choose bank'),
-          ),
+          if (paystackBanks.isNotEmpty)
+            AppCard(
+              onTap: () => _pickBank(paystackBanks),
+              child: Row(
+                children: [
+                  Icon(PhosphorIcons.bank(PhosphorIconsStyle.fill), color: c.textMuted),
+                  const Gap(Space.s3),
+                  Expanded(child: Text(_bank ?? 'Choose your bank', style: _bank == null ? context.ty.body.col(c.textMuted) : context.ty.body.bold)),
+                  Icon(PhosphorIcons.caretDown(), size: 18, color: c.textSubtle),
+                ],
+              ),
+            )
+          else
+            DropdownButtonFormField<String>(
+              initialValue: _bank,
+              items: [for (final b in banks) DropdownMenuItem(value: b, child: Text(b))],
+              onChanged: (v) => setState(() => (_bank = v, _bankCode = null)),
+              decoration: const InputDecoration(hintText: 'Choose bank'),
+            ),
           const Gap(Space.s3),
-          Field(label: 'Account number', controller: _acc, keyboard: TextInputType.number, hint: '10 digits', maxLength: 10),
+          Field(
+            label: 'Account number',
+            controller: _acc,
+            keyboard: TextInputType.number,
+            hint: '10 digits',
+            maxLength: 10,
+            onChanged: (v) => v.replaceAll(RegExp(r'\s'), '').length == 10 ? _find() : setState(() => (_found = null, _findErr = null)),
+          ),
+          if (_finding || _found != null || _findErr != null) ...[
+            const Gap(Space.s2),
+            _finding
+                ? Row(
+                    children: [
+                      const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                      const Gap(Space.s2),
+                      Text('Checking the account…', style: context.ty.cap.col(c.textMuted)),
+                    ],
+                  )
+                : _found != null
+                ? InfoBanner(kind: BannerKind.ok, icon: PhosphorIcons.sealCheck(PhosphorIconsStyle.fill), child: Text('Account name: $_found'))
+                : ErrText(_findErr!),
+          ],
           const Gap(Space.s3),
           Field(label: 'Name on the account', controller: _name, help: _adult ? 'It must match your name.' : 'It must match your parent or guardian\'s name.'),
           if (_err != null) ...[const Gap(Space.s3), ErrText(_err!)],

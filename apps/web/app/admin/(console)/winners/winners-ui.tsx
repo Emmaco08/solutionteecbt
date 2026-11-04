@@ -7,10 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { ImageUpload } from "@/components/admin/image-upload";
 import { Pill, when } from "@/components/admin/ui";
-import { markPaid, rejectClaim, setWallPost } from "./actions";
+import { markPaid, payout, rejectClaim, setWallPost } from "./actions";
 
 type Claim = { id: string; amount: number; adult: boolean; guardian_name: string | null; guardian_phone: string | null; bank_name: string; account_number: string;
-  account_name: string; status: "submitted" | "paid" | "rejected"; admin_note: string | null; paid_at: string | null; created_at: string };
+  account_name: string; status: "submitted" | "paid" | "rejected"; admin_note: string | null; paid_at: string | null; created_at: string;
+  bank_code: string | null; verified_name: string | null; payout_status: "none" | "checked" | "sending" | "sent" | "failed" | "reversed";
+  payout_error: string | null; payout_at: string | null };
 export type ClaimRow = { entry_id: string; challenge: string; closed_at: string; rank: number; prize: number; name: string | null; state: string | null;
   flags: string[]; review: string | null; claim: Claim | null; on_wall: boolean };
 export type WallRow = { id: string; challenge_title: string; name: string; state: string | null; place: string; amount: number; receipt_path: string | null; note: string | null; published: boolean; created_at: string };
@@ -42,9 +44,10 @@ export function ClaimsList({ rows }: { rows: ClaimRow[] }) {
                 {!r.claim.adult ? <span className="sm:col-span-2"><span className="text-muted-foreground">Guardian:</span> {r.claim.guardian_name} · {r.claim.guardian_phone}</span> : null}
               </div>
               <p className="mt-2 text-xs text-muted-foreground">Check that the name on the account matches the winner (or their guardian) before you pay.</p>
+              <Payout claim={r.claim} winner={r.name} />
               {r.claim.status === "submitted" ? (
                 open === r.claim.id ? <PayForm claim={r.claim} onDone={() => setOpen(null)} /> : (
-                  <div className="mt-2 flex gap-2"><Button size="sm" onClick={() => setOpen(r.claim!.id)}>I have paid</Button><Reject id={r.claim.id} /></div>
+                  <div className="mt-2 flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => setOpen(r.claim!.id)}>I paid it myself</Button><Reject id={r.claim.id} /></div>
                 )
               ) : null}
             </div>
@@ -52,6 +55,46 @@ export function ClaimsList({ rows }: { rows: ClaimRow[] }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+/** Pay with Paystack (D-090): 1. check whose account it is, 2. send. Paystack's webhook marks it paid. */
+function Payout({ claim, winner }: { claim: Claim; winner: string | null }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const run = (step: "check" | "send" | "verify") => start(async () => {
+    const r = await payout(claim.id, step);
+    if (r.ok) toast.success(r.message ?? "Done"); else toast.error(r.error);
+    router.refresh();
+  });
+  const ps = claim.payout_status ?? "none";
+  if (claim.status !== "submitted" && ps !== "sent") return null;
+  if (!claim.bank_code) {
+    return <p className="mt-2 text-xs text-muted-foreground">Sent from an older app (bank typed by hand), so it cannot be paid with Paystack. Pay it yourself, then tap &ldquo;I paid it myself&rdquo;.</p>;
+  }
+  // A hint only: do the two names share a word (3+ letters)? The admin decides.
+  const words = (x?: string | null) => new Set((x ?? "").toLowerCase().split(/[^a-z]+/).filter((w) => w.length >= 3));
+  const same = (a?: string | null, b?: string | null) => [...words(a)].some((w) => words(b).has(w));
+  return (
+    <div className="mt-3 rounded-xl border bg-card p-3">
+      <b className="block text-sm">Pay with Paystack</b>
+      {claim.verified_name ? (
+        <p className="mt-1 text-sm">Paystack says the account is <b>{claim.verified_name}</b>
+          {same(claim.verified_name, claim.account_name) || same(claim.verified_name, winner) ? <Pill tone="ok">matches</Pill> : <Pill tone="warn">check the name</Pill>}</p>
+      ) : <p className="mt-1 text-xs text-muted-foreground">First check whose account it is. Paystack looks it up; nothing is sent.</p>}
+      {ps === "sending" ? <p className="mt-1 text-sm"><Pill tone="info">On its way</Pill> sent {when(claim.payout_at)}. Paystack confirms in a few minutes.</p> : null}
+      {ps === "sent" ? <p className="mt-1 text-sm"><Pill tone="ok">Sent</Pill> The winner was told.</p> : null}
+      {ps === "failed" || ps === "reversed" ? <p className="mt-1 text-sm text-error">{ps === "reversed" ? "Reversed by the bank" : "Not sent"}: {claim.payout_error}</p> : null}
+      <div className="mt-2 flex flex-wrap gap-2">
+        {ps === "none" || ps === "checked" || ps === "failed" ? <Button size="sm" variant="outline" disabled={pending} onClick={() => run("check")}>Check account</Button> : null}
+        {(ps === "checked" || ps === "failed") && claim.verified_name ? (
+          <Button size="sm" disabled={pending} onClick={() => { if (confirm(`Send ${naira(claim.amount)} to ${claim.verified_name} (${claim.bank_name} ${claim.account_number}) now?`)) run("send"); }}>
+            Send {naira(claim.amount)}
+          </Button>
+        ) : null}
+        {ps === "sending" ? <Button size="sm" variant="outline" disabled={pending} onClick={() => run("verify")}>Ask Paystack again</Button> : null}
+      </div>
+    </div>
   );
 }
 
