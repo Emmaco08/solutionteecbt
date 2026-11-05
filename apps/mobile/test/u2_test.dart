@@ -368,4 +368,24 @@ void main() {
     await t.pumpWidget(const SizedBox());
     await t.pump(const Duration(seconds: 2));
   });
+
+  testWidgets('"Cancelling payment…" has no yellow underline, even above a screen (phone test 2026-11-05)', (t) async {
+    await t.pumpWidget(
+      MaterialApp(
+        theme: buildTheme(Brightness.dark),
+        // Like the bank transfer screen: the card sits in a Stack above the Scaffold, not inside it.
+        home: const Stack(
+          children: [
+            Scaffold(),
+            Positioned.fill(child: PayBusyVeil(text: 'Cancelling payment…')),
+          ],
+        ),
+      ),
+    );
+    await t.pump(const Duration(milliseconds: 400));
+    final rich = t.widget<RichText>(find.descendant(of: find.byType(PayBusyVeil), matching: find.byType(RichText)).first);
+    expect(rich.text.style?.decoration, isNot(TextDecoration.underline));
+    await t.pumpWidget(const SizedBox());
+    await t.pump(const Duration(seconds: 1));
+  });
 }

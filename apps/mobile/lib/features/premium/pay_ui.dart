@@ -73,6 +73,7 @@ class PayPartnerLogo extends StatelessWidget {
 /// SolutionTee's icon and the partner's real logo, joined by a secure line with a light running along it; a lock in
 /// the middle turns into a tick when the step is ready. Under it, three steps tick off one by one:
 /// Secure connection → Opening OPay → Ready to pay. Follows light and dark mode; [still] stops every loop.
+/// (The sweeping progress bar under the steps was removed after the phone test, 2026-11-05.)
 class PayOpeningCover extends StatefulWidget {
   const PayOpeningCover({super.key, required this.via, required this.what, this.loaded = false, this.ready = false, this.still = false});
   final String via, what;
@@ -204,12 +205,6 @@ class _PayOpeningCoverState extends State<PayOpeningCover> with TickerProviderSt
                         ],
                       ),
                       const Gap(Space.s5),
-                      AnimatedOpacity(
-                        opacity: widget.ready ? 0 : 1,
-                        duration: still ? Duration.zero : Motion.fast,
-                        child: _RunBar(run: _run, still: still),
-                      ),
-                      const Gap(Space.s3),
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -548,42 +543,6 @@ class _StepRow extends StatelessWidget {
   }
 }
 
-/// A thin bar with a light sweeping across it.
-class _RunBar extends StatelessWidget {
-  const _RunBar({required this.run, required this.still});
-  final AnimationController run;
-  final bool still;
-  @override
-  Widget build(BuildContext context) {
-    final c = context.c;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(99),
-      child: SizedBox(
-        width: 168,
-        height: 4,
-        child: ColoredBox(
-          color: c.surfaceSunken,
-          child: still
-              ? null
-              : AnimatedBuilder(
-                  animation: run,
-                  builder: (_, _) => FractionalTranslation(
-                    translation: Offset(-1 + 2 * run.value, 0),
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [c.secondary.withValues(alpha: 0), c.secondary, Palette.gold400, Palette.gold400.withValues(alpha: 0)],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-        ),
-      ),
-    );
-  }
-}
-
 // ================================================================ "Leave this payment?" pop-up
 /// What the student chose in [confirmLeavePayment].
 enum LeaveChoice { stay, paid, leave }
@@ -807,7 +766,9 @@ class PayBusyVeil extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.c;
     final rm = context.reduceMotion;
-    return ColoredBox(
+    // Material: this card can sit above a screen's Scaffold, where text would otherwise get Flutter's yellow
+    // "no Material" underlines (phone test, 2026-11-05).
+    return Material(
       color: Colors.black.withValues(alpha: .45),
       child: Center(
         child: Container(
