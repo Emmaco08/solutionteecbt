@@ -455,6 +455,7 @@ class _BuyXpState extends ConsumerState<_BuyXp> with WidgetsBindingObserver {
     var bank = '737';
     final go = await showSheet<bool>(
       context,
+      closeButton: false, // like the plan sheet: swipe down or tap outside to close (owner, 2026-11-05)
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, set) => Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
