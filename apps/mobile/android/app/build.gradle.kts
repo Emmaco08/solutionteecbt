@@ -93,9 +93,9 @@ dependencies {
 }
 
 // The newest Google Mobile Ads SDK pulls androidx.lifecycle 2.11 (compose parts), which needs compileSdk 37; our
-// Android Gradle plugin supports 36. Keep lifecycle on 2.9.4 until the toolchain moves to 37 (big update 2, step B).
+// Android Gradle plugin supports 36. Keep lifecycle on 2.10.0 (what the app used before ads; forcing 2.9.4 is the likely cause of the start-up crash) until the toolchain moves to 37 (big update 2, step B).
 configurations.all {
     resolutionStrategy.eachDependency {
-        if (requested.group == "androidx.lifecycle") useVersion("2.9.4")
+        if (requested.group == "androidx.lifecycle") useVersion("2.10.0")
     }
 }
