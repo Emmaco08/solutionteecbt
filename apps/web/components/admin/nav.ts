@@ -14,6 +14,7 @@ export const NAV: NavGroup[] = [
       { href: "/admin/import", label: "CSV import", icon: "FileCsv" },
       { href: "/admin/passages", label: "Passages", icon: "Article" },
       { href: "/admin/exams", label: "Exams & years", icon: "Exam" },
+      { href: "/admin/blueprints", label: "Blueprints", icon: "Strategy", roles: ["super_admin", "admin", "editor"] },
       { href: "/admin/news", label: "News", icon: "Newspaper" },
       { href: "/admin/notifications", label: "Notifications", icon: "BellRinging", roles: ["super_admin", "admin", "editor"] },
       { href: "/admin/study", label: "Study content", icon: "Books" },

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:drift/drift.dart' show InsertMode, Value, BooleanExpressionOperators;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -10,6 +11,7 @@ import '../core/api.dart';
 import '../core/providers.dart';
 import '../features/cbt/scoring.dart';
 import 'db.dart';
+import 'paper_sections.dart';
 
 enum TestMode { full, subject, year, quick, topic }
 
@@ -170,9 +172,124 @@ class TestsRepo {
     return groupPassages(kept);
   }
 
+  /// Server call: the ordered question ids of one complete JAMB paper. Overridable in tests.
+  @visibleForTesting
+  Future<Map<String, dynamic>> rpcPaper(Map<String, dynamic> params) async {
+    final res = await _sb.rpc('cbt_paper', params: params).timeout(const Duration(seconds: 20));
+    return Map<String, dynamic>.from(res as Map);
+  }
+
+  /// Server call: exactly these questions (max 200). Overridable in tests.
+  @visibleForTesting
+  Future<List<Map<String, dynamic>>> rpcByIds(List<String> ids) async {
+    final res = await _sb.rpc('fetch_questions_by_ids', params: {'p_ids': ids}).timeout(const Duration(seconds: 20)) as List;
+    return [for (final e in res) Map<String, dynamic>.from(e as Map)];
+  }
+
+  /// Builds one subject's part of a JAMB test on the server (complete paper, English sections).
+  /// Returns null when the server cannot be reached, so the caller can use the local logic.
+  /// [offset] is where this subject's questions start in the whole attempt.
+  Future<({List<CachedQuestion> questions, List<PaperSection> sections})?> _serverPaper(
+    TestRequest r,
+    int sid, {
+    required int? year,
+    required int? count,
+    required int offset,
+  }) async {
+    final Map<String, dynamic> res;
+    try {
+      res = await rpcPaper({'p_exam': r.examId, 'p_subject': sid, 'p_year': year, 'p_count': count});
+    } on PostgrestException catch (e) {
+      if (e.message == 'locked') throw ApiError('This year is part of Premium.', status: 402);
+      if (e.message == 'banned') throw ApiError('This account has been suspended. Contact support.');
+      return null;
+    } catch (_) {
+      return null;
+    }
+    if (res['ok'] != true) {
+      switch (res['why']) {
+        case 'locked':
+          throw ApiError('This year is part of Premium.', status: 402);
+        case 'no_open_years':
+          throw ApiError('No open years for this subject yet.');
+        case 'login':
+          throw ApiError('Please log in again to start this test.');
+        default:
+          return null;
+      }
+    }
+    final ids = [for (final x in (res['ids'] as List? ?? const [])) '$x'];
+    if (ids.isEmpty) return null;
+
+    // Download only what is not on the phone yet.
+    final cached = {for (final q in await _db.questionsByIds(ids)) q.id: q};
+    final missing = [
+      for (final id in ids)
+        if (!cached.containsKey(id)) id,
+    ];
+    try {
+      for (var i = 0; i < missing.length; i += 200) {
+        final rows = await rpcByIds(missing.sublist(i, min(i + 200, missing.length)));
+        final fresh = [for (final q in rows) _fromMap(q, r.examId, sid, (q['year'] as num?)?.toInt() ?? 0)];
+        await _db.batch((b) {
+          for (final q in fresh) {
+            b.insert(
+              _db.cachedQuestions,
+              CachedQuestionsCompanion.insert(
+                id: q.id,
+                examId: q.examId,
+                subjectId: q.subjectId,
+                year: q.year,
+                number: Value(q.number),
+                body: q.body,
+                optionsJson: q.optionsJson,
+                answer: q.answer,
+                explanation: Value(q.explanation),
+                topic: Value(q.topic),
+                imagePath: Value(q.imagePath),
+                passageId: Value(q.passageId),
+                passageTitle: Value(q.passageTitle),
+                passageBody: Value(q.passageBody),
+                fetchedAt: Value(DateTime.now()),
+              ),
+              mode: InsertMode.insertOrReplace,
+            );
+          }
+        });
+        for (final q in fresh) {
+          cached[q.id] = q;
+        }
+      }
+    } on PostgrestException catch (e) {
+      if (e.message == 'locked') throw ApiError('This year is part of Premium.', status: 402);
+      return null;
+    } catch (_) {
+      return null;
+    }
+    final questions = [
+      for (final id in ids)
+        if (cached[id] != null) cached[id]!,
+    ];
+    if (questions.length != ids.length) return null; // incomplete download: use the local logic
+    final sections = [
+      for (final s in (res['sections'] as List? ?? const []))
+        if (s is Map)
+          PaperSection(
+            subjectId: sid,
+            key: '${s['key'] ?? ''}',
+            label: '${s['label'] ?? ''}',
+            instruction: '${s['instruction'] ?? ''}',
+            start: ((s['start'] as num?)?.toInt() ?? 0) + offset,
+            count: (s['count'] as num?)?.toInt() ?? 0,
+          ),
+    ];
+    return (questions: questions, sections: sections);
+  }
+
   /// Builds a test, saves it on the phone (so it can be resumed) and returns its id.
   Future<String> start(TestRequest r, {required int Function(int subjectId) countFor, required double minutesPerQuestion}) async {
     final picked = <CachedQuestion>[];
+    final sectionsBySubject = <String, List<Map<String, dynamic>>>{};
     for (final (si, sid) in r.subjectIds.indexed) {
       if (r.ids.isNotEmpty) {
         // AI tutor test: fetch each year's paper through the plan check and keep only the questions the tutor picked.
@@ -182,6 +299,26 @@ class TestsRepo {
         }
         picked.addAll(pickByIds(pool, r.ids));
         continue;
+      }
+      if (r.examCode == 'JAMB' && const [TestMode.full, TestMode.subject, TestMode.year, TestMode.quick].contains(r.mode)) {
+        // Complete paper built on the server (English follows the JAMB sections). Null = offline: use the local logic below.
+        final share = r.count ~/ r.subjectIds.length + (si < r.count % r.subjectIds.length ? 1 : 0);
+        final srv = await _serverPaper(
+          r,
+          sid,
+          year: r.mode == TestMode.quick ? null : r.year,
+          count: switch (r.mode) {
+            TestMode.year => null,
+            TestMode.quick => share,
+            _ => countFor(sid),
+          },
+          offset: picked.length,
+        );
+        if (srv != null) {
+          picked.addAll(srv.questions);
+          if (srv.sections.isNotEmpty) sectionsBySubject['$sid'] = [for (final s in srv.sections) s.toJson()];
+          continue;
+        }
       }
       final years = r.year != null ? [r.year!] : await openYears(r.examId, sid);
       if (years.isEmpty) throw ApiError('No open years for this subject yet.');
@@ -227,7 +364,14 @@ class TestsRepo {
             examId: r.examId,
             examCode: r.examCode,
             mode: r.mode.name,
-            configJson: jsonEncode({'subjects': r.subjectIds, 'year': r.year, 'topics': r.topics, 'timed': r.timed, 'title': r.title}),
+            configJson: jsonEncode({
+              'subjects': r.subjectIds,
+              'year': r.year,
+              'topics': r.topics,
+              'timed': r.timed,
+              'title': r.title,
+              if (sectionsBySubject.isNotEmpty) 'sections': sectionsBySubject,
+            }),
             questionIdsJson: jsonEncode(ids),
             limitSeconds: limit,
             startedAt: DateTime.now(),

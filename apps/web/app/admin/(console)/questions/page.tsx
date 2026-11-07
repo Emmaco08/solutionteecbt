@@ -28,12 +28,13 @@ async function Bank({ searchParams }: { searchParams: PageProps<"/admin/question
 
   let q = supabase
     .from("questions")
-    .select("id, body, year, number, status, difficulty, updated_at, exam_bodies(code), subjects(name), topics(name)", { count: "exact" })
+    .select("id, body, year, number, status, difficulty, section, section_source, updated_at, exam_bodies(code), subjects(name), topics(name)", { count: "exact" })
     .is("deleted_at", null);
   if (status) q = q.eq("status", status);
   if (s("exam")) q = q.eq("exam_id", Number(s("exam")));
   if (s("subject")) q = q.eq("subject_id", Number(s("subject")));
   if (s("year")) q = q.eq("year", Number(s("year")));
+  if (s("section")) q = s("section") === "none" ? q.is("section", null) : q.eq("section", s("section"));
   if (s("q")) q = q.ilike("body", `%${s("q").replace(/[%_]/g, "")}%`);
   const { data, count, error } = await q.order("updated_at", { ascending: false }).range((page - 1) * PAGE, page * PAGE - 1);
   if (error) return <ErrorState message={error.message} />;
@@ -49,7 +50,7 @@ async function Bank({ searchParams }: { searchParams: PageProps<"/admin/question
   );
   const total = counts.reduce((t, [, n]) => t + n, 0);
   const rows: QRow[] = (data ?? []).map((r) => ({
-    id: r.id, body: r.body, year: r.year, number: r.number, status: r.status, difficulty: r.difficulty,
+    id: r.id, body: r.body, year: r.year, number: r.number, status: r.status, difficulty: r.difficulty, section: r.section, sectionSource: r.section_source,
     exam: (r.exam_bodies as unknown as { code: string } | null)?.code ?? "", subject: (r.subjects as unknown as { name: string } | null)?.name ?? "",
     topic: (r.topics as unknown as { name: string } | null)?.name ?? "",
   }));
@@ -65,7 +66,7 @@ async function Bank({ searchParams }: { searchParams: PageProps<"/admin/question
           <Link href="/admin/questions/new" className={buttonVariants()}><Plus size={18} weight="bold" /> New question</Link>
         </> : null}
       />
-      <Filters exams={exams} subjects={subjects} current={{ q: s("q"), exam: s("exam"), subject: s("subject"), year: s("year"), status: status ?? "" }}
+      <Filters exams={exams} subjects={subjects} current={{ q: s("q"), exam: s("exam"), subject: s("subject"), year: s("year"), status: status ?? "", section: s("section") }}
         tabs={[["", "All", total], ...counts.map(([st, n]) => [st, STATUS_LABEL[st], n] as [string, string, number])]} />
       {rows.length ? (
         <QuestionTable rows={rows} editable={editable} savedId={s("saved")} page={page} pages={Math.max(1, Math.ceil((count ?? 0) / PAGE))} total={count ?? 0} />

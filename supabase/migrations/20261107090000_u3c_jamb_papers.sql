@@ -240,3 +240,18 @@ end;
 $$;
 revoke execute on function public.fetch_questions_by_ids(uuid[]) from public, anon;
 grant execute on function public.fetch_questions_by_ids(uuid[]) to authenticated;
+
+-- ---- Applied later the same day (migrations u3c_current_novel, u3c_cbt_paper_novel, u3c_import_section) ----
+-- The JAMB set novel (owner, 2026-11-07): The Lekki Headmaster. The novel section only uses questions on that book
+-- (the body mentions it, or a novel question from 2025 on). Admins change match/since on the Blueprints page.
+update public.exam_blueprints b set sections = (
+  select jsonb_agg(case when x ->> 'key' = 'novel'
+    then x || '{"label":"JAMB novel: The Lekki Headmaster","match":"lekki","since":2025,"instruction":"These questions are based on the JAMB recommended text, The Lekki Headmaster by Kabir Alabi Garba."}'::jsonb
+    else x end order by o)
+  from jsonb_array_elements(b.sections) with ordinality t(x, o))
+where b.subject_id = (select id from public.subjects where name = 'Use of English');
+update public.questions set section = 'novel', section_source = 'rule'
+where subject_id = (select id from public.subjects where name = 'Use of English') and body ~* 'lekki' and section_source is distinct from 'admin';
+-- paper_take gained (p_match text default null, p_since smallint default null): see the live definition; cbt_paper
+-- passes the section's match/since and calls it with all 11 arguments (null::text, null::smallint where unused).
+-- import_questions: after the insert, rows with a valid `section` set questions.section and section_source = 'import'.

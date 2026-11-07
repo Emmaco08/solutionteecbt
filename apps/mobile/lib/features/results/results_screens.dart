@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../ai/ai_screen.dart' show askAiAbout;
 import '../../core/providers.dart';
 import '../../data/db.dart';
+import '../../data/paper_sections.dart';
 import '../../data/tests_repo.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
@@ -35,6 +36,8 @@ class AttemptView {
 
   /// The last finished test of the same exam and mode (for "You beat your last score by …").
   final LocalAttempt? previous;
+
+  PaperSections get sections => PaperSections.fromConfigJson(a.configJson);
 
   Map<String, dynamic> get config => jsonDecode(a.configJson) as Map<String, dynamic>;
   String get title => (config['title'] as String?) ?? a.examCode;
@@ -527,7 +530,13 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                         title: 'Nothing to review here',
                         text: 'Pick another filter above.',
                       )
-                    : _ReviewBody(key: ValueKey(q.id), q: q, a: d.answers[q.id]),
+                    : _ReviewBody(
+                        key: ValueKey(q.id),
+                        q: q,
+                        a: d.answers[q.id],
+                        section: d.sections.at(d.questions.indexOf(q)),
+                        sectionPosition: d.sections.at(d.questions.indexOf(q)) == null ? '' : d.sections.position(d.sections.at(d.questions.indexOf(q))!),
+                      ),
               ),
               if (q != null)
                 Container(
@@ -561,9 +570,11 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
 }
 
 class _ReviewBody extends StatelessWidget {
-  const _ReviewBody({super.key, required this.q, required this.a});
+  const _ReviewBody({super.key, required this.q, required this.a, this.section, this.sectionPosition = ''});
   final CachedQuestion q;
   final LocalAnswer? a;
+  final PaperSection? section;
+  final String sectionPosition;
 
   @override
   Widget build(BuildContext context) {
@@ -594,6 +605,7 @@ class _ReviewBody extends StatelessWidget {
           ],
         ),
         const Gap(Space.s4),
+        if (section != null && section!.hasInstruction) ...[SectionCard(section: section!, position: sectionPosition), const Gap(Space.s3)],
         if (q.passageBody != null) ...[
           Container(
             padding: const EdgeInsets.all(Space.s4),

@@ -7,13 +7,15 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Pill } from "@/components/admin/ui";
 import { MathText } from "@/components/admin/math-text";
+import { ENGLISH_SECTIONS } from "@solutiontee/shared/csv";
 import { setStatus } from "./actions";
 
 export type QRow = {
   id: string; body: string; year: number; number: number | null; status: "draft" | "review" | "published";
-  difficulty: string | null; exam: string; subject: string; topic: string;
+  difficulty: string | null; section: string | null; sectionSource: string | null; exam: string; subject: string; topic: string;
 };
 const TONE = { draft: "neutral", review: "warn", published: "ok" } as const;
+const SECTION_LABEL: Record<string, string> = Object.fromEntries(ENGLISH_SECTIONS.map((x) => [x.key, x.label]));
 const LABEL = { draft: "Draft", review: "Needs review", published: "Published" } as const;
 
 export function QuestionTable({ rows, editable, savedId, page, pages, total }: {
@@ -26,6 +28,7 @@ export function QuestionTable({ rows, editable, savedId, page, pages, total }: {
   // Only rows on this page count as selected (filters or paging drop the rest).
   const picked = new Set([...pickedAll].filter((id) => rows.some((r) => r.id === id)));
   const [pending, start] = useTransition();
+  const showSection = rows.some((r) => r.subject === "Use of English");
 
   useEffect(() => { if (savedId) toast.success("Question saved."); }, [savedId]);
 
@@ -55,7 +58,7 @@ export function QuestionTable({ rows, editable, savedId, page, pages, total }: {
               <tr>
                 {editable ? <th className="w-10 px-4 py-2.5"><input type="checkbox" aria-label="Select all on this page" checked={all} onChange={() => setPicked(all ? new Set() : new Set(rows.map((r) => r.id)))} /></th> : null}
                 <th className="px-3 py-2.5">Question</th><th className="px-3 py-2.5">Exam</th><th className="px-3 py-2.5">Subject · topic</th>
-                <th className="px-3 py-2.5">Level</th><th className="px-3 py-2.5">Status</th><th className="w-12" />
+                <th className="px-3 py-2.5">Level</th>{showSection ? <th className="px-3 py-2.5">Section</th> : null}<th className="px-3 py-2.5">Status</th><th className="w-12" />
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -68,6 +71,11 @@ export function QuestionTable({ rows, editable, savedId, page, pages, total }: {
                   <td className="whitespace-nowrap px-3 py-3"><b>{r.exam}</b> <span className="text-muted-foreground">{r.year}{r.number ? ` · Q${r.number}` : ""}</span></td>
                   <td className="px-3 py-3">{r.subject}<div className="text-xs text-muted-foreground">{r.topic || "No topic"}</div></td>
                   <td className="px-3 py-3 capitalize">{r.difficulty ?? "—"}</td>
+                  {showSection ? (
+                    <td className="whitespace-nowrap px-3 py-3">
+                      {r.subject === "Use of English" ? (r.section ? <>{SECTION_LABEL[r.section] ?? r.section}{r.sectionSource === "ai" || r.sectionSource === "rule" ? <span className="ml-1.5 rounded-full bg-sunken px-1.5 py-px text-[10px] font-bold uppercase text-muted-foreground">{r.sectionSource === "ai" ? "AI" : "Rule"}</span> : null}</> : <span className="text-muted-foreground">Not sorted</span>) : "—"}
+                    </td>
+                  ) : null}
                   <td className="px-3 py-3"><Pill tone={TONE[r.status]}>{LABEL[r.status]}</Pill></td>
                   <td className="px-2 py-3"><Link href={`/admin/questions/${r.id}`} aria-label="Edit question" className="grid size-9 place-items-center rounded-full hover:bg-muted"><PencilSimple size={18} /></Link></td>
                 </tr>

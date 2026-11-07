@@ -114,7 +114,8 @@ export function Importer({ exams, subjects, subjectHint }: { exams: string[]; su
                 </label>
               ))}
             </div>
-            <p className="mt-3 text-xs text-muted-foreground">Exams: {exams.join(", ")}. Subjects (code or name): {subjectHint}.</p>
+            <p className="mt-3 text-xs text-muted-foreground">Optional <b>section</b> (Use of English only): comprehension, cloze, novel, interpretation, antonyms, synonyms, grammar or oral. Leave it empty and the question is sorted automatically.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Exams: {exams.join(", ")}. Subjects (code or name): {subjectHint}.</p>
           </section>
 
           <section className="flex flex-wrap items-center gap-3 rounded-2xl border bg-card p-4">

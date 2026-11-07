@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/providers.dart';
 import '../../core/secure_screen.dart';
 import '../../data/db.dart';
+import '../../data/paper_sections.dart';
 import '../../data/tests_repo.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
@@ -41,6 +42,7 @@ class CbtScreen extends ConsumerStatefulWidget {
 class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserver {
   LocalAttempt? _a;
   List<_Q> _qs = [];
+  PaperSections _sections = const PaperSections.empty();
   final Map<String, String> _answers = {};
   final Set<String> _flags = {};
   final Map<int, String> _subjectNames = {};
@@ -97,6 +99,7 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
       )..start();
       setState(() {
         _a = a;
+        _sections = PaperSections.fromConfigJson(a.configJson);
         _qs = [for (final r in rows) _Q(r)];
         _i = a.currentIndex.clamp(0, _qs.isEmpty ? 0 : _qs.length - 1);
         _shownAt = DateTime.now();
@@ -347,6 +350,74 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
             Text(label, style: ctx.ty.cap.col(c.textMuted)),
           ],
         );
+        Widget tile(int k) => Builder(
+          builder: (context) {
+            final q = _qs[idx[k]].row.id;
+            final ans = _answers.containsKey(q), flag = _flags.contains(q), cur = idx[k] == _i;
+            return Semantics(
+              button: true,
+              label: 'Question ${k + 1}${ans ? ', answered' : ''}${flag ? ', flagged' : ''}',
+              child: GestureDetector(
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _go(idx[k]);
+                },
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: ans ? c.answered : c.surface,
+                        borderRadius: BorderRadius.circular(9),
+                        border: cur
+                            ? Border.all(color: c.current, width: 2.5)
+                            : ans
+                            ? null
+                            : Border.all(color: c.unanswered, width: 1.5),
+                      ),
+                      child: Text('${k + 1}', style: ctx.ty.sm.bold.tnum.col(ans ? Colors.white : (cur ? c.text : c.textMuted))),
+                    ),
+                    if (flag)
+                      Positioned(
+                        top: -3,
+                        right: -3,
+                        child: Container(
+                          width: 10,
+                          height: 10,
+                          decoration: BoxDecoration(
+                            color: c.flagged,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: c.surface, width: 2),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+        Widget grid(List<Widget> children) => GridView.count(
+          crossAxisCount: 8,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 7,
+          crossAxisSpacing: 7,
+          children: children,
+        );
+        // Group the numbers by section (JAMB English); other papers stay one grid.
+        final groups = <({String label, int from, int to})>[];
+        for (var k = 0; k < idx.length; k++) {
+          final sec = _sections.at(idx[k]);
+          final label = sec == null || sec.key == 'more' ? 'More questions' : sec.label;
+          if (groups.isNotEmpty && groups.last.label == label) {
+            groups[groups.length - 1] = (label: label, from: groups.last.from, to: k + 1);
+          } else {
+            groups.add((label: label, from: k, to: k + 1));
+          }
+        }
+        if (_sections.isEmpty) groups.clear();
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -368,64 +439,17 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
               ],
             ),
             const Gap(Space.s4),
-            GridView.count(
-              crossAxisCount: 8,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 7,
-              crossAxisSpacing: 7,
-              children: [
-                for (var k = 0; k < idx.length; k++)
-                  Builder(
-                    builder: (context) {
-                      final q = _qs[idx[k]].row.id;
-                      final ans = _answers.containsKey(q), flag = _flags.contains(q), cur = idx[k] == _i;
-                      return Semantics(
-                        button: true,
-                        label: 'Question ${k + 1}${ans ? ', answered' : ''}${flag ? ', flagged' : ''}',
-                        child: GestureDetector(
-                          onTap: () {
-                            Navigator.pop(ctx);
-                            _go(idx[k]);
-                          },
-                          child: Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              Container(
-                                alignment: Alignment.center,
-                                decoration: BoxDecoration(
-                                  color: ans ? c.answered : c.surface,
-                                  borderRadius: BorderRadius.circular(9),
-                                  border: cur
-                                      ? Border.all(color: c.current, width: 2.5)
-                                      : ans
-                                      ? null
-                                      : Border.all(color: c.unanswered, width: 1.5),
-                                ),
-                                child: Text('${k + 1}', style: ctx.ty.sm.bold.tnum.col(ans ? Colors.white : (cur ? c.text : c.textMuted))),
-                              ),
-                              if (flag)
-                                Positioned(
-                                  top: -3,
-                                  right: -3,
-                                  child: Container(
-                                    width: 10,
-                                    height: 10,
-                                    decoration: BoxDecoration(
-                                      color: c.flagged,
-                                      shape: BoxShape.circle,
-                                      border: Border.all(color: c.surface, width: 2),
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-              ],
-            ),
+            if (groups.length > 1)
+              for (final g in groups) ...[
+                Padding(
+                  padding: const EdgeInsets.only(bottom: Space.s2),
+                  child: Text(g.label, style: ctx.ty.cap.bold.col(c.textMuted)),
+                ),
+                grid([for (var k = g.from; k < g.to; k++) tile(k)]),
+                const Gap(Space.s3),
+              ]
+            else
+              grid([for (var k = 0; k < idx.length; k++) tile(k)]),
             const Gap(Space.s6),
             Btn(
               'Submit exam',
@@ -524,6 +548,7 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
     final name = (ref.watch(profileProvider).value?['full_name'] as String?) ?? 'Candidate';
     final title = ((jsonDecode(_a!.configJson) as Map)['title'] as String?) ?? _a!.examCode;
     final rm = context.reduceMotion;
+    final sectionHere = _sections.at(_i);
     // Passage: questions that share it, numbered within the subject.
     final passageNums = q.row.passageId == null
         ? const <int>[]
@@ -750,9 +775,16 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
                         const Spacer(),
                         flagged
                             ? Pill('Flagged', kind: BadgeKind.warning, icon: PhosphorIcons.flag(PhosphorIconsStyle.fill))
-                            : Text(_short(q.row.subjectId), style: context.ty.cap.col(c.textMuted)),
+                            : Text(
+                                sectionHere != null && sectionHere.hasInstruction ? sectionHere.label : _short(q.row.subjectId),
+                                style: context.ty.cap.col(c.textMuted),
+                              ),
                       ],
                     ),
+                    if (sectionHere != null && sectionHere.start == _i && sectionHere.hasInstruction) ...[
+                      const Gap(Space.s3),
+                      SectionCard(section: sectionHere, position: _sections.position(sectionHere)),
+                    ],
                     const Gap(Space.s3),
                     _swap(
                       rm,
@@ -826,6 +858,45 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
   }
 
   Widget _swap(bool rm, Widget w) => rm ? w : w.animate(key: ValueKey(_i)).fadeIn(duration: Motion.base).slideX(begin: .05, curve: Motion.out);
+}
+
+/// Small card above the first question of a paper section: "Section 5 of 8 · Antonyms" and the instruction.
+/// Styled like the passage card.
+class SectionCard extends StatelessWidget {
+  const SectionCard({super.key, required this.section, required this.position});
+  final PaperSection section;
+  final String position;
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    return Semantics(
+      container: true,
+      label: '$position, ${section.label}. ${section.instruction}',
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(Space.s3),
+        decoration: BoxDecoration(
+          color: c.surfaceAlt,
+          borderRadius: BorderRadius.circular(Radii.md),
+          border: Border.all(color: c.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(PhosphorIcons.article(PhosphorIconsStyle.fill), size: 16, color: c.text),
+                const SizedBox(width: 6),
+                Expanded(child: Text('$position · ${section.label}', style: context.ty.sm.bold)),
+              ],
+            ),
+            const Gap(Space.s1),
+            Text(section.instruction, style: context.ty.sm.col(c.textMuted)),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 enum OptState { none, selected, right, wrong }

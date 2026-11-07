@@ -5,7 +5,7 @@ import { z } from "zod";
 import { requireStaff, canEditContent } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { friendlyError, type ActionResult } from "@/lib/result";
-import { latexProblem } from "@solutiontee/shared/csv";
+import { latexProblem, SECTION_KEYS } from "@solutiontee/shared/csv";
 
 const STATUSES = ["draft", "review", "published"] as const;
 
@@ -41,6 +41,8 @@ const QuestionSchema = z
     difficulty: z.enum(["easy", "medium", "hard"]).optional().or(z.literal("").transform(() => undefined)),
     image_path: z.string().trim().max(300).optional(),
     status: z.enum(STATUSES),
+    section: z.string().trim().optional().refine((v) => !v || SECTION_KEYS.includes(v), "Choose a section from the list"),
+    section_orig: z.string().trim().optional(),
   })
   .refine((q) => q.answer !== "E" || Boolean(q.E), { message: "The answer is E but option E is empty", path: ["answer"] });
 
@@ -82,6 +84,10 @@ export async function saveQuestion(_prev: SaveState, form: FormData): Promise<Sa
     body: q.body, options, answer: q.answer, explanation: q.explanation || null, difficulty: q.difficulty ?? null,
     image_path: q.image_path || null, status: q.status,
   };
+  // Only an admin's own change marks the section as "admin" (so the sorter never overwrites it).
+  if (q.section !== undefined && (q.section ?? "") !== (q.section_orig ?? "")) {
+    Object.assign(row, q.section ? { section: q.section, section_source: "admin" } : { section: null, section_source: null });
+  }
   const res = q.id
     ? await supabase.from("questions").update(row).eq("id", q.id).select("id").single()
     : await supabase.from("questions").insert(row).select("id").single();

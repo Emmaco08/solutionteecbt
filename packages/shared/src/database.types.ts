@@ -1022,6 +1022,51 @@ export type Database = {
         }
         Relationships: []
       }
+      exam_blueprints: {
+        Row: {
+          exam_id: number
+          id: number
+          sections: Json
+          subject_id: number | null
+          total: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          exam_id: number
+          id?: number
+          sections?: Json
+          subject_id?: number | null
+          total: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          exam_id?: number
+          id?: number
+          sections?: Json
+          subject_id?: number | null
+          total?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_blueprints_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exam_bodies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_blueprints_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exam_configs: {
         Row: {
           exam_id: number
@@ -2055,6 +2100,8 @@ export type Database = {
           number: number | null
           options: Json
           passage_id: string | null
+          section: string | null
+          section_source: string | null
           status: Database["public"]["Enums"]["content_status"]
           subject_id: number
           topic_id: number | null
@@ -2078,6 +2125,8 @@ export type Database = {
           number?: number | null
           options: Json
           passage_id?: string | null
+          section?: string | null
+          section_source?: string | null
           status?: Database["public"]["Enums"]["content_status"]
           subject_id: number
           topic_id?: number | null
@@ -2101,6 +2150,8 @@ export type Database = {
           number?: number | null
           options?: Json
           passage_id?: string | null
+          section?: string | null
+          section_source?: string | null
           status?: Database["public"]["Enums"]["content_status"]
           subject_id?: number
           topic_id?: number | null

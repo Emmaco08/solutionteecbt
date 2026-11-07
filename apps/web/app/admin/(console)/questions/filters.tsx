@@ -2,13 +2,14 @@
 import { useEffect, useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { MagnifyingGlass, SpinnerGap } from "@phosphor-icons/react";
+import { ENGLISH_SECTIONS } from "@solutiontee/shared/csv";
 import { cn } from "@/lib/utils";
 
 type Opt = { id: number; name?: string; code?: string };
 
 /** Search box, exam/subject/year selects and status tabs. Everything lives in the URL so links can be shared. */
 export function Filters({ exams, subjects, current, tabs }: {
-  exams: Opt[]; subjects: Opt[]; current: Record<"q" | "exam" | "subject" | "year" | "status", string>; tabs: [string, string, number][];
+  exams: Opt[]; subjects: Opt[]; current: Record<"q" | "exam" | "subject" | "year" | "status" | "section", string>; tabs: [string, string, number][];
 }) {
   const router = useRouter();
   const path = usePathname();
@@ -57,6 +58,13 @@ export function Filters({ exams, subjects, current, tabs }: {
         <select aria-label="Year" className={sel} value={current.year} onChange={(e) => push({ year: e.target.value })}>
           <option value="">All years</option>{years.map((y) => <option key={y} value={y}>{y}</option>)}
         </select>
+        {subjects.find((x) => String(x.id) === current.subject)?.name === "Use of English" ? (
+          <select aria-label="JAMB section" className={sel} value={current.section} onChange={(e) => push({ section: e.target.value })}>
+            <option value="">All sections</option>
+            {ENGLISH_SECTIONS.map((x) => <option key={x.key} value={x.key}>{x.label}</option>)}
+            <option value="none">Not sorted</option>
+          </select>
+        ) : null}
       </div>
     </div>
   );

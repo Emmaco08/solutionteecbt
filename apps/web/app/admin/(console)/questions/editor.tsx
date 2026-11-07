@@ -9,12 +9,13 @@ import { Label } from "@/components/ui/label";
 import { MathText } from "@/components/admin/math-text";
 import { ImageUpload } from "@/components/admin/image-upload";
 import { cn } from "@/lib/utils";
+import { ENGLISH_SECTIONS } from "@solutiontee/shared/csv";
 import { saveQuestion, deleteQuestion, type SaveState } from "./actions";
 
 export type EditorQuestion = {
   id?: string; exam_id?: number; subject_id?: number; year?: number; number?: number | null; topic?: string; passage_id?: string | null;
   body?: string; options?: Record<string, string>; answer?: string; explanation?: string | null; difficulty?: string | null;
-  image_path?: string | null; status?: "draft" | "review" | "published";
+  image_path?: string | null; status?: "draft" | "review" | "published"; section?: string | null; section_source?: string | null;
 };
 type Opt = { id: number; code?: string; name: string };
 type PassageOpt = { id: string; label: string };
@@ -29,6 +30,8 @@ export function QuestionEditor({ q, exams, subjects, passages, topics, canDelete
   const [opts, setOpts] = useState<Record<string, string>>({ A: "", B: "", C: "", D: "", E: "", ...(q.options ?? {}) });
   const [answer, setAnswer] = useState(q.answer ?? "");
   const [explanation, setExplanation] = useState(q.explanation ?? "");
+  const [subjectId, setSubjectId] = useState(String(q.subject_id ?? ""));
+  const isEnglish = subjects.find((s) => String(s.id) === subjectId)?.name === "Use of English";
   const [deleting, startDelete] = useTransition();
   const err = state.fieldErrors ?? {};
 
@@ -52,7 +55,7 @@ export function QuestionEditor({ q, exams, subjects, passages, topics, canDelete
                 <option value="" disabled>Choose…</option>{exams.map((e) => <option key={e.id} value={e.id}>{e.code}</option>)}
               </select></div>
             <div className="space-y-1.5"><Label htmlFor="subject_id">Subject</Label>
-              <select id="subject_id" name="subject_id" defaultValue={q.subject_id ?? ""} className={cn(field, err.subject_id && "border-error")} required>
+              <select id="subject_id" name="subject_id" value={subjectId} onChange={(e) => setSubjectId(e.target.value)} className={cn(field, err.subject_id && "border-error")} required>
                 <option value="" disabled>Choose…</option>{subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select></div>
             <div className="space-y-1.5"><Label htmlFor="year">Year</Label>
@@ -112,6 +115,18 @@ export function QuestionEditor({ q, exams, subjects, passages, topics, canDelete
             <select id="difficulty" name="difficulty" defaultValue={q.difficulty ?? ""} className={field}>
               <option value="">Not set</option><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option>
             </select></div>
+          {isEnglish ? (
+            <div className="space-y-1.5 sm:col-span-2"><Label htmlFor="section">JAMB section</Label>
+              <input type="hidden" name="section_orig" value={q.section ?? ""} />
+              <select id="section" name="section" defaultValue={q.section ?? ""} className={cn(field, err.section && "border-error")}>
+                <option value="">Not sorted</option>
+                {ENGLISH_SECTIONS.map((x) => <option key={x.key} value={x.key}>{x.label}</option>)}
+              </select>
+              <p className="text-xs text-muted-foreground">
+                {q.section_source === "rule" || q.section_source === "ai" ? `Sorted automatically (${q.section_source === "ai" ? "AI" : "rules"}). Pick a section to set it yourself.` : "Decides where this question sits in a JAMB English paper."}
+              </p>
+              {err.section ? <p className="text-xs font-bold text-error">{err.section}</p> : null}</div>
+          ) : null}
           <div className="space-y-1.5 sm:col-span-2"><Label htmlFor="passage_id">Comprehension passage</Label>
             <select id="passage_id" name="passage_id" defaultValue={q.passage_id ?? ""} className={field}>
               <option value="">No passage</option>{passages.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}

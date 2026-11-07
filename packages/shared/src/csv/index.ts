@@ -7,11 +7,24 @@ import Papa from 'papaparse';
 export const CSV_COLUMNS = [
   'exam', 'year', 'subject', 'number', 'passage_id', 'question',
   'option_a', 'option_b', 'option_c', 'option_d', 'option_e',
-  'answer', 'explanation', 'topic', 'difficulty', 'image_url',
+  'answer', 'explanation', 'topic', 'difficulty', 'image_url', 'section',
 ] as const;
 export type CsvColumn = (typeof CSV_COLUMNS)[number];
 export const REQUIRED_COLUMNS: CsvColumn[] = ['exam', 'year', 'subject', 'question', 'option_a', 'option_b', 'option_c', 'option_d', 'answer'];
 export const MAX_ROWS = 5000;
+
+/** JAMB Use of English sections (optional `section` column; empty = sorted automatically). */
+export const ENGLISH_SECTIONS = [
+  { key: 'comprehension', label: 'Comprehension passage' },
+  { key: 'cloze', label: 'Cloze passage' },
+  { key: 'novel', label: 'JAMB novel' },
+  { key: 'interpretation', label: 'Sentence interpretation' },
+  { key: 'antonyms', label: 'Antonyms' },
+  { key: 'synonyms', label: 'Synonyms' },
+  { key: 'grammar', label: 'Basic grammar' },
+  { key: 'oral', label: 'Oral English' },
+] as const;
+export const SECTION_KEYS: string[] = ENGLISH_SECTIONS.map((s) => s.key);
 
 export type ImportRow = Record<CsvColumn, string>;
 export type Issue = { row: number; column?: CsvColumn; message: string };
@@ -35,7 +48,7 @@ export function csvTemplate(): string {
   const example: Partial<ImportRow> = {
     exam: 'JAMB', year: '2001', subject: 'mth', number: '7', question: 'If $\\log_{10} 2 = 0.3010$, evaluate $\\log_{10} 4.5$',
     option_a: '0.6532', option_b: '0.6990', option_c: '0.6532 + 0.01', option_d: '0.9542', answer: 'A',
-    explanation: '$\\log 4.5 = \\log 9 - \\log 2 = 2(0.4771) - 0.3010 = 0.6532$', topic: 'Logarithms', difficulty: 'medium',
+    explanation: '$\\log 4.5 = \\log 9 - \\log 2 = 2(0.4771) - 0.3010 = 0.6532$', topic: 'Logarithms', difficulty: 'medium', section: '',
   };
   return Papa.unparse({ fields: [...CSV_COLUMNS], data: [CSV_COLUMNS.map((c) => example[c] ?? '')] });
 }
@@ -46,7 +59,7 @@ const ALIASES: Record<string, CsvColumn> = {
   a: 'option_a', b: 'option_b', c: 'option_c', d: 'option_d', e: 'option_e', optiona: 'option_a', optionb: 'option_b',
   optionc: 'option_c', optiond: 'option_d', optione: 'option_e', correct: 'answer', correct_answer: 'answer', key: 'answer',
   solution: 'explanation', level: 'difficulty', image: 'image_url', image_key: 'image_url', no: 'number', question_number: 'number',
-  passage: 'passage_id',
+  passage: 'passage_id', jamb_section: 'section', english_section: 'section',
 };
 const norm = (h: string) => h.trim().toLowerCase().replace(/[\s-]+/g, '_').replace(/^﻿/, '');
 
@@ -83,6 +96,7 @@ export function applyMapping(records: Record<string, string>[], mapping: Partial
     row.exam = row.exam.toUpperCase();
     row.answer = row.answer.toUpperCase();
     row.difficulty = row.difficulty.toLowerCase();
+    row.section = row.section.toLowerCase();
     return row;
   });
 }
@@ -147,6 +161,7 @@ export function validateRows(rows: ImportRow[], cat: Catalogue): ValidationResul
     }
 
     if (r.difficulty && !['easy', 'medium', 'hard'].includes(r.difficulty)) err(row, 'difficulty', `difficulty "${r.difficulty}" must be easy, medium or hard`);
+    if (r.section && !SECTION_KEYS.includes(r.section)) err(row, 'section', `section "${r.section}" must be one of ${SECTION_KEYS.join(', ')} (or empty)`);
     if (r.passage_id && !UUID.test(r.passage_id)) err(row, 'passage_id', 'passage_id must be the passage ID copied from the admin');
     if (r.image_url && !IMAGE_KEY.test(r.image_url)) err(row, 'image_url', 'image_url must be an uploaded image key like q/jamb/2001/mth/7.webp');
     if (r.question.length > 20000) err(row, 'question', 'question is longer than 20,000 characters');
