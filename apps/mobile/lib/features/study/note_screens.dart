@@ -17,7 +17,7 @@ import '../../ui/kit.dart';
 import '../../widgets/note_markdown.dart';
 import '../../widgets/phosphor.g.dart';
 import '../../widgets/states.dart';
-import '../premium/paywall.dart';
+import '../premium/content_offer.dart';
 import 'study_widgets.dart';
 
 /// Lesson notes grouped by subject. Built lazily (hundreds of notes): only the rows on screen are made.
@@ -239,7 +239,15 @@ class _NoteScreenState extends ConsumerState<NoteScreen> {
                     'See Premium plans',
                     kind: BtnKind.accent,
                     leading: PhosphorIcons.crownSimple(PhosphorIconsStyle.fill),
-                    onPressed: () => showPaywall(context, reason: 'note'),
+                    onPressed: () => showContentOffer(
+                      context,
+                      kind: 'item',
+                      itemRef: widget.id,
+                      title: 'This lesson note',
+                      paywallReason: 'note',
+                      itemKind: 'note',
+                      onOpened: () => ref.invalidate(studyItemProvider(widget.id)),
+                    ),
                   ),
                 ),
               ),

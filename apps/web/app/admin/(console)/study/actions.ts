@@ -21,6 +21,9 @@ const Item = z.object({
   question_id: opt.pipe(z.string().uuid("The question id is not valid").nullable()),
   body: opt.pipe(z.string().max(60000).nullable()),
   is_free: z.enum(["on"]).optional(),
+  // How this item opens (D-106): empty = the kind's default (admin → How content opens).
+  access: z.enum(["", "default", "free", "premium", "ads", "pay"]).optional(),
+  ad_count: num, ad_hours: num, price_naira: num, pay_premium: z.enum(["on"]).optional(),
   status: z.enum(["draft", "review", "published"]),
   // files (keys come from our own upload endpoint)
   f360: opt, f360_size: num, f360_duration: num, f360_duration_old: num, f720: opt, f720_size: num,
@@ -81,7 +84,13 @@ export async function saveStudy(_p: StudyState, form: FormData): Promise<StudySt
     kind: v.kind, title: v.title, subtitle: v.subtitle, exam_id: v.exam_id, subject_id: v.subject_id, topic_id: v.topic_id,
     year: v.year, question_id: v.kind === "video_solution" ? v.question_id : null, body: v.body,
     data: data as Json, files: files as Json, is_free: v.is_free === "on", status: v.status, sort: v.sort ?? 0, updated_by: staff.id,
+    access: v.access ? v.access : null,
+    ad_count: v.access === "ads" && v.ad_count ? Math.min(Math.max(v.ad_count, 1), 20) : null,
+    ad_hours: v.access === "ads" && v.ad_hours != null ? Math.min(Math.max(v.ad_hours, 0), 720) : null,
+    price_kobo: v.access === "pay" && v.price_naira ? v.price_naira * 100 : null,
+    pay_premium: v.access === "pay" ? v.pay_premium === "on" : null,
   };
+  if (row.access === "pay" && (row.price_kobo == null || row.price_kobo < 5000)) return { error: "Set a price of at least ₦50 for “Pay for this item”." };
   const supabase = await createClient();
   const { error } = v.id ? await supabase.from("study_items").update(row).eq("id", v.id) : await supabase.from("study_items").insert(row);
   if (error) return { error: friendlyError(error) };

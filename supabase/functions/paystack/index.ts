@@ -3,6 +3,7 @@
 //   {action:"start", plan, code?, source?: "app"|"web", method?, bank?}
 //      → {free:true, expires_at} when a 100% code covers it, else the payment to open (below)
 //   {action:"start_xp", xp, source?: "app"|"web", method?, bank?}   an XP pack (D-084); the price comes from xp_pack_start()
+//   {action:"start_item", kind:"item"|"year", ref, source?, method?, bank?}   one study item or exam year (D-106); price from content_pay_start()
 //   method (D-089): "card" (default) → {reference, url, access_code, public_key?, amount_kobo}: the app opens Paystack's own
 //                   payment sheet inside the app with access_code (public_key is PAYSTACK_PUBLIC_KEY), or `url` in an in-app tab;
 //                   "transfer" → {reference, amount_kobo, transfer:{account_number, account_name, bank, expires_at}} (Charge API);
@@ -256,6 +257,19 @@ Deno.serve(async (req) => {
         return json({ error: message, code: r.error }, status);
       }
       return await openPayment(r, method, bank, { payment_id: r.payment_id, xp_pack: xp }, "XP pack", bankAcct);
+    }
+
+    if (action === "start_item") {
+      const kind = body.kind === "year" ? "year" : "item";
+      const ref = String(body.ref ?? "").slice(0, 80);
+      if (!/^[0-9a-f-]{36}$|^\d{1,3}:\d{4}$/.test(ref)) return json({ error: "Unknown item." }, 400);
+      const r = await rpc<Record<string, unknown>>("content_pay_start", { p_uid: user.id, p_kind: kind, p_ref: ref, p_source: body.source === "web" ? "web" : "app" });
+      if (!r.ok) {
+        const e = String(r.error ?? "");
+        const [status, message] = ERR[e] ?? (e === "bought" ? [409, "You already own this."] : [400, "This cannot be bought right now."]);
+        return json({ error: message, code: e }, status);
+      }
+      return await openPayment(r, method, bank, { payment_id: r.payment_id, item: `${kind}:${ref}` }, String(r.title ?? "Study item"), bankAcct);
     }
 
     if (action === "pay_banks") {

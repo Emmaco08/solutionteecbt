@@ -12,7 +12,7 @@ import '../../ui/kit.dart';
 import 'note_screens.dart' show NoteBody;
 import '../../widgets/phosphor.g.dart';
 import '../../widgets/states.dart';
-import '../premium/paywall.dart';
+import '../premium/content_offer.dart';
 import 'study_widgets.dart';
 
 /// Recommended novels (prototype `novels`): a featured text, then a grid of covers.
@@ -239,7 +239,15 @@ class _NovelScreenState extends ConsumerState<NovelScreen> {
                     'See Premium plans',
                     kind: BtnKind.accent,
                     leading: PhosphorIcons.crownSimple(PhosphorIconsStyle.fill),
-                    onPressed: () => showPaywall(context, reason: 'novel'),
+                    onPressed: () => showContentOffer(
+                      context,
+                      kind: 'item',
+                      itemRef: widget.id,
+                      title: 'This novel',
+                      paywallReason: 'novel',
+                      itemKind: 'novel',
+                      onOpened: () => ref.invalidate(studyItemProvider(widget.id)),
+                    ),
                   ),
                 ),
               ),

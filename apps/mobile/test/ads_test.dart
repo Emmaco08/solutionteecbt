@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:solutiontee_cbt/core/ads.dart';
 import 'package:solutiontee_cbt/core/house_ads.dart';
+import 'package:solutiontee_cbt/features/premium/content_offer.dart';
 import 'package:solutiontee_cbt/features/study/note_screens.dart' show NoteView;
 import 'package:solutiontee_cbt/widgets/note_markdown.dart' show NoteDoc;
 
@@ -186,5 +187,25 @@ void main() {
       if (House.pick('banner', list: [rare]) != null) taken++;
     }
     expect(taken, lessThan(40), reason: 'a 1% share leaves almost every slot to AdMob');
+  });
+
+  test('how locked content opens: watch, pay or only Premium, as the server says', () {
+    final watchItem = ContentOffer({'mode': 'ads', 'kind': 'note', 'ads': 3, 'hours': 0, 'ads_on': true, 'rewarded_left': 5, 'premium': false});
+    expect(watchItem.canWatch, isTrue);
+    expect(watchItem.rewardKind, 'item');
+    expect(watchItem.minutes, 0, reason: '0 hours = open for good');
+    expect(watchItem.canPay, isFalse);
+    final payItem = ContentOffer({'mode': 'pay', 'kind': 'lesson', 'price_kobo': 20000, 'premium': true, 'premium_pays': false});
+    expect(payItem.canPay, isFalse, reason: 'Premium already opens it');
+    expect(ContentOffer({'mode': 'pay', 'kind': 'lesson', 'price_kobo': 20000, 'premium': true, 'premium_pays': true}).canPay, isTrue);
+    expect(ContentOffer({'mode': 'pay', 'kind': 'lesson', 'price_kobo': 2000, 'premium': false}).canPay, isFalse, reason: 'below ₦50');
+    final defaultYear = ContentOffer({'mode': 'default', 'ads': 1, 'minutes': 60, 'ads_on': true, 'rewarded_left': 2});
+    expect(defaultYear.rewardKind, 'year');
+    expect(defaultYear.minutes, 60);
+    final defaultNote = ContentOffer({'mode': 'default', 'kind': 'note', 'ads_on': true, 'rewarded_left': 2}, itemKind: 'note');
+    expect(defaultNote.rewardKind, 'note');
+    final premiumOnly = ContentOffer({'mode': 'premium', 'kind': 'note', 'ads_on': true, 'rewarded_left': 2});
+    expect(premiumOnly.canWatch || premiumOnly.canPay, isFalse);
+    expect(ContentOffer({'mode': 'ads', 'kind': 'note', 'ads_on': true, 'rewarded_left': 0}).canWatch, isFalse, reason: 'no videos left today');
   });
 }

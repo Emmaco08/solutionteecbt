@@ -846,3 +846,19 @@ The owner asked to run the admin from Vercel instead of the laptop.
   list/save/delete/report functions (audit-logged). Files are uploaded to the private R2 bucket (pictures ≤ 2 MB,
   MP4 videos ≤ 60 MB, made "fast start").
 - **Report:** per campaign: views, clicks, click rate, students reached, per day and place, with a CSV for the brand.
+
+## D-106 — How Study content opens: Free, Premium, watch N ads, or pay per item (ads v2 part B4, 2026-11-07)
+- **Admin:** App control → How content opens: a rule for each kind (video solutions, video lessons, notes, novels,
+  documents) and for past-question years; a year can have its own rule; a single study item can have its own rule in
+  its edit page. Modes: as in Free vs Premium (unchanged behaviour), free for everyone, Premium only, free students
+  watch N rewarded videos to open it for H hours (0 = for good), or pay for that one item (Paystack, at least ₦50,
+  yours for good; Premium included unless "Premium students pay too").
+- **Server:** `study_items.access/ad_count/ad_hours/price_kobo/pay_premium`, `year_access`, `content_purchases`,
+  `payments.item_kind/item_ref`. `private.study_open(kind, is_free, id)` (the item's rule first) now guards the
+  catalogue, the item, files, note pictures; `private.year_open` checks `year_override` first. Watching counts toward
+  `ad_rewards` kind `item`/`year` (need and minutes from `reward_rule`). Paying: `content_pay_start` (service role,
+  the server's price) → Paystack (`paystack` Edge Function v13, action `start_item`) → `finish_payment` adds the
+  purchase. `content_offer` tells the app what a locked item or year offers.
+- **App:** a locked item/year opens a "How to open it" sheet: watch (with progress), pay (all Paystack ways), or
+  Premium; it opens the content once the server says so.
+- **Known gap:** the admin Payments list shows no plan name for an item payment (the timeline note says what it was).

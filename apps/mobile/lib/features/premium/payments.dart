@@ -275,6 +275,18 @@ class PaystackProvider implements PaymentProvider {
     }
   }
 
+  /// One study item or exam year (D-106): the server sets the price from the admin's settings; yours for good.
+  Future<PayResult> buyItem(String kind, String itemRef, {String? channel}) async {
+    try {
+      return await openResult(
+        await _call({'action': 'start_item', 'kind': kind, 'ref': itemRef, 'source': 'app', ...methodBody(channel)}),
+        web: channel == 'page',
+      );
+    } on PayFailed catch (e) {
+      return e;
+    }
+  }
+
   /// An XP pack (D-084): the server sets the price from the admin's packs; paid like a plan.
   Future<PayResult> buyXp(int xp, {String? channel}) async {
     try {

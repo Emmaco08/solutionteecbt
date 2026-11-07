@@ -21,6 +21,7 @@ export type StudyItem = {
   id?: string; kind: StudyKind; title?: string; subtitle?: string | null; exam_id?: number | null; subject_id?: number | null; topic_id?: number | null;
   year?: number | null; question_id?: string | null; body?: string | null; data?: Record<string, unknown>; files?: Record<string, unknown>;
   is_free?: boolean; status?: string; sort?: number;
+  access?: string | null; ad_count?: number | null; ad_hours?: number | null; price_kobo?: number | null; pay_premium?: boolean | null;
 };
 
 const area = "w-full rounded-xl border border-input bg-card px-3 py-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
@@ -138,6 +139,7 @@ export function StudyForm({ item: it, exams, subjects, topics, canDelete }: { it
             <option value="draft">Draft</option><option value="review">In review</option><option value="published">Published</option>
           </select></div>
         <label className="flex items-center justify-between gap-3 text-sm"><span>Free for everyone<span className="block text-xs text-muted-foreground">{isVideo ? "Off = Premium only. On = every student can watch this video." : "Off = Premium only. Free users also need this section on in Free vs Premium."}</span></span><Switch name="is_free" defaultChecked={it.is_free} /></label>
+        <AccessFields it={it} />
         {state.error ? <p role="alert" className="rounded-xl bg-error-soft px-3 py-2 text-sm text-on-error-soft">{state.error}</p> : null}
         <div className="flex gap-2">
           <Button type="submit" disabled={saving} className="grow">{saving ? <SpinnerGap size={16} className="animate-spin" /> : null} Save</Button>
@@ -151,5 +153,35 @@ export function StudyForm({ item: it, exams, subjects, topics, canDelete }: { it
         ) : null}
       </aside>
     </form>
+  );
+}
+
+/** How this item opens (D-106): the kind's default, free, Premium, watch N videos, or pay for this one item. */
+function AccessFields({ it }: { it: StudyItem }) {
+  const [mode, setMode] = useState(it.access ?? "");
+  return (
+    <div className="space-y-2 rounded-xl bg-sunken p-3">
+      <Label htmlFor="access">How students open it</Label>
+      <select id="access" name="access" value={mode} onChange={(e) => setMode(e.target.value)} className={inputCls}>
+        <option value="">Like the others of this kind (How content opens)</option>
+        <option value="free">Free for everyone</option>
+        <option value="premium">Premium only</option>
+        <option value="ads">Free students watch videos to open it</option>
+        <option value="pay">Pay for this item (Paystack)</option>
+      </select>
+      {mode === "ads" ? (
+        <div className="flex gap-3">
+          <label className="text-xs">Videos to watch<input name="ad_count" type="number" min={1} max={20} defaultValue={it.ad_count ?? 1} className={`${inputCls} mt-1`} /></label>
+          <label className="text-xs">Open for hours (0 = for good)<input name="ad_hours" type="number" min={0} max={720} defaultValue={it.ad_hours ?? 24} className={`${inputCls} mt-1`} /></label>
+        </div>
+      ) : null}
+      {mode === "pay" ? (
+        <div className="space-y-2">
+          <label className="text-xs">Price (₦, at least 50)<input name="price_naira" type="number" min={50} defaultValue={it.price_kobo ? it.price_kobo / 100 : 200} className={`${inputCls} mt-1`} /></label>
+          <label className="flex items-center justify-between gap-3 text-xs"><span>Premium students pay too</span><Switch name="pay_premium" defaultChecked={!!it.pay_premium} /></label>
+        </div>
+      ) : null}
+      <p className="text-xs text-muted-foreground">Checked on the server. Premium opens it unless you turn on “Premium students pay too”.</p>
+    </div>
   );
 }

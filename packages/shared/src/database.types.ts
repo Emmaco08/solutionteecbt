@@ -1564,6 +1564,38 @@ export type Database = {
           },
         ]
       }
+      content_purchases: {
+        Row: {
+          created_at: string
+          kind: string
+          payment_id: string | null
+          ref: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          kind: string
+          payment_id?: string | null
+          ref: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          kind?: string
+          payment_id?: string | null
+          ref?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_purchases_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       device_accounts: {
         Row: {
           allowed: boolean
@@ -2347,6 +2379,8 @@ export type Database = {
           discount_kobo: number
           entitlement_id: string | null
           id: string
+          item_kind: string | null
+          item_ref: string | null
           list_kobo: number
           plan_id: number | null
           provider: string
@@ -2371,6 +2405,8 @@ export type Database = {
           discount_kobo?: number
           entitlement_id?: string | null
           id?: string
+          item_kind?: string | null
+          item_ref?: string | null
           list_kobo: number
           plan_id?: number | null
           provider: string
@@ -2395,6 +2431,8 @@ export type Database = {
           discount_kobo?: number
           entitlement_id?: string | null
           id?: string
+          item_kind?: string | null
+          item_ref?: string | null
           list_kobo?: number
           plan_id?: number | null
           provider?: string
@@ -3154,6 +3192,9 @@ export type Database = {
       }
       study_items: {
         Row: {
+          access: string | null
+          ad_count: number | null
+          ad_hours: number | null
           body: string | null
           created_at: string
           created_by: string | null
@@ -3164,6 +3205,8 @@ export type Database = {
           id: string
           is_free: boolean
           kind: string
+          pay_premium: boolean | null
+          price_kobo: number | null
           question_id: string | null
           sort: number
           status: Database["public"]["Enums"]["content_status"]
@@ -3176,6 +3219,9 @@ export type Database = {
           year: number | null
         }
         Insert: {
+          access?: string | null
+          ad_count?: number | null
+          ad_hours?: number | null
           body?: string | null
           created_at?: string
           created_by?: string | null
@@ -3186,6 +3232,8 @@ export type Database = {
           id?: string
           is_free?: boolean
           kind: string
+          pay_premium?: boolean | null
+          price_kobo?: number | null
           question_id?: string | null
           sort?: number
           status?: Database["public"]["Enums"]["content_status"]
@@ -3198,6 +3246,9 @@ export type Database = {
           year?: number | null
         }
         Update: {
+          access?: string | null
+          ad_count?: number | null
+          ad_hours?: number | null
           body?: string | null
           created_at?: string
           created_by?: string | null
@@ -3208,6 +3259,8 @@ export type Database = {
           id?: string
           is_free?: boolean
           kind?: string
+          pay_premium?: boolean | null
+          price_kobo?: number | null
           question_id?: string | null
           sort?: number
           status?: Database["public"]["Enums"]["content_status"]
@@ -3489,6 +3542,47 @@ export type Database = {
           },
         ]
       }
+      year_access: {
+        Row: {
+          access: string
+          ad_count: number | null
+          ad_hours: number | null
+          exam_id: number
+          pay_premium: boolean | null
+          price_kobo: number | null
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          access: string
+          ad_count?: number | null
+          ad_hours?: number | null
+          exam_id: number
+          pay_premium?: boolean | null
+          price_kobo?: number | null
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          access?: string
+          ad_count?: number | null
+          ad_hours?: number | null
+          exam_id?: number
+          pay_premium?: boolean | null
+          price_kobo?: number | null
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "year_access_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exam_bodies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -3575,6 +3669,8 @@ export type Database = {
         Returns: undefined
       }
       admin_codes: { Args: never; Returns: Json }
+      admin_content_access: { Args: never; Returns: Json }
+      admin_content_access_save: { Args: { p_defaults: Json }; Returns: Json }
       admin_create_code_batch: {
         Args: {
           p_count: number
@@ -3690,6 +3786,18 @@ export type Database = {
       admin_xp_overview: { Args: never; Returns: Json }
       admin_xp_settings: { Args: { p: Json }; Returns: undefined }
       admin_xp_user: { Args: { p_query: string }; Returns: Json }
+      admin_year_access_save: {
+        Args: {
+          p_access: string
+          p_ads: number
+          p_exam: number
+          p_hours: number
+          p_premium_pays: boolean
+          p_price_kobo: number
+          p_year: number
+        }
+        Returns: Json
+      }
       admin_year_counts: {
         Args: { p_exam: number }
         Returns: {
@@ -3847,6 +3955,16 @@ export type Database = {
         Returns: Json
       }
       challenges_list: { Args: never; Returns: Json }
+      content_offer: { Args: { p_kind: string; p_ref: string }; Returns: Json }
+      content_pay_start: {
+        Args: {
+          p_kind: string
+          p_ref: string
+          p_source?: string
+          p_uid: string
+        }
+        Returns: Json
+      }
       device_appeal: {
         Args: { p_email: string; p_ids: string[]; p_reason: string }
         Returns: Json

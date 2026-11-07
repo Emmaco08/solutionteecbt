@@ -12,7 +12,7 @@ import '../../theme/tokens.g.dart';
 import '../../ui/kit.dart';
 import '../../widgets/phosphor.g.dart';
 import '../../widgets/states.dart';
-import '../premium/paywall.dart';
+import '../premium/content_offer.dart';
 import 'study_widgets.dart';
 
 /// Syllabus & brochure list (prototype `docs`). Free users see which documents are free; the rest open the paywall.
@@ -154,7 +154,18 @@ class _DocScreenState extends ConsumerState<DocScreen> {
                     'See Premium plans',
                     kind: BtnKind.accent,
                     leading: PhosphorIcons.crownSimple(PhosphorIconsStyle.fill),
-                    onPressed: () => showPaywall(context, reason: 'doc'),
+                    onPressed: () => showContentOffer(
+                      context,
+                      kind: 'item',
+                      itemRef: widget.id,
+                      title: 'This document',
+                      paywallReason: 'doc',
+                      itemKind: 'doc',
+                      onOpened: () {
+                        ref.invalidate(studyItemProvider(widget.id));
+                        _load();
+                      },
+                    ),
                   ),
                 ),
               ),

@@ -16,7 +16,7 @@ import '../../ui/kit.dart';
 import '../../widgets/math_text.dart';
 import '../../widgets/phosphor.g.dart';
 import '../../widgets/states.dart';
-import '../premium/paywall.dart';
+import '../premium/content_offer.dart';
 import 'study_player.dart';
 import 'study_widgets.dart';
 
@@ -287,7 +287,18 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
                     'See Premium plans',
                     kind: BtnKind.accent,
                     leading: PhosphorIcons.crownSimple(PhosphorIconsStyle.fill),
-                    onPressed: () => showPaywall(context, reason: 'video_solution'),
+                    onPressed: () => showContentOffer(
+                      context,
+                      kind: 'item',
+                      itemRef: widget.id,
+                      title: 'This video',
+                      paywallReason: 'video_solution',
+                      itemKind: 'video_solution',
+                      onOpened: () {
+                        ref.invalidate(studyItemProvider(widget.id));
+                        _start();
+                      },
+                    ),
                   ),
                 ),
               ),
