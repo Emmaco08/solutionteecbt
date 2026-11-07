@@ -147,8 +147,13 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/ai',
-                builder: (_, s) =>
-                    AiScreen(chatId: s.uri.queryParameters['chat'], questionId: s.uri.queryParameters['q'], questionLabel: s.uri.queryParameters['label']),
+                builder: (_, s) => AiScreen(
+                  chatId: s.uri.queryParameters['chat'],
+                  questionId: s.uri.queryParameters['q'],
+                  questionLabel: s.uri.queryParameters['label'],
+                  tool: s.uri.queryParameters['tool'],
+                  toolArgs: AiScreen.parseArgs(s.uri.queryParameters['args']),
+                ),
               ),
             ],
           ),

@@ -7,9 +7,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/providers.dart';
+import '../../data/ai_repo.dart';
 import '../../data/db.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
+import '../../ui/confetti.dart';
 import '../../ui/kit.dart';
 import '../../widgets/exam_logo.dart';
 import '../../widgets/phosphor.g.dart';
@@ -195,6 +197,7 @@ class TodayCard extends ConsumerWidget {
               .fadeIn(duration: rm ? 1.ms : 450.ms)
               .slideY(begin: rm ? 0 : .15, end: 0, duration: rm ? 1.ms : 450.ms, curve: Curves.easeOutCubic),
           if (author != null && author.isNotEmpty) ...[const Gap(Space.s1), Text('— $author', style: context.ty.sm.col(c.textMuted))],
+          const TodayPlan(),
           const Gap(Space.s4),
           Container(
             padding: const EdgeInsets.fromLTRB(Space.s3, Space.s2, Space.s2, Space.s2),
@@ -374,4 +377,158 @@ class _TickPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_TickPainter old) => old.t != t || old.color != color;
+}
+
+/// Today's part of the student's study plan, under the motivation: "Day 2 of 7 · Maths · Angles", up to three tasks,
+/// a progress bar of days, Start (opens the AI tutor with the day's action) and Done (ticks the day with a small
+/// celebration). Hidden when there is no active plan. Reloads when the app comes back.
+class TodayPlan extends ConsumerStatefulWidget {
+  const TodayPlan({super.key});
+  @override
+  ConsumerState<TodayPlan> createState() => _TodayPlanState();
+}
+
+class _TodayPlanState extends ConsumerState<TodayPlan> with WidgetsBindingObserver {
+  bool _justDone = false, _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) ref.invalidate(todayPlanProvider);
+  }
+
+  void _start(Map<String, dynamic> item) {
+    final a = item['action'];
+    if (a is Map && a['tool'] != null) {
+      final q = <String, String>{'tool': '${a['tool']}', 'label': '${a['label'] ?? item['focus'] ?? 'Start'}'};
+      if (a['args'] is Map && (a['args'] as Map).isNotEmpty) q['args'] = jsonEncode(a['args']);
+      context.go(Uri(path: '/ai', queryParameters: q).toString());
+    } else {
+      context.go('/ai');
+    }
+  }
+
+  Future<void> _done(Map<String, dynamic> plan) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      await ref.read(aiRepoProvider).planUpdate('${plan['plan_id']}', doneDay: (plan['day'] as num).toInt());
+      if (!mounted) return;
+      setState(() => _justDone = true);
+    } catch (_) {
+      if (mounted) toast(context, 'Could not save. Check your internet.', icon: PhosphorIcons.wifiSlash(PhosphorIconsStyle.fill));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final plan = ref.watch(todayPlanProvider).value;
+    if (plan == null || plan['item'] is! Map) return const SizedBox.shrink();
+    final c = context.c;
+    final rm = context.reduceMotion;
+    final item = Map<String, dynamic>.from(plan['item'] as Map);
+    final day = (plan['day'] as num?)?.toInt() ?? 1, of = (plan['of'] as num?)?.toInt() ?? 7;
+    final done = plan['done'] == true || _justDone;
+    final tasks = [for (final t in (item['tasks'] as List? ?? const [])) '$t'].take(3).toList();
+    final focus = '${item['focus'] ?? ''}'.trim();
+    final min = (item['minutes'] as num?)?.toInt() ?? 0;
+    final card = Container(
+      margin: const EdgeInsets.only(top: Space.s4),
+      padding: const EdgeInsets.all(Space.s3),
+      decoration: BoxDecoration(
+        color: c.surface,
+        borderRadius: BorderRadius.circular(Radii.md),
+        border: Border.all(color: c.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(PhosphorIcons.calendarCheck(PhosphorIconsStyle.fill), size: 18, color: c.secondary),
+              const Gap(Space.s2),
+              Expanded(child: Text('Day $day of $of${focus.isEmpty ? '' : ' · $focus'}', style: context.ty.sm.bold)),
+              if (min > 0) Text('$min min', style: context.ty.cap.col(c.textMuted)),
+            ],
+          ),
+          const Gap(Space.s2),
+          for (final t in tasks)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 3),
+                    child: Icon(
+                      done ? PhosphorIcons.checkCircle(PhosphorIconsStyle.fill) : PhosphorIcons.circle(),
+                      size: 16,
+                      color: done ? c.success : c.textSubtle,
+                    ),
+                  ),
+                  const Gap(Space.s2),
+                  Expanded(child: Text(t, style: context.ty.sm.col(done ? c.textMuted : c.text))),
+                ],
+              ),
+            ),
+          const Gap(Space.s2),
+          ProgressBar((done ? day : day - 1) / of, color: c.success),
+          const Gap(Space.s3),
+          AnimatedSwitcher(
+            duration: rm ? Duration.zero : Motion.base,
+            child: done
+                ? Row(
+                    key: const ValueKey('done'),
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      (rm
+                          ? Icon(PhosphorIcons.checkCircle(PhosphorIconsStyle.fill), size: 24, color: c.success)
+                          : Icon(
+                              PhosphorIcons.checkCircle(PhosphorIconsStyle.fill),
+                              size: 24,
+                              color: c.success,
+                            ).animate().scaleXY(begin: .2, end: 1, duration: Motion.slow, curve: Curves.easeOutBack)),
+                      const Gap(Space.s2),
+                      Text('Day $day done. Well done!', style: context.ty.sm.bold.col(c.success)),
+                    ],
+                  )
+                : Row(
+                    key: const ValueKey('todo'),
+                    children: [
+                      Expanded(
+                        child: Btn('Start', sm: true, block: true, icon: PhosphorIcons.arrowRight(), onPressed: () => _start(item)),
+                      ),
+                      const Gap(Space.s2),
+                      Expanded(
+                        child: Btn('Done ✓', sm: true, block: true, kind: BtnKind.tonal, loading: _busy, onPressed: () => _done(plan)),
+                      ),
+                    ],
+                  ),
+          ),
+        ],
+      ),
+    );
+    if (!_justDone || rm) return card;
+    return Stack(
+      children: [
+        card,
+        Positioned.fill(
+          child: IgnorePointer(child: ClipRect(child: Confetti(pieces: 40))),
+        ),
+      ],
+    );
+  }
 }

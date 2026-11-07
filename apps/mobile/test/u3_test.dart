@@ -53,6 +53,7 @@ class FakeAi implements AiRepo {
     String? imageBase64,
     int? subjectId,
     bool hint = false,
+    int? hintLevel,
     String? questionId,
     bool explain = false,
     String? tool,

@@ -34,6 +34,13 @@ final aiSuggestionsProvider = FutureProvider<List<AiChip>>((ref) async {
   return ref.read(aiRepoProvider).suggestions();
 });
 
+/// The active study plan's part for today (Home "Today" card): null, or {plan_id, title, day, of, done, reminders, item}.
+final todayPlanProvider = FutureProvider<Map<String, dynamic>?>((ref) async {
+  ref.watch(sessionProvider);
+  final j = await ref.read(supabaseProvider).rpc('my_today_plan');
+  return j is Map ? Map<String, dynamic>.from(j) : null;
+});
+
 /// One event from the tutor's stream.
 sealed class AiEvent {}
 
@@ -60,24 +67,36 @@ class AiDone extends AiEvent {
 
 /// A tool the tutor is running (state `run`, with a [label]) or has finished (state `done`, with a [card] or null).
 class AiTool extends AiEvent {
-  AiTool(this.name, this.state, {this.label, this.card});
+  AiTool(this.name, this.state, {this.label, this.card, this.steps = const []});
   final String name, state;
   final String? label;
+
+  /// The steps the app animates while the tool works (run event only).
+  final List<String> steps;
   final Map<String, dynamic>? card;
   bool get running => state == 'run';
 }
 
+/// Three "what next?" questions the tutor wrote after an answer.
+class AiFollowups extends AiEvent {
+  AiFollowups(this.items);
+  final List<String> items;
+}
+
 /// One suggestion chip: show [label]; tapping sends [text] (or the label) and, when set, runs [tool] with [args].
+/// [icon] is a server icon name; a chip with [chatId] opens that chat instead.
 class AiChip {
-  const AiChip(this.label, {this.text, this.tool, this.args = const {}});
+  const AiChip(this.label, {this.text, this.tool, this.args = const {}, this.icon, this.chatId});
   final String label;
-  final String? text, tool;
+  final String? text, tool, icon, chatId;
   final Map<String, dynamic> args;
   factory AiChip.fromJson(Map<String, dynamic> j) => AiChip(
     '${j['label'] ?? ''}',
     text: j['text'] as String?,
     tool: j['tool'] as String?,
     args: j['args'] is Map ? Map<String, dynamic>.from(j['args'] as Map) : const {},
+    icon: j['icon'] as String?,
+    chatId: j['chat_id'] as String?,
   );
 }
 
@@ -124,7 +143,9 @@ class AiSseParser {
           '${j['state'] ?? ''}',
           label: j['label'] as String?,
           card: j['card'] is Map ? Map<String, dynamic>.from(j['card'] as Map) : null,
+          steps: [for (final x in (j['steps'] as List? ?? const [])) '$x'],
         ),
+        'followups' => AiFollowups([for (final x in (j['items'] as List? ?? const [])) '$x']),
         'error' => AiFailed('${j['message'] ?? 'Something went wrong. Try again.'}', code: j['code'] as String?),
         _ => null,
       };
@@ -148,6 +169,7 @@ class AiRepo {
     String? imageBase64,
     int? subjectId,
     bool hint = false,
+    int? hintLevel,
     String? questionId,
     bool explain = false,
     String? tool,
@@ -168,6 +190,7 @@ class AiRepo {
           'image': ?imageBase64,
           'subject_id': ?subjectId,
           'hint': hint,
+          'hint_level': ?(hint ? hintLevel : null),
           'question_id': ?questionId,
           'explain': explain,
           'tool': ?tool,
@@ -215,7 +238,7 @@ class AiRepo {
   Future<List<Map<String, dynamic>>> messages(String chatId) async {
     final j = await _sb
         .from('ai_messages')
-        .select('id, role, content, has_image, question_id, hint, model, flagged_at, created_at, card')
+        .select('id, role, content, has_image, question_id, hint, model, flagged_at, created_at, card, reaction')
         .eq('chat_id', chatId)
         .order('created_at', ascending: true)
         .limit(200);
@@ -264,6 +287,15 @@ class AiRepo {
     await _sb.from('ai_chats').update({'deleted_at': DateTime.now().toUtc().toIso8601String()}).eq('id', chatId);
     ref.invalidate(aiChatsProvider);
   }
+
+  /// Ticks a study-plan day and/or switches the morning reminder.
+  Future<void> planUpdate(String planId, {int? doneDay, bool? reminders}) async {
+    await _sb.rpc('plan_update', params: {'p_plan': planId, 'p_done_day': ?doneDay, 'p_reminders': ?reminders});
+    ref.invalidate(todayPlanProvider);
+  }
+
+  /// Saves (or, with null, removes) a reaction on a tutor answer.
+  Future<void> react(String messageId, String? reaction) => _sb.rpc('ai_react', params: {'p_message': messageId, 'p_reaction': reaction});
 
   Future<void> flag(String messageId, String reason) => _sb.rpc('ai_flag', params: {'p_message': messageId, 'p_reason': reason});
 }
