@@ -15,7 +15,7 @@ export default function Page() {
 async function Access() {
   await requireStaff(["super_admin", "admin"]);
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("admin_content_access");
+  const [{ data, error }, { data: welcome }] = await Promise.all([supabase.rpc("admin_content_access"), supabase.rpc("admin_welcome")]);
   if (error) return <ErrorState message={error.message} />;
   return (
     <>
@@ -23,7 +23,7 @@ async function Access() {
         title="How content opens"
         description="For each kind of Study content and each past-question year: as in Free vs Premium, free for everyone, Premium only, free students watch videos to open it, or pay for that one item. A single item can have its own rule (Study → edit the item). Everything is checked on the server."
       />
-      <AccessBoard d={data as unknown as AccessData} />
+      <AccessBoard d={{ ...(data as unknown as AccessData), welcome: welcome as unknown as AccessData["welcome"] }} />
     </>
   );
 }

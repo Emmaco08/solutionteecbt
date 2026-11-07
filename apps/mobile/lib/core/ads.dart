@@ -389,6 +389,10 @@ Future<AdReward> watchForReward(
                 ? 'You have watched all your reward videos for today. Go Premium for no limits and no ads.'
                 : why == 'xp_cap'
                 ? 'You have earned all your XP from videos for today. Come back tomorrow.'
+                : why == 'unlock_cap'
+                ? 'You have opened today\'s limit by watching videos. Come back tomorrow, or go Premium to open everything.'
+                : why == 'not_allowed'
+                ? 'This one is for Premium students.'
                 : why == 'full'
                 ? 'You already have the most streak freezes you can hold.'
                 : 'Watching for a reward is not available right now.',

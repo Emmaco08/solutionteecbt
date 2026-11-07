@@ -39,7 +39,7 @@ Future<void> showContentOffer(
     return;
   }
   final offer = ContentOffer(o, itemKind: itemKind);
-  if (!offer.canWatch && !offer.canPay) {
+  if (!offer.canWatch && !offer.canPay && offer.watchBlock != 'unlock_cap') {
     showPaywall(context, reason: paywallReason);
     return;
   }
@@ -75,7 +75,10 @@ class ContentOffer {
       : mode == 'default' && itemKind == 'note'
       ? 'note'
       : null;
-  bool get canWatch => !premium && adsOn && rewardKind != null;
+  bool get canWatch => !premium && adsOn && rewardKind != null && j['watch_ok'] != false;
+
+  /// Why watching is not offered now: 'unlock_cap' (today's limit reached) or 'not_allowed' (the admin keeps it Premium).
+  String? get watchBlock => j['watch_block'] as String?;
   bool get canPay => mode == 'pay' && priceKobo >= 5000 && (!premium || premiumPays);
 }
 
@@ -226,6 +229,14 @@ class _OfferSheetState extends ConsumerState<_OfferSheet> {
             action: _need > 1 && _count > 0 ? 'Next video' : 'Watch',
             busy: _busy,
             onTap: _watch,
+          ),
+        if (!o.canWatch && o.watchBlock == 'unlock_cap' && !o.premium)
+          Padding(
+            padding: const EdgeInsets.only(bottom: Space.s3),
+            child: Text(
+              'You have opened today\'s limit by watching videos. Come back tomorrow, or go Premium to open everything.',
+              style: context.ty.sm.col(c.textMuted),
+            ),
           ),
         if (o.canPay)
           _Option(

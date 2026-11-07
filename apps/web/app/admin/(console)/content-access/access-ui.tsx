@@ -6,8 +6,8 @@ import { Trash } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { inputCls } from "@/components/admin/row-form";
 import { EmptyState } from "@/components/admin/ui";
-import { saveDefaults, saveYear } from "./actions";
-import { KINDS, MODES, type AccessData, type Defaults, type Mode, type Rule } from "./shared";
+import { saveDefaults, saveWelcome, saveYear } from "./actions";
+import { KINDS, MODES, type AccessData, type Defaults, type Mode, type Rule, type Welcome } from "./shared";
 
 const naira = (kobo: number) => "₦" + Math.round(kobo / 100).toLocaleString("en-NG");
 
@@ -41,7 +41,13 @@ export function AccessBoard({ d }: { d: AccessData }) {
   const [defs, setDefs] = useState<Defaults>({
     items: Object.fromEntries(KINDS.map((k) => [k.id, d.defaults?.items?.[k.id] ?? { mode: "default" }])),
     years: d.defaults?.years ?? { mode: "default" },
+    limits: d.defaults?.limits ?? { year_per_day: 2, item_per_day: {} },
   });
+  const [welcome, setWelcome] = useState<Welcome>({ on: false, hours: 24, ads_level: "low", extra_years: 2, ...(d.welcome ?? {}) });
+  const adsYears = defs.years.ads_years ?? {};
+  const setAdsYears = (exam: number, v: number[] | "all") =>
+    setDefs((x) => ({ ...x, years: { ...x.years, ads_years: { ...(x.years.ads_years ?? {}), [String(exam)]: v } } }));
+  const setLimit = (p: Partial<NonNullable<Defaults["limits"]>>) => setDefs((x) => ({ ...x, limits: { ...(x.limits ?? {}), ...p } }));
   const exams = d.exams ?? [];
   const [exam, setExam] = useState<number>(exams[0]?.id ?? 0);
   const yearsOf = (exams.find((e) => e.id === exam)?.years ?? []).slice().sort((a, b) => b - a);
@@ -75,6 +81,72 @@ export function AccessBoard({ d }: { d: AccessData }) {
           “Watch videos” uses rewarded video ads (Ads page: level not Off). Premium students always open “watch videos” items, and “pay” items too unless you tick “Premium students pay too”.
         </p>
         <Button onClick={save} disabled={pending}>{pending ? "Saving…" : "Save"}</Button>
+      </section>
+
+      <section className="space-y-4 rounded-2xl border border-border bg-card p-5">
+        <h2 className="font-bold">What free students can open by watching ads</h2>
+        <p className="text-sm text-muted-foreground">
+          Only the years you tick here can be opened by watching videos (a year with its own “watch videos” rule below also can). Every other locked
+          year stays Premium. The pop-up after a test also offers only these years.
+        </p>
+        {exams.map((e) => {
+          const v = adsYears[String(e.id)] ?? [];
+          const all = v === "all";
+          const list = all ? [] : (v as number[]);
+          const ys = (e.years ?? []).slice().sort((a, b) => b - a);
+          return (
+            <div key={e.id} className="space-y-2 border-t border-border pt-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="w-20 font-bold">{e.code}</span>
+                <label className="flex items-center gap-2 text-sm"><input type="radio" checked={!all && list.length === 0} onChange={() => setAdsYears(e.id, [])} /> None</label>
+                <label className="flex items-center gap-2 text-sm"><input type="radio" checked={!all && list.length > 0} onChange={() => setAdsYears(e.id, ys.slice(-2))} /> Chosen years</label>
+                <label className="flex items-center gap-2 text-sm"><input type="radio" checked={all} onChange={() => setAdsYears(e.id, "all")} /> All years</label>
+              </div>
+              {!all && list.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {ys.map((y) => {
+                    const on = list.includes(y);
+                    return (
+                      <button key={y} type="button" onClick={() => setAdsYears(e.id, on ? list.filter((x) => x !== y) : [...list, y])}
+                        className={`rounded-lg border px-2.5 py-1 text-xs tabular-nums ${on ? "border-primary bg-info-soft font-bold" : "border-border hover:bg-sunken"}`}>{y}</button>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
+        <div className="flex flex-wrap items-end gap-4 border-t border-border pt-3">
+          <label className="text-sm">Years a student can open by watching, per day
+            <input type="number" min={0} max={50} className={`${inputCls} mt-1 w-28`} value={defs.limits?.year_per_day ?? 2} onChange={(e) => setLimit({ year_per_day: Number(e.target.value) })} />
+            <span className="block text-xs text-muted-foreground">0 = no limit</span>
+          </label>
+          {KINDS.map((k) => (
+            <label key={k.id} className="text-sm">{k.label} per day
+              <input type="number" min={0} max={50} className={`${inputCls} mt-1 w-24`} value={defs.limits?.item_per_day?.[k.id] ?? 0}
+                onChange={(e) => setLimit({ item_per_day: { ...(defs.limits?.item_per_day ?? {}), [k.id]: Number(e.target.value) } })} />
+            </label>
+          ))}
+        </div>
+        <Button onClick={save} disabled={pending}>{pending ? "Saving…" : "Save"}</Button>
+      </section>
+
+      <section className="space-y-4 rounded-2xl border border-border bg-card p-5">
+        <h2 className="font-bold">First-day welcome</h2>
+        <p className="text-sm text-muted-foreground">
+          For the first hours after a student joins: a lighter ads level and a few more free years, so they enjoy the app first. Students are not told.
+        </p>
+        <div className="flex flex-wrap items-end gap-4">
+          <label className="flex items-center gap-2 pb-2 text-sm"><input type="checkbox" className="size-4" checked={welcome.on} onChange={(e) => setWelcome({ ...welcome, on: e.target.checked })} /> On</label>
+          <label className="text-sm">Hours after joining<input type="number" min={1} max={168} className={`${inputCls} mt-1 w-24`} value={welcome.hours} onChange={(e) => setWelcome({ ...welcome, hours: Number(e.target.value) })} /></label>
+          <label className="text-sm">Ads level in that time
+            <select className={`${inputCls} mt-1 w-40`} value={welcome.ads_level} onChange={(e) => setWelcome({ ...welcome, ads_level: e.target.value })}>
+              {["off", "low", "medium", "high", "high_extra", "max", "ultra"].map((l) => <option key={l} value={l}>{l === "off" ? "No ads" : l.replace("_", " ")}</option>)}
+            </select>
+          </label>
+          <label className="text-sm">Extra free years per exam<input type="number" min={0} max={20} className={`${inputCls} mt-1 w-24`} value={welcome.extra_years} onChange={(e) => setWelcome({ ...welcome, extra_years: Number(e.target.value) })} /></label>
+          <Button disabled={pending} onClick={() => run(async () => { const r = await saveWelcome(welcome); if (r.ok) { toast.success(r.message ?? "Saved"); router.refresh(); } else toast.error(r.error); })}>Save welcome</Button>
+        </div>
       </section>
 
       <section className="space-y-4 rounded-2xl border border-border bg-card p-5">

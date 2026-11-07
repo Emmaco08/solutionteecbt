@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { requireStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { friendlyError, type ActionResult } from "@/lib/result";
-import { KINDS, MODES, type Defaults, type Mode, type Rule } from "./shared";
+import { KINDS, MODES, type Defaults, type Mode, type Rule, type Welcome } from "./shared";
 
 const n = (v: unknown, min: number, max: number, def: number) => {
   const x = Math.round(Number(v));
@@ -31,8 +31,17 @@ export async function saveDefaults(d: Defaults): Promise<ActionResult> {
   }
   const years = clean(d.years ?? { mode: "default" });
   if (typeof years === "string") return { ok: false, error: `Past-question years: ${years}` };
+  // Years that can be opened by watching, per exam: "all" or a list of years.
+  const adsYears: Record<string, number[] | "all"> = {};
+  for (const [exam, v] of Object.entries(d.years?.ads_years ?? {})) {
+    if (!/^\d{1,3}$/.test(exam)) continue;
+    adsYears[exam] = v === "all" ? "all" : (Array.isArray(v) ? v.map(Number).filter((y) => y >= 1950 && y <= 2100) : []);
+  }
+  const perKind: Record<string, number> = {};
+  for (const k of KINDS) perKind[k.id] = n(d.limits?.item_per_day?.[k.id], 0, 50, 0);
+  const limits = { year_per_day: n(d.limits?.year_per_day, 0, 50, 2), item_per_day: perKind };
   const supabase = await createClient();
-  const { error } = await supabase.rpc("admin_content_access_save", { p_defaults: { items, years } });
+  const { error } = await supabase.rpc("admin_content_access_save", { p_defaults: { items, years: { ...years, ads_years: adsYears }, limits } });
   if (error) return { ok: false, error: friendlyError(error) };
   revalidatePath("/admin/content-access");
   return { ok: true, message: "Saved. Students get it at once (checked on the server)." };
@@ -51,4 +60,13 @@ export async function saveYear(exam: number, year: number, r: Rule): Promise<Act
   if (error) return { ok: false, error: friendlyError(error) };
   revalidatePath("/admin/content-access");
   return { ok: true, message: c.mode === "default" ? "Year rule removed." : "Year rule saved." };
+}
+
+export async function saveWelcome(w: Welcome): Promise<ActionResult> {
+  await requireStaff(["super_admin", "admin"]);
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_welcome_save", { p: w });
+  if (error) return { ok: false, error: friendlyError(error) };
+  revalidatePath("/admin/content-access");
+  return { ok: true, message: w.on ? "First-day welcome is on for new students." : "First-day welcome is off." };
 }

@@ -3600,6 +3600,7 @@ export type Database = {
         Args: { p_nonce: string; p_test_claim?: boolean }
         Returns: Json
       }
+      ad_year_suggest: { Args: never; Returns: Json }
       admin_ad_campaign_delete: { Args: { p_id: string }; Returns: Json }
       admin_ad_campaign_report: { Args: { p_id: string }; Returns: Json }
       admin_ad_campaign_save: { Args: { p: Json }; Returns: Json }
@@ -3779,6 +3780,8 @@ export type Database = {
         Returns: number
       }
       admin_user_detail: { Args: { p_user: string }; Returns: Json }
+      admin_welcome: { Args: never; Returns: Json }
+      admin_welcome_save: { Args: { p: Json }; Returns: Json }
       admin_xp_adjust: {
         Args: { p_amount: number; p_reason: string; p_user: string }
         Returns: Json
