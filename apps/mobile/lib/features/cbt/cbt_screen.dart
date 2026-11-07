@@ -77,68 +77,9 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
     return t.isNotEmpty && norm(body).startsWith(t);
   }
 
-  /// Pictures being downloaded before the test: (done, total, some failed).
+  /// Pictures being downloaded quietly before the test: (done, total, some failed).
   (int, int, bool)? _prep;
-  bool _skipPics = false;
-
-  Widget _prepView() {
-    final c = context.c;
-    final (done, total, failed) = _prep!;
-    return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(Space.s6),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconTile(
-                  failed ? PhosphorIcons.warningCircle(PhosphorIconsStyle.fill) : PhosphorIcons.image(PhosphorIconsStyle.fill),
-                  tone: failed ? Tone.gold : Tone.blue,
-                ),
-                const Gap(Space.s4),
-                Text(failed ? 'Some pictures did not download' : 'Getting the pictures ready', style: context.ty.h3, textAlign: TextAlign.center),
-                const Gap(Space.s2),
-                Text(
-                  failed
-                      ? '$done of $total pictures are ready. Check your data and try again, or start now and they will load during the test.'
-                      : 'Downloading $done of $total so nothing loads during your exam. Your time has not started.',
-                  style: context.ty.sm.col(c.textMuted),
-                  textAlign: TextAlign.center,
-                ),
-                const Gap(Space.s5),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(Radii.pill),
-                  child: LinearProgressIndicator(value: total == 0 ? null : done / total, minHeight: 8),
-                ),
-                if (failed) ...[
-                  const Gap(Space.s5),
-                  Btn(
-                    'Try again',
-                    block: true,
-                    onPressed: () {
-                      setState(() => _prep = (done, total, false));
-                      _load();
-                    },
-                  ),
-                  const Gap(Space.s2),
-                  Btn(
-                    'Start anyway',
-                    kind: BtnKind.ghost,
-                    block: true,
-                    onPressed: () {
-                      _skipPics = true;
-                      _load();
-                    },
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  final bool _skipPics = false;
 
   @override
   void initState() {
@@ -186,10 +127,8 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
               if (mounted && !_skipPics) setState(() => _prep = (d, t, false));
             },
           );
-          if (failed.isNotEmpty && !_skipPics) {
-            if (mounted) setState(() => _prep = (missing.length - failed.length, missing.length, true));
-            return; // the student chooses: try again or start anyway
-          }
+          // Pictures that did not download load during the test (never a "downloading" page: owner, 2026-11-07).
+          if (failed.isNotEmpty) debugPrint('cbt: ${failed.length} pictures will load during the test');
         }
       }
       _prep = null;
@@ -755,7 +694,8 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
         ),
       );
     }
-    if (_a == null && _prep != null) return _prepView();
+    // Pictures download quietly behind the normal loading circle (owner, 2026-11-07).
+    if (_a == null && _prep != null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
     if (_a == null || _qs.isEmpty) return const Scaffold(body: Center(child: CircularProgressIndicator()));
     final c = context.c;
     final q = _qs[_i];

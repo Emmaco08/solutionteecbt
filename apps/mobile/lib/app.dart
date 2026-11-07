@@ -15,6 +15,7 @@ class SolutionTeeApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
     final router = ref.watch(routerProvider);
+    StickyPlace.attach(router); // where the sticky banner goes (above the tab bar or at the bottom)
     // Screenshots / screen recording follow the admin's switches (D-080) whenever the settings load (same values = no-op).
     final p = ref.watch(appSettingsProvider).value?['screen_protection'];
     SecureScreen.policy(wholeApp: p is Map && p['whole_app'] == true, exams: !(p is Map && p['exams'] == false));

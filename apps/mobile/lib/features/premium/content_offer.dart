@@ -288,34 +288,56 @@ class _Option extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: Space.s3),
-    child: AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              IconTile(icon, tone: tone, size: 44, radius: 12, iconSize: 22),
-              const Gap(Space.s3),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: context.ty.sm.bold),
-                    Text(text, style: context.ty.cap.col(context.c.textMuted)),
-                  ],
+    child: _Enter(
+      child: AppCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                IconTile(icon, tone: tone, size: 44, radius: 12, iconSize: 22),
+                const Gap(Space.s3),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title, style: context.ty.sm.bold),
+                      Text(text, style: context.ty.cap.col(context.c.textMuted)),
+                    ],
+                  ),
                 ),
-              ),
-              const Gap(Space.s2),
-              Btn(action, sm: true, kind: BtnKind.tonal, loading: busy, onPressed: busy ? null : onTap),
+                const Gap(Space.s2),
+                Btn(action, sm: true, kind: BtnKind.tonal, loading: busy, onPressed: busy ? null : onTap),
+              ],
+            ),
+            if (progress != null) ...[
+              const Gap(Space.s3),
+              ProgressBar(progress!),
+              if (progressText != null) ...[const Gap(Space.s1), Text(progressText!, style: context.ty.cap)],
             ],
-          ),
-          if (progress != null) ...[
-            const Gap(Space.s3),
-            ProgressBar(progress!),
-            if (progressText != null) ...[const Gap(Space.s1), Text(progressText!, style: context.ty.cap)],
           ],
-        ],
+        ),
       ),
     ),
   );
+}
+
+/// Each option slides up and fades in (reduce motion: shown at once).
+class _Enter extends StatelessWidget {
+  const _Enter({required this.child});
+  final Widget child;
+  @override
+  Widget build(BuildContext context) {
+    if (MediaQuery.of(context).disableAnimations) return child;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 360),
+      curve: Curves.easeOutCubic,
+      builder: (_, v, c) => Opacity(
+        opacity: v,
+        child: Transform.translate(offset: Offset(0, 16 * (1 - v)), child: c),
+      ),
+      child: child,
+    );
+  }
 }

@@ -75,7 +75,8 @@ void main() {
     expect(b, contains('Past questions with answers: every year (Free: 2 years)'));
     expect(b, contains('Video solutions, Topic video lessons, Lesson notes, Novel summaries'));
     expect(b, contains('100 AI tutor prompts a day (Free: 3)'));
-    expect(b.length, lessThanOrEqualTo(7));
+    expect(b.first, startsWith('No ads'));
+    expect(b.length, lessThanOrEqualTo(8));
     // A feature the admin also gives Free is not sold as a Premium benefit.
     final free = {
       ...rules,

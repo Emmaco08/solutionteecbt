@@ -52,7 +52,8 @@ String naira(num kobo) {
 List<String> premiumBenefits(Map<String, Map<String, dynamic>> a) {
   final f = a['free'] ?? const {}, p = a['premium'] ?? const {};
   String y(Object? v) => v == 'all' ? 'every year' : '$v years';
-  final out = <String>[];
+  // Premium never shows ads (the server gives Premium no ads at any level).
+  final out = <String>['No ads at all: no banners, no video breaks'];
   for (final k in ['jamb', 'waec', 'neco']) {
     if (p[k] != f[k]) out.add('${k.toUpperCase()} CBT: ${y(p[k])}${(f[k] is num && f[k] > 0) ? ' (Free: ${y(f[k])})' : ' (not on Free)'}');
   }
@@ -65,7 +66,7 @@ List<String> premiumBenefits(Map<String, Map<String, dynamic>> a) {
   if (p['syllabus'] != f['syllabus']) out.add('Syllabuses and brochure: ${p['syllabus'] == 'all' ? 'all' : p['syllabus']} (Free: ${f['syllabus']})');
   if (p['ai'] != f['ai']) out.add('${p['ai']} AI tutor prompts a day (Free: ${f['ai']})');
   if (p['offline'] == true && f['offline'] != true) out.add('Download lessons and practise offline, without data');
-  return out.take(7).toList();
+  return out.take(8).toList();
 }
 
 class _Paywall extends ConsumerStatefulWidget {

@@ -5,11 +5,13 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show Supabase;
 
 import '../data/db.dart';
 
+import 'earn_offer.dart';
 import 'house_ads.dart';
 import 'providers.dart';
 
@@ -466,18 +468,57 @@ Future<AdReward> watchForReward(
 Future<bool> watchToUnlock(BuildContext context, WidgetRef ref, {required String kind, String? itemRef, String placement = ''}) async =>
     (await watchForReward(context, ref, kind: kind, itemRef: itemRef, placement: placement)).granted;
 
-/// A skippable "earn XP" video offered at a break (rewarded interstitial; AdMob requires an intro the student can skip).
-/// Only when the level offers it at [spot] and XP videos are left today.
+/// A skippable "watch to earn" video offered at a break (rewarded interstitial; AdMob requires an intro the student can
+/// skip). Only when the level offers it at [spot] and reward videos are left today. Sometimes it offers a locked year
+/// for a while instead of XP (only years the admin allows to be opened by watching; the server picks one).
 Future<void> offerEarnVideo(BuildContext context, WidgetRef ref, String spot) async {
   final c = ref.read(adsConfigProvider).value ?? AdsConfig.off;
-  if (AdsGate.blocked || !c.earnSpots.contains(spot) || c.xpLeft <= 0 || c.rewardedLeft <= 0 || Ads.instance._recentFull) return;
+  if (AdsGate.blocked || !c.earnSpots.contains(spot) || c.rewardedLeft <= 0 || Ads.instance._recentFull) return;
+  // A year to open (about every other offer, or when XP videos are used up for today).
+  Map<String, dynamic>? year;
+  if (c.xpLeft <= 0 || Ads.instance._rand.nextBool()) {
+    try {
+      final j = await ref.read(supabaseProvider).rpc('ad_year_suggest');
+      if (j is Map && j['ok'] == true) year = Map<String, dynamic>.from(j);
+    } catch (_) {}
+    if (!context.mounted) return;
+  }
+  if (year == null && c.xpLeft <= 0) return;
+  if (year != null) {
+    final mins = (year['minutes'] as num?)?.toInt() ?? 60;
+    final time = mins == 0 ? 'for good' : (mins % 60 == 0 ? 'for ${mins == 60 ? '1 hour' : '${mins ~/ 60} hours'}' : 'for $mins minutes');
+    final need = (year['need'] as num?)?.toInt() ?? 1;
+    final label = '${year['exam']} ${year['year']}';
+    final go = await showEarnOffer(
+      context,
+      kind: EarnKind.unlock,
+      headline: 'Open $label $time',
+      body: need > 1 ? 'Watch $need short videos and practise every $label question free.' : 'Watch a short video and practise every $label question free.',
+      need: need,
+      progress: (year['progress'] as num?)?.toInt() ?? 0,
+    );
+    if (!go || !context.mounted) return;
+    final r = await watchForReward(context, ref, kind: 'year', itemRef: '${year['ref']}', placement: 'earn_year_$spot', interstitial: true);
+    if (!context.mounted) return;
+    if (r.granted) {
+      ref.invalidate(openYearsProvider);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$label is open $time. Enjoy!')));
+    } else if (r.counted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${r.count} of ${r.need} videos watched for $label.')));
+    }
+    return;
+  }
   final xp = c.reward('xp_amount') > 0 ? c.reward('xp_amount') : 5;
   final need = c.reward('xp_ads') > 1 ? c.reward('xp_ads') : 1;
-  final go = await showDialog<bool>(
-    context: context,
-    builder: (ctx) => _EarnCountdown(xp: xp, need: need, progress: c.xpProgress),
+  final go = await showEarnOffer(
+    context,
+    kind: EarnKind.xp,
+    headline: '+$xp XP',
+    body: need > 1 ? 'Watch $need short videos to earn $xp XP for your wallet.' : 'Watch a short video to earn $xp XP for your wallet.',
+    need: need,
+    progress: c.xpProgress,
   );
-  if (go != true || !context.mounted) return;
+  if (!go || !context.mounted) return;
   final r = await watchForReward(context, ref, kind: 'xp', placement: 'earn_$spot', interstitial: true);
   if (!context.mounted) return;
   if (r.granted) {
@@ -485,52 +526,6 @@ Future<void> offerEarnVideo(BuildContext context, WidgetRef ref, String spot) as
   } else if (r.counted) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${r.count} of ${r.need} videos watched. ${r.need - r.count} more for +$xp XP.')));
   }
-}
-
-class _EarnCountdown extends StatefulWidget {
-  const _EarnCountdown({required this.xp, required this.need, required this.progress});
-  final int xp, need, progress;
-  @override
-  State<_EarnCountdown> createState() => _EarnCountdownState();
-}
-
-class _EarnCountdownState extends State<_EarnCountdown> {
-  int _left = 5;
-  Timer? _t;
-
-  @override
-  void initState() {
-    super.initState();
-    _t = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (!mounted) return;
-      if (_left <= 1) {
-        t.cancel();
-        Navigator.of(context).pop(true);
-      } else {
-        setState(() => _left--);
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _t?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => AlertDialog(
-    title: Text('Earn +${widget.xp} XP'),
-    content: Text(
-      widget.need > 1
-          ? 'Watch a short video (${widget.progress + 1} of ${widget.need}) to earn ${widget.xp} XP. It starts in $_left s.'
-          : 'Watch a short video to earn ${widget.xp} XP. It starts in $_left s.',
-    ),
-    actions: [
-      TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('No thanks')),
-      FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Watch now')),
-    ],
-  );
 }
 
 /// A banner at the top of a list, under the header, when the level shows banners on [screen].
@@ -767,55 +762,35 @@ String debugPendingAds() => jsonEncode(Ads.instance._pending);
 class AdsRouteObserver extends NavigatorObserver {
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
-    if (route is PageRoute) StickyPlace.push(route);
     if (route is PageRoute && previousRoute != null) {
       Future<void>.delayed(const Duration(milliseconds: 600), () => Ads.instance.breakAt('random'));
     }
   }
-
-  @override
-  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) => StickyPlace.remove(route);
-
-  @override
-  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) => StickyPlace.remove(route);
-
-  @override
-  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
-    if (oldRoute != null) StickyPlace.remove(oldRoute);
-    if (newRoute is PageRoute) StickyPlace.push(newRoute);
-  }
 }
 
-/// Where the sticky banner goes: above the tab bar when the tab screens are on top (the shell shows it), otherwise at
-/// the bottom of the screen (pages opened over the tabs, which have no tab bar).
+/// Where the sticky banner goes: just above the tab bar when the tab screens are on top (the shell shows it),
+/// otherwise at the bottom of the screen (pages opened over the tabs, which have no tab bar). Follows the router: the
+/// tab screens are on top when the last route match is the tab shell (pages pushed over it come after it).
 class StickyPlace {
-  static final _pages = <Route<dynamic>>[];
-  static Route<dynamic>? _shell;
   static final shellOnTop = ValueNotifier<bool>(false);
+  static GoRouter? _router;
 
-  static void push(Route<dynamic> r) {
-    _pages
-      ..remove(r)
-      ..add(r);
+  static void attach(GoRouter r) {
+    if (identical(_router, r)) return;
+    _router?.routerDelegate.removeListener(_update);
+    _router = r;
+    r.routerDelegate.addListener(_update);
     _update();
   }
 
-  static void remove(Route<dynamic> r) {
-    _pages.remove(r);
-    _update();
+  static void _update() {
+    final r = _router;
+    if (r == null) return;
+    final m = r.routerDelegate.currentConfiguration.matches;
+    final v = m.isNotEmpty && m.last is ShellRouteMatch;
+    // Changed after the frame: navigation happens while widgets are being built.
+    WidgetsBinding.instance.addPostFrameCallback((_) => shellOnTop.value = v);
   }
-
-  /// The tab screens' own page (set by the shell).
-  static void shell(Route<dynamic>? r) {
-    if (identical(_shell, r)) return;
-    _shell = r;
-    _update();
-  }
-
-  // Changed after the frame: navigation happens while widgets are being built.
-  static void _update() => WidgetsBinding.instance.addPostFrameCallback((_) {
-    shellOnTop.value = _shell != null && _pages.isNotEmpty && identical(_pages.last, _shell);
-  });
 }
 
 /// The sticky banner for screens with no tab bar: it stays at the bottom while the student scrolls. Hidden on

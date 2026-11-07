@@ -217,13 +217,12 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
         : tabs.take(5).toList();
     final current = items.indexWhere((t) => _branchOf[t['type']] == widget.shell.currentIndex);
 
-    // The tab screens are on top: the sticky banner sits just above the tab bar, inside the app (owner, 2026-11-07).
-    StickyPlace.shell(ModalRoute.of(context));
+    // The sticky banner floats just above the tab bar, over the screen, and stays while scrolling (owner, 2026-11-07).
     return Scaffold(
-      body: Column(
+      body: Stack(
         children: [
-          Expanded(child: widget.shell),
-          const ShellStickyBanner(),
+          Positioned.fill(child: widget.shell),
+          const Positioned(left: 0, right: 0, bottom: 0, child: ShellStickyBanner()),
         ],
       ),
       bottomNavigationBar: _BottomNav(
