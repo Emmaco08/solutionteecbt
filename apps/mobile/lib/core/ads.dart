@@ -29,12 +29,22 @@ class AdsConfig {
   bool get personalised => j['personalised'] == true;
   bool format(String f) => on && (j['formats'] as Map?)?[f] != false;
   int _i(String k) => (j[k] as num?)?.toInt() ?? 0;
+  List<String> _l(String k) => [for (final x in (j[k] as List? ?? const [])) '$x'];
   int get nativeEvery => format('native') ? _i('native_every') : 0;
+  int get homeCards => format('native') ? _i('home_cards') : 0;
+  bool get newsCard => format('native') && j['news_card'] == true;
   int get interstitialGapS => _i('interstitial_gap_s');
   int get interstitialPerDay => format('interstitial') ? _i('interstitial_per_day') : 0;
+  int get interEveryTests => _i('inter_every_tests');
+  int get aiEvery => _i('ai_every');
+  List<String> get interSpots => _l('inter_spots');
+  int get appOpenAfterMin => format('app_open') ? _i('app_open_after_min') : 0;
+  List<String> get earnSpots => format('rewarded_interstitial') ? _l('rint_spots') : const [];
   int get rewardedLeft => format('rewarded') ? _i('rewarded_left') : 0;
+  int get xpLeft => _i('xp_left');
+  int get xpProgress => _i('xp_progress');
   bool get afterVideo => j['after_video'] == true;
-  bool bannerOn(String screen) => format('banner') && ((j['banner_screens'] as List?) ?? const []).contains(screen);
+  bool bannerOn(String screen) => format('banner') && _l('banner_screens').contains(screen);
   int reward(String k) => ((j['rewards'] as Map?)?[k] as num?)?.toInt() ?? 0;
 
   /// Google's sample units are used in test mode or when the admin left a unit empty.
@@ -45,6 +55,8 @@ class AdsConfig {
       'banner' => 'ca-app-pub-3940256099942544/6300978111',
       'native' => 'ca-app-pub-3940256099942544/2247696110',
       'interstitial' => 'ca-app-pub-3940256099942544/1033173712',
+      'app_open' => 'ca-app-pub-3940256099942544/9257395921',
+      'rewarded_interstitial' => 'ca-app-pub-3940256099942544/5354046379',
       _ => 'ca-app-pub-3940256099942544/5224354917',
     };
   }
@@ -78,15 +90,20 @@ class Ads {
   Ads._();
   static final instance = Ads._();
   bool _started = false;
+  AdsConfig _c = AdsConfig.off;
   InterstitialAd? _inter;
   bool _loadingInter = false;
-  DateTime? _lastInter;
+  AppOpenAd? _open;
+  bool _loadingOpen = false;
+  DateTime? _lastFull, _pausedAt;
   int _interToday = 0;
   String _interDay = '';
+  int _tests = 0, _ai = 0;
   final _pending = <String, Map<String, int>>{};
   Timer? _flush;
 
   Future<void> _init(AdsConfig c) async {
+    _c = c;
     if (_started) return;
     _started = true;
     await MobileAds.instance.initialize();
@@ -101,6 +118,8 @@ class Ads {
         maxAdContentRating: c.ageGroup == 'adult' ? MaxAdContentRating.t : MaxAdContentRating.g,
       ),
     );
+    // Have a break ad ready before the first break (otherwise the first break only starts loading one).
+    unawaited(_loadInter());
   }
 
   /// Load results for the admin report and for finding problems: "news#ok", or "news#e3" (Google's error code; 3 = no
@@ -137,16 +156,15 @@ class Ads {
     if (_interDay == _today()) return;
     _interDay = _today();
     try {
-      final v = await db.kvGet('ads:inter:$_interDay');
-      _interToday = int.tryParse(v ?? '') ?? 0;
+      _interToday = int.tryParse(await db.kvGet('ads:inter:$_interDay') ?? '') ?? 0;
+      _tests = int.tryParse(await db.kvGet('ads:tests') ?? '') ?? 0;
     } catch (_) {
       _interToday = 0;
     }
   }
 
-  /// Gets a break ad ready (call when a break is near, e.g. when results open).
-  Future<void> prepareBreak(WidgetRef ref) async {
-    final c = ref.read(adsConfigProvider).value ?? AdsConfig.off;
+  Future<void> _loadInter() async {
+    final c = _c;
     if (c.interstitialPerDay == 0 || _inter != null || _loadingInter) return;
     _loadingInter = true;
     await InterstitialAd.load(
@@ -166,48 +184,154 @@ class Ads {
     );
   }
 
-  /// A break (after results, a challenge or a video): shows a full-screen ad if the level, gap and daily cap allow.
-  Future<void> breakPoint(WidgetRef ref, String placement) async {
-    final c = ref.read(adsConfigProvider).value ?? AdsConfig.off;
-    if (AdsGate.blocked || c.interstitialPerDay == 0) return;
-    if (placement == 'video' && !c.afterVideo) return;
+  /// Gets a break ad ready (call when a break is near, e.g. when results open).
+  Future<void> prepareBreak(WidgetRef ref) async {
+    _c = ref.read(adsConfigProvider).value ?? _c;
+    await _loadInter();
+  }
+
+  /// No full-screen ad within 30 s of another (AdMob: no ad right before/after another full-screen ad).
+  bool get _recentFull => _lastFull != null && DateTime.now().difference(_lastFull!).inSeconds < 30;
+
+  /// Is this break one where the level shows a break ad? test = after every Nth test; ai = every Nth AI answer.
+  Future<bool> _spotAllowed(WidgetRef ref, String spot) async {
+    final c = _c;
+    final db = ref.read(dbProvider);
+    switch (spot) {
+      case 'test':
+        if (c.interEveryTests <= 0) return false;
+        _tests++;
+        try {
+          await db.kvSet('ads:tests', '$_tests');
+        } catch (_) {}
+        return _tests % c.interEveryTests == 0;
+      case 'challenge':
+        return c.interEveryTests > 0;
+      case 'ai':
+        if (c.aiEvery <= 0) return false;
+        _ai++;
+        return _ai % c.aiEvery == 0;
+      case 'video_end':
+        return c.interSpots.contains('video_end') || c.afterVideo;
+      default:
+        return c.interSpots.contains(spot);
+    }
+  }
+
+  /// A natural break (after a test, around a video, after a note or quiz, an AI answer, a section change): shows a
+  /// full-screen (mostly video) ad when the level allows this spot, the gap and the daily cap. Returns true when shown.
+  Future<bool> breakPoint(WidgetRef ref, String spot) async {
+    _c = ref.read(adsConfigProvider).value ?? _c;
+    final c = _c;
+    if (AdsGate.blocked || c.interstitialPerDay == 0 || _recentFull) return false;
     await _loadDayCount(ref.read(dbProvider));
-    if (_interToday >= c.interstitialPerDay) return;
-    if (_lastInter != null && DateTime.now().difference(_lastInter!).inSeconds < c.interstitialGapS) return;
+    if (!await _spotAllowed(ref, spot)) return false;
+    if (_interToday >= c.interstitialPerDay) return false;
+    if (_lastFull != null && DateTime.now().difference(_lastFull!).inSeconds < c.interstitialGapS) return false;
     final ad = _inter;
     if (ad == null) {
-      unawaited(prepareBreak(ref));
-      return;
+      unawaited(_loadInter());
+      return false;
     }
     _inter = null;
     ad.fullScreenContentCallback = FullScreenContentCallback(
-      onAdShowedFullScreenContent: (_) => log('interstitial', placement),
-      onAdClicked: (_) => log('interstitial', placement, click: true),
-      onAdDismissedFullScreenContent: (a) => a.dispose(),
-      onAdFailedToShowFullScreenContent: (a, _) => a.dispose(),
+      onAdShowedFullScreenContent: (_) => log('interstitial', spot),
+      onAdClicked: (_) => log('interstitial', spot, click: true),
+      onAdDismissedFullScreenContent: (a) {
+        a.dispose();
+        _lastFull = DateTime.now();
+        unawaited(_loadInter());
+      },
+      onAdFailedToShowFullScreenContent: (a, _) {
+        a.dispose();
+        unawaited(_loadInter());
+      },
     );
-    _lastInter = DateTime.now();
+    _lastFull = DateTime.now();
     _interToday++;
     try {
       await ref.read(dbProvider).kvSet('ads:inter:$_interDay', '$_interToday');
     } catch (_) {}
     await ad.show();
+    return true;
+  }
+
+  /// The app went to the background: remember when, and get an app-open ad ready.
+  void paused() {
+    _pausedAt = DateTime.now();
+    final c = _c;
+    if (c.appOpenAfterMin <= 0 || _open != null || _loadingOpen) return;
+    _loadingOpen = true;
+    AppOpenAd.load(
+      adUnitId: c.unit('app_open'),
+      request: c.request,
+      adLoadCallback: AppOpenAdLoadCallback(
+        onAdLoaded: (ad) {
+          _open = ad;
+          _loadingOpen = false;
+          result('app_open', 'resume');
+        },
+        onAdFailedToLoad: (e) {
+          _loadingOpen = false;
+          result('app_open', 'resume', error: e.code);
+        },
+      ),
+    );
+  }
+
+  /// The student came back: an app-open ad when they were away at least the level's minutes (never over an exam,
+  /// checkout or right after another full-screen ad).
+  void resumed() {
+    final away = _pausedAt == null ? Duration.zero : DateTime.now().difference(_pausedAt!);
+    _pausedAt = null;
+    final c = _c;
+    final ad = _open;
+    if (ad == null || c.appOpenAfterMin <= 0 || away.inMinutes < c.appOpenAfterMin || AdsGate.blocked || _recentFull) return;
+    _open = null;
+    ad.fullScreenContentCallback = FullScreenContentCallback(
+      onAdShowedFullScreenContent: (_) => log('app_open', 'resume'),
+      onAdClicked: (_) => log('app_open', 'resume', click: true),
+      onAdDismissedFullScreenContent: (a) {
+        a.dispose();
+        _lastFull = DateTime.now();
+      },
+      onAdFailedToShowFullScreenContent: (a, _) => a.dispose(),
+    );
+    _lastFull = DateTime.now();
+    ad.show();
   }
 }
 
-/// "Watch to unlock" (rewarded). The server makes a nonce, AdMob tells the server the ad was watched (server-side
-/// verification), and only then is the reward given. Returns true when the reward arrived.
-Future<bool> watchToUnlock(BuildContext context, WidgetRef ref, {required String kind, String? itemRef, String placement = ''}) async {
+/// The result of watching a rewarded video: [granted] = the reward is given; [counted] = one more video counted toward a
+/// reward that needs several ([count] of [need]).
+class AdReward {
+  const AdReward({this.granted = false, this.counted = false, this.count = 0, this.need = 0});
+  final bool granted, counted;
+  final int count, need;
+  static const none = AdReward();
+}
+
+/// "Watch to earn" (rewarded video, or a skippable "earn" video at a break when [interstitial] is true). The server
+/// makes a nonce, AdMob tells the server the video was watched (server-side verification), and only then is the reward
+/// given or counted.
+Future<AdReward> watchForReward(
+  BuildContext context,
+  WidgetRef ref, {
+  required String kind,
+  String? itemRef,
+  String placement = '',
+  bool interstitial = false,
+}) async {
   final c = ref.read(adsConfigProvider).value ?? AdsConfig.off;
-  if (AdsGate.blocked || !c.format('rewarded')) return false;
+  if (AdsGate.blocked || !c.format(interstitial ? 'rewarded_interstitial' : 'rewarded')) return AdReward.none;
   final sb = ref.read(supabaseProvider);
   final uid = sb.auth.currentUser?.id;
-  if (uid == null) return false;
+  if (uid == null) return AdReward.none;
   Map<String, dynamic> start;
   try {
     start = Map<String, dynamic>.from(await sb.rpc('ad_reward_start', params: {'p_kind': kind, 'p_ref': itemRef}) as Map);
   } catch (_) {
-    return false;
+    return AdReward.none;
   }
   if (start['ok'] != true) {
     if (context.mounted) {
@@ -216,7 +340,9 @@ Future<bool> watchToUnlock(BuildContext context, WidgetRef ref, {required String
         SnackBar(
           content: Text(
             why == 'cap'
-                ? 'You have used all your free unlocks for today. Go Premium for no limits and no ads.'
+                ? 'You have watched all your reward videos for today. Go Premium for no limits and no ads.'
+                : why == 'xp_cap'
+                ? 'You have earned all your XP from videos for today. Come back tomorrow.'
                 : why == 'full'
                 ? 'You already have the most streak freezes you can hold.'
                 : 'Watching for a reward is not available right now.',
@@ -224,50 +350,148 @@ Future<bool> watchToUnlock(BuildContext context, WidgetRef ref, {required String
         ),
       );
     }
-    return false;
+    return AdReward.none;
   }
   final nonce = '${start['nonce']}';
   final test = start['test'] == true;
   final done = Completer<bool>();
   var earned = false;
-  await RewardedAd.load(
-    adUnitId: c.unit('rewarded'),
-    request: c.request,
-    rewardedAdLoadCallback: RewardedAdLoadCallback(
-      onAdLoaded: (ad) async {
-        await ad.setServerSideOptions(ServerSideVerificationOptions(userId: uid, customData: nonce));
-        ad.fullScreenContentCallback = FullScreenContentCallback(
-          onAdShowedFullScreenContent: (_) => Ads.instance.log('rewarded', placement),
-          onAdDismissedFullScreenContent: (a) {
-            a.dispose();
-            if (!done.isCompleted) done.complete(earned);
-          },
-          onAdFailedToShowFullScreenContent: (a, _) {
-            a.dispose();
-            if (!done.isCompleted) done.complete(false);
-          },
-        );
-        await ad.show(onUserEarnedReward: (_, _) => earned = true);
-      },
-      onAdFailedToLoad: (e) {
-        Ads.instance.result('rewarded', placement, error: e.code);
-        if (!done.isCompleted) done.complete(false);
-      },
-    ),
+  final ssv = ServerSideVerificationOptions(userId: uid, customData: nonce);
+  FullScreenContentCallback<T> callbacks<T extends AdWithoutView>() => FullScreenContentCallback<T>(
+    onAdShowedFullScreenContent: (_) => Ads.instance.log(interstitial ? 'rewarded' : 'rewarded', placement),
+    onAdClicked: (_) => Ads.instance.log('rewarded', placement, click: true),
+    onAdDismissedFullScreenContent: (a) {
+      a.dispose();
+      Ads.instance._lastFull = DateTime.now();
+      if (!done.isCompleted) done.complete(earned);
+    },
+    onAdFailedToShowFullScreenContent: (a, _) {
+      a.dispose();
+      if (!done.isCompleted) done.complete(false);
+    },
   );
-  if (!await done.future) return false;
-  // The server gives the reward when AdMob's signed callback arrives (usually a few seconds).
+  void failed(LoadAdError e) {
+    Ads.instance.result('rewarded', placement, error: e.code);
+    if (!done.isCompleted) done.complete(false);
+  }
+
+  if (interstitial) {
+    await RewardedInterstitialAd.load(
+      adUnitId: c.unit('rewarded_interstitial'),
+      request: c.request,
+      rewardedInterstitialAdLoadCallback: RewardedInterstitialAdLoadCallback(
+        onAdLoaded: (ad) async {
+          await ad.setServerSideOptions(ssv);
+          ad.fullScreenContentCallback = callbacks<RewardedInterstitialAd>();
+          await ad.show(onUserEarnedReward: (_, _) => earned = true);
+        },
+        onAdFailedToLoad: failed,
+      ),
+    );
+  } else {
+    await RewardedAd.load(
+      adUnitId: c.unit('rewarded'),
+      request: c.request,
+      rewardedAdLoadCallback: RewardedAdLoadCallback(
+        onAdLoaded: (ad) async {
+          await ad.setServerSideOptions(ssv);
+          ad.fullScreenContentCallback = callbacks<RewardedAd>();
+          await ad.show(onUserEarnedReward: (_, _) => earned = true);
+        },
+        onAdFailedToLoad: failed,
+      ),
+    );
+  }
+  if (!await done.future) return AdReward.none;
+  // The server gives (or counts) the reward when AdMob's signed callback arrives (usually a few seconds).
   for (var i = 0; i < 12; i++) {
     try {
-      final st = await sb.rpc('ad_reward_status', params: {'p_nonce': nonce, 'p_test_claim': test});
-      if ((st as Map)['status'] == 'granted') {
+      final st = Map<String, dynamic>.from(await sb.rpc('ad_reward_status', params: {'p_nonce': nonce, 'p_test_claim': test}) as Map);
+      final s = st['status'];
+      if (s == 'granted' || s == 'counted') {
         ref.invalidate(adsConfigProvider);
-        return true;
+        return AdReward(
+          granted: s == 'granted',
+          counted: s == 'counted',
+          count: (st['count'] as num?)?.toInt() ?? 0,
+          need: (st['need'] as num?)?.toInt() ?? 0,
+        );
       }
     } catch (_) {}
     await Future<void>.delayed(const Duration(milliseconds: 1500));
   }
-  return false;
+  return AdReward.none;
+}
+
+/// Older callers: true when the reward was given.
+Future<bool> watchToUnlock(BuildContext context, WidgetRef ref, {required String kind, String? itemRef, String placement = ''}) async =>
+    (await watchForReward(context, ref, kind: kind, itemRef: itemRef, placement: placement)).granted;
+
+/// A skippable "earn XP" video offered at a break (rewarded interstitial; AdMob requires an intro the student can skip).
+/// Only when the level offers it at [spot] and XP videos are left today.
+Future<void> offerEarnVideo(BuildContext context, WidgetRef ref, String spot) async {
+  final c = ref.read(adsConfigProvider).value ?? AdsConfig.off;
+  if (AdsGate.blocked || !c.earnSpots.contains(spot) || c.xpLeft <= 0 || c.rewardedLeft <= 0 || Ads.instance._recentFull) return;
+  final xp = c.reward('xp_amount') > 0 ? c.reward('xp_amount') : 5;
+  final need = c.reward('xp_ads') > 1 ? c.reward('xp_ads') : 1;
+  final go = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => _EarnCountdown(xp: xp, need: need, progress: c.xpProgress),
+  );
+  if (go != true || !context.mounted) return;
+  final r = await watchForReward(context, ref, kind: 'xp', placement: 'earn_$spot', interstitial: true);
+  if (!context.mounted) return;
+  if (r.granted) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('+$xp XP added to your wallet.')));
+  } else if (r.counted) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${r.count} of ${r.need} videos watched. ${r.need - r.count} more for +$xp XP.')));
+  }
+}
+
+class _EarnCountdown extends StatefulWidget {
+  const _EarnCountdown({required this.xp, required this.need, required this.progress});
+  final int xp, need, progress;
+  @override
+  State<_EarnCountdown> createState() => _EarnCountdownState();
+}
+
+class _EarnCountdownState extends State<_EarnCountdown> {
+  int _left = 5;
+  Timer? _t;
+
+  @override
+  void initState() {
+    super.initState();
+    _t = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) return;
+      if (_left <= 1) {
+        t.cancel();
+        Navigator.of(context).pop(true);
+      } else {
+        setState(() => _left--);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _t?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: Text('Earn +${widget.xp} XP'),
+    content: Text(
+      widget.need > 1
+          ? 'Watch a short video (${widget.progress + 1} of ${widget.need}) to earn ${widget.xp} XP. It starts in $_left s.'
+          : 'Watch a short video to earn ${widget.xp} XP. It starts in $_left s.',
+    ),
+    actions: [
+      TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('No thanks')),
+      FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Watch now')),
+    ],
+  );
 }
 
 /// A banner at the top of a list, under the header, when the level shows banners on [screen].

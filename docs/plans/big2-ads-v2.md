@@ -91,3 +91,18 @@ Low is designed to keep students happy and still earn from opt-in rewarded video
   rewarded per day. Stored as `ads.custom`; `ads_preset('custom')` uses it.
 - **Ads everywhere (except the red line):** News list and article, Study pages, results, review, Me, XP, history,
   novels, bookmarks, settings, notifications, AI tutor; never in the exam/CBT/challenge/mock or at checkout.
+
+## 8. More from the owner (2026-11-07, "high-standard ad management like big companies")
+Built in three parts, each tested on the emulator before /download:
+- **B2 — AdMob everywhere (now):** the rebuilt levels in the app; **sticky banners** (stay at the top or bottom while
+  scrolling; admin chooses top/bottom per level or in Custom); **lesson notes**: a sticky banner inside the note, card
+  ads between sections, a break ad when the note is finished; ads in novels, past questions, videos lists, News;
+  **random break pop-ups in Ultra** (still only between screens, never in the middle of a task — AdMob rule);
+  app-open ads; "earn XP" videos; Home and AI tutor ads; age at sign-up + pop-up for existing students.
+- **B3 — Our own ads (house ads / brand campaigns):** admin adds a brand campaign with its banner image, card (image,
+  title, button, link), full-screen break (image or video) and **video ads before, in the middle of or after a video
+  lesson** (our own player can do this for our ads; AdMob cannot put ads inside our videos). Dates, placements, daily
+  caps per student, share vs AdMob, and a report of views and clicks per campaign for the brand.
+- **B4 — How Study content is opened (admin's choice per kind and per item):** Free, Premium, **watch N ads** (free
+  students), or **pay for this item** (Paystack), for video lessons/solutions, past-question years, notes, novels and
+  documents. All checked on the server.
