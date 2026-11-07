@@ -418,3 +418,7 @@ select cron.schedule('mock-tick', '* * * * *', $c$ select private.mock_tick(); $
 -- (applied as jamb_mock_card_fields) private.challenge_card also returns style, access, duration_minutes, results,
 -- allowed_exits, max_away_seconds, exit_action and unlocked (private.mock_allowed) — edited in place.
 -- Note: challenges.kind stays cash/event/practice; a JAMB mock is style = 'jamb_mock' with any kind.
+
+-- (applied as jamb_mock_leaderboard) challenge_result for mocks: each top row also has 'max' (100 × subjects) and
+-- 'subjects' (scores per subject), the student's 'my_max', and 'board_hidden' = true (empty top, no rank) when the
+-- admin hides scores (always, or until the mock ends). Edited in place.

@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/nav.dart';
 import '../../core/providers.dart';
 import '../../data/db.dart';
 import '../../theme/theme.dart';
@@ -186,7 +187,11 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> {
   Widget build(BuildContext context) => Scaffold(
     appBar: TopBar(title: 'JAMB mock', onBack: () => context.canPop() ? context.pop() : context.go('/test/challenges')),
     body: _result != null
-        ? MockResultView(r: _result!, onDone: () => context.canPop() ? context.pop() : context.go('/test/challenges'))
+        ? MockResultView(
+            r: _result!,
+            onDone: () => context.canPop() ? context.pop() : context.go('/test/challenges'),
+            leaderboard: () => openRoute(context, '/test/challenges/${widget.id}/result'),
+          )
         : _error != null
         ? Center(
             child: Padding(
@@ -278,9 +283,12 @@ Future<String> saveMockPaper(AppDb db, String challengeId, Map<String, dynamic> 
 
 /// After submitting: JAMB-style scores (each subject /100, total /400), or "results come later".
 class MockResultView extends StatelessWidget {
-  const MockResultView({super.key, required this.r, required this.onDone});
+  const MockResultView({super.key, required this.r, required this.onDone, this.leaderboard});
   final Map<String, dynamic> r;
   final VoidCallback onDone;
+
+  /// Opens the challenge leaderboard (the same one other challenges use).
+  final VoidCallback? leaderboard;
   @override
   Widget build(BuildContext context) {
     final c = context.c;
@@ -338,6 +346,10 @@ class MockResultView extends StatelessWidget {
             ),
         ],
         const Gap(Space.s5),
+        if (leaderboard != null) ...[
+          Btn('See the leaderboard', kind: BtnKind.outline, block: true, leading: PhosphorIcons.ranking(PhosphorIconsStyle.fill), onPressed: leaderboard),
+          const Gap(Space.s2),
+        ],
         Btn('Done', block: true, onPressed: onDone),
       ],
     );

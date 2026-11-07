@@ -163,6 +163,7 @@ void main() {
     }
     expect(api.submitted, isTrue);
     expect(find.text('150 / 200'), findsOneWidget);
+    expect(find.text('See the leaderboard'), findsOneWidget);
     expect(await t.runAsync(() => (db.select(db.localAttempts)..where((x) => x.id.equals('e1'))).getSingleOrNull()), isNull);
     await t.pumpWidget(const SizedBox());
   });

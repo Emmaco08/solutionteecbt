@@ -218,11 +218,16 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
     ref.invalidate(unfinishedProvider);
     if (!mounted) return;
     Navigator.of(context).popUntil((r) => r is! PopupRoute);
+    final router = GoRouter.of(context);
     await Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(
         builder: (ctx) => Scaffold(
           appBar: AppBar(title: const Text('JAMB mock'), automaticallyImplyLeading: false),
-          body: MockResultView(r: {...res, 'reason': ?reason}, onDone: () => Navigator.of(ctx).pop()),
+          body: MockResultView(
+            r: {...res, 'reason': ?reason},
+            onDone: () => Navigator.of(ctx).pop(),
+            leaderboard: () => router.go('/test/challenges/$id/result'),
+          ),
         ),
       ),
     );

@@ -46,6 +46,9 @@ class ChallengeResultScreen extends ConsumerWidget {
           final ch = Challenge(d);
           final mine = ch.mine;
           final top = rows(d['top']);
+          // JAMB mock (D-099): scores are out of 100 per subject, and the admin may hide the board until the end.
+          final boardHidden = d['board_hidden'] == true;
+          final myMax = (d['my_max'] as num?)?.toInt() ?? ch.questions;
           final myRank = (d['my_rank'] as num?)?.toInt();
           final ended = ch.ended;
           final prize = (mine?['prize'] as num?)?.toInt() ?? 0;
@@ -116,7 +119,7 @@ class ChallengeResultScreen extends ConsumerWidget {
                         TextSpan(
                           children: [
                             TextSpan(text: '${mine['score']}', style: context.ty.display.tnum),
-                            TextSpan(text: '/${ch.questions}', style: context.ty.h2.col(c.textMuted)),
+                            TextSpan(text: '/$myMax', style: context.ty.h2.col(c.textMuted)),
                           ],
                         ),
                       ),
@@ -151,7 +154,13 @@ class ChallengeResultScreen extends ConsumerWidget {
                     ],
                   ),
                   const Gap(Space.s2),
-                  if (top.isEmpty) Text('Nobody has finished yet.', style: context.ty.sm.col(c.textMuted)),
+                  if (boardHidden)
+                    Text(
+                      d['results'] == 'after_end' ? 'The leaderboard shows when the mock ends.' : 'Your tutor will share the results of this mock.',
+                      style: context.ty.sm.col(c.textMuted),
+                    )
+                  else if (top.isEmpty)
+                    Text('Nobody has finished yet.', style: context.ty.sm.col(c.textMuted)),
                   for (final w in top)
                     Container(
                       margin: const EdgeInsets.only(top: 4),
@@ -172,7 +181,7 @@ class ChallengeResultScreen extends ConsumerWidget {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              Text('${w['score']}/${ch.questions} · ${mmss(w['time_ms'] as num? ?? 0)}', style: context.ty.sm.bold.tnum),
+                              Text('${w['score']}/${w['max'] ?? ch.questions} · ${mmss(w['time_ms'] as num? ?? 0)}', style: context.ty.sm.bold.tnum),
                               if ((w['prize'] as num? ?? 0) > 0) Text(nairaWhole(w['prize'] as num), style: context.ty.cap.bold.col(c.onAccentSoft)),
                             ],
                           ),
