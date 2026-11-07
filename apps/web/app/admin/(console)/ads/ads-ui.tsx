@@ -16,10 +16,10 @@ const LEVELS: { id: string; label: string; what: string }[] = [
   { id: "off", label: "Off", what: "No ads at all." },
   { id: "low", label: "Low", what: "Hardly noticed: no banners, one card in News, a video break after every 3rd test (2 a day, 15 min apart). Watch-to-earn always open." },
   { id: "medium", label: "Medium", what: "Banners on Study, News and AI tutor, 1 card on Home, cards every 8 items, a break after every 2nd test and after videos (4 a day), 'earn XP' video after tests." },
-  { id: "high", label: "High", what: "Banners on most screens incl. Home, cards every 6, a break after every test and around videos (8 a day, 5 min), app-open ad after 4 h away, a sticky banner at the bottom, cards inside notes." },
+  { id: "high", label: "High", what: "Banners on most screens incl. Home, cards every 6, a break after every test and around videos (8 a day, 5 min), app-open ad after 4 h away, a sticky banner above the tab bar, cards inside notes." },
   { id: "high_extra", label: "High Extra", what: "Banners also on results, review, Me and XP, cards every 4, breaks after notes, quizzes and every 3rd AI answer (12 a day, 3 min), app-open after 1 h." },
   { id: "max", label: "Max", what: "Cards every 3, breaks also when opening Study sections (18 a day, 2 min), app-open after 30 min, 'earn' videos at most breaks." },
-  { id: "ultra", label: "Ultra", what: "The strongest AdMob allows: banners almost everywhere, a card every 2 items, 4 on Home, breaks at every natural break (25 a day, 90 s), random breaks between screens, sticky banners top and bottom, app-open after 5 min." },
+  { id: "ultra", label: "Ultra", what: "The strongest AdMob allows: banners almost everywhere, a card every 2 items, 4 on Home, breaks at every natural break (25 a day, 90 s), random breaks between screens, a sticky banner above the tab bar, app-open after 5 min." },
   { id: "custom", label: "Custom", what: "You choose every placement below." },
 ];
 const FORMATS: { id: Format; label: string; where: string }[] = [
@@ -107,7 +107,7 @@ export function AdsBoard({ r }: { r: AdsReport }) {
             Sticky banner (stays on screen while scrolling, on every screen except exams, CBT, challenges and checkout):
             <select className="rounded-lg border border-border bg-background px-2 py-1" value={c.banner_sticky}
               onChange={(e) => setC({ banner_sticky: e.target.value as Rules["banner_sticky"] })}>
-              <option value="off">Off</option><option value="top">Top</option><option value="bottom">Bottom</option><option value="both">Top and bottom</option>
+              <option value="off">Off</option><option value="bottom">On (just above the tab bar)</option>
             </select>
           </label>
           <h3 className="mt-6 text-sm font-bold">Card ads</h3>
