@@ -80,6 +80,15 @@ class Challenge {
   int? get maxPlayers => (j['max_players'] as num?)?.toInt();
   int? get minWinPct => ((j['min_win_pct'] as num?)?.toInt() ?? 0) > 0 ? (j['min_win_pct'] as num).toInt() : null;
 
+  /// JAMB mock (D-099): the whole paper at once, laid out like the JAMB CBT, with the admin's access and leave rules.
+  bool get isMock => j['style'] == 'jamb_mock';
+  String get access => '${j['access'] ?? 'open'}';
+  bool get unlocked => j['unlocked'] != false;
+  int get durationMinutes => (j['duration_minutes'] as num?)?.toInt() ?? 120;
+  int? get maxAwaySeconds => (j['max_away_seconds'] as num?)?.toInt();
+  bool get autoSubmitOnLeave => j['exit_action'] == 'submit';
+  String get results => '${j['results'] ?? 'instant'}';
+
   /// Full: the limit is reached and this student has not joined yet.
   bool get full => maxPlayers != null && joined >= maxPlayers! && mine == null;
   int? get placesLeft => maxPlayers == null ? null : (maxPlayers! - joined).clamp(0, maxPlayers!);

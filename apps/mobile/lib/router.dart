@@ -25,6 +25,7 @@ import 'features/study/pq_screens.dart';
 import 'features/study/study_hub.dart';
 import 'features/study/video_screens.dart';
 import 'features/compete/challenge_play.dart';
+import 'features/compete/mock_exam.dart';
 import 'features/compete/challenges_screens.dart';
 import 'features/compete/results_screens.dart';
 import 'features/invite/invite_screens.dart';
@@ -196,6 +197,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/challenges/:id/play',
         builder: (_, s) => ChallengePlayScreen(id: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/challenges/:id/mock',
+        builder: (_, s) => MockExamScreen(id: s.pathParameters['id']!),
       ),
       GoRoute(path: '/challenges', redirect: (_, _) => '/test/challenges'),
       GoRoute(path: '/challenges/:id', redirect: (_, s) => '/test/challenges/${s.pathParameters['id']}'),

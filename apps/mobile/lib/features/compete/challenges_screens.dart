@@ -15,6 +15,7 @@ import '../../widgets/phosphor.g.dart';
 import '../../widgets/r2_image.dart';
 import '../../widgets/states.dart';
 import 'compete_data.dart';
+import 'mock_exam.dart';
 
 IconData challengeIcon(String name) => switch (name) {
   'function' => PhosphorIcons.mathOperations(PhosphorIconsStyle.fill),
@@ -653,11 +654,21 @@ class _ChallengeScreenState extends ConsumerState<ChallengeScreen> {
       toast(context, 'Tick the fair-play box first.', icon: PhosphorIcons.shieldWarning(PhosphorIconsStyle.fill));
       return;
     }
+    if (c.isMock) {
+      _startMock(c);
+      return;
+    }
     if (c.xpFee > 0) {
       _confirmFee(c);
       return;
     }
     context.push('/challenges/${c.id}/play');
+  }
+
+  /// JAMB mock (D-099): Premium or a code first, then the JAMB-style exam screen.
+  Future<void> _startMock(Challenge c) async {
+    if (!await unlockMock(context, ref, c) || !mounted) return;
+    context.push('/challenges/${c.id}/mock');
   }
 
   /// D-083: an XP entry fee is confirmed first; the server takes it when the challenge starts.
@@ -724,11 +735,26 @@ class _ChallengeScreenState extends ConsumerState<ChallengeScreen> {
             const Gap(Space.s4),
             Row(
               children: [
-                for (final (v, l) in [
-                  ('${ch.questions}', 'questions'),
-                  ('${ch.seconds}s', 'per question'),
-                  (ch.xpFee > 0 ? '${ch.xpFee} XP' : 'Free', 'entry'),
-                ])
+                for (final (v, l)
+                    in ch.isMock
+                        ? [
+                            ('${ch.questions}', 'questions'),
+                            (
+                              ch.durationMinutes % 60 == 0
+                                  ? '${ch.durationMinutes ~/ 60} hr${ch.durationMinutes == 60 ? '' : 's'}'
+                                  : '${ch.durationMinutes} min',
+                              'time',
+                            ),
+                            (
+                              switch (ch.access) {
+                                'premium' => 'Premium',
+                                'code' || 'invite' => 'Code',
+                                _ => 'Open',
+                              },
+                              'entry',
+                            ),
+                          ]
+                        : [('${ch.questions}', 'questions'), ('${ch.seconds}s', 'per question'), (ch.xpFee > 0 ? '${ch.xpFee} XP' : 'Free', 'entry')])
                   Expanded(
                     child: Container(
                       margin: const EdgeInsets.symmetric(horizontal: 3),
@@ -762,6 +788,7 @@ class _ChallengeScreenState extends ConsumerState<ChallengeScreen> {
               ),
             ],
             const Gap(Space.s4),
+            if (ch.isMock) ...[MockRulesCard(c: ch), const Gap(Space.s3)],
             if (ch.ineligibleText != null) ...[
               InfoBanner(kind: BannerKind.warn, icon: PhosphorIcons.lockSimple(PhosphorIconsStyle.fill), child: Text(ch.ineligibleText!)),
               const Gap(Space.s3),
@@ -937,6 +964,8 @@ class _Footer extends StatelessWidget {
                       ? 'Your entry was disqualified'
                       : mine['status'] == 'playing'
                       ? 'You started this challenge'
+                      : c.isMock
+                      ? 'You submitted this mock'
                       : 'You scored ${mine['score']}/${c.questions} in ${mmss(mine['time_ms'] as num? ?? 0)}',
                   style: context.ty.sm.bold,
                 ),
@@ -949,7 +978,9 @@ class _Footer extends StatelessWidget {
             kind: BtnKind.tonal,
             sm: true,
             onPressed: () {
-              if (mine['status'] == 'playing') {
+              if (c.isMock) {
+                context.push('/challenges/${c.id}/mock');
+              } else if (mine['status'] == 'playing') {
                 context.push('/challenges/${c.id}/play');
               } else {
                 openRoute(context, '/test/challenges/${c.id}/result');
@@ -975,7 +1006,12 @@ class _Footer extends StatelessWidget {
     } else if (c.full) {
       child = Btn('Full · look out for the next one', kind: BtnKind.tonal, block: true, leading: PhosphorIcons.users(PhosphorIconsStyle.fill), onPressed: null);
     } else {
-      child = Btn('Start challenge', block: true, leading: PhosphorIcons.play(PhosphorIconsStyle.fill), onPressed: c.questions == 0 ? null : onStart);
+      child = Btn(
+        c.isMock ? (c.unlocked ? 'Start mock exam' : (c.access == 'premium' ? 'Premium mock · unlock' : 'Enter code to start')) : 'Start challenge',
+        block: true,
+        leading: c.isMock && !c.unlocked ? PhosphorIcons.lockSimple(PhosphorIconsStyle.fill) : PhosphorIcons.play(PhosphorIconsStyle.fill),
+        onPressed: c.questions == 0 ? null : onStart,
+      );
     }
     return SafeArea(
       top: false,
