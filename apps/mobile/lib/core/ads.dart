@@ -762,61 +762,124 @@ Future<void> askBirthYearOnce(BuildContext context, WidgetRef ref) async {
 String debugPendingAds() => jsonEncode(Ads.instance._pending);
 
 /// Ultra's random break pop-ups: sometimes a break ad when the student moves to another screen (never inside a task;
-/// the red-line screens block it). Added to the router's observers.
+/// the red-line screens block it). Added to the router's observers. It also follows which page is on top, so the
+/// sticky banner knows whether the tab bar is showing (then it sits just above the tab bar, inside the app).
 class AdsRouteObserver extends NavigatorObserver {
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    if (route is PageRoute) StickyPlace.push(route);
     if (route is PageRoute && previousRoute != null) {
       Future<void>.delayed(const Duration(milliseconds: 600), () => Ads.instance.breakAt('random'));
     }
   }
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) => StickyPlace.remove(route);
+
+  @override
+  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) => StickyPlace.remove(route);
+
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
+    if (oldRoute != null) StickyPlace.remove(oldRoute);
+    if (newRoute is PageRoute) StickyPlace.push(newRoute);
+  }
 }
 
-/// Sticky banners: wrap the whole app; a banner stays at the top and/or bottom while the student scrolls. Hidden on
-/// red-line screens (exam, CBT, challenge, checkout), for Premium and when the level has no sticky banner.
+/// Where the sticky banner goes: above the tab bar when the tab screens are on top (the shell shows it), otherwise at
+/// the bottom of the screen (pages opened over the tabs, which have no tab bar).
+class StickyPlace {
+  static final _pages = <Route<dynamic>>[];
+  static Route<dynamic>? _shell;
+  static final shellOnTop = ValueNotifier<bool>(false);
+
+  static void push(Route<dynamic> r) {
+    _pages
+      ..remove(r)
+      ..add(r);
+    _update();
+  }
+
+  static void remove(Route<dynamic> r) {
+    _pages.remove(r);
+    _update();
+  }
+
+  /// The tab screens' own page (set by the shell).
+  static void shell(Route<dynamic>? r) {
+    if (identical(_shell, r)) return;
+    _shell = r;
+    _update();
+  }
+
+  // Changed after the frame: navigation happens while widgets are being built.
+  static void _update() => WidgetsBinding.instance.addPostFrameCallback((_) {
+    shellOnTop.value = _shell != null && _pages.isNotEmpty && identical(_pages.last, _shell);
+  });
+}
+
+/// The sticky banner for screens with no tab bar: it stays at the bottom while the student scrolls. Hidden on
+/// red-line screens (exam, CBT, challenge, checkout), for Premium, when the level has none, and when the tab screens
+/// are on top (they show [ShellStickyBanner] above the tab bar instead). No banner at the very top (owner, 2026-11-07).
 class StickyAds extends ConsumerWidget {
   const StickyAds({super.key, required this.child});
   final Widget child;
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final c = ref.watch(adsConfigProvider).value ?? AdsConfig.off;
-    final where = c.sticky;
-    if (where == 'off') return child;
+    if (c.sticky == 'off') return child;
     return ValueListenableBuilder<int>(
       valueListenable: AdsGate.notifier,
-      builder: (context, blocked, _) {
-        if (blocked > 0) return child;
-        final top = where == 'top' || where == 'both', bottom = where == 'bottom' || where == 'both';
-        final pad = MediaQuery.paddingOf(context);
-        return ColoredBox(
-          color: Theme.of(context).colorScheme.surface,
-          child: Column(
-            children: [
-              // A small gap keeps the banner away from the app's own buttons (AdMob: no ads right next to buttons).
-              if (top)
-                Padding(
-                  padding: EdgeInsets.only(top: pad.top, bottom: 6),
-                  child: const _StickyBanner(slot: 'sticky_top'),
+      builder: (context, blocked, _) => ValueListenableBuilder<bool>(
+        valueListenable: StickyPlace.shellOnTop,
+        builder: (context, inShell, _) {
+          if (blocked > 0 || inShell) return child;
+          final pad = MediaQuery.paddingOf(context);
+          return ColoredBox(
+            color: Theme.of(context).colorScheme.surface,
+            child: Column(
+              children: [
+                Expanded(
+                  child: MediaQuery.removePadding(context: context, removeBottom: true, child: child),
                 ),
-              Expanded(
-                child: MediaQuery.removePadding(context: context, removeTop: top, removeBottom: bottom, child: child),
-              ),
-              if (bottom)
                 Padding(
-                  padding: EdgeInsets.only(top: 6, bottom: pad.bottom),
-                  child: const _StickyBanner(slot: 'sticky_bottom'),
+                  padding: EdgeInsets.only(bottom: pad.bottom),
+                  child: const _StickyBanner(slot: 'sticky_bottom', padding: EdgeInsets.only(top: 6)),
                 ),
-            ],
-          ),
-        );
-      },
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// The sticky banner inside the tab screens: just above the tab bar, with a small gap so it is never tapped by mistake.
+class ShellStickyBanner extends ConsumerWidget {
+  const ShellStickyBanner({super.key});
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = ref.watch(adsConfigProvider).value ?? AdsConfig.off;
+    if (c.sticky == 'off') return const SizedBox.shrink();
+    // Only while the tab screens are on top: a banner hidden under another page must never load (AdMob rule).
+    return ValueListenableBuilder<int>(
+      valueListenable: AdsGate.notifier,
+      builder: (context, blocked, _) => ValueListenableBuilder<bool>(
+        valueListenable: StickyPlace.shellOnTop,
+        builder: (context, onTop, _) =>
+            blocked > 0 || !onTop ? const SizedBox.shrink() : const _StickyBanner(slot: 'sticky_tabs', padding: EdgeInsets.only(top: 4, bottom: 6)),
+      ),
     );
   }
 }
 
 class _StickyBanner extends ConsumerStatefulWidget {
-  const _StickyBanner({required this.slot});
+  const _StickyBanner({required this.slot, this.padding = EdgeInsets.zero});
   final String slot;
+
+  /// Space around the banner, only once it has loaded (no empty gap while there is no ad).
+  final EdgeInsets padding;
   @override
   ConsumerState<_StickyBanner> createState() => _StickyBannerState();
 }
@@ -852,13 +915,16 @@ class _StickyBannerState extends ConsumerState<_StickyBanner> {
       ),
     )..load();
     if (!_ready) return const SizedBox.shrink();
-    return SizedBox(
-      width: double.infinity,
-      height: _ad!.size.height.toDouble(),
-      child: Center(
-        child: SizedBox(
-          width: _ad!.size.width.toDouble(),
-          child: AdWidget(ad: _ad!),
+    return Padding(
+      padding: widget.padding,
+      child: SizedBox(
+        width: double.infinity,
+        height: _ad!.size.height.toDouble(),
+        child: Center(
+          child: SizedBox(
+            width: _ad!.size.width.toDouble(),
+            child: AdWidget(ad: _ad!),
+          ),
         ),
       ),
     );
