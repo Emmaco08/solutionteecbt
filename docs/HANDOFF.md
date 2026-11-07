@@ -61,6 +61,8 @@ picks a level in admin → Money → Ads.
   shows the new build (version/build number and `built_at` newer than before) → only then tell the owner it is ready.
   A newer push cancels an older run, so check the run for the latest commit.
 - Never upload an APK by hand; only the workflow has the website APK's signing key. App updates are optional (not forced).
+- The workflow opens every build on an Android 14 emulator first (D-103); /download is updated only if the app keeps
+  running. If it fails, read the `emulator` job log (crash buffer) or the `emulator-check` artifact.
 
 ## Live systems
 

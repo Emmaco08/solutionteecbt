@@ -802,3 +802,15 @@ The owner asked to run the admin from Vercel instead of the laptop.
   names before 2026-11-07 already matched. The comments that were in the old hand-written files are kept in git history.
 - **Rule from now on:** apply with `apply_migration`, then read the applied version and save the file under that version
   with the applied text. Data-only actions (for example submitting a stuck mock entry for a student) are not migrations.
+
+## D-103 — The ads start-up crash and the emulator check before /download (2026-11-07)
+- **Crash:** after the ads update the app closed on opening. Real cause, from the emulator log:
+  `Unable to get provider androidx.startup.InitializationProvider … Failed to create an instance of
+  androidx.work.impl.WorkDatabase`. Google Mobile Ads brings WorkManager, which creates its Room database by reflection;
+  the release shrinker (R8) removed that class. Two earlier guesses (androidx.lifecycle 2.9.4, then 2.10.0) did not fix it.
+- **Fix:** `android/app/proguard-rules.pro` keeps Room databases, WorkManager and the ads/consent classes; WorkManager
+  2.10.0 instead of 2.7.0; androidx.lifecycle pinned to 2.10.0 (the plugin's 2.11 needs compileSdk 37).
+- **Rule:** the app workflow now has three jobs: `apk` (phone build), `emulator` (same app for x86_64, installed on an
+  Android 14 emulator, opened, must keep running 40 s; crash log + screenshot kept as an artifact) and `publish`
+  (/download only when both passed). Limit: the check opens the Welcome screen without signing in, so it does not show
+  an ad; ads start only for a signed-in free student when the level is not Off.
