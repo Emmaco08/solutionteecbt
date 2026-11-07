@@ -16,7 +16,9 @@ done
 adb exec-out screencap -p > "$OUT/screen.png" || true
 adb logcat -d > "$OUT/logcat.txt" || true
 adb logcat -d -b crash > "$OUT/crash.txt" || true
-if [ -s "$OUT/crash.txt" ] || [ "$ok" = 0 ]; then
+# Only crashes of our app count (the emulator's own apps, e.g. Gmail, sometimes crash on their own).
+ours=0; grep -q "Process: $PKG" "$OUT/crash.txt" && ours=1
+if [ "$ours" = 1 ] || [ "$ok" = 0 ]; then
   echo "::error::The app crashed or closed on the emulator"
   echo "----- crash buffer -----"; cat "$OUT/crash.txt"
   echo "----- AndroidRuntime / FATAL -----"; grep -E "AndroidRuntime|FATAL|DEBUG  |Process: $PKG" "$OUT/logcat.txt" | tail -150
