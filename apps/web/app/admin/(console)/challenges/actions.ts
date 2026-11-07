@@ -349,7 +349,7 @@ export async function deleteInvite(challengeId: string, id: string): Promise<Act
 export async function setSharedCode(challengeId: string, code: string): Promise<ActionResult> {
   await editors();
   const supabase = await createClient();
-  const { error } = await supabase.rpc("challenge_set_code", { p_id: challengeId, p_code: code.trim() || null });
+  const { error } = await supabase.rpc("challenge_set_code", { p_id: challengeId, p_code: (code.trim() || null) as string }); // null clears the code
   if (error) return { ok: false, error: friendlyError(error) };
   return { ok: true, message: code.trim() ? "Shared code saved." : "Shared code removed." };
 }

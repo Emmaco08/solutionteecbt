@@ -31,6 +31,7 @@ export const NAV: NavGroup[] = [
       { href: "/admin/xp", label: "XP & streaks", icon: "Coins", roles: ADMINS },
       { href: "/admin/referrals", label: "Referrals", icon: "Gift", roles: ADMINS },
       { href: "/admin/fraud", label: "Fraud & bans", icon: "ShieldWarning", roles: ADMINS },
+      { href: "/admin/ai-safety", label: "AI safety", icon: "Robot", roles: ADMINS },
     ],
   },
   {

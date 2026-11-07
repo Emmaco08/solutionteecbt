@@ -14,12 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      device_events: {
-        Row: { at: string; detail: string | null; device_hash: string | null; id: number; kind: string; user_id: string | null }
-        Insert: { at?: string; detail?: string | null; device_hash?: string | null; id?: never; kind: string; user_id?: string | null }
-        Update: { at?: string; detail?: string | null; device_hash?: string | null; id?: never; kind?: string; user_id?: string | null }
-        Relationships: []
-      }
       access_rules: {
         Row: {
           rules: Json
@@ -104,6 +98,8 @@ export type Database = {
           deleted_at: string | null
           id: string
           subject_id: number | null
+          summary: string | null
+          summary_upto: string | null
           title: string
           updated_at: string
           user_id: string
@@ -113,6 +109,8 @@ export type Database = {
           deleted_at?: string | null
           id?: string
           subject_id?: number | null
+          summary?: string | null
+          summary_upto?: string | null
           title?: string
           updated_at?: string
           user_id: string
@@ -122,6 +120,8 @@ export type Database = {
           deleted_at?: string | null
           id?: string
           subject_id?: number | null
+          summary?: string | null
+          summary_upto?: string | null
           title?: string
           updated_at?: string
           user_id?: string
@@ -169,8 +169,56 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_gen_questions: {
+        Row: {
+          answer: string
+          body: string
+          chat_id: string | null
+          created_at: string
+          explanation: string | null
+          id: string
+          options: Json
+          subject: string | null
+          topic: string | null
+          user_id: string
+        }
+        Insert: {
+          answer: string
+          body: string
+          chat_id?: string | null
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          options: Json
+          subject?: string | null
+          topic?: string | null
+          user_id: string
+        }
+        Update: {
+          answer?: string
+          body?: string
+          chat_id?: string | null
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          options?: Json
+          subject?: string | null
+          topic?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_gen_questions_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: false
+            referencedRelation: "ai_chats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_messages: {
         Row: {
+          card: Json | null
           chat_id: string
           content: string
           created_at: string
@@ -183,10 +231,12 @@ export type Database = {
           ms: number | null
           provider: string | null
           question_id: string | null
+          reaction: string | null
           role: string
           user_id: string
         }
         Insert: {
+          card?: Json | null
           chat_id: string
           content?: string
           created_at?: string
@@ -199,10 +249,12 @@ export type Database = {
           ms?: number | null
           provider?: string | null
           question_id?: string | null
+          reaction?: string | null
           role: string
           user_id: string
         }
         Update: {
+          card?: Json | null
           chat_id?: string
           content?: string
           created_at?: string
@@ -215,6 +267,7 @@ export type Database = {
           ms?: number | null
           provider?: string | null
           question_id?: string | null
+          reaction?: string | null
           role?: string
           user_id?: string
         }
@@ -359,6 +412,113 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: []
+      }
+      ai_safety: {
+        Row: {
+          blocked_until: string | null
+          decided_at: string | null
+          decided_by: string | null
+          decision: string | null
+          forever: boolean
+          level: number
+          reason: string | null
+          reported_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          blocked_until?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          decision?: string | null
+          forever?: boolean
+          level?: number
+          reason?: string | null
+          reported_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          blocked_until?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          decision?: string | null
+          forever?: boolean
+          level?: number
+          reason?: string | null
+          reported_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ai_strikes: {
+        Row: {
+          at: string
+          id: number
+          kind: string
+          text: string | null
+          user_id: string
+        }
+        Insert: {
+          at?: string
+          id?: never
+          kind?: string
+          text?: string | null
+          user_id: string
+        }
+        Update: {
+          at?: string
+          id?: never
+          kind?: string
+          text?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ai_tools_log: {
+        Row: {
+          args: Json
+          at: string
+          chat_id: string | null
+          id: number
+          ms: number | null
+          note: string | null
+          ok: boolean
+          tool: string
+          user_id: string
+        }
+        Insert: {
+          args?: Json
+          at?: string
+          chat_id?: string | null
+          id?: never
+          ms?: number | null
+          note?: string | null
+          ok: boolean
+          tool: string
+          user_id: string
+        }
+        Update: {
+          args?: Json
+          at?: string
+          chat_id?: string | null
+          id?: never
+          ms?: number | null
+          note?: string | null
+          ok?: boolean
+          tool?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_tools_log_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: false
+            referencedRelation: "ai_chats"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ai_usage: {
         Row: {
@@ -572,6 +732,77 @@ export type Database = {
         }
         Relationships: []
       }
+      ban_appeals: {
+        Row: {
+          admin_note: string | null
+          banned_at: string
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          id: string
+          reason: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          admin_note?: string | null
+          banned_at: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          reason: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          admin_note?: string | null
+          banned_at?: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          reason?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ban_appeals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      banned_devices: {
+        Row: {
+          banned_at: string
+          banned_by: string | null
+          device_hash: string
+          lifted_at: string | null
+          lifted_by: string | null
+          reason: string
+        }
+        Insert: {
+          banned_at?: string
+          banned_by?: string | null
+          device_hash: string
+          lifted_at?: string | null
+          lifted_by?: string | null
+          reason: string
+        }
+        Update: {
+          banned_at?: string
+          banned_by?: string | null
+          device_hash?: string
+          lifted_at?: string | null
+          lifted_by?: string | null
+          reason?: string
+        }
+        Relationships: []
+      }
       bookmarks: {
         Row: {
           created_at: string
@@ -596,11 +827,40 @@ export type Database = {
         }
         Relationships: []
       }
+      challenge_access: {
+        Row: {
+          at: string
+          challenge_id: string
+          user_id: string
+          via: string
+        }
+        Insert: {
+          at?: string
+          challenge_id: string
+          user_id: string
+          via: string
+        }
+        Update: {
+          at?: string
+          challenge_id?: string
+          user_id?: string
+          via?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_access_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       challenge_answers: {
         Row: {
           answered_at: string
           choice: string | null
-          correct: boolean
+          correct: boolean | null
           entry_id: string
           question_id: string
           time_ms: number
@@ -608,7 +868,7 @@ export type Database = {
         Insert: {
           answered_at?: string
           choice?: string | null
-          correct?: boolean
+          correct?: boolean | null
           entry_id: string
           question_id: string
           time_ms: number
@@ -616,7 +876,7 @@ export type Database = {
         Update: {
           answered_at?: string
           choice?: string | null
-          correct?: boolean
+          correct?: boolean | null
           entry_id?: string
           question_id?: string
           time_ms?: number
@@ -687,8 +947,10 @@ export type Database = {
       }
       challenge_entries: {
         Row: {
+          away_ms: number
           challenge_id: string
           current: number
+          deadline: string | null
           device_flags: string[]
           device_hash: string | null
           dq_reason: string | null
@@ -705,12 +967,17 @@ export type Database = {
           served_at: string | null
           started_at: string
           status: string
+          subject_scores: Json | null
+          subjects: number[] | null
           time_ms: number
           user_id: string
+          via: string | null
         }
         Insert: {
+          away_ms?: number
           challenge_id: string
           current?: number
+          deadline?: string | null
           device_flags?: string[]
           device_hash?: string | null
           dq_reason?: string | null
@@ -727,12 +994,17 @@ export type Database = {
           served_at?: string | null
           started_at?: string
           status?: string
+          subject_scores?: Json | null
+          subjects?: number[] | null
           time_ms?: number
           user_id: string
+          via?: string | null
         }
         Update: {
+          away_ms?: number
           challenge_id?: string
           current?: number
+          deadline?: string | null
           device_flags?: string[]
           device_hash?: string | null
           dq_reason?: string | null
@@ -749,8 +1021,11 @@ export type Database = {
           served_at?: string | null
           started_at?: string
           status?: string
+          subject_scores?: Json | null
+          subjects?: number[] | null
           time_ms?: number
           user_id?: string
+          via?: string | null
         }
         Relationships: [
           {
@@ -762,11 +1037,78 @@ export type Database = {
           },
         ]
       }
+      challenge_events: {
+        Row: {
+          at: string
+          entry_id: string
+          id: number
+          kind: string
+          ms: number | null
+        }
+        Insert: {
+          at?: string
+          entry_id: string
+          id?: never
+          kind: string
+          ms?: number | null
+        }
+        Update: {
+          at?: string
+          entry_id?: string
+          id?: never
+          kind?: string
+          ms?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_events_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "challenge_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       challenge_invites: {
-        Row: { id: string; challenge_id: string; label: string; code_hash: string; code_hint: string | null; user_id: string | null; claimed_at: string | null; created_at: string }
-        Insert: { id?: string; challenge_id: string; label: string; code_hash: string; code_hint?: string | null; user_id?: string | null; claimed_at?: string | null; created_at?: string }
-        Update: { id?: string; challenge_id?: string; label?: string; code_hash?: string; code_hint?: string | null; user_id?: string | null; claimed_at?: string | null; created_at?: string }
-        Relationships: []
+        Row: {
+          challenge_id: string
+          claimed_at: string | null
+          code_hash: string
+          code_hint: string | null
+          created_at: string
+          id: string
+          label: string
+          user_id: string | null
+        }
+        Insert: {
+          challenge_id: string
+          claimed_at?: string | null
+          code_hash: string
+          code_hint?: string | null
+          created_at?: string
+          id?: string
+          label: string
+          user_id?: string | null
+        }
+        Update: {
+          challenge_id?: string
+          claimed_at?: string | null
+          code_hash?: string
+          code_hint?: string | null
+          created_at?: string
+          id?: string
+          label?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_invites_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "challenges"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       challenge_questions: {
         Row: {
@@ -777,17 +1119,17 @@ export type Database = {
           difficulty: string
           explanation: string | null
           id: string
-          options: Json
-          position: number
-          source_question_id: string | null
+          image_path: string | null
           number: number | null
-          section: string | null
-          topic: string | null
+          options: Json
+          passage_body: string | null
           passage_key: string | null
           passage_title: string | null
-          passage_body: string | null
-          image_path: string | null
+          position: number
+          section: string | null
+          source_question_id: string | null
           subject_id: number | null
+          topic: string | null
         }
         Insert: {
           answer: string
@@ -797,17 +1139,17 @@ export type Database = {
           difficulty?: string
           explanation?: string | null
           id?: string
-          options: Json
-          position?: number
-          source_question_id?: string | null
+          image_path?: string | null
           number?: number | null
-          section?: string | null
-          topic?: string | null
+          options: Json
+          passage_body?: string | null
           passage_key?: string | null
           passage_title?: string | null
-          passage_body?: string | null
-          image_path?: string | null
+          position?: number
+          section?: string | null
+          source_question_id?: string | null
           subject_id?: number | null
+          topic?: string | null
         }
         Update: {
           answer?: string
@@ -817,17 +1159,17 @@ export type Database = {
           difficulty?: string
           explanation?: string | null
           id?: string
-          options?: Json
-          position?: number
-          source_question_id?: string | null
+          image_path?: string | null
           number?: number | null
-          section?: string | null
-          topic?: string | null
+          options?: Json
+          passage_body?: string | null
           passage_key?: string | null
           passage_title?: string | null
-          passage_body?: string | null
-          image_path?: string | null
+          position?: number
+          section?: string | null
+          source_question_id?: string | null
           subject_id?: number | null
+          topic?: string | null
         }
         Relationships: [
           {
@@ -855,133 +1197,133 @@ export type Database = {
       }
       challenges: {
         Row: {
+          access: string
+          access_code_hash: string | null
+          allow_calculator: boolean
+          allow_review: boolean
           allowed_exits: number
           announced_at: string | null
+          bg_dark: string | null
+          bg_light: string | null
           closed_at: string | null
           created_at: string
           created_by: string | null
+          duration_minutes: number | null
           end_notified_at: string | null
           ends_at: string
           exam_code: string | null
+          exit_action: string
           icon: string
           id: string
           kind: string
+          max_away_seconds: number | null
+          max_players: number | null
+          min_win_pct: number | null
+          mock_subjects: Json
           mode: string
           per_level: Json
           premium_days: number
           premium_top: number
           prizes: number[]
           published: boolean
-          reward_text: string | null
-          allow_calculator: boolean
-          bg_dark: string | null
-          bg_light: string | null
-          max_players: number | null
-          min_win_pct: number | null
-          style: string
-          access: string
-          access_code_hash: string | null
-          duration_minutes: number | null
-          max_away_seconds: number | null
-          exit_action: string
           results: string
-          mock_subjects: Json
-          allow_review: boolean
-          xp_fee: number
+          reward_text: string | null
           same_questions: boolean
           seconds_per_question: number
           soon_notified_at: string | null
           starts_at: string
+          style: string
           subject_id: number | null
           subtitle: string | null
           title: string
           updated_at: string
+          xp_fee: number
         }
         Insert: {
+          access?: string
+          access_code_hash?: string | null
+          allow_calculator?: boolean
+          allow_review?: boolean
           allowed_exits?: number
           announced_at?: string | null
+          bg_dark?: string | null
+          bg_light?: string | null
           closed_at?: string | null
           created_at?: string
           created_by?: string | null
+          duration_minutes?: number | null
           end_notified_at?: string | null
           ends_at: string
           exam_code?: string | null
+          exit_action?: string
           icon?: string
           id?: string
           kind?: string
+          max_away_seconds?: number | null
+          max_players?: number | null
+          min_win_pct?: number | null
+          mock_subjects?: Json
           mode?: string
           per_level?: Json
           premium_days?: number
           premium_top?: number
           prizes?: number[]
           published?: boolean
-          reward_text?: string | null
-          allow_calculator?: boolean
-          bg_dark?: string | null
-          bg_light?: string | null
-          max_players?: number | null
-          min_win_pct?: number | null
-          style?: string
-          access?: string
-          access_code_hash?: string | null
-          duration_minutes?: number | null
-          max_away_seconds?: number | null
-          exit_action?: string
           results?: string
-          mock_subjects?: Json
-          allow_review?: boolean
-          xp_fee?: number
+          reward_text?: string | null
           same_questions?: boolean
           seconds_per_question?: number
           soon_notified_at?: string | null
           starts_at: string
+          style?: string
           subject_id?: number | null
           subtitle?: string | null
           title: string
           updated_at?: string
+          xp_fee?: number
         }
         Update: {
+          access?: string
+          access_code_hash?: string | null
+          allow_calculator?: boolean
+          allow_review?: boolean
           allowed_exits?: number
           announced_at?: string | null
+          bg_dark?: string | null
+          bg_light?: string | null
           closed_at?: string | null
           created_at?: string
           created_by?: string | null
+          duration_minutes?: number | null
           end_notified_at?: string | null
           ends_at?: string
           exam_code?: string | null
+          exit_action?: string
           icon?: string
           id?: string
           kind?: string
+          max_away_seconds?: number | null
+          max_players?: number | null
+          min_win_pct?: number | null
+          mock_subjects?: Json
           mode?: string
           per_level?: Json
           premium_days?: number
           premium_top?: number
           prizes?: number[]
           published?: boolean
-          reward_text?: string | null
-          allow_calculator?: boolean
-          bg_dark?: string | null
-          bg_light?: string | null
-          max_players?: number | null
-          min_win_pct?: number | null
-          style?: string
-          access?: string
-          access_code_hash?: string | null
-          duration_minutes?: number | null
-          max_away_seconds?: number | null
-          exit_action?: string
           results?: string
-          mock_subjects?: Json
-          allow_review?: boolean
-          xp_fee?: number
+          reward_text?: string | null
           same_questions?: boolean
           seconds_per_question?: number
           soon_notified_at?: string | null
           starts_at?: string
+          style?: string
           subject_id?: number | null
           subtitle?: string | null
           title?: string
           updated_at?: string
+          xp_fee?: number
         }
         Relationships: [
           {
@@ -989,6 +1331,115 @@ export type Database = {
             columns: ["subject_id"]
             isOneToOne: false
             referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      device_accounts: {
+        Row: {
+          allowed: boolean
+          device_hash: string
+          first_seen: string
+          flags: string[]
+          kind: string
+          last_seen: string
+          user_id: string
+        }
+        Insert: {
+          allowed?: boolean
+          device_hash: string
+          first_seen?: string
+          flags?: string[]
+          kind?: string
+          last_seen?: string
+          user_id: string
+        }
+        Update: {
+          allowed?: boolean
+          device_hash?: string
+          first_seen?: string
+          flags?: string[]
+          kind?: string
+          last_seen?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_accounts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      device_appeals: {
+        Row: {
+          admin_note: string | null
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          device_hash: string
+          email: string
+          id: string
+          reason: string
+          status: string
+        }
+        Insert: {
+          admin_note?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          device_hash: string
+          email: string
+          id?: string
+          reason: string
+          status?: string
+        }
+        Update: {
+          admin_note?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          device_hash?: string
+          email?: string
+          id?: string
+          reason?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      device_events: {
+        Row: {
+          at: string
+          detail: string | null
+          device_hash: string | null
+          id: number
+          kind: string
+          user_id: string | null
+        }
+        Insert: {
+          at?: string
+          detail?: string | null
+          device_hash?: string | null
+          id?: never
+          kind: string
+          user_id?: string | null
+        }
+        Update: {
+          at?: string
+          detail?: string | null
+          device_hash?: string | null
+          id?: never
+          kind?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1046,6 +1497,51 @@ export type Database = {
           },
         ]
       }
+      exam_blueprints: {
+        Row: {
+          exam_id: number
+          id: number
+          sections: Json
+          subject_id: number | null
+          total: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          exam_id: number
+          id?: never
+          sections?: Json
+          subject_id?: number | null
+          total: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          exam_id?: number
+          id?: never
+          sections?: Json
+          subject_id?: number | null
+          total?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_blueprints_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exam_bodies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_blueprints_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exam_bodies: {
         Row: {
           code: string
@@ -1072,51 +1568,6 @@ export type Database = {
           sort?: number
         }
         Relationships: []
-      }
-      exam_blueprints: {
-        Row: {
-          exam_id: number
-          id: number
-          sections: Json
-          subject_id: number | null
-          total: number
-          updated_at: string
-          updated_by: string | null
-        }
-        Insert: {
-          exam_id: number
-          id?: number
-          sections?: Json
-          subject_id?: number | null
-          total: number
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Update: {
-          exam_id?: number
-          id?: number
-          sections?: Json
-          subject_id?: number | null
-          total?: number
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "exam_blueprints_exam_id_fkey"
-            columns: ["exam_id"]
-            isOneToOne: false
-            referencedRelation: "exam_bodies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "exam_blueprints_subject_id_fkey"
-            columns: ["subject_id"]
-            isOneToOne: false
-            referencedRelation: "subjects"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       exam_configs: {
         Row: {
@@ -1324,9 +1775,33 @@ export type Database = {
         ]
       }
       motivation_quotes: {
-        Row: { active: boolean; author: string | null; body: string; created_at: string; id: number; kind: string; sort: number }
-        Insert: { active?: boolean; author?: string | null; body: string; created_at?: string; id?: never; kind?: string; sort?: number }
-        Update: { active?: boolean; author?: string | null; body?: string; created_at?: string; id?: never; kind?: string; sort?: number }
+        Row: {
+          active: boolean
+          author: string | null
+          body: string
+          created_at: string
+          id: number
+          kind: string
+          sort: number
+        }
+        Insert: {
+          active?: boolean
+          author?: string | null
+          body: string
+          created_at?: string
+          id?: never
+          kind?: string
+          sort?: number
+        }
+        Update: {
+          active?: boolean
+          author?: string | null
+          body?: string
+          created_at?: string
+          id?: never
+          kind?: string
+          sort?: number
+        }
         Relationships: []
       }
       news_posts: {
@@ -1644,17 +2119,19 @@ export type Database = {
           entitlement_id: string | null
           id: string
           list_kobo: number
-          plan_id: number
+          plan_id: number | null
           provider: string
           provider_data: Json
           purchase_token: string | null
           reference: string
+          referral_friends: number
           refunded_at: string | null
           source: string
           status: Database["public"]["Enums"]["payment_status"]
           updated_at: string
           user_id: string | null
           verified_at: string | null
+          xp_pack: number | null
         }
         Insert: {
           amount_kobo: number
@@ -1666,17 +2143,19 @@ export type Database = {
           entitlement_id?: string | null
           id?: string
           list_kobo: number
-          plan_id: number
+          plan_id?: number | null
           provider: string
           provider_data?: Json
           purchase_token?: string | null
           reference: string
+          referral_friends?: number
           refunded_at?: string | null
           source?: string
           status?: Database["public"]["Enums"]["payment_status"]
           updated_at?: string
           user_id?: string | null
           verified_at?: string | null
+          xp_pack?: number | null
         }
         Update: {
           amount_kobo?: number
@@ -1688,17 +2167,19 @@ export type Database = {
           entitlement_id?: string | null
           id?: string
           list_kobo?: number
-          plan_id?: number
+          plan_id?: number | null
           provider?: string
           provider_data?: Json
           purchase_token?: string | null
           reference?: string
+          referral_friends?: number
           refunded_at?: string | null
           source?: string
           status?: Database["public"]["Enums"]["payment_status"]
           updated_at?: string
           user_id?: string | null
           verified_at?: string | null
+          xp_pack?: number | null
         }
         Relationships: [
           {
@@ -1770,14 +2251,6 @@ export type Database = {
           admin_note: string | null
           adult: boolean
           amount: number
-          payout_at: string | null
-          payout_by: string | null
-          payout_error: string | null
-          recipient_code: string | null
-          transfer_code: string | null
-          payout_ref: string | null
-          payout_status: string
-          verified_name: string | null
           bank_code: string | null
           bank_name: string
           created_at: string
@@ -1787,8 +2260,16 @@ export type Database = {
           id: string
           paid_at: string | null
           paid_by: string | null
+          payout_at: string | null
+          payout_by: string | null
+          payout_error: string | null
+          payout_ref: string | null
+          payout_status: string
+          recipient_code: string | null
           status: string
+          transfer_code: string | null
           user_id: string
+          verified_name: string | null
         }
         Insert: {
           account_name: string
@@ -1796,6 +2277,7 @@ export type Database = {
           admin_note?: string | null
           adult: boolean
           amount: number
+          bank_code?: string | null
           bank_name: string
           created_at?: string
           entry_id: string
@@ -1804,8 +2286,16 @@ export type Database = {
           id?: string
           paid_at?: string | null
           paid_by?: string | null
+          payout_at?: string | null
+          payout_by?: string | null
+          payout_error?: string | null
+          payout_ref?: string | null
+          payout_status?: string
+          recipient_code?: string | null
           status?: string
+          transfer_code?: string | null
           user_id: string
+          verified_name?: string | null
         }
         Update: {
           account_name?: string
@@ -1813,14 +2303,6 @@ export type Database = {
           admin_note?: string | null
           adult?: boolean
           amount?: number
-          payout_at?: string | null
-          payout_by?: string | null
-          payout_error?: string | null
-          recipient_code?: string | null
-          transfer_code?: string | null
-          payout_ref?: string | null
-          payout_status?: string
-          verified_name?: string | null
           bank_code?: string | null
           bank_name?: string
           created_at?: string
@@ -1830,8 +2312,16 @@ export type Database = {
           id?: string
           paid_at?: string | null
           paid_by?: string | null
+          payout_at?: string | null
+          payout_by?: string | null
+          payout_error?: string | null
+          payout_ref?: string | null
+          payout_status?: string
+          recipient_code?: string | null
           status?: string
+          transfer_code?: string | null
           user_id?: string
+          verified_name?: string | null
         }
         Relationships: [
           {
@@ -1854,12 +2344,17 @@ export type Database = {
           id: string
           jamb_subjects: string[]
           phone: string | null
+          referral_code: string | null
           school: string | null
           show_photo_on_leaderboard: boolean
           state: string | null
+          streak_freezes: number
+          streak_seen: string | null
           target_exams: string[]
           target_score: number | null
           updated_at: string
+          xp_bought: number
+          xp_earned: number
         }
         Insert: {
           avatar_path?: string | null
@@ -1871,12 +2366,17 @@ export type Database = {
           id: string
           jamb_subjects?: string[]
           phone?: string | null
+          referral_code?: string | null
           school?: string | null
           show_photo_on_leaderboard?: boolean
           state?: string | null
+          streak_freezes?: number
+          streak_seen?: string | null
           target_exams?: string[]
           target_score?: number | null
           updated_at?: string
+          xp_bought?: number
+          xp_earned?: number
         }
         Update: {
           avatar_path?: string | null
@@ -1888,12 +2388,17 @@ export type Database = {
           id?: string
           jamb_subjects?: string[]
           phone?: string | null
+          referral_code?: string | null
           school?: string | null
           show_photo_on_leaderboard?: boolean
           state?: string | null
+          streak_freezes?: number
+          streak_seen?: string | null
           target_exams?: string[]
           target_score?: number | null
           updated_at?: string
+          xp_bought?: number
+          xp_earned?: number
         }
         Relationships: []
       }
@@ -2248,6 +2753,123 @@ export type Database = {
           },
         ]
       }
+      referral_rewards: {
+        Row: {
+          account_name: string | null
+          account_number: string | null
+          admin_note: string | null
+          amount: number
+          bank_name: string | null
+          claimed_at: string | null
+          created_at: string
+          id: string
+          milestone: number
+          paid_at: string | null
+          paid_by: string | null
+          receipt_path: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          account_name?: string | null
+          account_number?: string | null
+          admin_note?: string | null
+          amount: number
+          bank_name?: string | null
+          claimed_at?: string | null
+          created_at?: string
+          id?: string
+          milestone: number
+          paid_at?: string | null
+          paid_by?: string | null
+          receipt_path?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          account_name?: string | null
+          account_number?: string | null
+          admin_note?: string | null
+          amount?: number
+          bank_name?: string | null
+          claimed_at?: string | null
+          created_at?: string
+          id?: string
+          milestone?: number
+          paid_at?: string | null
+          paid_by?: string | null
+          receipt_path?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_rewards_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      referrals: {
+        Row: {
+          code: string | null
+          counted_at: string | null
+          created_at: string
+          friend: string
+          id: string
+          reason: string | null
+          referrer: string
+          spent_payment: string | null
+          status: string
+        }
+        Insert: {
+          code?: string | null
+          counted_at?: string | null
+          created_at?: string
+          friend: string
+          id?: string
+          reason?: string | null
+          referrer: string
+          spent_payment?: string | null
+          status?: string
+        }
+        Update: {
+          code?: string | null
+          counted_at?: string | null
+          created_at?: string
+          friend?: string
+          id?: string
+          reason?: string | null
+          referrer?: string
+          spent_payment?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referrals_friend_fkey"
+            columns: ["friend"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referrals_referrer_fkey"
+            columns: ["referrer"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referrals_spent_payment_fkey"
+            columns: ["spent_payment"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff: {
         Row: {
           created_at: string
@@ -2268,6 +2890,35 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      streak_saves: {
+        Row: {
+          created_at: string
+          day: string
+          kind: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          day: string
+          kind: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          day?: string
+          kind?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "streak_saves_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       study_items: {
         Row: {
@@ -2363,6 +3014,53 @@ export type Database = {
             columns: ["topic_id"]
             isOneToOne: false
             referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      study_plans: {
+        Row: {
+          chat_id: string | null
+          created_at: string
+          days: Json
+          done: number[]
+          ended_at: string | null
+          id: string
+          reminders: boolean
+          starts_on: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          chat_id?: string | null
+          created_at?: string
+          days: Json
+          done?: number[]
+          ended_at?: string | null
+          id?: string
+          reminders?: boolean
+          starts_on: string
+          title?: string
+          user_id: string
+        }
+        Update: {
+          chat_id?: string | null
+          created_at?: string
+          days?: Json
+          done?: number[]
+          ended_at?: string | null
+          id?: string
+          reminders?: boolean
+          starts_on?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_plans_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: false
+            referencedRelation: "ai_chats"
             referencedColumns: ["id"]
           },
         ]
@@ -2512,15 +3210,84 @@ export type Database = {
           },
         ]
       }
+      xp_ledger: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          id: number
+          key: string | null
+          kind: string
+          note: string | null
+          reason: string
+          ref: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          id?: never
+          key?: string | null
+          kind: string
+          note?: string | null
+          reason: string
+          ref?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          id?: never
+          key?: string | null
+          kind?: string
+          note?: string | null
+          reason?: string
+          ref?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "xp_ledger_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
       admin_ai_health: { Args: never; Returns: Json }
+      admin_ai_safety_decide: {
+        Args: { p_decision: string; p_note?: string; p_user: string }
+        Returns: Json
+      }
+      admin_ai_safety_list: { Args: never; Returns: Json }
       admin_archive_codes: {
         Args: { p_batch: string; p_id: string }
         Returns: number
+      }
+      admin_ban: {
+        Args: {
+          p_banned: boolean
+          p_linked?: boolean
+          p_reason?: string
+          p_user: string
+        }
+        Returns: Json
+      }
+      admin_ban_appeal: {
+        Args: { p_accept: boolean; p_appeal: string; p_note?: string }
+        Returns: undefined
+      }
+      admin_ban_device: {
+        Args: { p_hash: string; p_reason: string }
+        Returns: Json
       }
       admin_batch_codes: {
         Args: { p_batch: string }
@@ -2529,44 +3296,15 @@ export type Database = {
           used: number
         }[]
       }
-      admin_ban_device: { Args: { p_hash: string; p_reason: string }; Returns: Json }
-      admin_device_appeal: {
-        Args: { p_accept: boolean; p_id: string; p_note?: string }
+      admin_challenge_add_random: {
+        Args: { p_count: number; p_id: string; p_subjects: number[] }
         Returns: Json
       }
-      admin_device_allow: {
-        Args: { p_allowed: boolean; p_hash: string; p_user: string }
-        Returns: undefined
-      }
-      admin_fraud: { Args: never; Returns: Json }
-      admin_referral_paid: {
-        Args: { p_note?: string; p_receipt?: string; p_reward: string }
-        Returns: undefined
-      }
-      admin_referral_settings: { Args: { p: Json }; Returns: undefined }
-      admin_referrals: { Args: never; Returns: Json }
       admin_challenge_appeal: {
         Args: { p_accept: boolean; p_appeal: string; p_note?: string }
         Returns: Json
       }
       admin_challenge_appeals: { Args: never; Returns: Json }
-      admin_ban: {
-        Args: { p_banned: boolean; p_linked?: boolean; p_reason?: string; p_user: string }
-        Returns: Json
-      }
-      admin_ban_appeal: {
-        Args: { p_accept: boolean; p_appeal: string; p_note?: string }
-        Returns: undefined
-      }
-      admin_unban_device: { Args: { p_hash: string }; Returns: Json }
-      admin_xp_adjust: { Args: { p_amount: number; p_reason: string; p_user: string }; Returns: Json }
-      admin_xp_overview: { Args: never; Returns: Json }
-      admin_xp_settings: { Args: { p: Json }; Returns: undefined }
-      admin_xp_user: { Args: { p_query: string }; Returns: Json }
-      admin_challenge_add_random: {
-        Args: { p_count: number; p_id: string; p_subjects: number[] }
-        Returns: Json
-      }
       admin_challenge_close: { Args: { p_id: string }; Returns: Json }
       admin_challenge_copy: {
         Args: { p_id: string; p_starts: string }
@@ -2574,21 +3312,17 @@ export type Database = {
       }
       admin_challenge_entries: { Args: { p_id: string }; Returns: Json }
       admin_challenge_live: { Args: { p_id: string }; Returns: Json }
-      challenge_set_code: { Args: { p_id: string; p_code: string | null }; Returns: undefined }
-      challenge_make_invites: { Args: { p_id: string; p_labels: string[] }; Returns: Json }
-      mock_analytics: { Args: { p_id: string }; Returns: Json }
-      mock_timeline: { Args: { p_entry: string }; Returns: Json }
-      admin_challenge_set_review: {
-        Args: { p_id: string; p_on: boolean }
-        Returns: undefined
+      admin_challenge_review: {
+        Args: { p_decision: string; p_entry: string }
+        Returns: Json
       }
       admin_challenge_set_level: {
         Args: { p_level: string; p_question: string }
         Returns: undefined
       }
-      admin_challenge_review: {
-        Args: { p_decision: string; p_entry: string }
-        Returns: Json
+      admin_challenge_set_review: {
+        Args: { p_id: string; p_on: boolean }
+        Returns: undefined
       }
       admin_codes: { Args: never; Returns: Json }
       admin_create_code_batch: {
@@ -2606,6 +3340,15 @@ export type Database = {
         Returns: Json
       }
       admin_dashboard: { Args: never; Returns: Json }
+      admin_device_allow: {
+        Args: { p_allowed: boolean; p_hash: string; p_user: string }
+        Returns: undefined
+      }
+      admin_device_appeal: {
+        Args: { p_accept: boolean; p_id: string; p_note?: string }
+        Returns: Json
+      }
+      admin_fraud: { Args: never; Returns: Json }
       admin_leaderboard_held: { Args: { p_season?: number }; Returns: Json }
       admin_leaderboard_recent: { Args: { p_limit?: number }; Returns: Json }
       admin_list_staff: {
@@ -2661,6 +3404,12 @@ export type Database = {
       admin_qotd_days: { Args: { p_from: string; p_to: string }; Returns: Json }
       admin_qotd_stats: { Args: { p_days?: number }; Returns: Json }
       admin_question_is_free: { Args: { p_id: string }; Returns: boolean }
+      admin_referral_paid: {
+        Args: { p_note?: string; p_receipt?: string; p_reward: string }
+        Returns: undefined
+      }
+      admin_referral_settings: { Args: { p: Json }; Returns: undefined }
+      admin_referrals: { Args: never; Returns: Json }
       admin_set_ai_key: {
         Args: { p_key: string; p_provider: string }
         Returns: string
@@ -2669,6 +3418,7 @@ export type Database = {
         Args: { p_banned: boolean; p_reason?: string; p_user: string }
         Returns: undefined
       }
+      admin_unban_device: { Args: { p_hash: string }; Returns: Json }
       admin_update_codes: {
         Args: {
           p_ends: string
@@ -2683,6 +3433,13 @@ export type Database = {
         Returns: number
       }
       admin_user_detail: { Args: { p_user: string }; Returns: Json }
+      admin_xp_adjust: {
+        Args: { p_amount: number; p_reason: string; p_user: string }
+        Returns: Json
+      }
+      admin_xp_overview: { Args: never; Returns: Json }
+      admin_xp_settings: { Args: { p: Json }; Returns: undefined }
+      admin_xp_user: { Args: { p_query: string }; Returns: Json }
       admin_year_counts: {
         Args: { p_exam: number }
         Returns: {
@@ -2692,6 +3449,7 @@ export type Database = {
           year: number
         }[]
       }
+      ai_block_status: { Args: { p_uid: string }; Returns: Json }
       ai_chunk_sources: {
         Args: { p_source: string }
         Returns: {
@@ -2700,6 +3458,10 @@ export type Database = {
         }[]
       }
       ai_config: { Args: never; Returns: Json }
+      ai_find_notes: {
+        Args: { p_q: string; p_subject?: number; p_uid: string }
+        Returns: Json
+      }
       ai_flag: {
         Args: { p_message: string; p_reason: string }
         Returns: undefined
@@ -2712,21 +3474,90 @@ export type Database = {
           title: string
         }[]
       }
+      ai_match_for: {
+        Args: {
+          p_count?: number
+          p_embedding: string
+          p_subject?: number
+          p_uid: string
+        }
+        Returns: {
+          content: string
+          item_id: string
+          similarity: number
+          title: string
+        }[]
+      }
+      ai_most_missed: {
+        Args: { p_limit?: number; p_subjects?: number[] }
+        Returns: Json
+      }
+      ai_nudge_candidates: { Args: { p_limit?: number }; Returns: Json }
+      ai_pick: {
+        Args: {
+          p_count?: number
+          p_difficulty?: string
+          p_for?: string
+          p_subject: number
+          p_topic?: string
+        }
+        Returns: Json
+      }
+      ai_pick2: {
+        Args: {
+          p_count?: number
+          p_difficulty?: string
+          p_exam?: string
+          p_for?: string
+          p_subject: number
+          p_topic?: string
+          p_year?: number
+        }
+        Returns: Json
+      }
       ai_provider_key: { Args: { p_provider: string }; Returns: string }
+      ai_question_for_me: { Args: { p_id: string }; Returns: Json }
+      ai_quiz_check: { Args: { p_choice: string; p_id: string }; Returns: Json }
       ai_quota: { Args: never; Returns: Json }
+      ai_react: {
+        Args: { p_message: string; p_reaction: string }
+        Returns: undefined
+      }
+      ai_read_note: {
+        Args: { p_q: string; p_subject?: number; p_uid: string }
+        Returns: Json
+      }
       ai_refund: { Args: { p_uid: string }; Returns: undefined }
+      ai_strike: {
+        Args: { p_kind: string; p_text: string; p_uid: string }
+        Returns: Json
+      }
+      ai_student_context: { Args: { p_uid: string }; Returns: Json }
       ai_take: { Args: { p_uid: string }; Returns: number }
+      ai_weak_topics: {
+        Args: { p_limit?: number; p_uid: string }
+        Returns: Json
+      }
+      am_content_editor: { Args: never; Returns: boolean }
       am_money_admin: { Args: never; Returns: boolean }
       am_notifier: { Args: never; Returns: boolean }
       auth_user_status: { Args: { p_email: string }; Returns: string }
-      prize_claim_v2: { Args: { p_id: string; p_adult: boolean; p_bank: string; p_bank_code: string; p_account_number: string; p_account_name: string; p_guardian_name?: string; p_guardian_phone?: string }; Returns: Json }
-      can_view_challenge_image: { Args: { p_key: string }; Returns: boolean }
-      my_practice_today: { Args: never; Returns: Json }
+      ban_appeal: { Args: { p_reason: string }; Returns: Json }
       can_upload_images: { Args: never; Returns: boolean }
       can_view_avatar: { Args: { p_key: string }; Returns: boolean }
+      can_view_challenge_image: { Args: { p_key: string }; Returns: boolean }
       can_view_note_image: { Args: { p_key: string }; Returns: boolean }
       can_view_question_image: { Args: { p_key: string }; Returns: boolean }
       can_view_study_file: { Args: { p_key: string }; Returns: boolean }
+      cbt_paper: {
+        Args: {
+          p_count?: number
+          p_exam: number
+          p_subject: number
+          p_year?: number
+        }
+        Returns: Json
+      }
       challenge_answer: {
         Args: { p_choice: string; p_entry: string; p_question: string }
         Returns: Json
@@ -2740,37 +3571,41 @@ export type Database = {
         Args: { p_entry: string; p_reason?: string }
         Returns: Json
       }
-      challenge_result: { Args: { p_id: string }; Returns: Json }
-      ban_appeal: { Args: { p_reason: string }; Returns: Json }
-      device_appeal: {
-        Args: { p_email: string; p_ids: string[]; p_reason: string }
-        Returns: Json
-      }
-      device_check_in: { Args: { p_flags?: string[]; p_ids: string[] }; Returns: Json }
-      device_register: { Args: { p_hash: string }; Returns: Json }
-      device_status: { Args: { p_ids: string[] }; Returns: Json }
-      my_referrals: { Args: never; Returns: Json }
-      my_status: { Args: never; Returns: Json }
-      my_xp: { Args: never; Returns: Json }
-      xp_buy_premium: { Args: { p_plan: string }; Returns: Json }
-      xp_claim_daily: { Args: never; Returns: Json }
-      referral_apply: { Args: { p_code: string }; Returns: Json }
-      referral_claim: {
-        Args: { p_account_name: string; p_account_number: string; p_bank: string; p_reward: string }
+      challenge_make_invites: {
+        Args: { p_id: string; p_labels: string[] }
         Returns: Json
       }
       challenge_report: {
         Args: { p_entry: string; p_what: string }
         Returns: undefined
       }
+      challenge_result: { Args: { p_id: string }; Returns: Json }
       challenge_review: { Args: { p_id: string }; Returns: Json }
+      challenge_set_code: {
+        Args: { p_code: string; p_id: string }
+        Returns: undefined
+      }
       challenge_start: {
         Args: { p_device?: string; p_device_flags?: string[]; p_id: string }
         Returns: Json
       }
+      challenge_unlock: {
+        Args: { p_code: string; p_id: string }
+        Returns: Json
+      }
       challenges_list: { Args: never; Returns: Json }
+      device_appeal: {
+        Args: { p_email: string; p_ids: string[]; p_reason: string }
+        Returns: Json
+      }
+      device_check_in: {
+        Args: { p_flags?: string[]; p_ids: string[] }
+        Returns: Json
+      }
+      device_register: { Args: { p_hash: string }; Returns: Json }
+      device_status: { Args: { p_ids: string[] }; Returns: Json }
       email_send_allowed: {
-        Args: { p_email_hash: string; p_ip_hash: string | null; p_kind: string }
+        Args: { p_email_hash: string; p_ip_hash: string; p_kind: string }
         Returns: string
       }
       email_sent_last_24h: { Args: never; Returns: number }
@@ -2798,6 +3633,25 @@ export type Database = {
           topic: string
         }[]
       }
+      fetch_questions_by_ids: {
+        Args: { p_ids: string[] }
+        Returns: {
+          answer: string
+          body: string
+          difficulty: Database["public"]["Enums"]["difficulty"]
+          explanation: string
+          id: string
+          image_path: string
+          number: number
+          options: Json
+          passage_body: string
+          passage_id: string
+          passage_title: string
+          section: string
+          topic: string
+          year: number
+        }[]
+      }
       import_questions: {
         Args: { p_dry_run?: boolean; p_file_name: string; p_rows: Json }
         Returns: Json
@@ -2816,7 +3670,34 @@ export type Database = {
         Returns: Json
       }
       mark_notifications_read: { Args: { p_ids?: string[] }; Returns: number }
+      mock_analytics: { Args: { p_id: string }; Returns: Json }
+      mock_event: {
+        Args: { p_entry: string; p_kind: string; p_ms?: number }
+        Returns: Json
+      }
+      mock_gate: { Args: { p_id: string }; Returns: Json }
+      mock_result: { Args: { p_id: string }; Returns: Json }
+      mock_save: {
+        Args: {
+          p_choice: string
+          p_entry: string
+          p_ms?: number
+          p_question: string
+        }
+        Returns: Json
+      }
+      mock_start: {
+        Args: { p_device?: string; p_device_flags?: string[]; p_id: string }
+        Returns: Json
+      }
+      mock_submit: { Args: { p_entry: string }; Returns: Json }
+      mock_submit_all: {
+        Args: { p_answers?: Json; p_entry: string }
+        Returns: Json
+      }
+      mock_timeline: { Args: { p_entry: string }; Returns: Json }
       my_badges: { Args: never; Returns: Json }
+      my_best_jamb: { Args: never; Returns: Json }
       my_dashboard: { Args: never; Returns: Json }
       my_notifications: {
         Args: { p_limit?: number }
@@ -2841,8 +3722,18 @@ export type Database = {
         }[]
       }
       my_plan: { Args: never; Returns: Json }
-      today_motivation: { Args: never; Returns: Json }
+      my_practice_today: { Args: never; Returns: Json }
+      my_referrals: { Args: never; Returns: Json }
+      my_stats: { Args: never; Returns: Json }
+      my_status: { Args: never; Returns: Json }
+      my_streak: { Args: never; Returns: Json }
+      my_today_plan: { Args: never; Returns: Json }
       my_winnings: { Args: never; Returns: Json }
+      my_xp: { Args: never; Returns: Json }
+      pay_cancel: {
+        Args: { p_note?: string; p_reference: string; p_uid: string }
+        Returns: Json
+      }
       pay_note: {
         Args: {
           p_data?: Json
@@ -2897,6 +3788,36 @@ export type Database = {
         }
         Returns: Json
       }
+      payout_begin: {
+        Args: { p_admin: string; p_claim: string }
+        Returns: Json
+      }
+      payout_checked: {
+        Args: { p_admin: string; p_claim: string; p_name: string }
+        Returns: Json
+      }
+      payout_recipient: {
+        Args: { p_claim: string; p_code: string }
+        Returns: undefined
+      }
+      payout_result: {
+        Args: {
+          p_note?: string
+          p_ref: string
+          p_status: string
+          p_transfer_code?: string
+        }
+        Returns: Json
+      }
+      plan_update: {
+        Args: {
+          p_done_day?: number
+          p_plan: string
+          p_reminders?: boolean
+          p_stop?: boolean
+        }
+        Returns: undefined
+      }
       prize_claim: {
         Args: {
           p_account_name: string
@@ -2909,16 +3830,40 @@ export type Database = {
         }
         Returns: Json
       }
+      prize_claim_v2: {
+        Args: {
+          p_account_name: string
+          p_account_number: string
+          p_adult: boolean
+          p_bank: string
+          p_bank_code: string
+          p_guardian_name?: string
+          p_guardian_phone?: string
+          p_id: string
+        }
+        Returns: Json
+      }
       push_cron_ok: { Args: { p_token: string }; Returns: boolean }
       push_done: {
         Args: { p_error: string; p_id: string; p_sent: number }
         Returns: undefined
       }
+      push_kick: { Args: never; Returns: undefined }
       push_take_due: { Args: { p_limit?: number }; Returns: Json }
       qotd_answer: { Args: { p_choice: string }; Returns: Json }
       qotd_today: { Args: never; Returns: Json }
       quote_price: { Args: { p_code?: string; p_plan: string }; Returns: Json }
       redeem_code: { Args: { p_code: string }; Returns: Json }
+      referral_apply: { Args: { p_code: string }; Returns: Json }
+      referral_claim: {
+        Args: {
+          p_account_name: string
+          p_account_number: string
+          p_bank: string
+          p_reward: string
+        }
+        Returns: Json
+      }
       register_push_token: {
         Args: { p_platform?: string; p_token: string; p_version?: string }
         Returns: undefined
@@ -2930,6 +3875,9 @@ export type Database = {
         }
         Returns: number
       }
+      streak_buy_freeze: { Args: never; Returns: Json }
+      streak_repair: { Args: never; Returns: Json }
+      streak_seen: { Args: { p_key: string }; Returns: undefined }
       study_catalog: {
         Args: { p_kind: string; p_subject?: number }
         Returns: {
@@ -2956,8 +3904,15 @@ export type Database = {
       }
       study_item: { Args: { p_id: string }; Returns: Json }
       submit_attempt: { Args: { p: Json }; Returns: Json }
+      today_motivation: { Args: never; Returns: Json }
       undo_import: { Args: { p_batch: string }; Returns: number }
       winners_wall_list: { Args: never; Returns: Json }
+      xp_buy_premium: { Args: { p_plan: string }; Returns: Json }
+      xp_claim_daily: { Args: never; Returns: Json }
+      xp_pack_start: {
+        Args: { p_source?: string; p_uid: string; p_xp: number }
+        Returns: Json
+      }
     }
     Enums: {
       attempt_status: "submitted" | "abandoned"

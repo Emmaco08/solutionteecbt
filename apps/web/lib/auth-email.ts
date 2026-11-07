@@ -24,7 +24,7 @@ const REASONS: Record<string, string> = {
 /** Asks the database (atomic, rate-limited) whether this email may be sent now. */
 export async function allowSend(kind: Kind, email: string, ip: string | null): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
   const svc = await createServiceClient();
-  const { data, error } = await svc.rpc("email_send_allowed", { p_kind: kind, p_email_hash: hash(email), p_ip_hash: ip ? hash(ip) : null });
+  const { data, error } = await svc.rpc("email_send_allowed", { p_kind: kind, p_email_hash: hash(email), p_ip_hash: (ip ? hash(ip) : null) as string });
   if (error) return { ok: false, status: 500, error: "Could not send right now. Try again." };
   if (data === "ok") return { ok: true };
   return { ok: false, status: 429, error: REASONS[data] ?? "Please try again later." };
