@@ -762,6 +762,12 @@ export type Database = {
           },
         ]
       }
+      challenge_invites: {
+        Row: { id: string; challenge_id: string; label: string; code_hash: string; code_hint: string | null; user_id: string | null; claimed_at: string | null; created_at: string }
+        Insert: { id?: string; challenge_id: string; label: string; code_hash: string; code_hint?: string | null; user_id?: string | null; claimed_at?: string | null; created_at?: string }
+        Update: { id?: string; challenge_id?: string; label?: string; code_hash?: string; code_hint?: string | null; user_id?: string | null; claimed_at?: string | null; created_at?: string }
+        Relationships: []
+      }
       challenge_questions: {
         Row: {
           answer: string
@@ -774,6 +780,13 @@ export type Database = {
           options: Json
           position: number
           source_question_id: string | null
+          number: number | null
+          section: string | null
+          topic: string | null
+          passage_key: string | null
+          passage_title: string | null
+          passage_body: string | null
+          image_path: string | null
           subject_id: number | null
         }
         Insert: {
@@ -787,6 +800,13 @@ export type Database = {
           options: Json
           position?: number
           source_question_id?: string | null
+          number?: number | null
+          section?: string | null
+          topic?: string | null
+          passage_key?: string | null
+          passage_title?: string | null
+          passage_body?: string | null
+          image_path?: string | null
           subject_id?: number | null
         }
         Update: {
@@ -800,6 +820,13 @@ export type Database = {
           options?: Json
           position?: number
           source_question_id?: string | null
+          number?: number | null
+          section?: string | null
+          topic?: string | null
+          passage_key?: string | null
+          passage_title?: string | null
+          passage_body?: string | null
+          image_path?: string | null
           subject_id?: number | null
         }
         Relationships: [
@@ -851,6 +878,14 @@ export type Database = {
           bg_light: string | null
           max_players: number | null
           min_win_pct: number | null
+          style: string
+          access: string
+          access_code_hash: string | null
+          duration_minutes: number | null
+          max_away_seconds: number | null
+          exit_action: string
+          results: string
+          mock_subjects: Json
           allow_review: boolean
           xp_fee: number
           same_questions: boolean
@@ -886,6 +921,14 @@ export type Database = {
           bg_light?: string | null
           max_players?: number | null
           min_win_pct?: number | null
+          style?: string
+          access?: string
+          access_code_hash?: string | null
+          duration_minutes?: number | null
+          max_away_seconds?: number | null
+          exit_action?: string
+          results?: string
+          mock_subjects?: Json
           allow_review?: boolean
           xp_fee?: number
           same_questions?: boolean
@@ -921,6 +964,14 @@ export type Database = {
           bg_light?: string | null
           max_players?: number | null
           min_win_pct?: number | null
+          style?: string
+          access?: string
+          access_code_hash?: string | null
+          duration_minutes?: number | null
+          max_away_seconds?: number | null
+          exit_action?: string
+          results?: string
+          mock_subjects?: Json
           allow_review?: boolean
           xp_fee?: number
           same_questions?: boolean
@@ -2523,6 +2574,10 @@ export type Database = {
       }
       admin_challenge_entries: { Args: { p_id: string }; Returns: Json }
       admin_challenge_live: { Args: { p_id: string }; Returns: Json }
+      challenge_set_code: { Args: { p_id: string; p_code: string | null }; Returns: undefined }
+      challenge_make_invites: { Args: { p_id: string; p_labels: string[] }; Returns: Json }
+      mock_analytics: { Args: { p_id: string }; Returns: Json }
+      mock_timeline: { Args: { p_entry: string }; Returns: Json }
       admin_challenge_set_review: {
         Args: { p_id: string; p_on: boolean }
         Returns: undefined

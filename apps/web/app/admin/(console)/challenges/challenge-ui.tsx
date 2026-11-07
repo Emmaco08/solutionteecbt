@@ -17,6 +17,8 @@ export type ChallengeRow = {
   starts_at: string; ends_at: string; seconds_per_question: number; prizes: number[]; reward_text: string | null;
   premium_days: number; premium_top: number; allowed_exits: number; published: boolean; closed_at: string | null; xp_fee: number;
   mode: "mixed" | "subject" | "fixed"; subject_id: number | null; per_level: Record<string, number>; same_questions: boolean; allow_review: boolean; allow_calculator: boolean; bg_light: string | null; bg_dark: string | null; max_players: number | null; min_win_pct: number | null;
+  style?: "standard" | "jamb_mock"; access?: "open" | "premium" | "code" | "invite"; access_code_hash?: string | null; duration_minutes?: number | null;
+  max_away_seconds?: number | null; exit_action?: "flag" | "submit"; results?: "instant" | "after_end" | "hidden";
 };
 export type QRow = { id: string; position: number; body: string; options: Record<string, string>; answer: string; subject_id: number | null; difficulty: string };
 export type Subject = { id: number; name: string };
@@ -36,6 +38,9 @@ export function ChallengeForm({ c, subjects }: { c?: ChallengeRow; subjects: Sub
   const [pending, start] = useTransition();
   const [kind, setKind] = useState(c?.kind ?? "cash");
   const [mode, setMode] = useState<ChallengeRow["mode"]>(c?.mode ?? "mixed");
+  const [style, setStyle] = useState(c?.style ?? "standard");
+  const [access, setAccess] = useState(c?.access ?? "open");
+  const mock = style === "jamb_mock";
   const pl = c?.per_level ?? { easy: 3, medium: 3, hard: 3, very_hard: 1 };
   return (
     <form className="space-y-4" action={(f) => start(async () => {
@@ -48,7 +53,52 @@ export function ChallengeForm({ c, subjects }: { c?: ChallengeRow; subjects: Sub
           <input id="cTitle" name="title" defaultValue={c?.title} required maxLength={80} placeholder="Weekly Challenge #1" className={inputCls} /></div>
         <div className="space-y-1.5 sm:col-span-2"><Label htmlFor="cSub">Short description (optional)</Label>
           <input id="cSub" name="subtitle" defaultValue={c?.subtitle ?? ""} maxLength={160} placeholder="Mixed JAMB subjects · new questions" className={inputCls} /></div>
-        <div className="space-y-1.5 sm:col-span-2"><Label htmlFor="cMode">Who plays and which questions</Label>
+        <div className="space-y-1.5 sm:col-span-2"><Label htmlFor="cStyle">Challenge style</Label>
+          <select id="cStyle" name="style" value={style} onChange={(e) => setStyle(e.target.value as typeof style)} className={inputCls}>
+            <option value="standard">Standard challenge: one question at a time, a timer per question</option>
+            <option value="jamb_mock">JAMB mock exam: the whole paper like the JAMB CBT (tutorial mocks)</option>
+          </select>
+          {mock ? <span className="text-xs text-muted-foreground">Students get Use of English + their 3 JAMB subjects, all at once, laid out like the JAMB CBT, with one timer. Each subject is scored out of 100. Add the questions below (CSV with passages and pictures, or one by one).</span> : null}</div>
+        {mock ? (
+          <div className="space-y-3 rounded-xl border p-3 sm:col-span-2">
+            <b className="block text-sm">JAMB mock settings</b>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5"><Label htmlFor="mDur">Exam time (minutes)</Label>
+                <input id="mDur" name="duration_minutes" type="number" min={5} max={300} defaultValue={c?.duration_minutes ?? 120} className={inputCls} />
+                <span className="text-xs text-muted-foreground">The real UTME is 120 minutes. It never runs past the end time above.</span></div>
+              <div className="space-y-1.5"><Label htmlFor="mAcc">Who can enter</Label>
+                <select id="mAcc" name="access" value={access} onChange={(e) => setAccess(e.target.value as typeof access)} className={inputCls}>
+                  <option value="open">Every student</option>
+                  <option value="premium">Premium students only</option>
+                  <option value="code">Anyone with the shared code (or a personal code)</option>
+                  <option value="invite">Invited students only: a personal code each</option>
+                </select></div>
+              {access === "code" ? (
+                <div className="space-y-1.5 sm:col-span-2"><Label htmlFor="mCode">Shared code</Label>
+                  <input id="mCode" name="access_code" maxLength={40} placeholder={c?.access_code_hash ? "A code is set. Type a new one to change it" : "e.g. TUTOR2026"} className={inputCls} />
+                  <span className="text-xs text-muted-foreground">Stored safely (we cannot show it again). Spaces, dashes and capitals do not matter.</span></div>
+              ) : null}
+              {access === "invite" ? <p className="text-xs text-muted-foreground sm:col-span-2">Save, then make one code per student in <b>Access codes</b> below and share each code with its student.</p> : null}
+              <div className="space-y-1.5"><Label htmlFor="mLeaves">Times a student may leave the screen</Label>
+                <input id="mLeaves" name="allowed_exits" type="number" min={0} max={20} defaultValue={c?.allowed_exits ?? 2} className={inputCls} /></div>
+              <div className="space-y-1.5"><Label htmlFor="mAway">Most minutes away in total (0 = no limit)</Label>
+                <input id="mAway" name="max_away_minutes" type="number" min={0} max={300} defaultValue={c?.max_away_seconds ? Math.round(c.max_away_seconds / 60) : 0} className={inputCls} /></div>
+              <div className="space-y-1.5"><Label htmlFor="mAct">When a student goes over</Label>
+                <select id="mAct" name="exit_action" defaultValue={c?.exit_action ?? "flag"} className={inputCls}>
+                  <option value="flag">Keep going, but flag the entry for you</option>
+                  <option value="submit">Submit the exam at once</option>
+                </select></div>
+              <div className="space-y-1.5"><Label htmlFor="mRes">Students see their score</Label>
+                <select id="mRes" name="results" defaultValue={c?.results ?? "instant"} className={inputCls}>
+                  <option value="instant">As soon as they submit</option>
+                  <option value="after_end">When the mock ends</option>
+                  <option value="hidden">Never (the tutor shares results)</option>
+                </select></div>
+            </div>
+            <span className="block text-xs text-muted-foreground">Every leave, the time away, and screenshot attempts are recorded for each student and shown in the analysis.</span>
+          </div>
+        ) : null}
+        <div className={mock ? "hidden" : "space-y-1.5 sm:col-span-2"}><Label htmlFor="cMode">Who plays and which questions</Label>
           <select id="cMode" name="mode" value={mode} onChange={(e) => setMode(e.target.value as ChallengeRow["mode"])} className={inputCls}>
             <option value="mixed">Weekly mixed: each student&apos;s own 4 JAMB subjects</option>
             <option value="subject">One subject: only students who take it see it</option>
@@ -80,12 +130,14 @@ export function ChallengeForm({ c, subjects }: { c?: ChallengeRow; subjects: Sub
           <input id="cStart" name="starts" type="datetime-local" defaultValue={toLocal(c?.starts_at)} required className={inputCls} /></div>
         <div className="space-y-1.5"><Label htmlFor="cEnd">Ends and winners announced (Lagos time)</Label>
           <input id="cEnd" name="ends" type="datetime-local" defaultValue={toLocal(c?.ends_at)} required className={inputCls} /></div>
-        <div className="space-y-1.5"><Label htmlFor="cSec">Seconds per question</Label>
+        <div className={mock ? "hidden" : "space-y-1.5"}><Label htmlFor="cSec">Seconds per question</Label>
           <input id="cSec" name="seconds" type="number" min={10} max={300} defaultValue={c?.seconds_per_question ?? 30} className={inputCls} /></div>
-        <div className="space-y-1.5"><Label htmlFor="cExits">Times a student may leave the screen</Label>
-          <select id="cExits" name="allowed_exits" defaultValue={c?.allowed_exits ?? 0} className={inputCls}>
-            <option value={0}>0 (leaving once disqualifies)</option><option value={1}>1</option><option value={2}>2</option><option value={3}>3</option>
-          </select></div>
+        {!mock ? (
+          <div className="space-y-1.5"><Label htmlFor="cExits">Times a student may leave the screen</Label>
+            <select id="cExits" name="allowed_exits" defaultValue={c?.allowed_exits ?? 0} className={inputCls}>
+              <option value={0}>0 (leaving once disqualifies)</option><option value={1}>1</option><option value={2}>2</option><option value={3}>3</option>
+            </select></div>
+        ) : null}
         <div className="space-y-1.5"><Label htmlFor="cXp">Entry fee in XP (0 = free)</Label>
           <input id="cXp" name="xp_fee" type="number" min={0} step={10} defaultValue={c?.xp_fee ?? 0} className={inputCls} />
           <span className="text-xs text-muted-foreground">{kind === "cash" ? "Cash prize: only XP earned in the app is accepted, never bought XP." : "Earned and bought XP are both accepted."}</span></div>
@@ -369,6 +421,8 @@ function CsvImport({ challengeId, onDone }: { challengeId: string; onDone: () =>
   return (
     <div className="space-y-3 rounded-xl bg-surface-alt p-3 text-sm">
       <p>Columns: <code>subject, difficulty, question, option_a, option_b, option_c, option_d, answer, explanation</code>. Subject is the name or code (e.g. Mathematics or mth); difficulty is easy, medium, hard or very hard; answer is A, B, C or D. Maths can use $...$.</p>
+      <p><b>JAMB mock files</b> can also have: <code>number, section, topic, passage_key, passage_title, passage, image</code>. Write a passage once, on its first row, and give every question on it the same <code>passage_key</code> (e.g. P1). <code>image</code> is the key of a picture you uploaded (public/challenges/…). Difficulty may be left empty. Questions show in <code>number</code> order within each subject.</p>
+      <a href="/samples/jamb-mock-sample.csv" download className="font-bold text-primary hover:underline">Download the JAMB mock sample CSV</a>
       <a href="/samples/challenge-questions-sample.csv" download className="font-bold text-primary hover:underline">Download the sample CSV</a>
       <input type="file" accept=".csv,text/csv" aria-label="CSV file" className="block text-sm" onChange={async (e) => {
         const f = e.target.files?.[0]; if (!f) return;

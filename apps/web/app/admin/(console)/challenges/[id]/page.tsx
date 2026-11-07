@@ -8,6 +8,7 @@ import { ErrorState, PageHeader, PageSkeleton, Panel } from "@/components/admin/
 import { ChallengeForm, CloseButton, EntriesList, QuestionsPanel, type ChallengeRow, type EntryRow, type QRow, type Subject } from "../challenge-ui";
 import { jambSubjects } from "../subjects";
 import { CopyButton, LivePanel, ReviewToggle } from "../live-ui";
+import { AccessPanel, MockAnalysis, PictureKeys, type InviteRow } from "../mock-ui";
 import type { LiveData } from "../actions";
 
 export const metadata: Metadata = { title: "Challenge" };
@@ -37,11 +38,12 @@ async function Edit({ params }: { params: Promise<{ id: string }> }) {
   }
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
   const supabase = await createClient();
-  const [c, qs, entries, liveRes] = await Promise.all([
+  const [c, qs, entries, liveRes, inv] = await Promise.all([
     supabase.from("challenges").select("*").eq("id", id).maybeSingle(),
     supabase.from("challenge_questions").select("id, position, body, options, answer, subject_id, difficulty").eq("challenge_id", id).order("position"),
     supabase.rpc("admin_challenge_entries", { p_id: id }),
     supabase.rpc("admin_challenge_live", { p_id: id }),
+    supabase.from("challenge_invites").select("id, label, code_hint, claimed_at, user_id").eq("challenge_id", id).order("created_at"),
   ]);
   if (c.error) return <ErrorState message={c.error.message} />;
   if (!c.data) notFound();
@@ -55,7 +57,14 @@ async function Edit({ params }: { params: Promise<{ id: string }> }) {
       <PageHeader title={ch.title} description={ch.closed_at ? "Ended. Winners are saved; pay them in Money → Winners & payouts." : live ? "Live now." : "Not live yet."}
         actions={<div className="flex flex-wrap items-center gap-2"><Link href="/admin/challenges" className="text-sm text-muted-foreground hover:underline">All challenges</Link><CopyButton id={ch.id} defaultStart={nextWeek(ch.starts_at)} />{!ch.closed_at && ch.published ? <CloseButton id={ch.id} /> : null}</div>} />
       <Panel title="After it ends" className="mb-4"><ReviewToggle id={ch.id} on={ch.allow_review ?? true} /></Panel>
-      {ld && rows.length ? <Panel title="Live leaderboard and analysis" className="mb-4"><LivePanel id={ch.id} title={ch.title} initial={ld} /></Panel> : null}
+      {ch.style === "jamb_mock" ? (
+        <>
+          <Panel title="Pictures for questions" className="mb-4"><PictureKeys /></Panel>
+          <Panel title="Access codes" className="mb-4"><AccessPanel challengeId={ch.id} title={ch.title} access={ch.access ?? "open"} hasCode={!!ch.access_code_hash} invites={(inv.data ?? []) as InviteRow[]} /></Panel>
+          {rows.length ? <Panel title="Mock analysis for teachers" className="mb-4"><MockAnalysis challengeId={ch.id} title={ch.title} /></Panel> : null}
+        </>
+      ) : null}
+      {ld && rows.length && ch.style !== "jamb_mock" ? <Panel title="Live leaderboard and analysis" className="mb-4"><LivePanel id={ch.id} title={ch.title} initial={ld} /></Panel> : null}
       <div className="grid gap-4 xl:grid-cols-2">
         <Panel title="Challenge">{ch.closed_at ? <p className="text-sm text-muted-foreground">It has ended, so it cannot be changed.</p> : <ChallengeForm c={ch} subjects={subjects} />}</Panel>
         <Panel title={`Questions (${qs.data?.length ?? 0})`}><QuestionsPanel challengeId={ch.id} rows={(qs.data ?? []) as unknown as QRow[]} locked={rows.length > 0} subjects={subjects as Subject[]} mode={ch.mode} perLevel={ch.per_level ?? {}} subjectId={ch.subject_id} students={ld?.students_per_subject ?? {}} /></Panel>

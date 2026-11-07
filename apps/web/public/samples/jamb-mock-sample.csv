@@ -1,0 +1,6 @@
+subject,number,section,topic,passage_key,passage_title,passage,question,option_a,option_b,option_c,option_d,answer,explanation,image,difficulty
+Use of English,1,comprehension,Comprehension,P1,Passage I,"The market in Ibadan opened early. Traders arranged their wares while buyers bargained loudly in the cool morning air.",The traders in the passage were,arranging their goods,closing their shops,sleeping,travelling,A,The passage says traders arranged their wares.,,
+Use of English,2,comprehension,Comprehension,P1,,,The atmosphere of the market was,quiet,busy and noisy,sad,empty,B,Buyers bargained loudly.,,
+Use of English,6,antonyms,Lexis,,,,Choose the option opposite in meaning to the word in italics: The man was *generous*.,kind,stingy,rich,happy,B,Stingy is the opposite of generous.,,
+Mathematics,1,,Algebra,,,,Solve $2x + 3 = 7$,1,2,3,4,B,$2x = 4$ so $x = 2$.,,
+Physics,1,,Motion,,,,Which of these is a vector quantity?,speed,mass,velocity,time,C,Velocity has size and direction.,,
