@@ -1,12 +1,10 @@
--- U3b (D-097): saved 7-day study plans (today's part on Home + a morning reminder) and AI comeback messages.
-
 create table if not exists public.study_plans (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users (id) on delete cascade,
   chat_id uuid references public.ai_chats (id) on delete set null,
   title text not null default 'My 7-day plan',
   starts_on date not null,
-  days jsonb not null,            -- [{day, focus, tasks:[…], minutes, action?:{tool, args, label}}]
+  days jsonb not null,
   done smallint[] not null default '{}',
   reminders boolean not null default true,
   created_at timestamptz not null default now(),
@@ -17,7 +15,6 @@ alter table public.study_plans enable row level security;
 create policy "own plans" on public.study_plans for select to authenticated
   using (user_id = (select auth.uid()) or private.is_staff(array['super_admin', 'admin']::public.staff_role[]));
 
--- Today's part of the student's active plan (for the Home "Today" card).
 create or replace function public.my_today_plan()
 returns jsonb language sql stable security definer set search_path to '' as $$
   select coalesce((
@@ -30,7 +27,6 @@ returns jsonb language sql stable security definer set search_path to '' as $$
     order by p.created_at desc limit 1), 'null'::jsonb);
 $$;
 
--- Tick a day, switch reminders, or stop the plan (own plans only).
 create or replace function public.plan_update(p_plan uuid, p_done_day smallint default null, p_reminders boolean default null, p_stop boolean default false)
 returns void language plpgsql security definer set search_path to '' as $$
 begin
@@ -46,7 +42,6 @@ revoke execute on function public.plan_update(uuid, smallint, boolean, boolean) 
 grant execute on function public.my_today_plan() to authenticated;
 grant execute on function public.plan_update(uuid, smallint, boolean, boolean) to authenticated;
 
--- Morning reminder with today's plan (hour: app_settings push.plan_hour, default 6 Lagos). Runs every 15 minutes.
 create or replace function private.queue_plan_reminders() returns integer
 language plpgsql security definer set search_path to '' as $$
 declare v_cfg jsonb; v_today date := private.lagos_today(); v_n integer := 0; r record;
@@ -75,13 +70,11 @@ $$;
 revoke all on function private.queue_plan_reminders() from public, anon, authenticated;
 select cron.schedule('plan-reminders', '*/15 * * * *', $cron$ select private.queue_plan_reminders(); $cron$);
 
--- Comeback messages written by the AI (Edge Function ai-nudge, once a day). Admin: app_settings ai_nudges.
 insert into public.app_settings (key, value, description, is_public, updated_by) values
   ('ai_nudges', '{"enabled": true, "max_per_day": 300, "min_days_away": 2, "max_days_away": 30, "every_days": 3}',
    'AI comeback messages: on/off, how many a day, after how many days away, and at most one per student every N days.', false, null)
 on conflict (key) do nothing;
 
--- Students who have been away a while (service role only): own facts for a personal message, no other students.
 create or replace function public.ai_nudge_candidates(p_limit integer default 100)
 returns jsonb language plpgsql stable security definer set search_path to '' as $$
 declare v_cfg jsonb; v_out jsonb;
@@ -116,7 +109,6 @@ $$;
 revoke execute on function public.ai_nudge_candidates(integer) from public, anon, authenticated;
 grant execute on function public.ai_nudge_candidates(integer) to service_role;
 
--- The nudge function checks pg_cron's token like the push function does.
 select cron.schedule('ai-nudges', '41 15 * * *', $cron$
   select net.http_post(
     url := (select decrypted_secret from vault.decrypted_secrets where name = 'project_url') || '/functions/v1/ai-nudge',
@@ -125,9 +117,3 @@ select cron.schedule('ai-nudges', '41 15 * * *', $cron$
     body := '{"run":"daily"}'::jsonb,
     timeout_milliseconds := 120000);
 $cron$);
-
--- Notifications from the AI tutor: study-plan mornings, comeback messages, and "your answer is ready".
--- (applied as migration u3b_notification_sources)
-alter table public.notifications drop constraint notifications_source_check;
-alter table public.notifications add constraint notifications_source_check
-  check (source = any (array['admin', 'news', 'year', 'streak', 'premium', 'challenge', 'referral', 'ban', 'plan', 'nudge', 'ai']));

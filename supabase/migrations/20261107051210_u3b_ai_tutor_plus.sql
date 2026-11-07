@@ -1,6 +1,3 @@
--- U3b (docs/plans/u3b-ai-tutor-plus.md, D-097): year papers, AI-made questions, reactions, "most missed" topics.
-
--- Questions the AI wrote for one student. Answers stay here; only the Edge Function (service role) reads them.
 create table if not exists public.ai_gen_questions (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users (id) on delete cascade,
@@ -17,7 +14,6 @@ create index if not exists ai_gen_questions_user on public.ai_gen_questions (use
 alter table public.ai_gen_questions enable row level security;
 create policy "admins read" on public.ai_gen_questions for select to authenticated using (private.is_staff(array['super_admin', 'admin']::public.staff_role[]));
 
--- A reaction on a tutor answer (❤️ 👍 😂 😮 🙏 👎), also feedback for the admin.
 alter table public.ai_messages add column if not exists reaction text check (reaction is null or char_length(reaction) <= 8);
 create or replace function public.ai_react(p_message uuid, p_reaction text)
 returns void language plpgsql security definer set search_path to '' as $$
@@ -30,7 +26,6 @@ $$;
 revoke execute on function public.ai_react(uuid, text) from public, anon;
 grant execute on function public.ai_react(uuid, text) to authenticated;
 
--- Like ai_pick, with an optional year ("JAMB 2004 Physics"). Runs as the student, so the plan's year rules apply.
 create or replace function public.ai_pick2(p_subject smallint, p_topic text default null, p_difficulty text default null,
                                            p_count integer default 10, p_for text default 'test', p_year smallint default null,
                                            p_exam text default null)
@@ -98,7 +93,6 @@ $$;
 revoke execute on function public.ai_pick2(smallint, text, text, integer, text, smallint, text) from public, anon;
 grant execute on function public.ai_pick2(smallint, text, text, integer, text, smallint, text) to authenticated;
 
--- The topics most students got wrong in the last 7 days (counts only, no names), for curious suggestions.
 create or replace function public.ai_most_missed(p_subjects smallint[] default null, p_limit integer default 3)
 returns jsonb language sql stable security definer set search_path to '' as $$
   select coalesce(jsonb_agg(x), '[]') from (
@@ -118,17 +112,3 @@ returns jsonb language sql stable security definer set search_path to '' as $$
 $$;
 revoke execute on function public.ai_most_missed(smallint[], integer) from public, anon, authenticated;
 grant execute on function public.ai_most_missed(smallint[], integer) to service_role;
-
--- Send due push notifications now (instead of waiting up to 5 minutes for pg_cron), e.g. "Your AI answer is ready".
--- (applied as migration u3b_push_kick)
-create or replace function public.push_kick() returns void
-language sql security definer set search_path to '' as $$
-  select null::void from (select net.http_post(
-    url := (select decrypted_secret from vault.decrypted_secrets where name = 'project_url') || '/functions/v1/push',
-    headers := jsonb_build_object('content-type', 'application/json',
-                                  'x-cron-token', (select decrypted_secret from vault.decrypted_secrets where name = 'push_cron_token')),
-    body := '{"run":"due"}'::jsonb,
-    timeout_milliseconds := 30000)) x;
-$$;
-revoke execute on function public.push_kick() from public, anon, authenticated;
-grant execute on function public.push_kick() to service_role;

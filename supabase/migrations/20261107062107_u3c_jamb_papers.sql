@@ -1,16 +1,13 @@
--- U3c (docs/plans/u3c-jamb-papers.md, D-098): JAMB papers always complete; Use of English set the JAMB way.
-
 alter table public.questions add column if not exists section text,
   add column if not exists section_source text check (section_source is null or section_source in ('rule', 'ai', 'admin', 'import'));
 create index if not exists questions_section on public.questions (exam_id, subject_id, section) where deleted_at is null;
 
--- The shape of a paper per exam and subject (subject null = the exam's default). Admin-editable.
 create table if not exists public.exam_blueprints (
   id bigint generated always as identity primary key,
   exam_id smallint not null references public.exam_bodies (id) on delete cascade,
   subject_id smallint references public.subjects (id) on delete cascade,
   total smallint not null check (total between 1 and 200),
-  sections jsonb not null default '[]',   -- [{key, label, count, instruction, passage?:bool}]
+  sections jsonb not null default '[]',
   updated_at timestamptz not null default now(),
   updated_by uuid default auth.uid(),
   unique nulls not distinct (exam_id, subject_id)
@@ -39,7 +36,6 @@ select e.id, s.id, 60, '[
 from public.exam_bodies e, public.subjects s where e.code = 'JAMB' and s.name = 'Use of English'
 on conflict do nothing;
 
--- Sort English questions into JAMB sections by their wording (rules). Unclear ones stay null for the AI sorter.
 create or replace function private.english_section(p_body text, p_topic text, p_has_passage boolean, p_passage text)
 returns text language sql immutable set search_path to '' as $$
   select case
@@ -51,7 +47,7 @@ returns text language sql immutable set search_path to '' as $$
     when p_body ~* '(nearest in meaning|closest in meaning|similar in meaning|same meaning|synonym|best replaces? the (underlined|italic))' then 'synonyms'
     when p_body ~* '(best interpret|interpretation|best explains|implies that|the sentence means|means that|which of the following is implied)' then 'interpretation'
     when p_body ~* '(\.{3,}|_{3,}|gap|best completes?|complete the sentence|fill)' then 'grammar'
-    when p_topic ilike 'synonyms%' then null   -- a bare word: the AI decides (synonym or antonym, from the answer)
+    when p_topic ilike 'synonyms%' then null
     else 'grammar' end;
 $$;
 
@@ -63,8 +59,6 @@ from public.topics t
 where t.id = q.topic_id and q.passage_id is null and q.subject_id = (select id from public.subjects where name = 'Use of English') and q.section_source is distinct from 'admin';
 update public.questions q set section_source = null where q.section is null and q.section_source = 'rule';
 
--- Picks whole "units" (a passage group or one question) until [p_need] questions are taken. The chosen year first,
--- then other open years at random. Never repeats a question or a duplicate (same content_hash).
 create or replace function private.paper_take(p_exam smallint, p_subject smallint, p_years smallint[], p_year smallint, p_section text,
                                               p_need integer, p_exclude uuid[], p_hashes text[], p_split boolean)
 returns uuid[] language plpgsql volatile security definer set search_path to '' as $$
@@ -83,7 +77,6 @@ begin
     order by bool_or(z.year = p_year) desc nulls last, random()
   loop
     exit when v_left <= 0;
-    -- drop duplicates of questions already chosen
     select coalesce(array_agg(t.i order by t.o), '{}') into v_ids
     from unnest(u.ids, u.hs) with ordinality t(i, h, o) where t.h is null or not (t.h = any (v_hash));
     continue when cardinality(v_ids) = 0;
@@ -93,7 +86,7 @@ begin
     elsif p_split then
       v_out := v_out || v_ids[1:v_left]; v_left := 0;
     elsif v_big is null then
-      v_big := v_ids;   -- remember one big passage in case nothing smaller fits
+      v_big := v_ids;
     end if;
   end loop;
   if v_left > 0 and v_big is not null then v_out := v_out || v_big[1:v_left]; end if;
@@ -102,9 +95,6 @@ end;
 $$;
 revoke all on function private.paper_take(smallint, smallint, smallint[], smallint, text, integer, uuid[], text[], boolean) from public, anon, authenticated;
 
--- A complete paper for the student (their plan's open years only). English follows its blueprint (sections in
--- order, scaled for shorter tests); other subjects: the year's questions, a random set if too many, quietly topped
--- up from other open years if too few. Returns {ok, ids, years, sections:[{key,label,instruction,start,count}], short}.
 create or replace function public.cbt_paper(p_exam smallint, p_subject smallint, p_year smallint default null, p_count integer default null)
 returns jsonb language plpgsql volatile security definer set search_path to '' as $$
 declare
@@ -128,7 +118,6 @@ begin
   v_target := least(greatest(coalesce(p_count, bp.total, 40), 1), 200);
 
   if bp.id is not null and jsonb_array_length(bp.sections) > 0 then
-    -- Scale the section counts to the test size (largest remainder), keeping the pattern.
     select sum((x ->> 'count')::int) into v_sum from jsonb_array_elements(bp.sections) x;
     for s in select * from jsonb_array_elements(bp.sections) loop
       v_counts := v_counts || floor((s ->> 'count')::numeric * v_target / v_sum)::int;
@@ -154,7 +143,6 @@ begin
         v_ids := v_ids || v_sorted;
       end if;
     end loop;
-    -- A section with too few questions anywhere: fill the rest from any English question (the pattern stays as close as possible).
     if cardinality(v_ids) < v_target then
       v_part := private.paper_take(p_exam, p_subject, v_open, p_year, null, v_target - cardinality(v_ids), v_ids, v_hashes, false);
       if cardinality(v_part) > 0 then
@@ -174,93 +162,3 @@ end;
 $$;
 revoke execute on function public.cbt_paper(smallint, smallint, smallint, integer) from public, anon;
 grant execute on function public.cbt_paper(smallint, smallint, smallint, integer) to authenticated;
-
--- (applied as migration u3c_sections_auto)
-create or replace function private.questions_section() returns trigger
-language plpgsql security definer set search_path to '' as $$
-begin
-  if new.subject_id = (select id from public.subjects where name = 'Use of English')
-     and (new.section is null or new.section_source is distinct from 'admin' and new.section_source is distinct from 'import' and new.section_source is distinct from 'ai'
-          and (tg_op = 'INSERT' or new.body is distinct from old.body or new.passage_id is distinct from old.passage_id or new.topic_id is distinct from old.topic_id)) then
-    new.section := private.english_section(new.body, (select t.name from public.topics t where t.id = new.topic_id), new.passage_id is not null,
-                                           (select p.body from public.passages p where p.id = new.passage_id));
-    new.section_source := case when new.section is null then null else 'rule' end;
-  end if;
-  return new;
-end;
-$$;
-create trigger questions_section before insert or update of body, passage_id, topic_id, section on public.questions
-  for each row execute function private.questions_section();
-
-create or replace function public.am_content_editor() returns boolean
-language sql stable security definer set search_path to '' as $$
-  select private.can_edit(array['super_admin', 'admin', 'editor']::public.staff_role[]);
-$$;
-revoke execute on function public.am_content_editor() from public, anon;
-grant execute on function public.am_content_editor() to authenticated;
-
-create or replace function private.sort_sections_kick(p_limit integer default 300) returns void
-language sql security definer set search_path to '' as $$
-  select null::void from (select net.http_post(
-    url := (select decrypted_secret from vault.decrypted_secrets where name = 'project_url') || '/functions/v1/sort-sections',
-    headers := jsonb_build_object('content-type', 'application/json',
-                                  'x-cron-token', (select decrypted_secret from vault.decrypted_secrets where name = 'push_cron_token')),
-    body := jsonb_build_object('limit', p_limit), timeout_milliseconds := 150000)) x;
-$$;
-revoke all on function private.sort_sections_kick(integer) from public, anon, authenticated;
-select cron.schedule('sort-sections', '17 2 * * *', $cron$ select private.sort_sections_kick(300); $cron$);
-
--- (applied as migration u3c_fetch_by_ids) The questions of a server-built paper, only from years open to the student.
-create or replace function public.fetch_questions_by_ids(p_ids uuid[])
-returns table(id uuid, number smallint, body text, options jsonb, answer text, explanation text, difficulty public.difficulty, image_path text,
-              topic text, passage_id uuid, passage_title text, passage_body text, year smallint, section text)
-language plpgsql security definer set search_path to '' as $$
-#variable_conflict use_column
-declare v_uid uuid := (select auth.uid()); v_used integer; v_got integer; v_open text[] := '{}'; r record;
-begin
-  if v_uid is null then raise exception 'not_signed_in' using errcode = '28000'; end if;
-  if private.is_banned(v_uid) then raise exception 'banned' using errcode = '42501'; end if;
-  if coalesce(cardinality(p_ids), 0) not between 1 and 200 then raise exception 'bad_page' using errcode = '22023'; end if;
-  select coalesce(sum(f.cnt), 0) into v_used from private.fetch_log f where f.user_id = v_uid and f.at > now() - interval '1 hour';
-  if v_used >= 3000 and not private.is_staff() then raise exception 'rate_limited' using errcode = '54000', hint = 'try_again_later'; end if;
-  for r in select distinct x.exam_id, x.year from public.questions x where x.id = any (p_ids) loop
-    if private.year_open(r.exam_id, r.year, 'cbt') then v_open := v_open || (r.exam_id || ':' || r.year); end if;
-  end loop;
-  return query
-    select q.id, q.number, q.body, q.options, q.answer, q.explanation, q.difficulty, q.image_path,
-           t.name, q.passage_id, p.title, p.body, q.year, q.section
-    from public.questions q
-    left join public.topics t on t.id = q.topic_id
-    left join public.passages p on p.id = q.passage_id
-    where q.id = any (p_ids) and (q.exam_id || ':' || q.year) = any (v_open)
-      and q.status = 'published' and q.deleted_at is null;
-  get diagnostics v_got = row_count;
-  insert into private.fetch_log (user_id, cnt) values (v_uid, greatest(v_got, 1));
-end;
-$$;
-revoke execute on function public.fetch_questions_by_ids(uuid[]) from public, anon;
-grant execute on function public.fetch_questions_by_ids(uuid[]) to authenticated;
-
--- ---- Applied later the same day (migrations u3c_current_novel, u3c_cbt_paper_novel, u3c_import_section) ----
--- The JAMB set novel (owner, 2026-11-07): The Lekki Headmaster. The novel section only uses questions on that book
--- (the body mentions it, or a novel question from 2025 on). Admins change match/since on the Blueprints page.
-update public.exam_blueprints b set sections = (
-  select jsonb_agg(case when x ->> 'key' = 'novel'
-    then x || '{"label":"JAMB novel: The Lekki Headmaster","match":"lekki","since":2025,"instruction":"These questions are based on the JAMB recommended text, The Lekki Headmaster by Kabir Alabi Garba."}'::jsonb
-    else x end order by o)
-  from jsonb_array_elements(b.sections) with ordinality t(x, o))
-where b.subject_id = (select id from public.subjects where name = 'Use of English');
-update public.questions set section = 'novel', section_source = 'rule'
-where subject_id = (select id from public.subjects where name = 'Use of English') and body ~* 'lekki' and section_source is distinct from 'admin';
--- paper_take gained (p_match text default null, p_since smallint default null): see the live definition; cbt_paper
--- passes the section's match/since and calls it with all 11 arguments (null::text, null::smallint where unused).
--- import_questions: after the insert, rows with a valid `section` set questions.section and section_source = 'import'.
-
--- ---- Novel per year (owner, 2026-11-07; migrations u3c_novel_per_year, u3c_cbt_paper_year_novel) ----
--- A year's paper uses THAT year's novel: the year's own novel questions, topped up only with questions naming the same
--- book (the listed title the year's questions mention most, private.year_novel). Mixed and quick tests keep the current
--- set novel (match "lekki", since 2025). The novel list is in the blueprint (sections[novel].novels: [{title, match}]):
---   The Lekki Headmaster · The Life Changer · Sweet Sixteen · In Dependence · The Last Days at Forcados High School.
--- paper_take: with match/since, the chosen year's own questions of that section always count too.
--- cbt_paper: for the novel section with a year, label and instruction name that year's book.
--- (Full definitions: see the live functions; the edits were applied in place.)

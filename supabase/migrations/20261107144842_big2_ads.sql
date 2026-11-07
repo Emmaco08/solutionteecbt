@@ -1,9 +1,3 @@
--- Big update 2, step B: Google AdMob ads (docs/plans/big-update-2.md, D-101).
--- Admin level Off..Ultra in app_settings 'ads'; Premium never sees ads; red line (exam, CBT, checkout) is in the app.
--- Rewarded "watch to unlock" is granted ONLY by the server: AdMob server-side verification (Edge Function admob-ssv)
--- calls ad_reward_grant; test mode (Google test ads, which send no verification) may claim from the app.
-
--- ---------------------------------------------------------------- settings
 insert into public.app_settings (key, value, is_public)
 values ('ads', jsonb_build_object(
   'level', 'off', 'test_mode', true,
@@ -12,7 +6,6 @@ values ('ads', jsonb_build_object(
   'rewards', jsonb_build_object('ai_prompts', 2, 'note_hours', 24, 'streak_freeze', 1)), false)
 on conflict (key) do nothing;
 
--- ---------------------------------------------------------------- age (personalised ads only 18+)
 alter table public.profiles add column if not exists birth_year smallint check (birth_year is null or birth_year between 1940 and 2030);
 
 create or replace function public.set_birth_year(p_year integer) returns jsonb
@@ -28,8 +21,6 @@ $$;
 revoke all on function public.set_birth_year(integer) from public, anon;
 grant execute on function public.set_birth_year(integer) to authenticated;
 
--- ---------------------------------------------------------------- what this student sees
-/** Level presets. native_every: a native ad after every N list items (0 = none). */
 create or replace function private.ads_preset(p_level text) returns jsonb language sql immutable set search_path = '' as $$
   select case p_level
     when 'low'        then '{"banner_screens":[],"native_every":12,"interstitial_gap_s":600,"interstitial_per_day":2,"rewarded_per_day":3,"after_video":false}'
@@ -42,31 +33,6 @@ create or replace function private.ads_preset(p_level text) returns jsonb langua
   end::jsonb;
 $$;
 
-create or replace function public.ads_config() returns jsonb
-language plpgsql stable security definer set search_path = '' as $$
-declare s jsonb; v_uid uuid := (select auth.uid()); v_by smallint; v_age integer; v_group text; v_level text;
-begin
-  select value into s from public.app_settings where key = 'ads';
-  s := coalesce(s, '{}'::jsonb);
-  v_level := coalesce(s ->> 'level', 'off');
-  select birth_year into v_by from public.profiles where id = v_uid;
-  v_age := case when v_by is null then null else extract(year from now())::int - v_by end;
-  v_group := case when v_age is null then 'unknown' when v_age < 13 then 'child' when v_age < 18 then 'teen' else 'adult' end;
-  if v_uid is null or v_level = 'off' or private.has_premium(v_uid) then
-    return jsonb_build_object('on', false, 'premium', v_uid is not null and private.has_premium(v_uid), 'age_group', v_group, 'ask_birth_year', v_by is null);
-  end if;
-  return jsonb_build_object(
-    'on', true, 'level', v_level, 'test', coalesce((s ->> 'test_mode')::boolean, true),
-    'formats', coalesce(s -> 'formats', '{}'::jsonb), 'units', coalesce(s -> 'units', '{}'::jsonb),
-    'rewards', coalesce(s -> 'rewards', '{}'::jsonb), 'age_group', v_group, 'ask_birth_year', v_by is null,
-    'personalised', v_group = 'adult',
-    'rewarded_left', greatest(0, (private.ads_preset(v_level) ->> 'rewarded_per_day')::int
-                      - (select count(*) from public.ad_rewards r where r.user_id = v_uid and r.status = 'granted' and r.created_at > now() - interval '24 hours')::int)
-  ) || private.ads_preset(v_level);
-end;
-$$;
-
--- ---------------------------------------------------------------- stats (admin report)
 create table if not exists public.ad_daily (
   day date not null default (now() at time zone 'Africa/Lagos')::date,
   format text not null check (format in ('banner', 'native', 'interstitial', 'rewarded')),
@@ -79,7 +45,6 @@ alter table public.ad_daily enable row level security;
 drop policy if exists ad_daily_staff on public.ad_daily;
 create policy ad_daily_staff on public.ad_daily for select to authenticated using (private.is_staff());
 
-/** The app sends counts in batches: [{format, placement, impressions, clicks}]. */
 create or replace function public.ads_log(p_events jsonb) returns void
 language plpgsql security definer set search_path = '' as $$
 declare e jsonb;
@@ -98,8 +63,6 @@ $$;
 revoke all on function public.ads_log(jsonb) from public, anon;
 grant execute on function public.ads_log(jsonb) to authenticated;
 
--- ---------------------------------------------------------------- rewarded unlocks (granted by the server only)
--- Extra AI prompts from an ad lower today's used count below zero (at most 50 extra a day).
 do $$
 declare c text;
 begin
@@ -127,14 +90,38 @@ alter table public.ad_rewards enable row level security;
 drop policy if exists ad_rewards_own on public.ad_rewards;
 create policy ad_rewards_own on public.ad_rewards for select to authenticated using (user_id = (select auth.uid()) or private.is_staff());
 
-/** Is this study item open for the student through a watched ad? */
+create or replace function public.ads_config() returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare s jsonb; v_uid uuid := (select auth.uid()); v_by smallint; v_age integer; v_group text; v_level text;
+begin
+  select value into s from public.app_settings where key = 'ads';
+  s := coalesce(s, '{}'::jsonb);
+  v_level := coalesce(s ->> 'level', 'off');
+  select birth_year into v_by from public.profiles where id = v_uid;
+  v_age := case when v_by is null then null else extract(year from now())::int - v_by end;
+  v_group := case when v_age is null then 'unknown' when v_age < 13 then 'child' when v_age < 18 then 'teen' else 'adult' end;
+  if v_uid is null or v_level = 'off' or private.has_premium(v_uid) then
+    return jsonb_build_object('on', false, 'premium', v_uid is not null and private.has_premium(v_uid), 'age_group', v_group, 'ask_birth_year', v_by is null);
+  end if;
+  return jsonb_build_object(
+    'on', true, 'level', v_level, 'test', coalesce((s ->> 'test_mode')::boolean, true),
+    'formats', coalesce(s -> 'formats', '{}'::jsonb), 'units', coalesce(s -> 'units', '{}'::jsonb),
+    'rewards', coalesce(s -> 'rewards', '{}'::jsonb), 'age_group', v_group, 'ask_birth_year', v_by is null,
+    'personalised', v_group = 'adult',
+    'rewarded_left', greatest(0, (private.ads_preset(v_level) ->> 'rewarded_per_day')::int
+                      - (select count(*) from public.ad_rewards r where r.user_id = v_uid and r.status = 'granted' and r.created_at > now() - interval '24 hours')::int)
+  ) || private.ads_preset(v_level);
+end;
+$$;
+revoke all on function public.ads_config() from public, anon;
+grant execute on function public.ads_config() to authenticated;
+
 create or replace function private.ad_unlocked(p_kind text, p_ref text) returns boolean
 language sql stable security definer set search_path = '' as $$
   select exists (select 1 from public.ad_rewards r where r.user_id = (select auth.uid()) and r.kind = p_kind and r.ref = p_ref
                  and r.status = 'granted' and (r.expires_at is null or r.expires_at > now()));
 $$;
 
-/** Step 1 (app): ask for a reward. Returns a nonce the app passes to AdMob as custom_data. */
 create or replace function public.ad_reward_start(p_kind text, p_ref text default null) returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare c jsonb := public.ads_config(); v_id uuid; v_uid uuid := (select auth.uid());
@@ -158,7 +145,6 @@ $$;
 revoke all on function public.ad_reward_start(text, text) from public, anon;
 grant execute on function public.ad_reward_start(text, text) to authenticated;
 
-/** Applies a reward once (from admob-ssv with the service role, or the test claim). */
 create or replace function private.ad_reward_apply(p_nonce uuid, p_user uuid, p_tx text, p_unit text, p_via text) returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare r public.ad_rewards; s jsonb;
@@ -186,13 +172,11 @@ begin
 end;
 $$;
 
-/** Called by the admob-ssv Edge Function (service role) after it checked Google's signature. */
 create or replace function public.ad_reward_grant(p_nonce uuid, p_user uuid, p_tx text, p_unit text) returns jsonb
 language sql security definer set search_path = '' as $$ select private.ad_reward_apply(p_nonce, p_user, p_tx, p_unit, 'ssv') $$;
 revoke all on function public.ad_reward_grant(uuid, uuid, text, text) from public, anon, authenticated;
 grant execute on function public.ad_reward_grant(uuid, uuid, text, text) to service_role;
 
-/** Step 2 (app): has the reward arrived? In test mode (Google test ads send no verification) the app may claim it. */
 create or replace function public.ad_reward_status(p_nonce uuid, p_test_claim boolean default false) returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare r public.ad_rewards; v_test boolean;
@@ -212,7 +196,6 @@ $$;
 revoke all on function public.ad_reward_status(uuid, boolean) from public, anon;
 grant execute on function public.ad_reward_status(uuid, boolean) to authenticated;
 
--- A study item (note, video, novel) opened by a watched ad is served like a free one, for the unlock time only.
 do $$
 declare d text;
 begin
@@ -223,7 +206,6 @@ begin
   end if;
 end $$;
 
--- ---------------------------------------------------------------- admin report and settings
 create or replace function public.admin_ads_report(p_days integer default 30) returns jsonb
 language plpgsql stable security definer set search_path = '' as $$
 begin
@@ -263,6 +245,3 @@ end;
 $$;
 revoke all on function public.admin_ads_save(jsonb) from public, anon;
 grant execute on function public.admin_ads_save(jsonb) to authenticated;
-
-revoke all on function public.ads_config() from public, anon;
-grant execute on function public.ads_config() to authenticated;

@@ -1,6 +1,3 @@
--- Big update 2, step A (A3, A8): AI safety strikes and blocks, and reading a real lesson note.
-
--- ---------------------------------------------------------------- A8: strikes and blocks
 create table if not exists public.ai_strikes (
   id bigint generated always as identity primary key,
   user_id uuid not null references auth.users (id) on delete cascade,
@@ -11,7 +8,6 @@ create table if not exists public.ai_strikes (
 create index if not exists ai_strikes_user_at on public.ai_strikes (user_id, at desc);
 alter table public.ai_strikes enable row level security;
 
--- One row per student who was ever blocked. level 1 = 3 days, 2 = 7 days, 3 = reported to the admin (blocked until decided).
 create table if not exists public.ai_safety (
   user_id uuid primary key references auth.users (id) on delete cascade,
   level smallint not null default 0,
@@ -30,7 +26,6 @@ create policy ai_safety_staff on public.ai_safety for select to authenticated us
 drop policy if exists ai_strikes_staff on public.ai_strikes;
 create policy ai_strikes_staff on public.ai_strikes for select to authenticated using (private.is_staff());
 
-/** Called by the ai-chat Edge Function (service role) when a message tries to change the rules or pull out data. */
 create or replace function private.ai_strike(p_uid uuid, p_kind text, p_text text)
 returns jsonb language plpgsql security definer set search_path = '' as $$
 declare v_s public.ai_safety; v_since timestamptz; v_n integer; v_level smallint; v_until timestamptz; v_forever boolean := false;
@@ -66,13 +61,11 @@ $$;
 revoke all on function private.ai_strike(uuid, text, text) from public, anon, authenticated;
 grant execute on function private.ai_strike(uuid, text, text) to service_role;
 
--- A public wrapper the Edge Function can call with the service role (private schema is not exposed by the API).
 create or replace function public.ai_strike(p_uid uuid, p_kind text, p_text text)
 returns jsonb language sql security definer set search_path = '' as $$ select private.ai_strike(p_uid, p_kind, p_text) $$;
 revoke all on function public.ai_strike(uuid, text, text) from public, anon, authenticated;
 grant execute on function public.ai_strike(uuid, text, text) to service_role;
 
-/** Is the AI blocked for this student? {blocked, until, forever, reason}. */
 create or replace function public.ai_block_status(p_uid uuid)
 returns jsonb language sql stable security definer set search_path = '' as $$
   select coalesce((select jsonb_build_object('blocked', true, 'until', s.blocked_until, 'forever', s.forever, 'reason', s.reason, 'level', s.level)
@@ -83,7 +76,6 @@ $$;
 revoke all on function public.ai_block_status(uuid) from public, anon, authenticated;
 grant execute on function public.ai_block_status(uuid) to service_role;
 
-/** Admin list: students with strikes in the last 30 days or any block, newest first. */
 create or replace function public.admin_ai_safety_list()
 returns jsonb language plpgsql stable security definer set search_path = '' as $$
 begin
@@ -105,7 +97,6 @@ begin
 end;
 $$;
 
-/** Admin decision on a student: lift the AI block, block the AI for good, or ban the account. */
 create or replace function public.admin_ai_safety_decide(p_user uuid, p_decision text, p_note text default null)
 returns jsonb language plpgsql security definer set search_path = '' as $$
 begin
@@ -130,8 +121,6 @@ $$;
 revoke all on function public.admin_ai_safety_list(), public.admin_ai_safety_decide(uuid, text, text) from public, anon;
 grant execute on function public.admin_ai_safety_list(), public.admin_ai_safety_decide(uuid, text, text) to authenticated;
 
--- ---------------------------------------------------------------- A3: read a real lesson note (plan-safe)
-/** The best-matching published note for a title, with its text only when the student's plan opens it. */
 create or replace function public.ai_read_note(p_uid uuid, p_q text, p_subject smallint default null)
 returns jsonb language sql stable security definer set search_path = '' as $$
   with q as (select lower(trim(regexp_replace(coalesce(p_q, ''), '\s+', ' ', 'g'))) as q),
@@ -155,10 +144,8 @@ $$;
 revoke all on function public.ai_read_note(uuid, text, smallint) from public, anon, authenticated;
 grant execute on function public.ai_read_note(uuid, text, smallint) to service_role;
 
--- Reminders the AI sets are personal notifications (source 'ai', source_ref 'remind:…') with a future scheduled_at.
 create index if not exists notifications_ai_reminders on public.notifications (user_id, scheduled_at) where source = 'ai' and status = 'scheduled';
 
--- ---------------------------------------------------------------- Me: stats from the server, so they show on every phone
 create or replace function public.my_stats() returns jsonb language sql stable security definer set search_path to '' as $$
   with me as (select (select auth.uid()) as uid),
   t as (select count(*) as n, coalesce(sum(a.time_used_s), 0) as secs from public.attempts a, me where a.user_id = me.uid and a.status = 'submitted'),
@@ -170,8 +157,6 @@ $$;
 revoke all on function public.my_stats() from public, anon;
 grant execute on function public.my_stats() to authenticated;
 
--- ---------------------------------------------------------------- Mock submit in ONE call (was: one save per answer, then submit;
--- on a weak network a single failed save blocked the submit). p_answers = {"<question id>": "A", …}.
 create or replace function public.mock_submit_all(p_entry uuid, p_answers jsonb default '{}')
 returns jsonb language plpgsql security definer set search_path = '' as $$
 declare e public.challenge_entries;

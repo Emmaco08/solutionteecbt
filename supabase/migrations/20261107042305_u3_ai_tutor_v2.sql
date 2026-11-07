@@ -1,7 +1,3 @@
--- U3 AI tutor v2 (docs/plans/u3-ai-tutor.md, D-096).
--- The tutor reads questions only through ai_question_for_me / ai_pick, which run AS THE STUDENT (their login), so
--- the plan's year rules apply. Nothing here returns another student's data or a locked answer.
-
 alter table public.ai_chats add column if not exists summary text, add column if not exists summary_upto timestamptz;
 alter table public.ai_messages add column if not exists card jsonb;
 
@@ -20,10 +16,6 @@ create index if not exists ai_tools_log_at on public.ai_tools_log (at desc);
 alter table public.ai_tools_log enable row level security;
 create policy "admins read" on public.ai_tools_log for select to authenticated using (private.is_staff(array['super_admin', 'admin']::public.staff_role[]));
 
--- ------------------------------------------------------------------ run as the student
--- A question for the tutor to explain. Allowed when it is in the student's own finished test, its year is open to
--- their plan (past-questions rule), or it is today's question of the day. Today's question comes WITHOUT its answer
--- until the student has answered it.
 create or replace function public.ai_question_for_me(p_id uuid)
 returns jsonb language plpgsql security definer set search_path to '' as $$
 declare
@@ -65,7 +57,6 @@ begin
 end;
 $$;
 
--- Topics of a subject that match the student's words ("motion", "organic chemistry"), best first.
 create or replace function private.ai_topics_like(p_subject smallint, p_q text)
 returns integer[] language sql stable security definer set search_path to '' as $$
   with w as (select lower(trim(p_q)) as q),
@@ -79,8 +70,6 @@ returns integer[] language sql stable security definer set search_path to '' as 
   ) s where score > 0;
 $$;
 
--- Questions the student may practise (open years for their plan), for a test or a chat quiz.
--- p_for 'test' → ids (the app builds the CBT); 'quiz' → questions WITHOUT answers (no passages, no pictures).
 create or replace function public.ai_pick(p_subject smallint, p_topic text default null, p_difficulty text default null,
                                           p_count integer default 10, p_for text default 'test')
 returns jsonb language plpgsql stable security definer set search_path to '' as $$
@@ -94,10 +83,8 @@ declare
   v_out jsonb;
 begin
   if v_uid is null or private.is_banned(v_uid) then return jsonb_build_object('ok', false, 'why', 'login'); end if;
-  -- The student's exams first (JAMB if none), then any active exam.
   select array_agg(e.id order by coalesce(array_position(p.target_exams, e.code), 99), e.sort) into v_exams
   from public.exam_bodies e left join public.profiles p on p.id = v_uid where e.is_active;
-  -- Open (exam, year) pairs for this subject, checked once each.
   for v_open in
     select distinct y.exam_id, y.year from public.exam_years y
     where y.subject_id = p_subject and y.status = 'published' and y.exam_id = any (v_exams)
@@ -134,7 +121,6 @@ begin
 end;
 $$;
 
--- Marks one chat-quiz answer (no prompt used). Only for questions the student may practise.
 create or replace function public.ai_quiz_check(p_id uuid, p_choice text)
 returns jsonb language plpgsql stable security definer set search_path to '' as $$
 declare v_uid uuid := (select auth.uid()); q record;
@@ -149,8 +135,6 @@ begin
 end;
 $$;
 
--- ------------------------------------------------------------------ service role only (the Edge Function)
--- The student's weakest topics from their own finished tests (last 120 days, at least 3 answers per topic).
 create or replace function public.ai_weak_topics(p_uid uuid, p_limit integer default 5)
 returns jsonb language sql stable security definer set search_path to '' as $$
   select coalesce(jsonb_agg(w order by w.pct, w.answered desc), '[]') from (
@@ -170,8 +154,6 @@ returns jsonb language sql stable security definer set search_path to '' as $$
   ) w;
 $$;
 
--- What the tutor may know about the student: their own profile, plan, streak, scores and weak topics. Free text
--- (the name) is cleaned so it cannot carry instructions.
 create or replace function public.ai_student_context(p_uid uuid)
 returns jsonb language plpgsql stable security definer set search_path to '' as $$
 declare p record; s record; v_scores jsonb;
