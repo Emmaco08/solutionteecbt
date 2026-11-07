@@ -71,6 +71,8 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName(if (hasUploadKey) "upload" else "debug")
+            // Our extra shrinker rules (WorkManager / Room / ads), added to Flutter's defaults.
+            proguardFiles("proguard-rules.pro")
         }
     }
 }
@@ -90,6 +92,8 @@ dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
     // Paystack's own payment sheet inside the direct app (D-089). The Play app pays with Google Play Billing.
     "directImplementation"("com.paystack.android:paystack-ui:0.1.8")
+    // Google Mobile Ads asks for WorkManager 2.7.0 (2021); use a current one (big update 2, step B).
+    implementation("androidx.work:work-runtime:2.10.0")
 }
 
 // The newest Google Mobile Ads SDK pulls androidx.lifecycle 2.11 (compose parts), which needs compileSdk 37; our
