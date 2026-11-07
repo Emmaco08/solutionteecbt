@@ -24,7 +24,10 @@ env:
 jobs:
   apk:
     runs-on: ubuntu-latest
-    timeout-minutes: 70
+    timeout-minutes: 60
+    outputs:
+      name: ${{ steps.ver.outputs.name }}
+      build: ${{ steps.ver.outputs.build }}
     defaults:
       run:
         working-directory: apps/mobile
@@ -83,20 +86,60 @@ jobs:
           flutter build apk --release --flavor direct --target-platform android-arm64 \
             --build-number="$BUILD" --dart-define=APP_VERSION="$NAME"
           cp build/app/outputs/flutter-apk/app-direct-release.apk "$RUNNER_TEMP/app-arm64.apk"
-          # The same app for the x86_64 emulator check below (phones get the arm64 one).
-          flutter build apk --release --flavor direct --target-platform android-x64 \
-            --build-number="$BUILD" --dart-define=APP_VERSION="$NAME"
-          cp build/app/outputs/flutter-apk/app-direct-release.apk "$RUNNER_TEMP/app-x64.apk"
           echo "APP_NAME_VERSION=$NAME" >> "$GITHUB_ENV"
           echo "APP_BUILD=$BUILD" >> "$GITHUB_ENV"
 
-      # Never put a broken app on /download: install it on an Android emulator, open it and check it keeps running.
+      - name: Keep the APK for the publish step
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk
+          path: ${{ runner.temp }}/app-arm64.apk
+          retention-days: 3
+
+      - name: Remember the version
+        id: ver
+        run: |
+          echo "name=$APP_NAME_VERSION" >> "$GITHUB_OUTPUT"
+          echo "build=$APP_BUILD" >> "$GITHUB_OUTPUT"
+
+      - name: Remove the signing key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/direct.jks" android/app/google-services.json
+
+  # Never put a broken app on /download: the same app is built for x86_64 on a second machine, installed on an
+  # Android 14 emulator, opened and checked to keep running (tool/smoke_test.sh). Big update 2, after the ads crash.
+  emulator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.9
+          cache: true
+      - name: Get packages
+        run: flutter pub get
+      - name: Build the app for the emulator (release, x86_64)
+        run: |
+          set -euo pipefail
+          sed -i 's/^org.gradle.jvmargs=.*/org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=1g/' android/gradle.properties
+          sed -i 's/^kotlin.daemon.jvmargs=.*/kotlin.daemon.jvmargs=-Xmx2g/' android/gradle.properties
+          flutter build apk --release --flavor direct --target-platform android-x64
+          cp build/app/outputs/flutter-apk/app-direct-release.apk "$RUNNER_TEMP/app-x64.apk"
+          ./android/gradlew --stop || true
       - name: Let the emulator use the CPU
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-
       - name: Open the app on an Android emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -107,7 +150,6 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
           working-directory: apps/mobile
           script: ./tool/smoke_test.sh "$RUNNER_TEMP/app-x64.apk" "$RUNNER_TEMP/smoke"
-
       - name: Keep the emulator screenshot and log
         if: always()
         uses: actions/upload-artifact@v4
@@ -116,6 +158,18 @@ jobs:
           path: ${{ runner.temp }}/smoke
           if-no-files-found: ignore
 
+  publish:
+    needs: [apk, emulator]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      APP_NAME_VERSION: ${{ needs.apk.outputs.name }}
+      APP_BUILD: ${{ needs.apk.outputs.build }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: apk
+          path: ${{ runner.temp }}
       - name: Put it on /download
         run: |
           set -euo pipefail
@@ -134,7 +188,3 @@ jobs:
             -d "{\"step\":\"publish\",\"name\":\"$APK\",\"version\":\"$VERSION\",\"built_at\":\"$BUILT\",\"build\":$APP_BUILD}"
           echo
           echo "### The new app is on $SITE/download (version $VERSION, $(du -m "$FILE" | cut -f1) MB)" >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Remove the signing key
-        if: always()
-        run: rm -f "$RUNNER_TEMP/direct.jks" android/app/google-services.json
