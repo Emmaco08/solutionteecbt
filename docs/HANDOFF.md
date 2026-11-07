@@ -21,9 +21,9 @@ laptop pulls this branch). Read `CLAUDE.md`, then this file, then `docs/PROGRESS
 | JAMB mock challenges | Tutorial-centre mocks in our CBT, codes/invites, analytics, leaderboard, optional updates | D-099 | 160 | deployed |
 | Big update 2 · step A | Fixes A0–A14 + AI tutor upgrades (reminders, strikes, real-note quotes, web search, photo read-first, today's-question lock, keep-alive), screenshot fixes, one-call mock submit, admin **AI safety** page | D-100 | 171 | deployed |
 | Big update 2 · step B | **Google AdMob** ads: admin levels Off…Ultra, banners, card ads, break ads, server-verified "watch to unlock", age rules, admin **Ads** page | D-101 | 171 | deployed |
-| Ads v2 · B2 | Rebuilt levels + Custom, sticky banners, Ultra random breaks, app-open, video/note/quiz/section breaks, cards in notes, Home/AI/News ads, watch for XP, watch to open a year, birth year required | D-104 | 174 | **waiting for "deploy"** |
-| Ads v2 · B3 | Brand campaigns (house ads): banner, card, break, video-lesson ads before/middle/after; admin **Brand ads** + report/CSV | D-105 | 175 | **waiting for "deploy"** |
-| Ads v2 · B4 | How Study content opens: free / Premium / watch N ads / pay per item (Paystack); admin **How content opens** + item fields | D-106 | 176 | **waiting for "deploy"** |
+| Ads v2 · B2 | Rebuilt levels + Custom, sticky banners, Ultra random breaks, app-open, video/note/quiz/section breaks, cards in notes, Home/AI/News ads, watch for XP, watch to open a year, birth year required | D-104 | 174 | deployed |
+| Ads v2 · B3 | Brand campaigns (house ads): banner, card, break, video-lesson ads before/middle/after; admin **Brand ads** + report/CSV | D-105 | 175 | deployed |
+| Ads v2 · B4 | How Study content opens: free / Premium / watch N ads / pay per item (Paystack); admin **How content opens** + item fields | D-106 | 176 | deployed |
 
 Big update 2 needs the owner's approval word per step (plan `docs/plans/big-update-2.md`). Ads are **Off** until the owner
 picks a level in admin → Money → Ads.
@@ -40,9 +40,8 @@ picks a level in admin → Money → Ads.
 
 ## Website "deploy" status
 
-- The admin website was last deployed on 2026-11-07 after commit `d61c652` (ads v1). Since then `apps/web` changed for ads
-  v2 (Ads page v2 + Custom level), Brand ads (B3) and How content opens (B4): **a deploy is waiting for the owner's
-  "deploy"**. The server side (database, `paystack` v13) is already live.
+- The admin website was deployed on 2026-11-07 after the ads v2 work (Ads v2 + Custom, Brand ads, How content opens).
+  Nothing in `apps/web` is waiting.
 - Rule: the website is deployed only when the owner replies **"deploy"**.
 
 ## Open owner tasks
