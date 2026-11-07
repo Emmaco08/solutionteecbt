@@ -23,7 +23,9 @@ Widget _host(Widget child, {AiRepo? repo}) => ProviderScope(
   overrides: [if (repo != null) aiRepoProvider.overrideWithValue(repo)],
   child: MaterialApp(
     theme: buildTheme(Brightness.light),
-    home: Scaffold(body: SingleChildScrollView(child: SizedBox(width: 800, child: child))),
+    home: Scaffold(
+      body: SingleChildScrollView(child: SizedBox(width: 800, child: child)),
+    ),
   ),
 );
 
@@ -62,10 +64,7 @@ void main() {
     addTearDown(() => t.binding.setSurfaceSize(null));
     await t.pumpWidget(
       _host(
-        PhotoTextCard(
-          card: const {'type': 'photo_text', 'text': 'Solve 2x + 3 = 11'},
-          send: ({text, tool, args, questionId, explain = false}) => sent = text,
-        ),
+        PhotoTextCard(card: const {'type': 'photo_text', 'text': 'Solve 2x + 3 = 11'}, send: ({text, tool, args, questionId, explain = false}) => sent = text),
       ),
     );
     expect(find.text('What I read from your photo'), findsOneWidget);

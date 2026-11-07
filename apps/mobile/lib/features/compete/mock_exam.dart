@@ -1,3 +1,5 @@
+import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
+
 import 'dart:convert';
 
 import 'package:drift/drift.dart' show Value;
@@ -26,6 +28,9 @@ abstract class MockApi {
   Future<Map<String, dynamic>> save(String entry, String question, String? choice, int ms);
   Future<Map<String, dynamic>> event(String entry, String kind, {int? ms});
   Future<Map<String, dynamic>> submit(String entry);
+
+  /// Saves every choice and submits in one call (a weak network cannot leave the mock half-sent).
+  Future<Map<String, dynamic>> submitAll(String entry, Map<String, String> answers);
   Future<Map<String, dynamic>> result(String id);
   Future<Map<String, dynamic>> unlock(String id, String code);
 }
@@ -45,6 +50,19 @@ class SupabaseMockApi implements MockApi {
   Future<Map<String, dynamic>> event(String entry, String kind, {int? ms}) => _rpc('mock_event', {'p_entry': entry, 'p_kind': kind, 'p_ms': ms});
   @override
   Future<Map<String, dynamic>> submit(String entry) => _rpc('mock_submit', {'p_entry': entry});
+  @override
+  Future<Map<String, dynamic>> submitAll(String entry, Map<String, String> answers) async {
+    try {
+      return await _rpc('mock_submit_all', {'p_entry': entry, 'p_answers': answers});
+    } on PostgrestException catch (e) {
+      if (e.code != 'PGRST202') rethrow; // older server without the one-call submit
+      for (final a in answers.entries) {
+        await save(entry, a.key, a.value, 0);
+      }
+      return submit(entry);
+    }
+  }
+
   @override
   Future<Map<String, dynamic>> result(String id) => _rpc('mock_result', {'p_id': id});
   @override

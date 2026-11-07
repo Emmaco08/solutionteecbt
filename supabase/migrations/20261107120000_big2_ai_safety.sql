@@ -169,3 +169,25 @@ create or replace function public.my_stats() returns jsonb language sql stable s
 $$;
 revoke all on function public.my_stats() from public, anon;
 grant execute on function public.my_stats() to authenticated;
+
+-- ---------------------------------------------------------------- Mock submit in ONE call (was: one save per answer, then submit;
+-- on a weak network a single failed save blocked the submit). p_answers = {"<question id>": "A", …}.
+create or replace function public.mock_submit_all(p_entry uuid, p_answers jsonb default '{}')
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare e public.challenge_entries;
+begin
+  select * into e from public.challenge_entries where id = p_entry and user_id = (select auth.uid()) for update;
+  if not found then raise exception 'Not found' using errcode = 'P0002'; end if;
+  if e.status <> 'playing' then return jsonb_build_object('status', e.status, 'score', e.score); end if;
+  if now() <= e.deadline + interval '15 seconds' and jsonb_typeof(p_answers) = 'object' then
+    insert into public.challenge_answers (entry_id, question_id, choice, correct, time_ms, answered_at)
+    select p_entry, k::uuid, nullif(upper(trim(v)), ''), null, 0, now()
+    from jsonb_each_text(p_answers) as a(k, v)
+    where k ~* '^[0-9a-f-]{36}$' and k::uuid = any (e.question_order)
+    on conflict (entry_id, question_id) do update set choice = excluded.choice, answered_at = now();
+  end if;
+  return public.mock_submit(p_entry);
+end;
+$$;
+revoke all on function public.mock_submit_all(uuid, jsonb) from public, anon;
+grant execute on function public.mock_submit_all(uuid, jsonb) to authenticated;

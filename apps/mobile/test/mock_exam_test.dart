@@ -35,6 +35,13 @@ class FakeMock implements MockApi {
     return {'status': 'finished'};
   }
 
+  final allAnswers = <String, String>{};
+  @override
+  Future<Map<String, dynamic>> submitAll(String entry, Map<String, String> answers) async {
+    allAnswers.addAll(answers);
+    return submit(entry);
+  }
+
   @override
   Future<Map<String, dynamic>> result(String id) async => {
     'status': 'finished',

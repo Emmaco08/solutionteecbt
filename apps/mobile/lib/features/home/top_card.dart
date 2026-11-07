@@ -212,9 +212,8 @@ class _ResumeCardState extends State<_ResumeCard> with SingleTickerProviderState
                     st(
                       Align(
                         alignment: Alignment.centerLeft,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(color: Palette.gold400.withValues(alpha: .16), borderRadius: BorderRadius.circular(99)),
+                        child: Padding(
+                          padding: EdgeInsets.zero,
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -225,7 +224,7 @@ class _ResumeCardState extends State<_ResumeCard> with SingleTickerProviderState
                                   widget.live
                                       ? (widget.left == Duration.zero ? 'Time is up · tap to see your result' : 'Live mock · the clock is running')
                                       : 'Paused · started ${_ago(widget.startedAt)}',
-                                  style: context.ty.cap.bold.col(Palette.gold300),
+                                  style: context.ty.cap.col(const Color(0xFFC9D5EA)),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),

@@ -383,12 +383,20 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
     final used = _clock.pause();
     if (_mockId != null) {
       try {
-        // Send every choice once more (a dropped save on a weak network is not lost), then submit on the server.
+        // Every choice and the submit go in one call, tried 3 times (a dropped save on a weak network is not lost).
         final api = ref.read(mockApiProvider);
-        for (final e in _answers.entries) {
-          await api.save(_entry, e.key, e.value, 0);
+        Object? last;
+        for (var n = 0; n < 3; n++) {
+          try {
+            await api.submitAll(_entry, Map<String, String>.from(_answers));
+            last = null;
+            break;
+          } catch (e) {
+            last = e;
+            await Future<void>.delayed(Duration(seconds: 2 * (n + 1)));
+          }
         }
-        await api.submit(_entry);
+        if (last != null) throw last;
       } catch (_) {
         if (!mounted) return;
         setState(() => _submitting = false);

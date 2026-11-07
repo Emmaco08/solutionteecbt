@@ -347,15 +347,7 @@ class NoChallengeCard extends StatelessWidget {
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(color: Colors.white.withValues(alpha: .1), borderRadius: BorderRadius.circular(99)),
-                              child: Text('NO CHALLENGE RIGHT NOW', style: context.ty.over.col(Palette.gold300)),
-                            ),
-                            const Gap(Space.s2),
-                            Text('The next challenge is coming', style: context.ty.h3.col(Colors.white)),
-                          ],
+                          children: [Text('The next challenge is coming', style: context.ty.h3.col(Colors.white))],
                         ),
                       ),
                     ],
