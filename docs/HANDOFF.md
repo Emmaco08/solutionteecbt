@@ -1,57 +1,101 @@
 # Handoff: where the build is (read this first in a new or cloud session)
 
-Last updated: 2026-11-03, after milestone 4C (payments) on branch `claude/clever-gates-rdt2wx`. Read `CLAUDE.md`, then this file, then `docs/PROGRESS.md`, `docs/DECISIONS.md` (D-001 to D-063), `docs/SETUP.md` and `docs/plans/phase-4*.md`.
+Last updated: **2026-11-07**, after Big update 2 step B (ads), on branch **`claude/clever-gates-rdt2wx`** (not merged; the
+laptop pulls this branch). Read `CLAUDE.md`, then this file, then `docs/PROGRESS.md`, `docs/DECISIONS.md` (D-001 to
+**D-101**), `docs/SETUP.md` and the plans in `docs/plans/` (latest: `big-update.md`, `big-update-2.md`).
 
-## Where we are
+## Approved by the owner
 
-- Phases 0–3 are approved. We are in **Phase 4 (Premium)**. Approval word for the whole phase: `PREMIUM APPROVED` (not given yet).
-- Done in Phase 4:
-  - **4A Study tab:** past questions, video solutions (thumbnails, own player), notes (Markdown + KaTeX + pictures), novels (PDF + summary), docs, downloads, bookmarks, progress; admin Study manager; per-item locks (video list always visible, each video locked).
-  - **4B AI tutor:** NVIDIA primary, Dahl backup, providers/keys/models/prompts managed in Admin → AI tutor; keys in Supabase Vault; `ai-chat` and `ai-index` Edge Functions; app AI tab with streaming, photos, hint mode, history and quota. DB tests 28/28 (ai) and 22/22 (study); app tests 28/28.
-  - **Test APK page:** https://admin.solutiontee.com/download (D-059).
-  - **4C Payments** (built, test payment on the phone worked 2026-11-03; waiting for the owner.s review): Paystack and Google Play, server-verified, idempotent, redeem codes, admin Payments and Codes, app checkout; `direct` / `play` flavors (D-061). Branch `claude/clever-gates-rdt2wx`, not merged.
-  - **4D Notifications + Me dashboard** (built on the branch, waiting for the owner's review and Firebase, D-063).
-- 4D approved ("4D ok"), 4E1, 4E2 and 4E3 approved ("4E3 ok", 2026-11-03). Phase 4 report written (`docs/reports/phase-4.md`); waiting for `PREMIUM APPROVED` before Phase 5. Plan for all of 4E in three parts (plan `docs/plans/phase-4e.md`): 4E1 question of the day + leaderboard, 4E2 challenges + winners wall, 4E3 referrals + bans; owner checks each part. Then the Phase 4 report and STOP for `PREMIUM APPROVED`.
-- Waiting on the owner: press "Add new and edited notes" in Admin → AI tutor → Knowledge; rotate the NVIDIA and Dahl keys (they were pasted in chat for testing); a Play Console account for 4C (SETUP §14.3); link the Emmaco08 GitHub login to the Vercel account so website deploys are accepted; Firebase project for 4D.
+- Phases 0–3 (`APP CORE APPROVED`, 2026-10-30).
+- Phase 4 milestones: 4A/4B built, **4C ok**, **4D ok**, **4E1 ok**, **4E2 OK**, **4E3 ok** (2026-11-03).
+- XP and streaks: **XP1 ok, XP2 ok, XP3 ok, XP4 ok**.
+- Big update 1: **U1 ok** (2026-11-04), **U2 ok** (2026-11-05, after the phone test).
+- Phase 4 as a whole is NOT approved yet: the word `PREMIUM APPROVED` comes after the big updates.
+
+## Built and waiting for the owner's phone test / approval
+
+| Item | What | Decision | App tests | Website |
+|---|---|---|---|---|
+| U3 + U3b | AI tutor v2 (education only, memory, tools, voice) + mock exam, year papers, AI quizzes, hint ladder, saved study plans, comeback messages | D-096, D-097 | 148 | deployed |
+| U3c | JAMB papers always complete, English set the JAMB way, novel per year | D-098 | 154 | deployed |
+| JAMB mock challenges | Tutorial-centre mocks in our CBT, codes/invites, analytics, leaderboard, optional updates | D-099 | 160 | deployed |
+| Big update 2 · step A | Fixes A0–A14 + AI tutor upgrades (reminders, strikes, real-note quotes, web search, photo read-first, today's-question lock, keep-alive), screenshot fixes, one-call mock submit, admin **AI safety** page | D-100 | 171 | deployed |
+| Big update 2 · step B | **Google AdMob** ads: admin levels Off…Ultra, banners, card ads, break ads, server-verified "watch to unlock", age rules, admin **Ads** page | D-101 | 171 | deployed |
+
+Big update 2 needs the owner's approval word per step (plan `docs/plans/big-update-2.md`). Ads are **Off** until the owner
+picks a level in admin → Money → Ads.
+
+## Next steps (in the owner's order)
+
+1. Big update 2: **C** JAMB countdown → **D** Request a tutor → **E** Online classes (YouTube Live + Jitsi) → **F** Games
+   (Speed Quiz Duel, Live Exam Arena, Beat the AI Tutor first) → **G** Community. Each step ends with a phone test and
+   the owner's approval.
+2. Then the rest of Big update 1: **U4** careers/subject combinations/more exams/custom test, **U5** news v2, badges v2,
+   leaderboards v2, fair play, resume any test, **U6** safety bans, emails, admin dashboard v2, navigation.
+3. Then the Phase 4 report refresh and STOP for **`PREMIUM APPROVED`**.
+4. **Phase 5** (website, classes, community; `WEBSITE APPROVED`), then **Phase 6** (legal, release, videos; `LAUNCH APPROVED`).
+
+## Website "deploy" status
+
+- The admin website (admin.solutiontee.com) was deployed on 2026-11-07 after commit `d61c652` (ads). It has the AI safety
+  and Ads pages. Nothing in `apps/web` has changed since, so **no deploy is waiting**.
+- Rule: the website is deployed only when the owner replies **"deploy"**.
+
+## Open owner tasks
+
+- **AdMob** (SETUP "Google AdMob"): create the account and app, send the **App ID** (public, fine in chat), create 4 ad
+  units and paste them in admin → Ads, turn on server-side verification on the Rewarded unit with the URL
+  `https://mxeemubacnmcmmmzteax.supabase.co/functions/v1/admob-ssv`, add payout details, then test with Test mode on.
+- **Brave Search key:** added by the owner as the Edge Function secret `BRAVE_SEARCH_KEY` (2026-11-07). Waiting only for a
+  phone test ("What is the latest JAMB news?" should show Sources).
+- Phone tests of everything in the table above.
+- Older open items: rotate the NVIDIA and Dahl AI keys (pasted in chat during early testing); press "Add new and edited
+  notes" in admin → AI tutor → Knowledge after new notes; Google Play Console + products + service account (SETUP §14.3)
+  for the Play Store build; OAuth consent screen publishing for Sign in with Google if not done (SETUP §17).
+
+## Standing rule: how new app versions reach the owner (owner, 2026-11-07)
+
+- **The owner no longer uses USB.** New app versions reach the phone **only** through https://admin.solutiontee.com/download
+  and the in-app update (Me → App update), both fed by the GitHub workflow **`android-apk.yml`**.
+- After every app change: push → check the GitHub run **passed** → check **https://admin.solutiontee.com/api/app/latest**
+  shows the new build (version/build number and `built_at` newer than before) → only then tell the owner it is ready.
+  A newer push cancels an older run, so check the run for the latest commit.
+- Never upload an APK by hand; only the workflow has the website APK's signing key. App updates are optional (not forced).
 
 ## Live systems
 
-- Website/admin: Vercel team `solution-tee`, project `solutiontee-cbt`, root `apps/web`, production https://admin.solutiontee.com.
-- Supabase dev project ref `mxeemubacnmcmmmzteax`. Schema changes go in `supabase/migrations/<version>_<name>.sql` **and** are applied to the project (Supabase MCP `apply_migration` or `supabase db push`). The filename version must match the applied version. Edge Functions in `supabase/functions/`.
-- Files and pictures: Cloudflare R2, **private** bucket `solutiontee`; the server signs short links after an access check (prefixes: `q/` question images, `public/news`, `v/` videos, `d/` PDFs, `s/` covers, `n/` note images, `apk/` test app). Not Supabase Storage.
+- Website/admin: Vercel team `solution-tee`, project `solutiontee-cbt`, root `apps/web`, https://admin.solutiontee.com.
+  Deploy from the repo root: `npx -y vercel@65.8.0 deploy --prod --yes --scope solution-tee` (only on "deploy").
+- Supabase project `mxeemubacnmcmmmzteax`. Edge Functions in `supabase/functions/` (today's: `ai-chat` v12, `admob-ssv`).
+- **Migrations:** `supabase/migrations/` matches the live migration history exactly (84 files = 84 applied versions, same
+  number, name and content; D-102). Rule: apply with `apply_migration`, then read the applied version from
+  `supabase_migrations.schema_migrations` and save the file as `<that version>_<name>.sql` with the applied text.
+  Never hand-pick a version number.
+- Files: Cloudflare R2, **private** bucket `solutiontee` (server-signed short links). Not Supabase Storage.
+- Push: Firebase (FCM). Payments: Paystack (live in the app) and Google Play (later).
 
-## Owner's standing rules (from earlier sessions; not all are in CLAUDE.md)
+## Owner's standing rules
 
 - Native **Android** app only; iPhone and desktop users get the web app.
-- **Everything except free questions is gated on the server.** No client-side unlocks.
-- Never ask for or paste keys in chat. Secrets live only in git-ignored `.env.local`, Vercel env, Edge Function secrets or Supabase Vault. Claude never types passwords or keys into web forms.
+- **Everything except free questions is gated on the server.** No client-side unlocks (ads rewards too: server-verified).
+- Never ask for or paste keys in chat. Secrets live only in git-ignored `.env.local`, Vercel env, Edge Function secrets or
+  Supabase Vault. Claude never types passwords or keys into web forms. Public ids (AdMob App ID, ad unit ids) are fine.
 - Never redraw logos; use `/brand` files only. Keep the R2 bucket private.
 - Never delete the owner's own account; cleanup only touches test accounts.
-- Owner's laptop has low RAM: no emulator; they test on a real Android phone over USB.
+- Approval words per phase/step; the website deploys only on "deploy"; /download always has the newest app.
+- **Do the work directly, no helper agents** (owner, 2026-11-07: "Don't use lower agent anymore").
 - Explain things in simple English. Ask the owner only for decisions that are theirs (pricing, content, legal, brand).
-- Commit after each working milestone; end commit messages with the Co-Authored-By trailer.
-- **Permissions (owner, 2026-11-03):** "Always allow what you need… even execute SQL. I allow you all." `.claude/settings.json` allows every tool with no prompts. Still use judgment: never delete the owner's data, projects or account, and say so before anything irreversible.
-- **Commits are signed as the owner** (`git config user.name Emmaco08`, `user.email emmanuelakinbola08@gmail.com`, set per repo at the start of each session), still ending with the `Co-Authored-By: Claude` trailer. Why: Vercel blocks deploys whose latest commit author is not a team member (owner's choice, 2026-11-03).
-- **Website deploys from a cloud session:** `npx vercel@65.8.0 login` (the owner approves the device link on their phone), `npx vercel@65.8.0 link --yes --project solutiontee-cbt --scope solution-tee`, then `npx vercel@65.8.0 deploy --prod --yes --scope solution-tee` from the repo root. Project `solutiontee-cbt` serves admin.solutiontee.com.
-
-## Working from a cloud session (no laptop)
-
-What works the same: reading and writing code, plans, docs, migrations, Edge Function code, web code, Dart code, git commits and pushes, and Supabase/Vercel changes **if** those connectors are enabled for the session.
-
-What does not work from the cloud, and what to do instead:
-- **No USB phone:** a cloud session cannot install on the owner's phone. Instead, pushing app changes (`apps/mobile/`) to `main` or a `claude/*` branch runs the GitHub workflow `android-apk.yml` (D-065), which runs the analyzer and tests, builds the APK and puts it on https://admin.solutiontee.com/download. **Standing rule (owner, 2026-11-03): /download must always have the newest app.** After pushing app changes, check that the run passed and tell the owner when the new version is up. Never upload a laptop- or cloud-signed APK there by hand: only the workflow has the website APK's signing key.
-- **No `.env.local`:** the R2 upload script and `vercel` CLI need secrets that are only on the laptop. Do not ask for them in chat. Deploys can happen by the owner later, or by Vercel's Git integration if the owner connects the repo in the Vercel dashboard.
-- Say plainly what was not run or tested (CLAUDE.md "Never fake it").
-- Work on a branch, push it, and tell the owner the branch name so the laptop can pull it later.
+- Commit after each working milestone, signed as the owner (`git -c user.name=Emmaco08 -c user.email=emmanuelakinbola08@gmail.com`),
+  ending with the Co-Authored-By and Claude-Session trailers. Run the tests **before** committing.
+- Supabase approval prompts: changes to the database show the owner an approval box that waits ~4 minutes. If it times
+  out, tell the owner and wait; do not work around it.
 
 ## Useful commands
 
-- Web checks (from `apps/web`): `npx tsc --noEmit -p .` and `npx eslint .`
-- App checks (from `apps/mobile`): `flutter analyze`, `dart format .`, `flutter test`
-- Icons: `python design/scripts/phosphor-to-dart.py`
-- Release APK (website build): only from GitHub (Actions → Android app, D-065). Local check build: `flutter build apk --release --flavor direct --target-platform android-arm64` (signed with a different key, so do not put it on /download).
-- Play Store: `flutter build appbundle --release --flavor play`.
-- App icon: `node design/scripts/make-app-icon.mjs` (from `brand/favicon.svg`).
-- Edge Functions with shared code: deploy with files `<name>/index.ts`, `_shared/pay.ts`, `_shared/paycrypto.ts` and entrypoint `<name>/index.ts`. `paystack-webhook` and `play-rtdn` use verify_jwt = false (they check a signature / URL token).
-- DB tests from a cloud session: paste a test file into Supabase `execute_sql`, replacing the final `select … rollback` with a `raise exception` that prints the results (the error rolls everything back).
-- DB tests: run `supabase/tests/*.test.sql` against the project (each runs inside `begin … rollback`).
+- App checks (from `apps/mobile`): `/opt/flutter/bin/flutter analyze`, `/opt/flutter/bin/dart format -l 160 lib test`,
+  `/opt/flutter/bin/flutter test` (171 tests on 2026-11-07).
+- Web checks (from `apps/web`): `npx tsc --noEmit` and `npm run lint` (15 old warnings are OK, 0 errors).
+- Database types for the web: Supabase MCP `generate_typescript_types` → `packages/shared/src/database.types.ts`.
+- Edge Function type check: copy to a scratch folder with a `Deno` shim and run `tsc` from `apps/web/node_modules`.
+- DB tests: run in `execute_sql` inside a `do $$ … raise exception 'RESULT …' $$` block so everything rolls back.
+- Build status: `https://api.github.com/repos/Emmaco08/solutionteecbt/actions/runs?head_sha=<sha>` (workflow "Android app").

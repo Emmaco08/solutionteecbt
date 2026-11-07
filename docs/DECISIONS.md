@@ -791,3 +791,14 @@ The owner asked to run the admin from Vercel instead of the laptop.
 - **Report:** the app counts impressions/clicks (`ads_log`, batched) into `ad_daily`; admin sees ads per day and unlocks.
   Money and payouts are in the AdMob account.
 - AdMob app id is public (not a secret): gradle property / env `ADMOB_APP_ID`, Google's sample id until set.
+
+## D-102 — Migration files match the live database exactly (2026-11-07)
+- **Problem:** on 2026-11-07 the files in `supabase/migrations/` stopped matching the migration history on the project:
+  25 versions were applied that day but the repo had 9 files with hand-picked numbers (e.g. `big2_ads` applied as
+  `20261107144842`, file `20261107140000`), some combining several applied migrations.
+- **Fix (no change to the live database):** the 9 files were replaced by 25 files, one per applied version, named
+  `<version>_<name>.sql` exactly as in `supabase_migrations.schema_migrations`, with the applied statements as the content
+  (checked by md5 against the database: 25/25 equal). The repo now has 84 files for 84 applied versions; versions and
+  names before 2026-11-07 already matched. The comments that were in the old hand-written files are kept in git history.
+- **Rule from now on:** apply with `apply_migration`, then read the applied version and save the file under that version
+  with the applied text. Data-only actions (for example submitting a stuck mock entry for a student) are not migrations.
