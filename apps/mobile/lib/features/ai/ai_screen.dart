@@ -375,7 +375,18 @@ class _AiScreenState extends ConsumerState<AiScreen> with WidgetsBindingObserver
     }
   }
 
+  @override
+  void deactivate() {
+    Ads.instance.breakPoint(ref, 'ai');
+    super.deactivate();
+  }
+
   void _newChat() {
+    // Starting a new chat is a natural break: a break ad after every N answers (level), or an "earn XP" offer.
+    final talked = _msgs.any((m) => !m.mine);
+    Ads.instance.breakPoint(ref, 'ai').then((shown) {
+      if (!shown && talked && mounted) offerEarnVideo(context, ref, 'ai');
+    });
     _stop();
     setState(() {
       _msgs.clear();
@@ -586,6 +597,7 @@ class _AiScreenState extends ConsumerState<AiScreen> with WidgetsBindingObserver
           },
           onDone: () {
             if (!mounted) return;
+            if (reply.error == null) Ads.instance.aiAnswered();
             // A request with several steps: the next one starts by itself a moment after this one is done.
             final steps = nextSteps;
             if (steps.isNotEmpty) {
@@ -815,6 +827,7 @@ class _AiScreenState extends ConsumerState<AiScreen> with WidgetsBindingObserver
       ),
       body: Column(
         children: [
+          const AdBanner(screen: 'ai'),
           if (chips.isNotEmpty)
             Container(
               padding: const EdgeInsets.symmetric(vertical: 8),

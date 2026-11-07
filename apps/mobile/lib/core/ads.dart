@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -44,6 +45,11 @@ class AdsConfig {
   int get xpLeft => _i('xp_left');
   int get xpProgress => _i('xp_progress');
   bool get afterVideo => j['after_video'] == true;
+
+  /// Sticky banner: stays at the top/bottom of the screen while scrolling ('off', 'top', 'bottom' or 'both').
+  String get sticky => format('banner') ? '${j['banner_sticky'] ?? 'off'}' : 'off';
+  int get randomBreakPct => _i('random_break_pct');
+  int get noteCardsEvery => format('native') ? _i('note_cards_every') : 0;
   bool bannerOn(String screen) => format('banner') && _l('banner_screens').contains(screen);
   int reward(String k) => ((j['rewards'] as Map?)?[k] as num?)?.toInt() ?? 0;
 
@@ -71,6 +77,7 @@ final adsConfigProvider = FutureProvider<AdsConfig>((ref) async {
   try {
     final j = await ref.read(supabaseProvider).rpc('ads_config').timeout(const Duration(seconds: 12));
     final c = AdsConfig(Map<String, dynamic>.from((j as Map?) ?? const {}));
+    Ads.instance._db = ref.read(dbProvider);
     if (c.on) await Ads.instance._init(c);
     return c;
   } catch (_) {
@@ -80,10 +87,10 @@ final adsConfigProvider = FutureProvider<AdsConfig>((ref) async {
 
 /// Screens where no ad may ever show (running exam, CBT, checkout). Each such screen calls [enter] / [leave].
 class AdsGate {
-  static int _blocked = 0;
-  static void enter() => _blocked++;
-  static void leave() => _blocked = (_blocked - 1).clamp(0, 1 << 20);
-  static bool get blocked => _blocked > 0;
+  static final notifier = ValueNotifier<int>(0);
+  static void enter() => notifier.value++;
+  static void leave() => notifier.value = (notifier.value - 1).clamp(0, 1 << 20);
+  static bool get blocked => notifier.value > 0;
 }
 
 class Ads {
@@ -91,6 +98,8 @@ class Ads {
   static final instance = Ads._();
   bool _started = false;
   AdsConfig _c = AdsConfig.off;
+  AppDb? _db;
+  final _rand = math.Random();
   InterstitialAd? _inter;
   bool _loadingInter = false;
   AppOpenAd? _open;
@@ -194,25 +203,28 @@ class Ads {
   bool get _recentFull => _lastFull != null && DateTime.now().difference(_lastFull!).inSeconds < 30;
 
   /// Is this break one where the level shows a break ad? test = after every Nth test; ai = every Nth AI answer.
-  Future<bool> _spotAllowed(WidgetRef ref, String spot) async {
+  Future<bool> _spotAllowed(String spot) async {
     final c = _c;
-    final db = ref.read(dbProvider);
+    final db = _db;
     switch (spot) {
       case 'test':
         if (c.interEveryTests <= 0) return false;
         _tests++;
         try {
-          await db.kvSet('ads:tests', '$_tests');
+          await db?.kvSet('ads:tests', '$_tests');
         } catch (_) {}
         return _tests % c.interEveryTests == 0;
       case 'challenge':
         return c.interEveryTests > 0;
       case 'ai':
-        if (c.aiEvery <= 0) return false;
-        _ai++;
-        return _ai % c.aiEvery == 0;
+        // At the next break after every N AI answers (never on top of an answer the student is reading).
+        if (c.aiEvery <= 0 || _ai < c.aiEvery) return false;
+        _ai = 0;
+        return true;
       case 'video_end':
         return c.interSpots.contains('video_end') || c.afterVideo;
+      case 'random':
+        return c.randomBreakPct > 0 && _rand.nextInt(100) < c.randomBreakPct;
       default:
         return c.interSpots.contains(spot);
     }
@@ -222,10 +234,24 @@ class Ads {
   /// full-screen (mostly video) ad when the level allows this spot, the gap and the daily cap. Returns true when shown.
   Future<bool> breakPoint(WidgetRef ref, String spot) async {
     _c = ref.read(adsConfigProvider).value ?? _c;
+    if (!breaksOn) return false;
+    _db ??= ref.read(dbProvider);
+    return breakAt(spot);
+  }
+
+  /// The level shows break ads at all (and the red line is not up).
+  bool get breaksOn => _c.interstitialPerDay > 0 && !AdsGate.blocked;
+
+  /// One more AI tutor answer finished (counts toward the "ai" break).
+  void aiAnswered() => _ai++;
+
+  /// The same, from outside a widget (the route observer for Ultra's random breaks).
+  Future<bool> breakAt(String spot) async {
     final c = _c;
     if (AdsGate.blocked || c.interstitialPerDay == 0 || _recentFull) return false;
-    await _loadDayCount(ref.read(dbProvider));
-    if (!await _spotAllowed(ref, spot)) return false;
+    final db = _db;
+    if (db != null) await _loadDayCount(db);
+    if (!await _spotAllowed(spot)) return false;
     if (_interToday >= c.interstitialPerDay) return false;
     if (_lastFull != null && DateTime.now().difference(_lastFull!).inSeconds < c.interstitialGapS) return false;
     final ad = _inter;
@@ -234,25 +260,30 @@ class Ads {
       return false;
     }
     _inter = null;
+    final closed = Completer<void>();
     ad.fullScreenContentCallback = FullScreenContentCallback(
       onAdShowedFullScreenContent: (_) => log('interstitial', spot),
       onAdClicked: (_) => log('interstitial', spot, click: true),
       onAdDismissedFullScreenContent: (a) {
         a.dispose();
         _lastFull = DateTime.now();
+        if (!closed.isCompleted) closed.complete();
         unawaited(_loadInter());
       },
       onAdFailedToShowFullScreenContent: (a, _) {
         a.dispose();
+        if (!closed.isCompleted) closed.complete();
         unawaited(_loadInter());
       },
     );
     _lastFull = DateTime.now();
     _interToday++;
     try {
-      await ref.read(dbProvider).kvSet('ads:inter:$_interDay', '$_interToday');
+      await db?.kvSet('ads:inter:$_interDay', '$_interToday');
     } catch (_) {}
     await ad.show();
+    // Callers that wait (e.g. before a video) carry on when the ad is closed.
+    await closed.future.timeout(const Duration(minutes: 3), onTimeout: () {});
     return true;
   }
 
@@ -410,12 +441,7 @@ Future<AdReward> watchForReward(
       final s = st['status'];
       if (s == 'granted' || s == 'counted') {
         ref.invalidate(adsConfigProvider);
-        return AdReward(
-          granted: s == 'granted',
-          counted: s == 'counted',
-          count: (st['count'] as num?)?.toInt() ?? 0,
-          need: (st['need'] as num?)?.toInt() ?? 0,
-        );
+        return AdReward(granted: s == 'granted', counted: s == 'counted', count: (st['count'] as num?)?.toInt() ?? 0, need: (st['need'] as num?)?.toInt() ?? 0);
       }
     } catch (_) {}
     await Future<void>.delayed(const Duration(milliseconds: 1500));
@@ -574,7 +600,7 @@ class _AdNativeCardState extends ConsumerState<AdNativeCard> {
   @override
   Widget build(BuildContext context) {
     final c = ref.watch(adsConfigProvider).value ?? AdsConfig.off;
-    if (c.nativeEvery == 0 || AdsGate.blocked) return const SizedBox.shrink();
+    if (!c.format('native') || AdsGate.blocked) return const SizedBox.shrink();
     final dark = Theme.of(context).brightness == Brightness.dark;
     _ad ??= NativeAd(
       adUnitId: c.unit('native'),
@@ -625,55 +651,183 @@ List<Widget> withNativeAds(WidgetRef ref, int count, Widget Function(int i) buil
   ];
 }
 
-/// Ask once for the birth year (personalised ads only for 18+). Returns quietly if the student skips.
+/// Students who joined before we asked: the birth year is asked once and must be answered to go on (personalised ads
+/// only for 18+, non-personalised 13-17, child treatment under 13). New students give it during profile setup.
+bool _askingBirthYear = false;
 Future<void> askBirthYearOnce(BuildContext context, WidgetRef ref) async {
   final c = ref.read(adsConfigProvider).value ?? AdsConfig.off;
-  if (!c.on || !c.askBirthYear) return;
-  final db = ref.read(dbProvider);
-  final asked = await db.kvGet('ads:asked_birth_year');
-  if (asked != null && DateTime.now().difference(DateTime.tryParse(asked) ?? DateTime(2000)).inDays < 14) return;
-  await db.kvSet('ads:asked_birth_year', DateTime.now().toIso8601String());
-  if (!context.mounted) return;
-  final now = DateTime.now().year;
-  int? picked;
-  final year = await showModalBottomSheet<int>(
-    context: context,
-    useRootNavigator: true,
-    showDragHandle: true,
-    builder: (ctx) => StatefulBuilder(
-      builder: (ctx, set) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('What year were you born?', style: Theme.of(ctx).textTheme.titleLarge),
-              const SizedBox(height: 6),
-              const Text('We ask once, so the ads you see suit your age. Students under 18 never get ads based on what they do.'),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<int>(
-                initialValue: picked,
-                decoration: const InputDecoration(labelText: 'Birth year'),
-                items: [for (var y = now - 8; y >= now - 60; y--) DropdownMenuItem(value: y, child: Text('$y'))],
-                onChanged: (v) => set(() => picked = v),
+  if (!c.askBirthYear || _askingBirthYear) return;
+  _askingBirthYear = true;
+  try {
+    final now = DateTime.now().year;
+    int? picked;
+    var saving = false;
+    String? err;
+    await showModalBottomSheet<void>(
+      context: context,
+      useRootNavigator: true,
+      isDismissible: false,
+      enableDrag: false,
+      builder: (ctx) => PopScope(
+        canPop: false,
+        child: StatefulBuilder(
+          builder: (ctx, set) => SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text('What year were you born?', style: Theme.of(ctx).textTheme.titleLarge),
+                  const SizedBox(height: 6),
+                  const Text('We ask once, so what you see suits your age. Students under 18 never get ads based on what they do.'),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<int>(
+                    initialValue: picked,
+                    menuMaxHeight: 360,
+                    decoration: const InputDecoration(labelText: 'Birth year'),
+                    items: [for (var y = now - 8; y >= now - 60; y--) DropdownMenuItem(value: y, child: Text('$y'))],
+                    onChanged: (v) => set(() => picked = v),
+                  ),
+                  if (err != null) ...[const SizedBox(height: 8), Text(err!, style: TextStyle(color: Theme.of(ctx).colorScheme.error))],
+                  const SizedBox(height: 16),
+                  FilledButton(
+                    onPressed: picked == null || saving
+                        ? null
+                        : () async {
+                            set(() {
+                              saving = true;
+                              err = null;
+                            });
+                            try {
+                              await ref.read(supabaseProvider).rpc('set_birth_year', params: {'p_year': picked});
+                              if (ctx.mounted) Navigator.pop(ctx);
+                            } catch (_) {
+                              set(() {
+                                saving = false;
+                                err = 'Could not save. Check your internet and try again.';
+                              });
+                            }
+                          },
+                    child: Text(saving ? 'Saving…' : 'Continue'),
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
-              FilledButton(onPressed: picked == null ? null : () => Navigator.pop(ctx, picked), child: const Text('Save')),
-              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Not now')),
-            ],
+            ),
           ),
         ),
       ),
-    ),
-  );
-  if (year == null) return;
-  try {
-    await ref.read(supabaseProvider).rpc('set_birth_year', params: {'p_year': year});
+    );
     ref.invalidate(adsConfigProvider);
-  } catch (_) {}
+  } finally {
+    _askingBirthYear = false;
+  }
 }
 
 /// For logs: the pending counts (tests).
 @visibleForTesting
 String debugPendingAds() => jsonEncode(Ads.instance._pending);
+
+/// Ultra's random break pop-ups: sometimes a break ad when the student moves to another screen (never inside a task;
+/// the red-line screens block it). Added to the router's observers.
+class AdsRouteObserver extends NavigatorObserver {
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    if (route is PageRoute && previousRoute != null) {
+      Future<void>.delayed(const Duration(milliseconds: 600), () => Ads.instance.breakAt('random'));
+    }
+  }
+}
+
+/// Sticky banners: wrap the whole app; a banner stays at the top and/or bottom while the student scrolls. Hidden on
+/// red-line screens (exam, CBT, challenge, checkout), for Premium and when the level has no sticky banner.
+class StickyAds extends ConsumerWidget {
+  const StickyAds({super.key, required this.child});
+  final Widget child;
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = ref.watch(adsConfigProvider).value ?? AdsConfig.off;
+    final where = c.sticky;
+    if (where == 'off') return child;
+    return ValueListenableBuilder<int>(
+      valueListenable: AdsGate.notifier,
+      builder: (context, blocked, _) {
+        if (blocked > 0) return child;
+        final top = where == 'top' || where == 'both', bottom = where == 'bottom' || where == 'both';
+        final pad = MediaQuery.paddingOf(context);
+        return ColoredBox(
+          color: Theme.of(context).colorScheme.surface,
+          child: Column(
+            children: [
+              // A small gap keeps the banner away from the app's own buttons (AdMob: no ads right next to buttons).
+              if (top)
+                Padding(
+                  padding: EdgeInsets.only(top: pad.top, bottom: 6),
+                  child: const _StickyBanner(slot: 'sticky_top'),
+                ),
+              Expanded(
+                child: MediaQuery.removePadding(context: context, removeTop: top, removeBottom: bottom, child: child),
+              ),
+              if (bottom)
+                Padding(
+                  padding: EdgeInsets.only(top: 6, bottom: pad.bottom),
+                  child: const _StickyBanner(slot: 'sticky_bottom'),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _StickyBanner extends ConsumerStatefulWidget {
+  const _StickyBanner({required this.slot});
+  final String slot;
+  @override
+  ConsumerState<_StickyBanner> createState() => _StickyBannerState();
+}
+
+class _StickyBannerState extends ConsumerState<_StickyBanner> {
+  BannerAd? _ad;
+  bool _ready = false;
+
+  @override
+  void dispose() {
+    _ad?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = ref.watch(adsConfigProvider).value ?? AdsConfig.off;
+    _ad ??= BannerAd(
+      adUnitId: c.unit('banner'),
+      size: AdSize.banner,
+      request: c.request,
+      listener: BannerAdListener(
+        onAdLoaded: (_) {
+          Ads.instance.result('banner', widget.slot);
+          if (mounted) setState(() => _ready = true);
+        },
+        onAdImpression: (_) => Ads.instance.log('banner', widget.slot),
+        onAdClicked: (_) => Ads.instance.log('banner', widget.slot, click: true),
+        onAdFailedToLoad: (ad, e) {
+          Ads.instance.result('banner', widget.slot, error: e.code);
+          ad.dispose();
+        },
+      ),
+    )..load();
+    if (!_ready) return const SizedBox.shrink();
+    return SizedBox(
+      width: double.infinity,
+      height: _ad!.size.height.toDouble(),
+      child: Center(
+        child: SizedBox(
+          width: _ad!.size.width.toDouble(),
+          child: AdWidget(ad: _ad!),
+        ),
+      ),
+    );
+  }
+}

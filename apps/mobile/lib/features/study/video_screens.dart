@@ -174,6 +174,9 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
         final m = player.message.value;
         if (m != null && mounted) toast(context, m, icon: PhosphorIcons.cellSignalLow(PhosphorIconsStyle.fill));
       });
+      // A break ad before the video starts (ads level: "before a video"); the video waits until it is closed.
+      await Ads.instance.breakPoint(ref, 'video_start');
+      if (!mounted) return;
       setState(() => _player = player);
       await player.start(at: Duration(seconds: (pos['seconds'] as num?)?.toInt() ?? 0));
       _saver = Timer.periodic(const Duration(seconds: 15), (_) => _save());
@@ -182,11 +185,18 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     }
   }
 
+  bool _earnOffered = false;
+
   void _save() {
     final c = _player?.ctl, item = _item;
     if (c == null || item == null || !c.value.isInitialized) return;
     final d = c.value.duration.inMilliseconds;
     if (d <= 0) return;
+    // The video ended: a skippable "earn XP" video offer, once (ads level: "after a video").
+    if (!_earnOffered && !c.value.isPlaying && c.value.position.inMilliseconds >= d - 2000) {
+      _earnOffered = true;
+      offerEarnVideo(context, ref, 'video_end');
+    }
     _repo.saveProgress(item, c.value.position.inMilliseconds / d, position: {'seconds': c.value.position.inSeconds});
   }
 
@@ -205,7 +215,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
   void deactivate() {
     if (!_breakDone) {
       _breakDone = true;
-      Ads.instance.breakPoint(ref, 'video');
+      Ads.instance.breakPoint(ref, 'video_end');
     }
     super.deactivate();
   }

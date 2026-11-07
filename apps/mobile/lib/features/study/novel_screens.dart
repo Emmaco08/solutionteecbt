@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/ads.dart';
 import '../../core/api.dart';
 import '../../data/study_repo.dart';
 import '../../theme/theme.dart';
@@ -42,6 +43,7 @@ class NovelsScreen extends ConsumerWidget {
           : ListView(
               padding: const EdgeInsets.fromLTRB(Space.s5, Space.s2, Space.s5, Space.s8),
               children: [
+                const AdBanner(screen: 'novels'),
                 if (all.any((n) => '${n['title']}'.startsWith('[SAMPLE]'))) ...[
                   InfoBanner(
                     kind: BannerKind.warn,
@@ -176,7 +178,7 @@ class _NovelScreenState extends ConsumerState<NovelScreen> {
     final read = {...?_read, i};
     setState(() => _read = read);
     ref.read(studyRepoProvider).saveProgress(it, chapters.isEmpty ? 0 : read.length / chapters.length, position: {'read': read.toList()..sort()});
-    await showSheet<void>(
+    final next = await showSheet<bool>(
       context,
       builder: (ctx) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -193,13 +195,15 @@ class _NovelScreenState extends ConsumerState<NovelScreen> {
               block: true,
               icon: PhosphorIcons.arrowRight(),
               onPressed: () {
-                Navigator.of(ctx).pop();
+                Navigator.of(ctx).pop(true);
                 _openChapter(it, chapters, i + 1);
               },
             ),
         ],
       ),
     );
+    // Closing a chapter (not going on to the next) is a break.
+    if (next != true && mounted) Ads.instance.breakPoint(ref, 'note');
   }
 
   @override
@@ -247,6 +251,7 @@ class _NovelScreenState extends ConsumerState<NovelScreen> {
           : ListView(
               padding: const EdgeInsets.fromLTRB(Space.s5, Space.s2, Space.s5, Space.s8),
               children: [
+                const AdBanner(screen: 'novels'),
                 Row(
                   children: [
                     BookCover(

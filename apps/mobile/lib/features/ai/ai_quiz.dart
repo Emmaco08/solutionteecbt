@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
+import '../../core/ads.dart';
 import '../../widgets/question_image.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
@@ -91,6 +92,8 @@ class _QuizCardState extends State<QuizCard> with AutomaticKeepAliveClientMixin 
       _a = null;
       if (_idx + 1 >= _qs.length) {
         _done = true;
+        // A finished quiz is a break (ads level: "after an AI quiz"); after the score has shown.
+        if (Ads.instance.breaksOn) Future<void>.delayed(const Duration(milliseconds: 1800), () => Ads.instance.breakAt('quiz'));
       } else {
         _idx++;
       }

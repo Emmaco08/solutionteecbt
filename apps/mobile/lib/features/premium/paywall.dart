@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/ads.dart';
+import '../../core/providers.dart';
 import '../../data/study_repo.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
@@ -360,5 +361,102 @@ class _PlanRow extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// A locked past-question year: "Watch N videos — open it for H minutes" (rewarded video, counted and granted on the
+/// server, D-104) or Premium. [years] are the locked years to choose from (newest first); one year opens straight away.
+Future<void> showYearUnlock(BuildContext context, WidgetRef ref, {required int examId, required String exam, required List<int> years}) async {
+  final a = ref.read(adsConfigProvider).value ?? AdsConfig.off;
+  final can = a.format('rewarded') && a.rewardedLeft > 0 && a.reward('year_minutes') > 0 && years.isNotEmpty;
+  if (!can) return showPaywall(context, reason: years.length == 1 ? '$exam ${years.first}' : 'years');
+  await showSheet<void>(
+    context,
+    builder: (_) => _YearUnlock(examId: examId, exam: exam, years: years),
+  );
+}
+
+class _YearUnlock extends ConsumerStatefulWidget {
+  const _YearUnlock({required this.examId, required this.exam, required this.years});
+  final int examId;
+  final String exam;
+  final List<int> years;
+  @override
+  ConsumerState<_YearUnlock> createState() => _YearUnlockState();
+}
+
+class _YearUnlockState extends ConsumerState<_YearUnlock> {
+  late int _year = widget.years.first;
+  bool _busy = false;
+  int _count = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final a = ref.watch(adsConfigProvider).value ?? AdsConfig.off;
+    final need = a.reward('year_ads') > 1 ? a.reward('year_ads') : 1;
+    final mins = a.reward('year_minutes');
+    final time = mins % 60 == 0 ? (mins == 60 ? '1 hour' : '${mins ~/ 60} hours') : '$mins minutes';
+    final c = context.c;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(widget.years.length == 1 ? '${widget.exam} ${widget.years.first} is Premium' : 'Open a Premium year', style: context.ty.h2),
+        const Gap(Space.s2),
+        Text(
+          need > 1 ? 'Watch $need short videos to open it free for $time.' : 'Watch a short video to open it free for $time.',
+          style: context.ty.body.col(c.textMuted),
+        ),
+        if (widget.years.length > 1) ...[
+          const Gap(Space.s4),
+          Wrap(
+            spacing: Space.s2,
+            runSpacing: Space.s2,
+            children: [for (final y in widget.years) AppChip('$y', on: _year == y, onTap: _busy ? null : () => setState(() => _year = y))],
+          ),
+        ],
+        if (need > 1 && _count > 0) ...[
+          const Gap(Space.s4),
+          Text('$_count of $need videos watched', style: context.ty.sm.bold),
+          const Gap(Space.s2),
+          ProgressBar(_count / need),
+        ],
+        const Gap(Space.s5),
+        Btn(
+          need > 1 && _count > 0 ? 'Watch the next video' : 'Watch to open $_year',
+          block: true,
+          loading: _busy,
+          leading: PhosphorIcons.playCircle(PhosphorIconsStyle.fill),
+          onPressed: _busy ? null : _watch,
+        ),
+        const Gap(Space.s2),
+        Btn(
+          'See Premium plans',
+          kind: BtnKind.outline,
+          block: true,
+          leading: PhosphorIcons.crownSimple(PhosphorIconsStyle.fill),
+          onPressed: () {
+            Navigator.of(context).pop();
+            showPaywall(context, reason: 'years');
+          },
+        ),
+        const Gap(Space.s2),
+        Text('Premium opens every year with no ads.', style: context.ty.cap.col(c.textSubtle), textAlign: TextAlign.center),
+      ],
+    );
+  }
+
+  Future<void> _watch() async {
+    setState(() => _busy = true);
+    final r = await watchForReward(context, ref, kind: 'year', itemRef: '${widget.examId}:$_year', placement: 'year_unlock');
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      if (r.counted) _count = r.count;
+    });
+    if (r.granted) {
+      ref.invalidate(openYearsProvider);
+      toast(context, '${widget.exam} $_year is open. Enjoy your practice!', icon: PhosphorIcons.lockSimpleOpen(PhosphorIconsStyle.fill));
+      Navigator.of(context).pop();
+    }
   }
 }

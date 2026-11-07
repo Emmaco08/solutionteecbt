@@ -423,7 +423,16 @@ class _TestSetupScreenState extends ConsumerState<TestSetupScreen> {
                     'More years',
                     on: false,
                     icon: PhosphorIcons.lockSimple(PhosphorIconsStyle.fill),
-                    onTap: () => showPaywall(context, reason: 'years'),
+                    onTap: () => showYearUnlock(
+                      context,
+                      ref,
+                      examId: examId,
+                      exam: '${exam['code']}',
+                      years: ({
+                        for (final y in yearRows)
+                          if (y['cbt_open'] != true) (y['year'] as num).toInt(),
+                      }.toList()..sort((a, b) => b.compareTo(a))),
+                    ),
                   ),
                 ],
               ],

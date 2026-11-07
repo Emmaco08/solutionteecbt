@@ -814,3 +814,21 @@ The owner asked to run the admin from Vercel instead of the laptop.
   Android 14 emulator, opened, must keep running 40 s; crash log + screenshot kept as an artifact) and `publish`
   (/download only when both passed). Limit: the check opens the Welcome screen without signing in, so it does not show
   an ad; ads start only for a signed-in free student when the level is not Off.
+
+## D-104 — Ads v2: video-first levels, watch to earn, ads everywhere except the red line (2026-11-07)
+- **Plan:** `docs/plans/big2-ads-v2.md`. Money comes mostly from video (rewarded, break and app-open ads), so the levels
+  are rebuilt around those, with banners and cards as filler. Low is hardly noticed; Ultra uses every slot AdMob allows.
+- **Server:** level rules in `private.ads_preset` + `private.ads_extras` (sticky banner, random breaks, cards inside
+  notes), merged by `private.ads_rules`; Custom = Medium defaults overwritten by the admin's `ads.custom`. Rewards are
+  started by `ad_reward_start`, confirmed only by Google's signed callback (`admob-ssv`) and counted/granted in
+  `private.ad_reward_apply`: XP (stored as bought XP, never usable for cash-prize entries: AdMob forbids cash-like
+  rewards) and "a locked year for N minutes" (checked inside `private.year_open`, so papers stay locked on the server).
+- **App (B2):** sticky banners wrap the whole app (`StickyAds`, hidden on the red-line screens through `AdsGate`);
+  Ultra's random breaks come from a router observer (only on a new page, never inside a task); app-open ads when the
+  student returns after the level's minutes; breaks at tests, before/after videos, after notes, novel chapters, AI
+  quizzes, Study sections and every N AI answers (counted, shown at the next break, never over an answer); skippable
+  "earn XP" videos after tests, videos, notes and AI chats; banners on Home, AI tutor, News (list + article), notes,
+  results, review, XP, novels, bookmarks, settings and notifications; cards on Home, in News and inside notes.
+- **Rule kept:** at most one full-screen ad at a time, 30 s after any other, the level's gap and daily cap; banners keep a
+  6 px gap from the app's own buttons. Birth year is required in profile setup; students who joined before must answer a
+  one-time pop-up.

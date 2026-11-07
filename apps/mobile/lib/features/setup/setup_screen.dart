@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/ads.dart';
 import '../../core/providers.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
@@ -67,12 +68,12 @@ class SetupScreen extends ConsumerStatefulWidget {
 class _SetupScreenState extends ConsumerState<SetupScreen> {
   int _step = 1;
   final _name = TextEditingController(), _phone = TextEditingController(), _school = TextEditingController();
-  String? _state;
+  String? _state, _birth;
   final _exams = <String>{'JAMB'};
   final _subjects = <String>{};
   double _target = 290;
   bool _saving = false;
-  String? _nameErr, _stateErr, _error;
+  String? _nameErr, _stateErr, _birthErr, _error;
 
   bool get _jamb => _exams.contains('JAMB');
   int get _total => _jamb ? 3 : 2;
@@ -91,6 +92,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       _phone.text = (p['phone'] as String?) ?? '';
       _school.text = (p['school'] as String?) ?? '';
       _state = p['state'] as String?;
+      if (p['birth_year'] != null) _birth = '${p['birth_year']}';
     }
   }
 
@@ -136,6 +138,12 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
             'target_score': _jamb ? _target.round() : null,
           })
           .eq('id', uid);
+      // Birth year (required): which ads suit the student's age; set once, on the server.
+      final by = int.tryParse(_birth ?? '');
+      if (by != null) {
+        await Supabase.instance.client.rpc('set_birth_year', params: {'p_year': by});
+        ref.invalidate(adsConfigProvider);
+      }
       ref.invalidate(profileProvider);
       await ref.read(profileProvider.future);
       if (mounted) context.go('/welcome-new');
@@ -151,8 +159,9 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       setState(() {
         _nameErr = _name.text.trim().length < 2 ? 'Enter your full name' : null;
         _stateErr = _state == null ? 'Choose your state' : null;
+        _birthErr = _birth == null ? 'Choose the year you were born' : null;
       });
-      if (_nameErr != null || _stateErr != null) return;
+      if (_nameErr != null || _stateErr != null || _birthErr != null) return;
     }
     if (_step == 2 && _exams.isEmpty) {
       toast(context, 'Pick at least one exam.', icon: PhosphorIcons.info(PhosphorIconsStyle.fill));
@@ -273,6 +282,18 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       onChanged: (v) => setState(() {
         _state = v;
         _stateErr = null;
+      }),
+    ),
+    const Gap(Space.s4),
+    _SelectField(
+      label: 'Year you were born',
+      value: _birth,
+      hint: 'Choose the year',
+      options: [for (var y = DateTime.now().year - 8; y >= DateTime.now().year - 60; y--) '$y'],
+      error: _birthErr,
+      onChanged: (v) => setState(() {
+        _birth = v;
+        _birthErr = null;
       }),
     ),
     const Gap(Space.s4),

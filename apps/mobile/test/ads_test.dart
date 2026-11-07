@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:solutiontee_cbt/core/ads.dart';
+import 'package:solutiontee_cbt/features/study/note_screens.dart' show NoteView;
+import 'package:solutiontee_cbt/widgets/note_markdown.dart' show NoteDoc;
 
 /// Big update 2, step B: what the server's ads config means in the app.
 void main() {
@@ -65,11 +67,76 @@ void main() {
     await t.pumpWidget(
       ProviderScope(
         overrides: [adsConfigProvider.overrideWith((_) async => AdsConfig.off)],
-        child: const MaterialApp(home: Scaffold(body: Column(children: [AdBanner(screen: 'study'), Text('content')]))),
+        child: const MaterialApp(
+          home: Scaffold(
+            body: Column(
+              children: [
+                AdBanner(screen: 'study'),
+                Text('content'),
+              ],
+            ),
+          ),
+        ),
       ),
     );
     await t.pump();
     expect(find.text('content'), findsOneWidget);
     expect(t.getSize(find.byType(AdBanner)).height, 0);
+  });
+
+  test('ads v2 extras: sticky banners, random breaks and cards inside notes follow the formats', () {
+    final c = AdsConfig({
+      'on': true,
+      'formats': {'banner': true, 'native': true},
+      'banner_sticky': 'both',
+      'random_break_pct': 15,
+      'note_cards_every': 3,
+      'home_cards': 4,
+      'inter_spots': ['video_start', 'note'],
+      'rint_spots': ['test'],
+      'xp_left': 7,
+    });
+    expect(c.sticky, 'both');
+    expect(c.randomBreakPct, 15);
+    expect(c.noteCardsEvery, 3);
+    expect(c.homeCards, 4);
+    expect(c.interSpots, contains('note'));
+    expect(c.earnSpots, ['test']);
+    expect(c.xpLeft, 7);
+    final noBanner = AdsConfig({
+      'on': true,
+      'formats': {'banner': false, 'native': false},
+      'banner_sticky': 'top',
+      'note_cards_every': 3,
+    });
+    expect(noBanner.sticky, 'off', reason: 'banners switched off: no sticky banner');
+    expect(noBanner.noteCardsEvery, 0);
+    expect(AdsConfig.off.sticky, 'off');
+  });
+
+  test('cards inside a note go before a heading, never first or last', () {
+    final doc = NoteDoc.parse(
+      ['# Title', 'p1', 'p2', 'p3', '## Part two', 'p4', 'p5', '## Part three', 'p6', 'p7', 'p8', 'p9', 'p10', 'p11', 'p12'].join('\n\n'),
+    );
+    expect(NoteView.adSpots(doc, 0), isEmpty);
+    final spots = NoteView.adSpots(doc, 3);
+    expect(spots, contains(4), reason: 'before "Part two" after 4 blocks');
+    expect(spots.contains(0), isFalse);
+    expect(spots.contains(doc.blocks.length - 1), isFalse);
+    for (final i in spots) {
+      expect(i, greaterThan(0));
+    }
+  });
+
+  testWidgets('sticky banners add nothing when the level has none', (t) async {
+    await t.pumpWidget(
+      ProviderScope(
+        overrides: [adsConfigProvider.overrideWith((_) async => AdsConfig.off)],
+        child: const MaterialApp(home: StickyAds(child: Text('app'))),
+      ),
+    );
+    await t.pump();
+    expect(find.text('app'), findsOneWidget);
+    expect(find.byType(Column), findsNothing);
   });
 }

@@ -48,6 +48,9 @@ export async function saveAds(v: AdsSettings): Promise<ActionResult> {
       rint_spots: c.rint_spots.filter((s) => EARN_SPOTS.some((b) => b.id === s)),
       rewarded_per_day: n(c.rewarded_per_day, 0, 50, 8),
       after_video: c.inter_spots.includes("video_end"),
+      banner_sticky: ["off", "top", "bottom", "both"].includes(c.banner_sticky) ? c.banner_sticky : "off",
+      random_break_pct: n(c.random_break_pct, 0, 30, 0),
+      note_cards_every: n(c.note_cards_every, 0, 30, 0),
     },
   };
   const supabase = await createClient();

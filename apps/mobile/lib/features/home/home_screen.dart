@@ -6,6 +6,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/ads.dart';
 import '../../core/nav.dart';
 import '../../core/providers.dart';
 import '../../data/db.dart';
@@ -225,8 +226,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final open = ref.watch(openYearsProvider).value;
     final rm = context.reduceMotion;
 
+    final homeCards = (ref.watch(adsConfigProvider).value ?? AdsConfig.off).homeCards;
     final sections = <Widget>[
       HomeTopCard(key: _topKey, unfinished: unfinished, stats: stats),
+      const AdBanner(screen: 'home'),
       const DailyClaimCard(),
       if (ref.watch(challengesProvider).value?['on'] == true) ChallengeSection(key: _challengeKey),
       Column(
@@ -282,6 +285,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
       if (!premium) UpgradeBanner(key: _upgradeKey),
     ];
+    // Card ads spread through Home's feed (the level says how many), never above the top card.
+    for (var k = 0, at = 4; k < homeCards && at <= sections.length; k++, at += 3) {
+      sections.insert(at, AdNativeCard(key: ValueKey('ad-home-$k'), placement: 'home'));
+    }
 
     return Scaffold(
       body: SafeArea(

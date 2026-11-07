@@ -95,15 +95,22 @@ String _date(DateTime d) {
 class ResultsScreen extends ConsumerWidget {
   const ResultsScreen({super.key, required this.attemptId});
   final String attemptId;
+  static final _offered = <String>{};
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final v = ref.watch(attemptViewProvider(attemptId));
     // A break ad may show when the student leaves the results (big update 2, step B); it is loaded now.
     Future.microtask(() => Ads.instance.prepareBreak(ref));
+    // A skippable "earn XP" video offer a moment after the result shows (once per test, when the level offers it).
+    if (_offered.add(attemptId)) {
+      Future<void>.delayed(const Duration(seconds: 3), () {
+        if (context.mounted) offerEarnVideo(context, ref, 'test');
+      });
+    }
     return PopScope(
       onPopInvokedWithResult: (didPop, _) {
-        if (didPop) Ads.instance.breakPoint(ref, 'results');
+        if (didPop) Ads.instance.breakPoint(ref, 'test');
       },
       child: Scaffold(
         backgroundColor: context.c.bg,
@@ -158,7 +165,7 @@ class _ResultsBody extends ConsumerWidget {
                   label: 'Close',
                   color: Colors.white,
                   onPressed: () {
-                    Ads.instance.breakPoint(ref, 'results');
+                    Ads.instance.breakPoint(ref, 'test');
                     context.go('/home');
                   },
                 ),
@@ -313,6 +320,10 @@ class _ResultsBody extends ConsumerWidget {
                   ],
                 ),
               ),
+            ),
+            Transform.translate(
+              offset: const Offset(0, -Space.s4),
+              child: const AdBanner(screen: 'results'),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(Space.s5, 0, Space.s5, 0),
@@ -538,6 +549,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                   ),
                 ),
               ),
+              const AdBanner(screen: 'review'),
               Expanded(
                 child: q == null
                     ? StateBlock(

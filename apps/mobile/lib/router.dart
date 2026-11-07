@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'core/ads.dart';
+
 import 'features/ai/ai_screen.dart';
 import 'features/auth/auth_screens.dart';
 import 'features/cbt/cbt_screen.dart';
@@ -58,6 +60,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 
   return GoRouter(
     initialLocation: '/splash',
+    observers: [AdsRouteObserver()],
     refreshListenable: refresh,
     redirect: (context, state) {
       final signedIn = auth.currentSession != null;

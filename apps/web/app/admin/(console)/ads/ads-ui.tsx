@@ -16,10 +16,10 @@ const LEVELS: { id: string; label: string; what: string }[] = [
   { id: "off", label: "Off", what: "No ads at all." },
   { id: "low", label: "Low", what: "Hardly noticed: no banners, one card in News, a video break after every 3rd test (2 a day, 15 min apart). Watch-to-earn always open." },
   { id: "medium", label: "Medium", what: "Banners on Study, News and AI tutor, 1 card on Home, cards every 8 items, a break after every 2nd test and after videos (4 a day), 'earn XP' video after tests." },
-  { id: "high", label: "High", what: "Banners on most screens incl. Home, cards every 6, a break after every test and around videos (8 a day, 5 min), app-open ad after 4 h away." },
+  { id: "high", label: "High", what: "Banners on most screens incl. Home, cards every 6, a break after every test and around videos (8 a day, 5 min), app-open ad after 4 h away, a sticky banner at the bottom, cards inside notes." },
   { id: "high_extra", label: "High Extra", what: "Banners also on results, review, Me and XP, cards every 4, breaks after notes, quizzes and every 3rd AI answer (12 a day, 3 min), app-open after 1 h." },
   { id: "max", label: "Max", what: "Cards every 3, breaks also when opening Study sections (18 a day, 2 min), app-open after 30 min, 'earn' videos at most breaks." },
-  { id: "ultra", label: "Ultra", what: "The strongest AdMob allows: banners almost everywhere, a card every 2 items, 4 on Home, breaks at every natural break (25 a day, 90 s), app-open after 5 min." },
+  { id: "ultra", label: "Ultra", what: "The strongest AdMob allows: banners almost everywhere, a card every 2 items, 4 on Home, breaks at every natural break (25 a day, 90 s), random breaks between screens, sticky banners top and bottom, app-open after 5 min." },
   { id: "custom", label: "Custom", what: "You choose every placement below." },
 ];
 const FORMATS: { id: Format; label: string; where: string }[] = [
@@ -34,6 +34,7 @@ const FORMATS: { id: Format; label: string; where: string }[] = [
 const defaultRules: Rules = {
   banner_screens: ["study", "news", "ai"], home_cards: 1, native_every: 8, news_card: true, inter_every_tests: 2, inter_spots: ["video_end"],
   ai_every: 0, interstitial_gap_s: 480, interstitial_per_day: 4, app_open_after_min: 0, rint_spots: ["test"], rewarded_per_day: 8,
+  banner_sticky: "off", random_break_pct: 0, note_cards_every: 0,
 };
 const defaults = (s: Partial<AdsSettings> | null): AdsSettings => ({
   level: s?.level ?? "off",
@@ -102,10 +103,18 @@ export function AdsBoard({ r }: { r: AdsReport }) {
           <h2 className="font-bold">Custom level</h2>
           <h3 className="mt-4 text-sm font-bold">Banners on these screens</h3>
           <Checks items={BANNER_SCREENS} value={c.banner_screens} onChange={(x) => setC({ banner_screens: x })} />
+          <label className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+            Sticky banner (stays on screen while scrolling, on every screen except exams, CBT, challenges and checkout):
+            <select className="rounded-lg border border-border bg-background px-2 py-1" value={c.banner_sticky}
+              onChange={(e) => setC({ banner_sticky: e.target.value as Rules["banner_sticky"] })}>
+              <option value="off">Off</option><option value="top">Top</option><option value="bottom">Bottom</option><option value="both">Top and bottom</option>
+            </select>
+          </label>
           <h3 className="mt-6 text-sm font-bold">Card ads</h3>
           <div className="mt-2 flex flex-wrap gap-4">
             <Num label="Cards on Home" value={c.home_cards} min={0} max={6} onChange={(x) => setC({ home_cards: x })} />
             <Num label="A card after every N list items" value={c.native_every} min={0} max={30} hint="0 = no cards in lists" onChange={(x) => setC({ native_every: x })} />
+            <Num label="Inside lesson notes: a card every N blocks" value={c.note_cards_every} min={0} max={30} hint="0 = none" onChange={(x) => setC({ note_cards_every: x })} />
             <label className="flex items-center gap-2 self-end text-sm"><input type="checkbox" className="size-4" checked={c.news_card} onChange={(e) => setC({ news_card: e.target.checked })} /> A card in News</label>
           </div>
           <h3 className="mt-6 text-sm font-bold">Break ads (full-screen video)</h3>
@@ -113,6 +122,7 @@ export function AdsBoard({ r }: { r: AdsReport }) {
             <Num label="After every Nth test" value={c.inter_every_tests} min={0} max={10} hint="0 = never after tests" onChange={(x) => setC({ inter_every_tests: x })} />
             <Num label="At least seconds apart" value={c.interstitial_gap_s} min={60} max={3600} onChange={(x) => setC({ interstitial_gap_s: x })} />
             <Num label="At most per day" value={c.interstitial_per_day} min={0} max={40} onChange={(x) => setC({ interstitial_per_day: x })} />
+            <Num label="Random break when changing screens (%)" value={c.random_break_pct} min={0} max={30} hint="0 = off; still gaps and caps" onChange={(x) => setC({ random_break_pct: x })} />
             <Num label="After every Nth AI answer" value={c.ai_every} min={0} max={20} hint="needs 'After AI answers'" onChange={(x) => setC({ ai_every: x })} />
           </div>
           <Checks items={BREAK_SPOTS} value={c.inter_spots} onChange={(x) => setC({ inter_spots: x })} />

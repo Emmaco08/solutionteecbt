@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/ads.dart';
 import '../../core/nav.dart';
 import '../../core/providers.dart';
 import '../../theme/theme.dart';
@@ -262,6 +263,8 @@ class _Wallet extends StatelessWidget {
         ),
         const Gap(Space.s3),
         const DailyClaimCard(),
+        const WatchForXpCard(),
+        const AdBanner(screen: 'xp'),
         const Gap(Space.s3),
         const SectTitle('Ways to earn XP'),
         ListCard(
@@ -601,6 +604,77 @@ class _BuyXpState extends ConsumerState<_BuyXp> with WidgetsBindingObserver {
         const Gap(Space.s2),
         Text('Bought XP can be spent on Premium, events and streak freezes, but not on cash-prize challenges.', style: context.ty.cap.col(c.textSubtle)),
       ],
+    );
+  }
+}
+
+/// "Watch a video, earn XP" (rewarded video, server-verified; the admin sets videos, XP and the daily cap). XP from
+/// videos is kept like bought XP: it can be spent in the app, never on cash-prize entries (AdMob rule).
+class WatchForXpCard extends ConsumerStatefulWidget {
+  const WatchForXpCard({super.key});
+  @override
+  ConsumerState<WatchForXpCard> createState() => _WatchForXpCardState();
+}
+
+class _WatchForXpCardState extends ConsumerState<WatchForXpCard> {
+  bool _busy = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final a = ref.watch(adsConfigProvider).value ?? AdsConfig.off;
+    final xp = a.reward('xp_amount');
+    if (!a.format('rewarded') || xp <= 0) return const SizedBox.shrink();
+    final need = a.reward('xp_ads') > 1 ? a.reward('xp_ads') : 1;
+    final left = a.xpLeft;
+    final c = context.c;
+    return Padding(
+      padding: const EdgeInsets.only(top: Space.s3),
+      child: AppCard(
+        child: Row(
+          children: [
+            IconTile(PhosphorIcons.playCircle(PhosphorIconsStyle.fill), tone: Tone.gold, size: 44, radius: 12, iconSize: 24),
+            const Gap(Space.s3),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(need > 1 ? 'Watch $need videos, earn +$xp XP' : 'Watch a video, earn +$xp XP', style: context.ty.sm.bold),
+                  const Gap(2),
+                  Text(
+                    left <= 0
+                        ? 'All done for today. Come back tomorrow.'
+                        : need > 1
+                        ? '${a.xpProgress} of $need watched · $left videos left today'
+                        : '$left videos left today',
+                    style: context.ty.cap.col(c.textMuted),
+                  ),
+                ],
+              ),
+            ),
+            const Gap(Space.s3),
+            Btn(
+              'Watch',
+              sm: true,
+              kind: BtnKind.tonal,
+              loading: _busy,
+              onPressed: left <= 0 || _busy
+                  ? null
+                  : () async {
+                      setState(() => _busy = true);
+                      final r = await watchForReward(context, ref, kind: 'xp', placement: 'xp_wallet');
+                      if (!mounted) return;
+                      setState(() => _busy = false);
+                      if (r.granted) {
+                        ref.invalidate(myXpProvider);
+                        toast(this.context, '+$xp XP added to your wallet.', icon: PhosphorIcons.coins(PhosphorIconsStyle.fill));
+                      } else if (r.counted) {
+                        toast(this.context, '${r.count} of ${r.need} videos watched.', icon: PhosphorIcons.playCircle(PhosphorIconsStyle.fill));
+                      }
+                    },
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

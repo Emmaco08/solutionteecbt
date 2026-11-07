@@ -710,6 +710,7 @@ class SettingsScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(Space.s5, Space.s2, Space.s5, Space.s8),
         children: [
+          const AdBanner(screen: 'settings'),
           _stagger(context, [
             Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,

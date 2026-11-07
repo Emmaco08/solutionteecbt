@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:markdown/markdown.dart' as md;
 
 import '../../core/ads.dart';
 import '../../core/api.dart';
@@ -149,6 +150,7 @@ class _NoteScreenState extends ConsumerState<NoteScreen> {
   Map<String, dynamic>? _item;
   NoteDoc? _doc;
   String? _docText;
+  bool _offered = false;
 
   @override
   void initState() {
@@ -159,6 +161,11 @@ class _NoteScreenState extends ConsumerState<NoteScreen> {
       final r = p.maxScrollExtent <= 0 ? 1.0 : (p.pixels / p.maxScrollExtent).clamp(0.0, 1.0);
       if ((r - _read.value).abs() > .004) _read.value = r;
       if (r > _best) {
+        // Reached the end of the note: a skippable "earn XP" video offer, once (ads level).
+        if (_best < .97 && r >= .97 && !_offered && p.maxScrollExtent > 0) {
+          _offered = true;
+          offerEarnVideo(context, ref, 'note');
+        }
         _best = r;
         _debounce?.cancel();
         _debounce = Timer(const Duration(seconds: 2), _save);
@@ -169,6 +176,13 @@ class _NoteScreenState extends ConsumerState<NoteScreen> {
   void _save() {
     final it = _item;
     if (it != null) _repo.saveProgress(it, _best);
+  }
+
+  @override
+  void deactivate() {
+    // Leaving a note the student read is a break (ads level: "after reading a note").
+    if (_best > .3) Ads.instance.breakPoint(ref, 'note');
+    super.deactivate();
   }
 
   @override
@@ -234,27 +248,36 @@ class _NoteScreenState extends ConsumerState<NoteScreen> {
           ? StateView.error(err, onRetry: () => ref.invalidate(studyItemProvider(widget.id)))
           : it == null
           ? const ListSkeleton(items: 7)
-          : Stack(
+          : Column(
               children: [
-                NoteView(
-                  doc: _parse(body),
-                  scale: _scale,
-                  controller: _scroll,
-                  footer: _CheckYourself(subjectId: (it['subject_id'] as num?)?.toInt(), topicId: (it['topic_id'] as num?)?.toInt()),
-                ),
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  top: 0,
-                  child: ValueListenableBuilder<double>(
-                    valueListenable: _read,
-                    builder: (context, r, _) => Align(
-                      alignment: Alignment.centerLeft,
-                      child: FractionallySizedBox(
-                        widthFactor: r,
-                        child: Container(height: 3, color: context.c.accent),
+                // Stays at the top while the student scrolls the note (ads level).
+                const AdBanner(screen: 'notes'),
+                Expanded(
+                  child: Stack(
+                    children: [
+                      NoteView(
+                        doc: _parse(body),
+                        scale: _scale,
+                        adEvery: (ref.watch(adsConfigProvider).value ?? AdsConfig.off).noteCardsEvery,
+                        controller: _scroll,
+                        footer: _CheckYourself(subjectId: (it['subject_id'] as num?)?.toInt(), topicId: (it['topic_id'] as num?)?.toInt()),
                       ),
-                    ),
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        top: 0,
+                        child: ValueListenableBuilder<double>(
+                          valueListenable: _read,
+                          builder: (context, r, _) => Align(
+                            alignment: Alignment.centerLeft,
+                            child: FractionallySizedBox(
+                              widthFactor: r,
+                              child: Container(height: 3, color: context.c.accent),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -339,16 +362,38 @@ class _CheckYourselfState extends ConsumerState<_CheckYourself> {
 
 /// A whole note as a lazy list of blocks (headings, paragraphs, lists, tables, pictures, maths).
 class NoteView extends StatelessWidget {
-  const NoteView({super.key, required this.doc, this.scale = 1, this.controller, this.footer, this.shrinkWrap = false});
+  const NoteView({super.key, required this.doc, this.scale = 1, this.controller, this.footer, this.shrinkWrap = false, this.adEvery = 0});
   final NoteDoc doc;
   final double scale;
   final ScrollController? controller;
   final Widget? footer;
   final bool shrinkWrap;
 
+  /// Card ads between sections (ads level): before a heading once at least this many blocks were read since the last
+  /// card (or after twice as many blocks when the note has few headings). 0 = none.
+  final int adEvery;
+
+  /// Where the card ads go: block indexes that get a card before them.
+  static Set<int> adSpots(NoteDoc doc, int every) {
+    final out = <int>{};
+    if (every <= 0) return out;
+    var since = 0;
+    for (var i = 0; i < doc.blocks.length; i++) {
+      final n = doc.blocks[i];
+      final heading = n is md.Element && const {'h1', 'h2', 'h3'}.contains(n.tag);
+      if (i > 0 && i < doc.blocks.length - 1 && ((heading && since >= every) || since >= every * 2)) {
+        out.add(i);
+        since = 0;
+      }
+      since++;
+    }
+    return out;
+  }
+
   @override
   Widget build(BuildContext context) {
     final style = NoteStyle(context, scale);
+    final spots = adSpots(doc, adEvery);
     final n = doc.blocks.length + (footer == null ? 0 : 1);
     return ListView.builder(
       controller: controller,
@@ -358,7 +403,21 @@ class NoteView extends StatelessWidget {
       itemCount: n,
       // Formulas are costly to lay out: keep a screen's worth ready above and below.
       scrollCacheExtent: const ScrollCacheExtent.pixels(600),
-      itemBuilder: (context, i) => i == doc.blocks.length ? footer! : NoteBlock(doc: doc, node: doc.blocks[i], style: style, first: i == 0),
+      itemBuilder: (context, i) {
+        if (i == doc.blocks.length) return footer!;
+        final block = NoteBlock(doc: doc, node: doc.blocks[i], style: style, first: i == 0);
+        if (!spots.contains(i)) return block;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: Space.s3),
+              child: AdNativeCard(key: ValueKey('ad-note-$i'), placement: 'note_inside'),
+            ),
+            block,
+          ],
+        );
+      },
     );
   }
 }

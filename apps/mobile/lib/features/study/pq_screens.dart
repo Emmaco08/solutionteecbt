@@ -166,7 +166,7 @@ class _PqBrowseScreenState extends ConsumerState<PqBrowseScreen> {
                           locked: y['pq_open'] != true,
                           onTap: () => y['pq_open'] == true
                               ? context.push('/study/pq/$examId/$subjectId/${y['year']}')
-                              : showPaywall(context, reason: '$_exam ${y['year']}'),
+                              : showYearUnlock(context, ref, examId: examId, exam: _exam, years: [(y['year'] as num).toInt()]),
                         ).animate(target: rm ? 0 : 1).fadeIn(delay: (25 * i).ms, duration: Motion.base),
                     ],
                   ),

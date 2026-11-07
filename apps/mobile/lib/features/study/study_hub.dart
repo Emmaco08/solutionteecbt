@@ -117,7 +117,14 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
                         title: '${s['title']}',
                         caption: caption,
                         locked: locked,
-                        onTap: () => locked ? showPaywall(context, reason: key) : context.push(sectionPath(key)),
+                        onTap: () {
+                          if (locked) {
+                            showPaywall(context, reason: key);
+                          } else {
+                            context.push(sectionPath(key));
+                            Ads.instance.breakPoint(ref, 'section'); // ads level: "opening a Study section"
+                          }
+                        },
                       );
                       return rm ? tile : tile.animate().fadeIn(delay: (40 * i).ms, duration: Motion.base).slideY(begin: .08, end: 0, curve: Curves.easeOut);
                     },
@@ -317,6 +324,7 @@ class _BookmarksScreenState extends ConsumerState<BookmarksScreen> {
               onChanged: (v) => setState(() => _tab = v),
             ),
           ),
+          const AdBanner(screen: 'bookmarks'),
           Expanded(
             child: all.isLoading && list.isEmpty
                 ? const ListSkeleton()

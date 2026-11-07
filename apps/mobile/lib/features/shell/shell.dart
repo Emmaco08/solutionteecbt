@@ -54,6 +54,7 @@ class AppShell extends ConsumerStatefulWidget {
 }
 
 class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver {
+  bool _birthAsked = false;
   @override
   void initState() {
     super.initState();
@@ -169,7 +170,9 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState s) {
+    if (s == AppLifecycleState.paused) Ads.instance.paused();
     if (s == AppLifecycleState.resumed) {
+      Ads.instance.resumed();
       ref.read(testsRepoProvider).syncPending();
       _checkAccount();
       // Back from the phone's settings: notifications may be on now.
@@ -185,19 +188,17 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
       if (now != null && was != now) ref.read(pushProvider).syncTopics(premium: now == 'premium').ignore();
     });
     // Ads (big update 2, step B): read what this student sees; Premium or a plan change reloads it. When ads are on and
-    // we do not know the age yet, the birth year is asked once (personalised ads only for 18+).
+    // we do not know the age yet, the birth year must be given once (personalised ads only for 18+).
     ref.listen(myPlanProvider, (prev, next) {
       if (prev?.value?['tier'] != next.value?['tier']) ref.invalidate(adsConfigProvider);
     });
-    ref.listen(adsConfigProvider, (prev, next) {
-      final c = next.value;
-      if (c != null && c.on && c.askBirthYear) {
-        Future.delayed(const Duration(seconds: 4), () {
-          if (mounted) askBirthYearOnce(this.context, ref);
-        });
-      }
-    });
-    ref.watch(adsConfigProvider);
+    final ads = ref.watch(adsConfigProvider).value;
+    if (!_birthAsked && ads != null && ads.askBirthYear) {
+      _birthAsked = true;
+      Future.delayed(const Duration(seconds: 4), () {
+        if (mounted) askBirthYearOnce(this.context, ref);
+      });
+    }
     final settings = ref.watch(appSettingsProvider).value ?? const {};
     final gate = _gate(settings);
     if (gate != null) return gate;

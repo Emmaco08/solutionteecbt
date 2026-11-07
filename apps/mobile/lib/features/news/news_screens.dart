@@ -139,6 +139,8 @@ class NewsListScreen extends ConsumerWidget {
           );
         }
         final top = list.first, rest = list.skip(1).toList();
+        final ads = ref.watch(adsConfigProvider).value ?? AdsConfig.off;
+        final every = ads.nativeEvery > 0 ? ads.nativeEvery : (rest.isEmpty ? 1 : rest.length);
         return ListView(
           padding: const EdgeInsets.fromLTRB(Space.s5, Space.s2, Space.s5, Space.s8),
           children: [
@@ -171,12 +173,14 @@ class NewsListScreen extends ConsumerWidget {
                 ],
               ),
             ),
-            if (rest.isNotEmpty) const AdNativeCard(placement: 'news'),
-            if (rest.isNotEmpty) ...[
+            if (rest.isNotEmpty && (ads.newsCard || ads.nativeEvery > 0)) const AdNativeCard(placement: 'news'),
+            // The other stories in groups, with a card ad between groups as the level says (every N stories).
+            for (var g = 0; g < rest.length; g += every) ...[
+              if (g > 0) AdNativeCard(key: ValueKey('ad-news-$g'), placement: 'news'),
               const Gap(Space.s4),
               ListCard(
                 children: [
-                  for (final n in rest)
+                  for (final n in rest.skip(g).take(every))
                     ListRow(
                       lead: NewsCover(n: n, thumb: true),
                       title: n['title'] as String,
@@ -244,6 +248,7 @@ class NewsDetailScreen extends ConsumerWidget {
                   const Gap(Space.s3),
                   Text(n['summary'] as String, style: context.ty.lg.col(c.textMuted)),
                 ],
+                const AdBanner(screen: 'news'),
                 const Gap(Space.s3),
                 for (final para in body.split(RegExp(r'\n\s*\n')))
                   if (para.trim().isNotEmpty)
@@ -260,6 +265,8 @@ class NewsDetailScreen extends ConsumerWidget {
                     icon: PhosphorIcons.arrowSquareOut(),
                     onPressed: () => launchUrl(Uri.parse(target), mode: LaunchMode.externalApplication),
                   ),
+                const Gap(Space.s5),
+                const AdNativeCard(placement: 'news_article'),
                 if (more.isNotEmpty) ...[
                   const Gap(Space.s6),
                   Text('More news', style: context.ty.h3),

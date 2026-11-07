@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/ads.dart';
 import '../../core/nav.dart';
 import '../../data/notifications_repo.dart';
 import '../../theme/theme.dart';
@@ -144,6 +145,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(Space.s5, Space.s2, Space.s5, Space.s8),
       children: [
+        const AdBanner(screen: 'notifications'),
         for (final (i, g) in groups.indexed) ...[
           if (i > 0) const Gap(Space.s5),
           rm ? g : g.animate(delay: Motion.stagger * i).fadeIn(duration: Motion.base).slideY(begin: .05, curve: Motion.out),
