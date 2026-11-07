@@ -92,11 +92,83 @@ abstract final class Updater {
 
   static Future<void> install(File apk) => _ch.invokeMethod<bool>('install', apk.path);
 
-  /// Downloads the APK into the app's cache (reused if already complete), reporting 0..1.
+  /// Downloads the APK, reporting 0..1. Android's download manager does the work (owner, 2026-11-07): it keeps going
+  /// when the app is minimised or closed and shows its own notification; the same download is picked up again when
+  /// the student comes back (its id is kept in a small file). Falls back to downloading inside the app if the phone's
+  /// download manager is not available.
   static Future<File> download(AppRelease r, void Function(double) onProgress) async {
+    final name = 'solutiontee-${r.build ?? r.version}.apk';
+    try {
+      return await _bgDownload(r, name, onProgress);
+    } on _NoDownloadManager {
+      return _inAppDownload(r, name, onProgress);
+    }
+  }
+
+  static Future<File> _idFile() async => File('${(await getApplicationSupportDirectory()).path}/update_download.json');
+
+  /// The background download already made for this release, if any: (id, done file or null).
+  static Future<(int?, File?)> pending(AppRelease r) async {
+    try {
+      final f = await _idFile();
+      if (!await f.exists()) return (null, null);
+      final j = jsonDecode(await f.readAsString()) as Map;
+      if (j['name'] != 'solutiontee-${r.build ?? r.version}.apk') return (null, null);
+      final id = (j['id'] as num).toInt();
+      final st = Map<String, dynamic>.from(await _ch.invokeMethod('bgStatus', id) as Map);
+      if (st['status'] == 8) {
+        final file = File('${st['path']}');
+        if (await file.exists() && (r.size <= 0 || await file.length() == r.size)) return (id, file);
+      }
+      if (st['status'] == 1 || st['status'] == 2 || st['status'] == 4) return (id, null);
+    } catch (_) {}
+    return (null, null);
+  }
+
+  static Future<File> _bgDownload(AppRelease r, String name, void Function(double) onProgress) async {
+    var (id, done) = await pending(r);
+    if (done != null) {
+      onProgress(1);
+      return done;
+    }
+    if (id == null) {
+      try {
+        id = (await _ch.invokeMethod<num>('bgDownload', {'url': r.url, 'name': name, 'title': 'SolutionTee CBT ${r.version}'}))?.toInt();
+      } on MissingPluginException {
+        throw _NoDownloadManager();
+      } on PlatformException {
+        throw _NoDownloadManager();
+      }
+      if (id == null) throw _NoDownloadManager();
+      await (await _idFile()).writeAsString(jsonEncode({'id': id, 'name': name}));
+    }
+    // Follow it while the app is open (it carries on by itself when the app is not).
+    for (var stuck = 0; ;) {
+      final st = Map<String, dynamic>.from(await _ch.invokeMethod('bgStatus', id) as Map);
+      final status = (st['status'] as num?)?.toInt() ?? 0;
+      final got = (st['got'] as num?)?.toInt() ?? 0, total = (st['total'] as num?)?.toInt() ?? r.size;
+      if (total > 0) onProgress((got / total).clamp(0, 1));
+      if (status == 8) {
+        final file = File('${st['path']}');
+        if (r.size > 0 && await file.length() != r.size) throw const HttpException('incomplete');
+        onProgress(1);
+        return file;
+      }
+      if (status == 16 || status == 0) {
+        await (await _idFile()).delete().catchError((_) => File(''));
+        throw const HttpException('download failed');
+      }
+      // Paused for a long time with no network: give up here (the download manager may still finish it later).
+      stuck = status == 4 ? stuck + 1 : 0;
+      if (stuck > 300) throw const HttpException('no network');
+      await Future<void>.delayed(const Duration(milliseconds: 700));
+    }
+  }
+
+  /// The older way, inside the app (stops when Android pauses the app).
+  static Future<File> _inAppDownload(AppRelease r, String name, void Function(double) onProgress) async {
     final dir = Directory('${(await getTemporaryDirectory()).path}/updates');
     await dir.create(recursive: true);
-    final name = 'solutiontee-${r.build ?? r.version}.apk';
     final file = File('${dir.path}/$name');
     if (await file.exists() && r.size > 0 && await file.length() == r.size) {
       onProgress(1);
@@ -125,6 +197,8 @@ abstract final class Updater {
     }
   }
 }
+
+class _NoDownloadManager implements Exception {}
 
 /// Is a newer direct app ready? null = up to date, Play build, offline or not known.
 final appUpdateProvider = FutureProvider<UpdateInfo?>((ref) async {
@@ -204,6 +278,17 @@ class _UpdateFlow {
   String? error;
   bool busy = false, needsPermission = false;
 
+  /// Coming back to the app: a download that finished (or is still going) in the background is picked up.
+  Future<void> restore(AppRelease r) async {
+    final (id, done) = await Updater.pending(r);
+    if (done != null) {
+      progress = 1;
+      onChange();
+    } else if (id != null && !busy) {
+      run(r); // follow the running download again (it never restarts from zero)
+    }
+  }
+
   Future<void> run(AppRelease r) async {
     busy = true;
     error = null;
@@ -242,6 +327,12 @@ class _UpdateScreenState extends State<UpdateScreen> {
   late final _flow = _UpdateFlow(() => mounted ? setState(() {}) : null);
 
   @override
+  void initState() {
+    super.initState();
+    _flow.restore(widget.info.release);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final c = context.c, r = widget.info.release, f = _flow;
     return Scaffold(
@@ -270,6 +361,8 @@ class _UpdateScreenState extends State<UpdateScreen> {
               ProgressBar(f.progress!),
               const Gap(Space.s2),
               Text('Downloading ${(f.progress! * 100).round()}%', style: context.ty.cap.tnum.col(c.textMuted), textAlign: TextAlign.center),
+              const Gap(Space.s1),
+              Text('You can leave the app. The download carries on.', style: context.ty.cap.col(c.textSubtle), textAlign: TextAlign.center),
               const Gap(Space.s4),
             ],
             if (f.needsPermission)
@@ -314,6 +407,12 @@ class _UpdateCardState extends State<UpdateCard> {
   late final _flow = _UpdateFlow(() => mounted ? setState(() {}) : null);
 
   @override
+  void initState() {
+    super.initState();
+    _flow.restore(widget.info.release);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final c = context.c, f = _flow;
     return Container(
@@ -351,6 +450,7 @@ class AppUpdateScreen extends ConsumerStatefulWidget {
 class _AppUpdateScreenState extends ConsumerState<AppUpdateScreen> {
   late final _flow = _UpdateFlow(() => mounted ? setState(() {}) : null);
   String _mine = '';
+  String? _restoredFor;
 
   @override
   void initState() {
@@ -365,6 +465,10 @@ class _AppUpdateScreenState extends ConsumerState<AppUpdateScreen> {
     final v = ref.watch(appUpdateProvider);
     final u = v.value;
     final play = appFlavor == 'play';
+    if (u != null && !play && _restoredFor != u.release.version) {
+      _restoredFor = u.release.version;
+      Future.microtask(() => f.restore(u.release)); // a download running in the background is shown again
+    }
     return Scaffold(
       appBar: const TopBar(title: 'App update'),
       body: RefreshIndicator(
@@ -409,6 +513,8 @@ class _AppUpdateScreenState extends ConsumerState<AppUpdateScreen> {
                 ProgressBar(f.progress!),
                 const Gap(Space.s2),
                 Text('Downloading ${(f.progress! * 100).round()}%', style: context.ty.cap.tnum.col(c.textMuted), textAlign: TextAlign.center),
+                const Gap(Space.s1),
+                Text('You can leave the app. The download carries on.', style: context.ty.cap.col(c.textSubtle), textAlign: TextAlign.center),
                 const Gap(Space.s4),
               ],
               if (f.needsPermission)

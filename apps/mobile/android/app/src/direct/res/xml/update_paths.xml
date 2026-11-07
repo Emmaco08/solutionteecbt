@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
     <cache-path name="updates" path="updates/"/>
+    <!-- Updates downloaded by Android's download manager (keeps going when the app is closed). -->
+    <external-files-path name="updates_bg" path="Download/"/>
 </paths>

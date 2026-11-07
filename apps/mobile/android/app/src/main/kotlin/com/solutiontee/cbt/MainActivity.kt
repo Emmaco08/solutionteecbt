@@ -175,6 +175,55 @@ class MainActivity : FlutterFragmentActivity() {
                         result.success(false)
                     }
                 }
+                // Background download (owner, 2026-11-07): Android's download manager keeps going when the app is
+                // minimised or closed, with a notification; Flutter reads the progress while the app is open.
+                "bgDownload" -> {
+                    try {
+                        val a = call.arguments as Map<*, *>
+                        val name = a["name"] as String
+                        val dir = getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS)
+                        java.io.File(dir, name).let { if (it.exists()) it.delete() }
+                        val req = android.app.DownloadManager.Request(Uri.parse(a["url"] as String))
+                            .setTitle(a["title"] as? String ?: "SolutionTee CBT update")
+                            .setDescription("Downloading the new version")
+                            .setMimeType("application/vnd.android.package-archive")
+                            .setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                            .setDestinationInExternalFilesDir(this, android.os.Environment.DIRECTORY_DOWNLOADS, name)
+                            .setAllowedOverMetered(true)
+                            .setAllowedOverRoaming(true)
+                        val dm = getSystemService(Context.DOWNLOAD_SERVICE) as android.app.DownloadManager
+                        result.success(dm.enqueue(req))
+                    } catch (e: Exception) {
+                        result.error("download", e.message, null)
+                    }
+                }
+                "bgStatus" -> {
+                    try {
+                        val id = (call.arguments as Number).toLong()
+                        val dm = getSystemService(Context.DOWNLOAD_SERVICE) as android.app.DownloadManager
+                        dm.query(android.app.DownloadManager.Query().setFilterById(id)).use { c ->
+                            if (c == null || !c.moveToFirst()) {
+                                result.success(mapOf("status" to 0))
+                            } else {
+                                val status = c.getInt(c.getColumnIndexOrThrow(android.app.DownloadManager.COLUMN_STATUS))
+                                val got = c.getLong(c.getColumnIndexOrThrow(android.app.DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
+                                val total = c.getLong(c.getColumnIndexOrThrow(android.app.DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
+                                val uri = c.getString(c.getColumnIndexOrThrow(android.app.DownloadManager.COLUMN_LOCAL_URI))
+                                result.success(mapOf("status" to status, "got" to got, "total" to total, "path" to (uri?.let { Uri.parse(it).path } ?: "")))
+                            }
+                        }
+                    } catch (e: Exception) {
+                        result.success(mapOf("status" to 0))
+                    }
+                }
+                "bgCancel" -> {
+                    try {
+                        val dm = getSystemService(Context.DOWNLOAD_SERVICE) as android.app.DownloadManager
+                        dm.remove((call.arguments as Number).toLong())
+                    } catch (e: Exception) {
+                    }
+                    result.success(true)
+                }
                 "install" -> {
                     try {
                         val file = java.io.File(call.arguments as String)
