@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/nav.dart';
 import '../../core/config.dart';
 import '../../core/providers.dart';
+import '../../core/updater.dart';
 import '../../core/push.dart';
 import '../../data/ai_repo.dart';
 import '../../data/db.dart';
@@ -361,6 +362,7 @@ class ProfileScreen extends ConsumerWidget {
                       ),
                       ListRow(icon: PhosphorIcons.gearSix(PhosphorIconsStyle.fill), title: 'Settings', onTap: () => context.push('/settings')),
                       ListRow(icon: PhosphorIcons.question(PhosphorIconsStyle.fill), title: 'Help & support', onTap: () => context.push('/help')),
+                      const _UpdateRow(),
                     ],
                   ),
                   Btn(
@@ -1189,5 +1191,21 @@ class _NotificationSwitches extends ConsumerWidget {
     } catch (_) {
       if (context.mounted) toast(context, 'Could not save. Check your internet and try again.');
     }
+  }
+}
+
+/// Me → App update, with a gold "New" badge when an update is ready.
+class _UpdateRow extends ConsumerWidget {
+  const _UpdateRow();
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ready = ref.watch(appUpdateProvider).value != null;
+    return ListRow(
+      icon: PhosphorIcons.arrowCircleUp(PhosphorIconsStyle.fill),
+      title: 'App update',
+      caption: ready ? 'A new version is ready · tap to update' : 'Check for a new version',
+      trailing: ready ? const Pill('New', kind: BadgeKind.gold) : null,
+      onTap: () => context.push('/update'),
+    );
   }
 }

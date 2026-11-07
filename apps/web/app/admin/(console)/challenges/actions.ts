@@ -381,3 +381,29 @@ export async function mockTimeline(entryId: string): Promise<ActionResult<{ kind
   if (error) return { ok: false, error: friendlyError(error) };
   return { ok: true, data: (data ?? []) as { kind: string; ms: number | null; at: string }[] };
 }
+
+const Details = z.object({
+  id: z.string().regex(uuid),
+  title: z.string().trim().min(3, "Title is too short").max(80),
+  subtitle: z.string().trim().max(160),
+  reward_text: z.string().trim().max(160),
+  bg_light: z.string().trim().max(220).regex(/^(public\/challenges\/[A-Za-z0-9/_.-]+)?$/, "Upload the picture again").optional().default(""),
+  bg_dark: z.string().trim().max(220).regex(/^(public\/challenges\/[A-Za-z0-9/_.-]+)?$/, "Upload the picture again").optional().default(""),
+  results: z.enum(["instant", "after_end", "hidden"]).optional(),
+});
+
+/** After a challenge ends, its look and words can still change (title, description, pictures, reward text, results). */
+export async function saveDetails(form: FormData): Promise<ActionResult> {
+  await editors();
+  const p = Details.safeParse(Object.fromEntries(form));
+  if (!p.success) return { ok: false, error: p.error.issues[0]?.message ?? "Check the details" };
+  const d = p.data;
+  const supabase = await createClient();
+  const { error } = await supabase.from("challenges").update({
+    title: d.title, subtitle: d.subtitle || null, reward_text: d.reward_text || null, bg_light: d.bg_light || null, bg_dark: d.bg_dark || null,
+    ...(d.results ? { results: d.results } : {}),
+  }).eq("id", d.id);
+  if (error) return { ok: false, error: friendlyError(error) };
+  revalidatePath(`/admin/challenges/${d.id}`);
+  return { ok: true, message: "Saved." };
+}

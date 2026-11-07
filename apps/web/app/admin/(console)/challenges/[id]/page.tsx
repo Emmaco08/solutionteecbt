@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { requireStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { ErrorState, PageHeader, PageSkeleton, Panel } from "@/components/admin/ui";
-import { ChallengeForm, CloseButton, EntriesList, QuestionsPanel, type ChallengeRow, type EntryRow, type QRow, type Subject } from "../challenge-ui";
+import { ChallengeForm, CloseButton, DetailsForm, EntriesList, QuestionsPanel, type ChallengeRow, type EntryRow, type QRow, type Subject } from "../challenge-ui";
 import { jambSubjects } from "../subjects";
 import { CopyButton, LivePanel, ReviewToggle } from "../live-ui";
 import { AccessPanel, MockAnalysis, PictureKeys, type InviteRow } from "../mock-ui";
@@ -66,7 +66,7 @@ async function Edit({ params }: { params: Promise<{ id: string }> }) {
       ) : null}
       {ld && rows.length && ch.style !== "jamb_mock" ? <Panel title="Live leaderboard and analysis" className="mb-4"><LivePanel id={ch.id} title={ch.title} initial={ld} /></Panel> : null}
       <div className="grid gap-4 xl:grid-cols-2">
-        <Panel title="Challenge">{ch.closed_at ? <p className="text-sm text-muted-foreground">It has ended, so it cannot be changed.</p> : <ChallengeForm c={ch} subjects={subjects} />}</Panel>
+        <Panel title="Challenge">{ch.closed_at ? <DetailsForm c={ch} /> : <ChallengeForm c={ch} subjects={subjects} />}</Panel>
         <Panel title={`Questions (${qs.data?.length ?? 0})`}><QuestionsPanel challengeId={ch.id} rows={(qs.data ?? []) as unknown as QRow[]} locked={rows.length > 0} subjects={subjects as Subject[]} mode={ch.mode} perLevel={ch.per_level ?? {}} subjectId={ch.subject_id} students={ld?.students_per_subject ?? {}} /></Panel>
       </div>
       <Panel title={`Entries (${rows.length})`} className="mt-4" bodyClassName="p-0"><EntriesList challengeId={ch.id} rows={rows} canReview={canReview} closed={!!ch.closed_at} /></Panel>

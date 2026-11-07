@@ -25,6 +25,7 @@ import 'features/study/pq_screens.dart';
 import 'features/study/study_hub.dart';
 import 'features/study/video_screens.dart';
 import 'features/compete/challenge_play.dart';
+import 'core/updater.dart';
 import 'features/compete/mock_exam.dart';
 import 'features/compete/challenges_screens.dart';
 import 'features/compete/results_screens.dart';
@@ -218,6 +219,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/notifications', builder: (_, _) => const NotificationsScreen()),
       GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),
       GoRoute(path: '/help', builder: (_, _) => const HelpScreen()),
+      GoRoute(path: '/update', builder: (_, _) => const AppUpdateScreen()),
       GoRoute(
         path: '/legal',
         builder: (_, s) => LegalScreen(page: s.uri.queryParameters['p'] ?? 'about'),

@@ -20,6 +20,7 @@ import '../../widgets/math_text.dart';
 import '../../widgets/phosphor.g.dart';
 import '../../widgets/question_image.dart';
 import '../home/home_screen.dart';
+import '../compete/mock_exam.dart' show MockResultView, mockApiProvider;
 import 'calculator.dart';
 import 'exam_clock.dart';
 
@@ -52,6 +53,19 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
   DateTime _shownAt = DateTime.now();
   bool _passageOpen = true, _submitting = false, _timeUpShown = false;
   Object? _error;
+
+  // JAMB mock challenge (D-099): the same screen, with answers, leaving and submit going to the server.
+  Map<String, dynamic>? _mock;
+  DateTime? _leftAt;
+  String? get _mockId => _mock?['mock'] as String?;
+  String get _entry => '${_mock?['entry']}';
+
+  /// Time left on the server's deadline (the mock clock never pauses).
+  Duration get _mockLeft {
+    final d = DateTime.tryParse('${_mock?['deadline']}');
+    if (d == null) return Duration.zero;
+    return d.difference(DateTime.now().toUtc().add(Duration(milliseconds: (_mock?['skew_ms'] as num?)?.toInt() ?? 0)));
+  }
 
   AppDb get _db => ref.read(dbProvider);
 
@@ -93,10 +107,14 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
       for (final s in subjects) {
         _subjectNames[(s['id'] as num).toInt()] = s['name'] as String;
       }
-      _clock = ExamClock(
-        limit: Duration(seconds: a.limitSeconds),
-        used: Duration(milliseconds: a.usedMs),
-      )..start();
+      final cfg = jsonDecode(a.configJson);
+      _mock = cfg is Map && cfg['mock'] != null ? Map<String, dynamic>.from(cfg) : null;
+      _clock = _mock != null
+          ? (ExamClock(limit: _mockLeft.isNegative ? const Duration(seconds: 1) : _mockLeft, used: Duration.zero)..start())
+          : (ExamClock(
+              limit: Duration(seconds: a.limitSeconds),
+              used: Duration(milliseconds: a.usedMs),
+            )..start());
       setState(() {
         _a = a;
         _sections = PaperSections.fromConfigJson(a.configJson);
@@ -137,11 +155,77 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
   @override
   void didChangeAppLifecycleState(AppLifecycleState s) {
     if (_a == null) return;
+    if (_mockId != null) return _mockLifecycle(s);
     if (s == AppLifecycleState.paused || s == AppLifecycleState.hidden || s == AppLifecycleState.detached) {
       _saveProgress(pause: true);
     } else if (s == AppLifecycleState.resumed) {
       _clock.start();
     }
+  }
+
+  /// Mock: every time away is reported (once per absence); the server applies the admin's limits.
+  void _mockLifecycle(AppLifecycleState s) {
+    final api = ref.read(mockApiProvider);
+    if ((s == AppLifecycleState.paused || s == AppLifecycleState.hidden) && _leftAt == null) {
+      _leftAt = DateTime.now();
+      _saveProgress();
+      api.event(_entry, 'leave').then((r) => _mockEvent(r, back: false)).catchError((_) {});
+    } else if (s == AppLifecycleState.resumed && _leftAt != null) {
+      final ms = DateTime.now().difference(_leftAt!).inMilliseconds;
+      _leftAt = null;
+      _clock = ExamClock(limit: _mockLeft.isNegative ? const Duration(seconds: 1) : _mockLeft, used: Duration.zero)..start();
+      api.event(_entry, 'return', ms: ms).then((r) => _mockEvent(r, back: true)).catchError((_) {});
+    }
+  }
+
+  Future<void> _mockEvent(Map<String, dynamic> r, {required bool back}) async {
+    if (!mounted || _submitting) return;
+    if (r['status'] == 'finished') {
+      await _mockFinished(reason: r['reason'] == 'left_too_much' ? 'You left the exam screen more than allowed, so your mock was submitted.' : null);
+      return;
+    }
+    final leaves = (r['leaves'] as num?)?.toInt() ?? 0;
+    if (!back || leaves == 0) return;
+    final allowed = (r['allowed_exits'] as num?)?.toInt();
+    final awayS = ((r['away_ms'] as num?)?.toInt() ?? 0) ~/ 1000;
+    final maxAway = (r['max_away_seconds'] as num?)?.toInt();
+    showAppDialog<void>(
+      context,
+      title: 'Stay on the exam screen',
+      body: [
+        if (allowed != null) 'You have left the exam $leaves of $allowed allowed time${allowed == 1 ? '' : 's'}.',
+        if (maxAway != null) 'Time away: ${awayS ~/ 60} min ${awayS % 60} s of ${maxAway ~/ 60} min allowed.',
+        'Your tutor can see every time you leave.',
+      ].join(' '),
+      icon: PhosphorIcons.warning(PhosphorIconsStyle.fill),
+      tone: Tone.gold,
+      actions: [Builder(builder: (ctx) => Btn('Back to my exam', block: true, onPressed: () => Navigator.pop(ctx)))],
+    );
+  }
+
+  /// The mock was submitted (by the student, the timer or the leave rule): remove the phone copy, show the result.
+  Future<void> _mockFinished({String? reason}) async {
+    _submitting = true;
+    _tick?.cancel();
+    final id = _mockId!;
+    Map<String, dynamic> res;
+    try {
+      res = await ref.read(mockApiProvider).result(id);
+    } catch (_) {
+      res = {'status': 'finished', 'visible': false};
+    }
+    await (_db.delete(_db.localAttempts)..where((x) => x.id.equals(widget.attemptId))).go();
+    ref.invalidate(unfinishedProvider);
+    if (!mounted) return;
+    Navigator.of(context).popUntil((r) => r is! PopupRoute);
+    await Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(
+        builder: (ctx) => Scaffold(
+          appBar: AppBar(title: const Text('JAMB mock'), automaticallyImplyLeading: false),
+          body: MockResultView(r: {...res, 'reason': ?reason}, onDone: () => Navigator.of(ctx).pop()),
+        ),
+      ),
+    );
   }
 
   Future<void> _saveProgress({bool pause = false}) async {
@@ -159,8 +243,18 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
     final q = _qs[_i].row.id;
     HapticFeedback.selectionClick();
     setState(() => _answers[q] = key);
-    await _db.saveAnswer(widget.attemptId, q, choice: key, addMs: _timeOnCurrent());
+    final ms = _timeOnCurrent();
+    await _db.saveAnswer(widget.attemptId, q, choice: key, addMs: ms);
     await _saveProgress();
+    if (_mockId != null) {
+      ref
+          .read(mockApiProvider)
+          .save(_entry, q, key, ms)
+          .then((r) {
+            if (r['status'] == 'finished') _mockFinished();
+          })
+          .catchError((_) {}); // kept on the phone; sent again at submit
+    }
   }
 
   Future<void> _toggleFlag() async {
@@ -188,6 +282,23 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
     _tick?.cancel();
     await _db.saveAnswer(widget.attemptId, _qs[_i].row.id, addMs: _timeOnCurrent());
     final used = _clock.pause();
+    if (_mockId != null) {
+      try {
+        // Send every choice once more (a dropped save on a weak network is not lost), then submit on the server.
+        final api = ref.read(mockApiProvider);
+        for (final e in _answers.entries) {
+          await api.save(_entry, e.key, e.value, 0);
+        }
+        await api.submit(_entry);
+      } catch (_) {
+        if (!mounted) return;
+        setState(() => _submitting = false);
+        toast(context, 'Could not submit. Check your internet and try again.', icon: PhosphorIcons.warningCircle(PhosphorIconsStyle.fill), above: 72);
+        return;
+      }
+      await _mockFinished(reason: auto ? 'Time is up. Your exam was submitted.' : null);
+      return;
+    }
     try {
       await ref.read(testsRepoProvider).submit(widget.attemptId, usedMs: used.inMilliseconds);
     } catch (_) {

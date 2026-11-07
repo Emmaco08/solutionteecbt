@@ -10,7 +10,7 @@ import { MathText } from "@/components/admin/math-text";
 import { Pill, when } from "@/components/admin/ui";
 import { ImageUpload } from "@/components/admin/image-upload";
 import { findQuestions, type Candidate } from "../qotd/actions";
-import { addFromBank, addQuestion, addRandom, closeNow, decideAppeal, importQuestions, removeQuestion, reviewEntry, saveChallenge, setLevel, type ImportRow } from "./actions";
+import { addFromBank, addQuestion, addRandom, closeNow, decideAppeal, importQuestions, removeQuestion, reviewEntry, saveChallenge, saveDetails, setLevel, type ImportRow } from "./actions";
 
 export type ChallengeRow = {
   id: string; title: string; subtitle: string | null; kind: "cash" | "event" | "practice"; icon: string; exam_code: string | null;
@@ -472,5 +472,34 @@ export function AppealsList({ rows }: { rows: AppealRow[] }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+/** For a challenge that has ended: change its title, description, background pictures, reward text and (mocks) results. */
+export function DetailsForm({ c }: { c: ChallengeRow }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  return (
+    <form className="space-y-3" action={(f) => start(async () => {
+      f.set("id", c.id);
+      const r = await saveDetails(f);
+      if (r.ok) { toast.success(r.message ?? "Saved"); router.refresh(); } else toast.error(r.error);
+    })}>
+      <p className="text-sm text-muted-foreground">It has ended, so its questions, times and prizes are fixed. You can still change how it looks and reads.</p>
+      <div className="space-y-1.5"><Label htmlFor="dTitle">Title</Label><input id="dTitle" name="title" defaultValue={c.title} required maxLength={80} className={inputCls} /></div>
+      <div className="space-y-1.5"><Label htmlFor="dSub">Short description</Label><input id="dSub" name="subtitle" defaultValue={c.subtitle ?? ""} maxLength={160} className={inputCls} /></div>
+      <div className="space-y-1.5"><Label htmlFor="dRew">Reward text</Label><input id="dRew" name="reward_text" defaultValue={c.reward_text ?? ""} maxLength={160} className={inputCls} /></div>
+      {c.style === "jamb_mock" ? (
+        <div className="space-y-1.5"><Label htmlFor="dRes">Students see their score</Label>
+          <select id="dRes" name="results" defaultValue={c.results ?? "instant"} className={inputCls}>
+            <option value="instant">As soon as they submit</option><option value="after_end">When the mock ends</option><option value="hidden">Never (the tutor shares results)</option>
+          </select></div>
+      ) : null}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1.5"><Label>Light mode picture</Label><ImageUpload name="bg_light" kind="challenge" defaultKey={c.bg_light} /></div>
+        <div className="space-y-1.5"><Label>Dark mode picture</Label><ImageUpload name="bg_dark" kind="challenge" defaultKey={c.bg_dark} /></div>
+      </div>
+      <div className="flex justify-end"><Button type="submit" disabled={pending}>{pending ? <SpinnerGap size={16} className="animate-spin" /> : null} Save</Button></div>
+    </form>
   );
 }

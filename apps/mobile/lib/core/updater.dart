@@ -57,6 +57,16 @@ abstract final class Updater {
   static const _ch = MethodChannel('solutiontee/update');
 
   /// This app's versionCode (0 if unknown).
+  /// The installed version name, e.g. "0.3.0-202611070721".
+  static Future<String> myName() async {
+    try {
+      final m = await _ch.invokeMapMethod<String, Object?>('version');
+      return '${m?['name'] ?? ''}';
+    } catch (_) {
+      return '';
+    }
+  }
+
   static Future<int> myCode() async {
     try {
       final m = await _ch.invokeMapMethod<String, Object?>('version');
@@ -124,11 +134,13 @@ final appUpdateProvider = FutureProvider<UpdateInfo?>((ref) async {
   if (r.statusCode != 200) return null;
   final rel = AppRelease.fromJson(Map<String, dynamic>.from(jsonDecode(r.body) as Map));
   if (!rel.newerThan(mine)) return null;
-  var force = true;
+  // Updating is optional (owner, 2026-11-07): the student updates from Me → App update or the small card.
+  // Only when the admin sets app_update.force = true does the full "Update needed" screen block the app.
+  var force = false;
   try {
     final s = await ref.read(appSettingsProvider.future);
     final u = s['app_update'];
-    if (u is Map && u['force'] == false) force = false;
+    if (u is Map && u['force'] == true) force = true;
   } catch (_) {}
   return UpdateInfo(rel, force: force);
 });
@@ -324,6 +336,118 @@ class _UpdateCardState extends State<UpdateCard> {
           Btn('Update', kind: BtnKind.accent, sm: true, loading: f.busy, onPressed: f.busy ? null : () => f.run(widget.info.release)),
           IconBtn(PhosphorIcons.x(), label: 'Later', color: c.textSubtle, onPressed: widget.onClose),
         ],
+      ),
+    );
+  }
+}
+
+/// Me → App update: the installed version, a fresh check, and the download / install with progress.
+class AppUpdateScreen extends ConsumerStatefulWidget {
+  const AppUpdateScreen({super.key});
+  @override
+  ConsumerState<AppUpdateScreen> createState() => _AppUpdateScreenState();
+}
+
+class _AppUpdateScreenState extends ConsumerState<AppUpdateScreen> {
+  late final _flow = _UpdateFlow(() => mounted ? setState(() {}) : null);
+  String _mine = '';
+
+  @override
+  void initState() {
+    super.initState();
+    Updater.myName().then((v) => mounted ? setState(() => _mine = v) : null);
+    Future.microtask(() => ref.invalidate(appUpdateProvider));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c, f = _flow;
+    final v = ref.watch(appUpdateProvider);
+    final u = v.value;
+    final play = appFlavor == 'play';
+    return Scaffold(
+      appBar: const TopBar(title: 'App update'),
+      body: RefreshIndicator(
+        onRefresh: () async => ref.invalidate(appUpdateProvider),
+        child: ListView(
+          padding: const EdgeInsets.all(Space.s5),
+          children: [
+            const Gap(Space.s4),
+            Center(
+              child: IconTile(
+                u != null ? PhosphorIcons.arrowCircleUp(PhosphorIconsStyle.fill) : PhosphorIcons.sealCheck(PhosphorIconsStyle.fill),
+                tone: u != null ? Tone.gold : Tone.green,
+                size: 72,
+                radius: 36,
+                iconSize: 40,
+              ),
+            ),
+            const Gap(Space.s4),
+            Text(
+              v.isLoading ? 'Checking for updates…' : (u != null ? 'A new version is ready' : 'You have the latest version'),
+              style: context.ty.h2,
+              textAlign: TextAlign.center,
+            ),
+            const Gap(Space.s2),
+            Text('This phone: ${_mine.isEmpty ? '…' : _mine}', style: context.ty.sm.tnum.col(c.textMuted), textAlign: TextAlign.center),
+            if (u != null)
+              Text(
+                'New: ${u.release.version}${u.release.sizeText.isEmpty ? '' : ' · ${u.release.sizeText}'}',
+                style: context.ty.sm.bold.tnum,
+                textAlign: TextAlign.center,
+              ),
+            if (v.hasError)
+              Padding(
+                padding: const EdgeInsets.only(top: Space.s3),
+                child: Text('Could not check. Check your internet and pull down to try again.', style: context.ty.sm.col(c.error), textAlign: TextAlign.center),
+              ),
+            const Gap(Space.s6),
+            if (play)
+              const InfoBanner(child: Text('This copy of the app updates through the Google Play Store.'))
+            else if (u != null) ...[
+              if (f.progress != null && f.busy) ...[
+                ProgressBar(f.progress!),
+                const Gap(Space.s2),
+                Text('Downloading ${(f.progress! * 100).round()}%', style: context.ty.cap.tnum.col(c.textMuted), textAlign: TextAlign.center),
+                const Gap(Space.s4),
+              ],
+              if (f.needsPermission)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: Space.s3),
+                  child: InfoBanner(
+                    icon: PhosphorIcons.shieldCheck(PhosphorIconsStyle.fill),
+                    child: const Text('Turn on "Allow from this source" for SolutionTee CBT, come back, then tap Install update.'),
+                  ),
+                ),
+              if (f.error != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: Space.s3),
+                  child: Text(f.error!, style: context.ty.sm.col(c.error), textAlign: TextAlign.center),
+                ),
+              Btn(
+                f.progress == 1 || f.needsPermission ? 'Install update' : 'Update now',
+                block: true,
+                loading: f.busy,
+                leading: PhosphorIcons.downloadSimple(PhosphorIconsStyle.fill),
+                onPressed: f.busy ? null : () => f.run(u.release),
+              ),
+              const Gap(Space.s3),
+              Text(
+                'Your account, XP and saved tests stay. Android will ask you to confirm.',
+                style: context.ty.cap.col(c.textSubtle),
+                textAlign: TextAlign.center,
+              ),
+            ] else
+              Btn(
+                'Check again',
+                kind: BtnKind.outline,
+                block: true,
+                loading: v.isLoading,
+                leading: PhosphorIcons.arrowsClockwise(),
+                onPressed: () => ref.invalidate(appUpdateProvider),
+              ),
+          ],
+        ),
       ),
     );
   }
