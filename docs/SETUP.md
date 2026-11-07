@@ -538,3 +538,13 @@ Notes:
    - Test mode: transfers to Paystack's test bank account succeed without real money.
    - Then turn on **paystack_payouts** in admin → Flags & settings. Until then, Winners & payouts works as before: pay by hand, then tap "I have paid".
 4. **Check your keys** at any time (shows only "test", "live" or "missing", never the keys): `GET https://mxeemubacnmcmmmzteax.supabase.co/functions/v1/paystack?health=1` with the anon key. Checked 2026-11-04: secret key test, public key test, usable; payouts off.
+
+## Google AdMob (big update 2, step B)
+1. Create an account at admob.google.com (use the business Google account) and add the app: Android, "SolutionTee CBT",
+   package `com.solutiontee.cbt` (if it is not on Play yet, choose "not listed" and link it later).
+2. Copy the **App ID** (`ca-app-pub-…~…`) and send it to Claude (it is public, not a secret). It goes into the app build.
+3. Create 4 ad units: Banner, Native advanced, Interstitial, Rewarded. Paste their ids in admin → Money → Ads.
+4. On the **Rewarded** unit, turn on *Server-side verification* and set the callback URL to
+   `https://mxeemubacnmcmmmzteax.supabase.co/functions/v1/admob-ssv` (AdMob tests it; it answers "ok").
+5. Add your payment details in AdMob (Payments) — AdMob pays out monthly once the threshold is reached.
+6. In admin → Ads: choose a level, keep **Test mode** on while testing on your phone, then turn it off for real ads.

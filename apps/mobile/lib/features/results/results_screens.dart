@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../ai/ai_screen.dart' show askAiAbout;
+import '../../core/ads.dart';
 import '../../core/providers.dart';
 import '../../data/db.dart';
 import '../../data/paper_sections.dart';
@@ -98,9 +99,16 @@ class ResultsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final v = ref.watch(attemptViewProvider(attemptId));
-    return Scaffold(
-      backgroundColor: context.c.bg,
-      body: asyncView(v, (d) => _ResultsBody(d: d), onRetry: () => ref.invalidate(attemptViewProvider(attemptId))),
+    // A break ad may show when the student leaves the results (big update 2, step B); it is loaded now.
+    Future.microtask(() => Ads.instance.prepareBreak(ref));
+    return PopScope(
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) Ads.instance.breakPoint(ref, 'results');
+      },
+      child: Scaffold(
+        backgroundColor: context.c.bg,
+        body: asyncView(v, (d) => _ResultsBody(d: d), onRetry: () => ref.invalidate(attemptViewProvider(attemptId))),
+      ),
     );
   }
 }
@@ -145,7 +153,15 @@ class _ResultsBody extends ConsumerWidget {
             height: Sizes.appBar,
             child: Row(
               children: [
-                IconBtn(PhosphorIcons.x(), label: 'Close', color: Colors.white, onPressed: () => context.go('/home')),
+                IconBtn(
+                  PhosphorIcons.x(),
+                  label: 'Close',
+                  color: Colors.white,
+                  onPressed: () {
+                    Ads.instance.breakPoint(ref, 'results');
+                    context.go('/home');
+                  },
+                ),
                 Expanded(
                   child: Text('Your result', textAlign: TextAlign.center, style: context.ty.h3.col(heroFg)),
                 ),

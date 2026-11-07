@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/ads.dart';
 import '../../core/api.dart';
 import '../../core/providers.dart';
 import '../../core/secure_screen.dart';
@@ -51,6 +52,7 @@ class _VideoListScreenState extends ConsumerState<VideoListScreen> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(Space.s5, Space.s2, Space.s5, Space.s8),
                 children: [
+                  if (widget.kind == 'video') const AdBanner(screen: 'videos'),
                   SubjectChips(subjectIds: subjectsIn(ref, all), value: _subject, onChanged: (v) => setState(() => _subject = v), allLabel: 'All subjects'),
                   if (saver) ...[
                     const Gap(Space.s4),
@@ -149,6 +151,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
   @override
   void initState() {
     super.initState();
+    Future.microtask(() => Ads.instance.prepareBreak(ref)); // a break ad after the video, if the level allows
     _repo = ref.read(studyRepoProvider);
     _start();
   }
@@ -194,6 +197,17 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     _player?.dispose();
     if (_secured) SecureScreen.off();
     super.dispose();
+  }
+
+  bool _breakDone = false;
+
+  @override
+  void deactivate() {
+    if (!_breakDone) {
+      _breakDone = true;
+      Ads.instance.breakPoint(ref, 'video');
+    }
+    super.deactivate();
   }
 
   @override

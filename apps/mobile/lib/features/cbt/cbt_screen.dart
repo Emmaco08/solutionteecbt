@@ -7,6 +7,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/ads.dart';
 import '../../core/image_cache.dart';
 import '../../core/providers.dart';
 import '../../core/secure_screen.dart';
@@ -144,6 +145,7 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     SecureScreen.on();
+    AdsGate.enter(); // never an ad here (big update 2, step B)
     _secure = SecureScreen.watch(
       onScreenshot: () => _warnCapture('Screenshots are not allowed during a test.'),
       onRecording: () => _warnCapture('Screen recording is not allowed during a test. The screen will look black.'),
@@ -243,6 +245,7 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
     _tick?.cancel();
     _secure?.cancel();
     SecureScreen.off();
+    AdsGate.leave();
     super.dispose();
   }
 
@@ -317,10 +320,15 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
       MaterialPageRoute<void>(
         builder: (ctx) => Scaffold(
           appBar: AppBar(title: const Text('JAMB mock'), automaticallyImplyLeading: false),
-          body: MockResultView(
-            r: {...res, 'reason': ?reason},
-            onDone: () => Navigator.of(ctx).pop(),
-            leaderboard: () => router.go('/test/challenges/$id/result'),
+          body: Consumer(
+            builder: (ctx, r, _) => MockResultView(
+              r: {...res, 'reason': ?reason},
+              onDone: () {
+                Ads.instance.breakPoint(r, 'challenge');
+                Navigator.of(ctx).pop();
+              },
+              leaderboard: () => router.go('/test/challenges/$id/result'),
+            ),
           ),
         ),
       ),

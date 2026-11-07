@@ -35,6 +35,72 @@ export type Database = {
         }
         Relationships: []
       }
+      ad_daily: {
+        Row: {
+          clicks: number
+          day: string
+          format: string
+          impressions: number
+          placement: string
+        }
+        Insert: {
+          clicks?: number
+          day?: string
+          format: string
+          impressions?: number
+          placement?: string
+        }
+        Update: {
+          clicks?: number
+          day?: string
+          format?: string
+          impressions?: number
+          placement?: string
+        }
+        Relationships: []
+      }
+      ad_rewards: {
+        Row: {
+          ad_unit: string | null
+          created_at: string
+          expires_at: string | null
+          granted_at: string | null
+          id: string
+          kind: string
+          ref: string | null
+          status: string
+          transaction_id: string | null
+          user_id: string
+          via: string | null
+        }
+        Insert: {
+          ad_unit?: string | null
+          created_at?: string
+          expires_at?: string | null
+          granted_at?: string | null
+          id?: string
+          kind: string
+          ref?: string | null
+          status?: string
+          transaction_id?: string | null
+          user_id: string
+          via?: string | null
+        }
+        Update: {
+          ad_unit?: string | null
+          created_at?: string
+          expires_at?: string | null
+          granted_at?: string | null
+          id?: string
+          kind?: string
+          ref?: string | null
+          status?: string
+          transaction_id?: string | null
+          user_id?: string
+          via?: string | null
+        }
+        Relationships: []
+      }
       ai_cache: {
         Row: {
           answer: string
@@ -2338,6 +2404,7 @@ export type Database = {
           avatar_path: string | null
           ban_reason: string | null
           banned_at: string | null
+          birth_year: number | null
           created_at: string
           full_name: string | null
           hide_on_leaderboard: boolean
@@ -2360,6 +2427,7 @@ export type Database = {
           avatar_path?: string | null
           ban_reason?: string | null
           banned_at?: string | null
+          birth_year?: number | null
           created_at?: string
           full_name?: string | null
           hide_on_leaderboard?: boolean
@@ -2382,6 +2450,7 @@ export type Database = {
           avatar_path?: string | null
           ban_reason?: string | null
           banned_at?: string | null
+          birth_year?: number | null
           created_at?: string
           full_name?: string | null
           hide_on_leaderboard?: boolean
@@ -3262,6 +3331,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      ad_reward_grant: {
+        Args: { p_nonce: string; p_tx: string; p_unit: string; p_user: string }
+        Returns: Json
+      }
+      ad_reward_start: {
+        Args: { p_kind: string; p_ref?: string }
+        Returns: Json
+      }
+      ad_reward_status: {
+        Args: { p_nonce: string; p_test_claim?: boolean }
+        Returns: Json
+      }
+      admin_ads_report: { Args: { p_days?: number }; Returns: Json }
+      admin_ads_save: { Args: { p_value: Json }; Returns: Json }
       admin_ai_health: { Args: never; Returns: Json }
       admin_ai_safety_decide: {
         Args: { p_decision: string; p_note?: string; p_user: string }
@@ -3449,6 +3532,8 @@ export type Database = {
           year: number
         }[]
       }
+      ads_config: { Args: never; Returns: Json }
+      ads_log: { Args: { p_events: Json }; Returns: undefined }
       ai_block_status: { Args: { p_uid: string }; Returns: Json }
       ai_chunk_sources: {
         Args: { p_source: string }
@@ -3868,6 +3953,7 @@ export type Database = {
         Args: { p_platform?: string; p_token: string; p_version?: string }
         Returns: undefined
       }
+      set_birth_year: { Args: { p_year: number }; Returns: Json }
       set_questions_status: {
         Args: {
           p_ids: string[]

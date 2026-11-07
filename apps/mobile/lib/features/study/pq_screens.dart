@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/ads.dart';
 import '../../core/providers.dart';
 import '../../data/db.dart';
 import '../../data/study_repo.dart';
@@ -79,6 +80,7 @@ class _PqBrowseScreenState extends ConsumerState<PqBrowseScreen> {
           : ListView(
               padding: const EdgeInsets.fromLTRB(Space.s5, Space.s2, Space.s5, Space.s8),
               children: [
+                const AdBanner(screen: 'pq'),
                 Seg<String>(
                   value: _exam,
                   items: [for (final e in exams) (e['code'] as String, examOpen(e['id']) ? e['code'] as String : '${e['code']} · Premium')],

@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/ads.dart';
 import '../../core/nav.dart';
 import '../../core/providers.dart';
 import '../../core/secure_screen.dart';
@@ -871,6 +872,7 @@ class _ChallengeReviewScreenState extends ConsumerState<ChallengeReviewScreen> {
   void initState() {
     super.initState();
     SecureScreen.on();
+    AdsGate.enter(); // never an ad here (big update 2, step B)
     _secure = SecureScreen.watch(
       onScreenshot: () => _warn('Screenshots are not allowed in challenge reviews.'),
       onRecording: () => _warn('Screen recording is not allowed here. The screen will look black.'),
@@ -885,6 +887,7 @@ class _ChallengeReviewScreenState extends ConsumerState<ChallengeReviewScreen> {
   void dispose() {
     _secure?.cancel();
     SecureScreen.off();
+    AdsGate.leave();
     super.dispose();
   }
 

@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/ads.dart';
 import '../../core/providers.dart';
 import '../../data/study_repo.dart';
 import '../../theme/theme.dart';
@@ -89,6 +90,7 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(Space.s5, Space.s2, Space.s5, Space.s8),
           children: [
+            const AdBanner(screen: 'study'),
             _SearchField(onTap: () => context.push('/study/search')),
             const Gap(Space.s6),
             GridView.count(

@@ -6,6 +6,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/ads.dart';
 import '../../core/providers.dart';
 import '../../core/secure_screen.dart';
 import '../../theme/theme.dart';
@@ -81,6 +82,7 @@ class _ChallengePlayScreenState extends ConsumerState<ChallengePlayScreen> with 
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     SecureScreen.on();
+    AdsGate.enter(); // never an ad here (big update 2, step B)
     _events = DeviceEvents.stream.listen((call) {
       if (call.method == 'focus' && call.arguments == false) _left('Another window or the notification panel opened over the challenge');
       if (call.method == 'multiWindow' && call.arguments == true) _left('Split screen or a floating window was opened');
@@ -98,6 +100,7 @@ class _ChallengePlayScreenState extends ConsumerState<ChallengePlayScreen> with 
     _secure?.cancel();
     _tick?.cancel();
     SecureScreen.off();
+    AdsGate.leave();
     super.dispose();
   }
 

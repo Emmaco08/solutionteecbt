@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/ads.dart';
 import '../../core/providers.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
@@ -305,6 +306,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(Space.s5, Space.s2, Space.s5, Space.s8),
         children: [
+          const AdBanner(screen: 'leaderboard'),
           for (var i = 0; i < sections.length; i++) ...[
             if (i > 0) const Gap(Space.s4),
             rm ? sections[i] : sections[i].animate(delay: Motion.stagger * i).fadeIn(duration: Motion.base).slideY(begin: .05, curve: Motion.out),

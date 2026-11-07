@@ -6,6 +6,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/ads.dart';
 import '../../core/providers.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
@@ -749,12 +750,39 @@ class _StreakScreenState extends ConsumerState<StreakScreen> {
                           ),
                         ),
                         if (freezes < fmax)
-                          Btn(
-                            '$fprice XP',
-                            kind: BtnKind.tonal,
-                            sm: true,
-                            loading: _busy,
-                            onPressed: _busy ? null : () => _call('streak_buy_freeze', 'Freeze ready. Your streak is safe for one missed day.'),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Btn(
+                                '$fprice XP',
+                                kind: BtnKind.tonal,
+                                sm: true,
+                                loading: _busy,
+                                onPressed: _busy ? null : () => _call('streak_buy_freeze', 'Freeze ready. Your streak is safe for one missed day.'),
+                              ),
+                              // Big update 2, step B: or watch a short ad for a free freeze (the server gives it).
+                              if (freezes < 2 && (ref.watch(adsConfigProvider).value ?? AdsConfig.off).rewardedLeft > 0)
+                                TextButton.icon(
+                                  onPressed: _busy
+                                      ? null
+                                      : () async {
+                                          setState(() => _busy = true);
+                                          final ok = await watchToUnlock(this.context, ref, kind: 'streak_freeze', placement: 'streak');
+                                          if (!mounted) return;
+                                          setState(() => _busy = false);
+                                          if (ok) {
+                                            ref.invalidate(myStreakProvider);
+                                            toast(
+                                              this.context,
+                                              'Freeze ready. Your streak is safe for one missed day.',
+                                              icon: PhosphorIcons.checkCircle(PhosphorIconsStyle.fill),
+                                            );
+                                          }
+                                        },
+                                  icon: Icon(PhosphorIcons.playCircle(PhosphorIconsStyle.fill), size: 18),
+                                  label: const Text('or watch an ad'),
+                                ),
+                            ],
                           ),
                       ],
                     ),

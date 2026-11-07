@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/ads.dart';
 import '../../core/providers.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
@@ -141,6 +142,7 @@ class NewsListScreen extends ConsumerWidget {
         return ListView(
           padding: const EdgeInsets.fromLTRB(Space.s5, Space.s2, Space.s5, Space.s8),
           children: [
+            const AdBanner(screen: 'news'),
             AppCard(
               pad: false,
               clip: true,
@@ -169,6 +171,7 @@ class NewsListScreen extends ConsumerWidget {
                 ],
               ),
             ),
+            if (rest.isNotEmpty) const AdNativeCard(placement: 'news'),
             if (rest.isNotEmpty) ...[
               const Gap(Space.s4),
               ListCard(

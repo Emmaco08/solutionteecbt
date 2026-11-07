@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/ads.dart';
 import '../../data/study_repo.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
@@ -73,6 +74,18 @@ class _Paywall extends ConsumerStatefulWidget {
 }
 
 class _PaywallState extends ConsumerState<_Paywall> {
+  @override
+  void initState() {
+    super.initState();
+    AdsGate.enter(); // no ads at checkout
+  }
+
+  @override
+  void dispose() {
+    AdsGate.leave();
+    super.dispose();
+  }
+
   String? _pick;
 
   @override

@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/ads.dart';
 import '../../core/nav.dart';
 import '../../core/providers.dart';
 import '../../theme/theme.dart';
@@ -586,6 +587,7 @@ class ChallengesScreen extends ConsumerWidget {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(Space.s5, Space.s2, Space.s5, Space.s8),
               children: [
+                const AdBanner(screen: 'challenges'),
                 for (var i = 0; i < sections.length; i++) ...[if (i > 0) const Gap(Space.s3), sections[i]],
               ],
             ),

@@ -5,6 +5,7 @@ import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/ads.dart';
 import '../../core/api.dart';
 import '../../core/providers.dart';
 import '../../data/tests_repo.dart';
@@ -42,11 +43,18 @@ class _NotesListScreenState extends ConsumerState<NotesListScreen> {
     for (final n in shown) {
       groups.putIfAbsent(n['subject_id'], () => []).add(n);
     }
-    final rows = <({Object? subject, Map<String, dynamic>? note, bool first, bool last})>[];
+    final rows = <({Object? subject, Map<String, dynamic>? note, bool first, bool last, bool ad})>[];
+    // Card ads (big update 2, step B) go after a subject group, about every N notes as the ads level says.
+    final every = (ref.watch(adsConfigProvider).value ?? AdsConfig.off).nativeEvery;
+    var seen = 0, nextAd = every;
     for (final e in groups.entries) {
-      rows.add((subject: e.key, note: null, first: false, last: false));
+      rows.add((subject: e.key, note: null, first: false, last: false, ad: false));
       for (final (i, n) in e.value.indexed) {
-        rows.add((subject: e.key, note: n, first: i == 0, last: i == e.value.length - 1));
+        final last = i == e.value.length - 1;
+        seen++;
+        final ad = every > 0 && last && seen >= nextAd && seen < shown.length;
+        if (ad) nextAd = seen + every;
+        rows.add((subject: e.key, note: n, first: i == 0, last: last, ad: ad));
       }
     }
     return Scaffold(
@@ -65,6 +73,7 @@ class _NotesListScreenState extends ConsumerState<NotesListScreen> {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        const AdBanner(screen: 'notes'),
                         SubjectChips(subjectIds: subjectsIn(ref, all), value: _subject, onChanged: (v) => setState(() => _subject = v)),
                         if (shown.isEmpty)
                           StateBlock(
@@ -86,7 +95,7 @@ class _NotesListScreenState extends ConsumerState<NotesListScreen> {
                     );
                   }
                   const radius = Radius.circular(Radii.lg);
-                  return Container(
+                  final row = Container(
                     decoration: BoxDecoration(
                       color: c.surface,
                       border: Border(
@@ -106,6 +115,14 @@ class _NotesListScreenState extends ConsumerState<NotesListScreen> {
                       onTap: () => openStudyItem(context, n),
                     ),
                   );
+                  return r.ad
+                      ? Column(
+                          children: [
+                            row,
+                            AdNativeCard(placement: 'notes', key: ValueKey('ad-${n['id']}')),
+                          ],
+                        )
+                      : row;
                 },
               ),
             ),

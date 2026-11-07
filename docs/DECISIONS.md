@@ -771,3 +771,23 @@ The owner asked to run the admin from Vercel instead of the laptop.
 - Ads: the mix — ads where eyes are (top banners under headers, native cards inside lists, interstitials only at breaks with caps); Low/Medium follow the soft plan, High→Ultra add the 23 "Watch to unlock" rewards capped at 15 a day then "Go Premium". Premium ad-free at every level; never during a running exam or checkout; rewarded unlocks verified on the server (AdMob SSV).
 - Classes: YouTube Live (unlisted, played inside the app, link never shown) for lectures + Jitsi Meet (free, no time limit; new room and password per class, opened from the app only for allowed students) for interactive classes.
 - Web search: Brave Search API (owner adds BRAVE_SEARCH_KEY as an Edge Function secret).
+
+## D-101 — Big update 2, step B: Google AdMob ads (2026-11-07)
+- **Levels** Off · Low · Medium · High · High Extra · Max · Ultra live in `app_settings.ads` (admin → Money → Ads). The server
+  turns a level into rules (`private.ads_preset`): banner screens, a card (native) ad every N list items, break
+  (interstitial) gap and daily cap, rewarded per day, ads after videos. The app reads `ads_config()` on open, so changing
+  the level needs no app update. **Premium = no ads**, at every level.
+- **Red line** in the app (`AdsGate`): CBT screen, challenge play, mock and checkout (paywall) block every ad.
+- **Placements:** banners at the top of Study, News, Notes, Past questions, Videos, Leaderboard, History, Challenges, Me
+  (only the screens the level lists). Card ads in News and Notes. Break ads when leaving results, a mock result or a video.
+- **Rewarded ("watch to unlock")**, mix of soft levels and unlocks as the owner chose: +2 AI prompts, a Premium lesson
+  note for 24 h, a streak freeze. Always the student's choice; daily cap per level, then "Go Premium". The reward is
+  granted only by the server: `ad_reward_start` makes a nonce → AdMob server-side verification calls the Edge Function
+  `admob-ssv`, which checks Google's ECDSA signature (keys from gstatic) → `ad_reward_grant` (once per nonce). In **test
+  mode** (Google test ads send no verification) the app may claim the reward; turn test mode off for real ads.
+  A note opened by an ad is served by `study_item` like a free one until it expires (`private.ad_unlocked`).
+- **Age:** birth year asked once (`set_birth_year`). 18+ personalised; 13–17 or unknown: non-personalised and teen
+  treatment; under 13: child treatment and G-rated ads.
+- **Report:** the app counts impressions/clicks (`ads_log`, batched) into `ad_daily`; admin sees ads per day and unlocks.
+  Money and payouts are in the AdMob account.
+- AdMob app id is public (not a secret): gradle property / env `ADMOB_APP_ID`, Google's sample id until set.

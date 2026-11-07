@@ -9,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../xp/streak_ui.dart' show myStreakProvider;
+import '../../core/ads.dart';
 import '../../core/nav.dart';
 import '../../core/config.dart';
 import '../../core/providers.dart';
@@ -169,6 +170,7 @@ class ProfileScreen extends ConsumerWidget {
           child: ListView(
             padding: const EdgeInsets.only(bottom: Space.s8),
             children: [
+              const AdBanner(screen: 'me'),
               Padding(
                 padding: const EdgeInsets.fromLTRB(Space.s5, Space.s2, Space.s5, Space.s4),
                 child: Row(
@@ -590,6 +592,7 @@ class HistoryScreen extends ConsumerWidget {
         return ListView(
           padding: const EdgeInsets.fromLTRB(Space.s5, Space.s2, Space.s5, Space.s8),
           children: [
+            const AdBanner(screen: 'history'),
             Row(
               children: [
                 Expanded(

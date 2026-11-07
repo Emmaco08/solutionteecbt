@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
+import '../../core/ads.dart';
 import '../../core/providers.dart';
 import '../../data/ai_repo.dart';
 import '../../theme/theme.dart';
@@ -1407,6 +1408,9 @@ class _AiBubble extends StatelessWidget {
               leading: PhosphorIcons.crownSimple(PhosphorIconsStyle.fill),
               onPressed: () => showPaywall(context, reason: 'years'),
             ),
+          ] else if (m.errorCode == 'quota') ...[
+            const Gap(Space.s2),
+            _MorePrompts(onGot: onRetry),
           ] else if (onRetry != null) ...[
             const Gap(Space.s2),
             Btn('Try again', kind: BtnKind.outline, sm: true, leading: PhosphorIcons.arrowClockwise(), onPressed: onRetry),
@@ -1883,3 +1887,57 @@ class AiHistoryScreen extends ConsumerWidget {
 /// "Ask AI" from a past question: opens the AI tab with the question attached.
 void askAiAbout(BuildContext context, {required String questionId, required String label}) =>
     context.go('/ai?q=$questionId&label=${Uri.encodeComponent(label)}');
+
+/// Out of AI prompts: watch a short ad for more (big update 2, step B; the server gives them after AdMob confirms),
+/// or go Premium. The ad is always the student's choice.
+class _MorePrompts extends ConsumerStatefulWidget {
+  const _MorePrompts({this.onGot});
+  final VoidCallback? onGot;
+  @override
+  ConsumerState<_MorePrompts> createState() => _MorePromptsState();
+}
+
+class _MorePromptsState extends ConsumerState<_MorePrompts> {
+  bool _busy = false;
+
+  Future<void> _watch() async {
+    setState(() => _busy = true);
+    final ok = await watchToUnlock(context, ref, kind: 'ai_prompts', placement: 'ai_quota');
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (ok) {
+      ref.invalidate(aiQuotaProvider);
+      final n = (ref.read(adsConfigProvider).value ?? AdsConfig.off).reward('ai_prompts');
+      toast(context, 'You got ${n > 0 ? n : 2} more AI prompts. Ask away!', icon: PhosphorIcons.sparkle(PhosphorIconsStyle.fill));
+      widget.onGot?.call();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = ref.watch(adsConfigProvider).value ?? AdsConfig.off;
+    final n = c.reward('ai_prompts');
+    return Wrap(
+      spacing: Space.s2,
+      runSpacing: Space.s2,
+      children: [
+        if (c.rewardedLeft > 0)
+          Btn(
+            _busy ? 'Loading the ad…' : 'Watch an ad for ${n > 0 ? n : 2} more',
+            kind: BtnKind.accent,
+            sm: true,
+            loading: _busy,
+            leading: PhosphorIcons.playCircle(PhosphorIconsStyle.fill),
+            onPressed: _busy ? null : _watch,
+          ),
+        Btn(
+          'Go Premium',
+          kind: BtnKind.outline,
+          sm: true,
+          leading: PhosphorIcons.crownSimple(PhosphorIconsStyle.fill),
+          onPressed: () => showPaywall(context, reason: 'ai'),
+        ),
+      ],
+    );
+  }
+}

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/ads.dart';
 import '../../widgets/phosphor.g.dart';
 
 import 'package:url_launcher/url_launcher.dart';
@@ -183,6 +184,20 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
       final was = prev?.value?['tier'], now = next.value?['tier'];
       if (now != null && was != now) ref.read(pushProvider).syncTopics(premium: now == 'premium').ignore();
     });
+    // Ads (big update 2, step B): read what this student sees; Premium or a plan change reloads it. When ads are on and
+    // we do not know the age yet, the birth year is asked once (personalised ads only for 18+).
+    ref.listen(myPlanProvider, (prev, next) {
+      if (prev?.value?['tier'] != next.value?['tier']) ref.invalidate(adsConfigProvider);
+    });
+    ref.listen(adsConfigProvider, (prev, next) {
+      final c = next.value;
+      if (c != null && c.on && c.askBirthYear) {
+        Future.delayed(const Duration(seconds: 4), () {
+          if (mounted) askBirthYearOnce(this.context, ref);
+        });
+      }
+    });
+    ref.watch(adsConfigProvider);
     final settings = ref.watch(appSettingsProvider).value ?? const {};
     final gate = _gate(settings);
     if (gate != null) return gate;

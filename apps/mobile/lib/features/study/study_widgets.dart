@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/ads.dart';
 import '../../core/providers.dart';
 import '../../data/study_repo.dart';
 import '../../theme/theme.dart';
@@ -23,6 +24,12 @@ String studyPath(String kind, String id) => switch (kind) {
 /// Opens an item, or the paywall when the server marked it locked.
 void openStudyItem(BuildContext context, Map<String, dynamic> it) {
   if (it['locked'] == true) {
+    // A Premium lesson note can be opened for a while by watching an ad (big update 2, step B), if ads allow it.
+    final ads = ProviderScope.containerOf(context).read(adsConfigProvider).value ?? AdsConfig.off;
+    if (it['kind'] == 'note' && ads.rewardedLeft > 0) {
+      showSheet<void>(context, builder: (_) => _WatchToOpen(item: it));
+      return;
+    }
     showPaywall(context, reason: it['kind'] as String?);
   } else {
     context.push(studyPath(it['kind'] as String, it['id'] as String));
@@ -338,6 +345,78 @@ class BookmarkButton extends ConsumerWidget {
           if (context.mounted) toast(context, '$e', icon: PhosphorIcons.warningCircle(PhosphorIconsStyle.fill));
         }
       },
+    );
+  }
+}
+
+/// "Go Premium" or "Watch an ad to open this note for N hours". The server opens it only after AdMob confirms.
+class _WatchToOpen extends ConsumerStatefulWidget {
+  const _WatchToOpen({required this.item});
+  final Map<String, dynamic> item;
+  @override
+  ConsumerState<_WatchToOpen> createState() => _WatchToOpenState();
+}
+
+class _WatchToOpenState extends ConsumerState<_WatchToOpen> {
+  bool _busy = false;
+
+  Future<void> _watch() async {
+    setState(() => _busy = true);
+    final ok = await watchToUnlock(context, ref, kind: 'note', itemRef: '${widget.item['id']}', placement: 'note');
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (!ok) return;
+    final router = GoRouter.of(context);
+    Navigator.of(context).pop();
+    router.push(studyPath('note', '${widget.item['id']}'));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = ref.watch(adsConfigProvider).value ?? AdsConfig.off;
+    final hours = c.reward('note_hours') > 0 ? c.reward('note_hours') : 24;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Align(
+          alignment: Alignment.centerLeft,
+          child: IconTile(PhosphorIcons.lockSimple(PhosphorIconsStyle.fill), tone: Tone.gold),
+        ),
+        const Gap(Space.s3),
+        Text('${widget.item['title'] ?? 'This note'}', style: context.ty.h3),
+        const Gap(Space.s2),
+        Text(
+          'This is a Premium note. Watch a short ad to read it free for $hours hours, or go Premium for every note with no ads.',
+          style: context.ty.sm.col(context.c.textMuted),
+        ),
+        const Gap(Space.s5),
+        Btn(
+          _busy ? 'Loading the ad…' : 'Watch an ad to open it',
+          block: true,
+          kind: BtnKind.accent,
+          loading: _busy,
+          leading: PhosphorIcons.playCircle(PhosphorIconsStyle.fill),
+          onPressed: _busy ? null : _watch,
+        ),
+        const Gap(Space.s2),
+        Btn(
+          'Go Premium',
+          block: true,
+          kind: BtnKind.outline,
+          leading: PhosphorIcons.crownSimple(PhosphorIconsStyle.fill),
+          onPressed: () {
+            final nav = Navigator.of(context);
+            nav.pop();
+            showPaywall(nav.context, reason: 'note');
+          },
+        ),
+        const Gap(Space.s2),
+        Text(
+          '${c.rewardedLeft} free unlock${c.rewardedLeft == 1 ? '' : 's'} left today',
+          style: context.ty.cap.col(context.c.textSubtle),
+          textAlign: TextAlign.center,
+        ),
+      ],
     );
   }
 }
