@@ -18,7 +18,6 @@ create table if not exists public.ai_tools_log (
 );
 create index if not exists ai_tools_log_at on public.ai_tools_log (at desc);
 alter table public.ai_tools_log enable row level security;
-drop policy if exists "admins read" on public.ai_tools_log;
 create policy "admins read" on public.ai_tools_log for select to authenticated using (private.is_staff(array['super_admin', 'admin']::public.staff_role[]));
 
 -- ------------------------------------------------------------------ run as the student
