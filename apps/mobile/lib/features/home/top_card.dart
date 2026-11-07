@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -38,105 +39,422 @@ class HomeTopCard extends ConsumerWidget {
   }
 }
 
-/// "Continue where you stopped": navy card with the exam logo, how far you got, time left and a big Continue button.
+/// "Continue where you stopped": navy card with the exam logo, a live progress ring, three small stats and a big
+/// Continue button. A light sweep crosses the card every 4 s and gold sparks float in the corner (still with reduce motion).
 class ResumeHero extends ConsumerWidget {
   const ResumeHero({super.key, required this.a});
   final LocalAttempt a;
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final rm = context.reduceMotion;
     final cfg = jsonDecode(a.configJson) as Map<String, dynamic>;
     final total = (jsonDecode(a.questionIdsJson) as List).length;
     final done = ref.watch(unfinishedAnsweredProvider(a.id)).value ?? 0;
+    // The clock only runs inside the test, so the time left is fixed while the student is on Home.
     final left = a.limitSeconds == 0 ? null : Duration(seconds: a.limitSeconds) - Duration(milliseconds: a.usedMs);
     final title = (cfg['title'] as String?)?.isNotEmpty == true ? cfg['title'] as String : a.examCode;
-    final frac = total == 0 ? 0.0 : done / total;
+    return _ResumeCard(
+      examCode: a.examCode,
+      title: title,
+      timed: cfg['timed'] != false && a.limitSeconds > 0,
+      startedAt: a.startedAt,
+      done: done,
+      total: total,
+      left: left == null ? null : (left.isNegative ? Duration.zero : left),
+      onContinue: () => context.push('/cbt/${a.id}'),
+    );
+  }
+}
+
+String _ago(DateTime t) {
+  final d = DateTime.now().difference(t);
+  if (d.inMinutes < 1) return 'just now';
+  if (d.inMinutes < 60) return '${d.inMinutes} min ago';
+  if (d.inHours < 24) return '${d.inHours} h ago';
+  return '${d.inDays} d ago';
+}
+
+class _ResumeCard extends StatefulWidget {
+  const _ResumeCard({
+    required this.examCode,
+    required this.title,
+    required this.timed,
+    required this.startedAt,
+    required this.done,
+    required this.total,
+    required this.left,
+    required this.onContinue,
+  });
+  final String examCode, title;
+  final bool timed;
+  final DateTime startedAt;
+  final int done, total;
+  final Duration? left;
+  final VoidCallback onContinue;
+  @override
+  State<_ResumeCard> createState() => _ResumeCardState();
+}
+
+class _ResumeCardState extends State<_ResumeCard> with SingleTickerProviderStateMixin {
+  late final AnimationController _loop = AnimationController(vsync: this, duration: const Duration(seconds: 4));
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (context.reduceMotion) {
+      _loop.stop();
+    } else if (!_loop.isAnimating) {
+      _loop.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _loop.dispose();
+    super.dispose();
+  }
+
+  void _go() {
+    HapticFeedback.lightImpact();
+    widget.onContinue();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    final rm = context.reduceMotion;
+    final dark = Theme.of(context).brightness == Brightness.dark;
     const ink = Color(0xFFF4F7FC), soft = Color(0xFFAFC0DD);
-    return Semantics(
-      button: true,
-      label: 'Continue your test: $title, $done of $total answered',
-      child: GestureDetector(
-        onTap: () => context.push('/cbt/${a.id}'),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(Radii.lg),
-          child: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Palette.navy900, Color(0xFF16336B)]),
-            ),
-            child: Stack(
-              children: [
-                Positioned(
-                  right: -50,
-                  top: -60,
-                  child: Container(
-                    width: 180,
-                    height: 180,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(colors: [Color.fromRGBO(37, 99, 179, .55), Color.fromRGBO(37, 99, 179, 0)]),
+    final total = widget.total, done = widget.done;
+    final frac = total == 0 ? 0.0 : (done / total).clamp(0.0, 1.0);
+    final toGo = (total - done).clamp(0, total);
+
+    // Children enter one after another (60 ms apart); nothing moves with reduce motion.
+    Widget st(Widget w, int i) => rm
+        ? w
+        : w
+              .animate(delay: 60.ms * (i + 1))
+              .fadeIn(duration: Motion.base)
+              .move(begin: const Offset(0, 8), end: Offset.zero, duration: Motion.slow, curve: Motion.out);
+
+    Widget stat(IconData icon, String text) => Row(
+      children: [
+        Icon(icon, size: 16, color: Palette.gold400),
+        const Gap(Space.s2),
+        Expanded(
+          child: Text(text, style: context.ty.sm.bold.tnum.col(ink), maxLines: 1, overflow: TextOverflow.ellipsis),
+        ),
+      ],
+    );
+
+    final logo = ExamLogo(widget.examCode, px: 48);
+    final card = Semantics(
+      container: true,
+      label: 'Continue your test: ${widget.title}, $done of $total answered',
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: dark ? Border.all(color: const Color(0x1AFFFFFF)) : null,
+            gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Palette.navy900, Color(0xFF16336B)]),
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                right: -50,
+                top: -60,
+                child: Container(
+                  width: 180,
+                  height: 180,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(colors: [Color.fromRGBO(37, 99, 179, .55), Color.fromRGBO(37, 99, 179, 0)]),
+                  ),
+                ),
+              ),
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: ExcludeSemantics(
+                    child: RepaintBoundary(
+                      child: CustomPaint(painter: _SparkPainter(_loop, still: rm)),
                     ),
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.all(Space.s4),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(color: Palette.gold400.withValues(alpha: .18), borderRadius: BorderRadius.circular(99)),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                _Dot(still: rm),
-                                const SizedBox(width: 6),
-                                Text('CONTINUE WHERE YOU STOPPED', style: context.ty.over.col(Palette.gold400)),
-                              ],
-                            ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(Space.s4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    st(
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(color: Palette.gold400.withValues(alpha: .16), borderRadius: BorderRadius.circular(99)),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _Dot(still: rm),
+                              const Gap(Space.s2),
+                              Flexible(
+                                child: Text(
+                                  'Paused · started ${_ago(widget.startedAt)}',
+                                  style: context.ty.cap.bold.col(Palette.gold300),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
-                      const Gap(Space.s3),
+                      0,
+                    ),
+                    const Gap(Space.s3),
+                    st(
                       Row(
                         children: [
-                          ExamLogo(a.examCode, px: 44),
+                          rm ? logo : logo.animate(onPlay: (a) => a.repeat(reverse: true)).moveY(begin: 0, end: -3, duration: 1500.ms, curve: Curves.easeInOut),
                           const Gap(Space.s3),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(title, style: context.ty.h3.col(ink), maxLines: 2, overflow: TextOverflow.ellipsis),
+                                Text(widget.title, style: context.ty.h3.col(ink), maxLines: 2, overflow: TextOverflow.ellipsis),
                                 const SizedBox(height: 2),
                                 Text(
-                                  '$done of $total answered${left == null ? '' : ' · ${ExamClock.format(left.isNegative ? Duration.zero : left)} left'}',
+                                  '$total questions · ${widget.timed ? 'Timed' : 'No time limit'}',
                                   style: context.ty.sm.col(soft),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ],
                             ),
                           ),
-                          Ring(
-                            value: frac,
-                            size: 52,
-                            color: Palette.gold400,
-                            track: const Color(0x33FFFFFF),
-                            label: Text('${(frac * 100).round()}%', style: context.ty.cap.bold.tnum.col(ink)),
+                        ],
+                      ),
+                      1,
+                    ),
+                    const Gap(Space.s4),
+                    st(
+                      Row(
+                        children: [
+                          _ResumeRing(frac: frac, size: 72, still: rm, label: '$done/$total', ink: ink),
+                          const Gap(Space.s4),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                stat(PhosphorIcons.checkCircle(PhosphorIconsStyle.fill), '$done answered'),
+                                const Gap(Space.s2),
+                                stat(
+                                  PhosphorIcons.hourglassMedium(PhosphorIconsStyle.fill),
+                                  widget.left == null ? 'No time limit' : '${ExamClock.format(widget.left!)} left',
+                                ),
+                                const Gap(Space.s2),
+                                stat(PhosphorIcons.flagCheckered(PhosphorIconsStyle.fill), '$toGo to go'),
+                              ],
+                            ),
                           ),
                         ],
                       ),
-                      const Gap(Space.s4),
-                      Btn('Continue test', kind: BtnKind.accent, block: true, icon: PhosphorIcons.arrowRight(), onPressed: () => context.push('/cbt/${a.id}')),
-                    ],
+                      2,
+                    ),
+                    const Gap(Space.s4),
+                    st(
+                      Semantics(
+                        button: true,
+                        label: 'Continue test',
+                        excludeSemantics: true,
+                        child: Pressable(
+                          onTap: _go,
+                          scale: Motion.pressScale,
+                          borderRadius: BorderRadius.circular(Radii.md),
+                          child: Container(
+                            constraints: const BoxConstraints(minHeight: Sizes.tapMin),
+                            padding: const EdgeInsets.symmetric(horizontal: Space.s4, vertical: Space.s3),
+                            decoration: BoxDecoration(color: c.accent, borderRadius: BorderRadius.circular(Radii.md), boxShadow: context.shadow(1)),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Flexible(
+                                  child: Text('Continue test', style: context.ty.label.bold.col(c.onAccent), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                ),
+                                const Gap(Space.s2),
+                                () {
+                                  final arrow = Icon(PhosphorIcons.arrowRight(PhosphorIconsStyle.bold), size: 20, color: c.onAccent);
+                                  return rm
+                                      ? arrow
+                                      : arrow
+                                            .animate(onPlay: (a) => a.repeat(reverse: true))
+                                            .moveX(begin: 0, end: 5, duration: 800.ms, curve: Curves.easeInOut);
+                                }(),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      3,
+                    ),
+                  ],
+                ),
+              ),
+              // The light sweep goes over everything and never takes a tap.
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: ExcludeSemantics(
+                    child: RepaintBoundary(
+                      child: CustomPaint(painter: _SweepPainter(_loop, still: rm)),
+                    ),
                   ),
                 ),
-              ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    return rm
+        ? card
+        : card.animate().fadeIn(duration: Motion.slow).move(begin: const Offset(0, 16), end: Offset.zero, duration: Motion.slow, curve: Motion.out);
+  }
+}
+
+/// Progress ring that fills from 0 to [frac] on first show (900 ms), gold-to-amber stroke and a glowing head dot.
+class _ResumeRing extends StatelessWidget {
+  const _ResumeRing({required this.frac, required this.size, required this.still, required this.label, required this.ink});
+  final double frac, size;
+  final bool still;
+  final String label;
+  final Color ink;
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: frac),
+        duration: still ? Duration.zero : const Duration(milliseconds: 900),
+        curve: Curves.easeOut,
+        builder: (context, v, child) => CustomPaint(painter: _RingPainter(v), child: child),
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(label, style: context.ty.sm.bold.tnum.col(ink)),
             ),
           ),
         ),
       ),
     );
   }
+}
+
+class _RingPainter extends CustomPainter {
+  _RingPainter(this.v);
+  final double v;
+  static const _stroke = 7.0;
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    final r = (size.shortestSide - _stroke) / 2;
+    final rect = Rect.fromCircle(center: center, radius: r);
+    canvas.drawCircle(
+      center,
+      r,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = _stroke
+        ..color = const Color(0x26FFFFFF),
+    );
+    if (v <= 0) return;
+    final sweep = 2 * math.pi * v;
+    canvas.drawArc(
+      rect,
+      -math.pi / 2,
+      sweep,
+      false,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = _stroke
+        ..strokeCap = StrokeCap.round
+        ..shader = SweepGradient(
+          startAngle: 0,
+          endAngle: math.max(sweep, .01),
+          colors: const [Palette.gold300, Palette.gold400, Color(0xFFFF9F1C)],
+          transform: const GradientRotation(-math.pi / 2),
+        ).createShader(rect),
+    );
+    final a = -math.pi / 2 + sweep;
+    final head = center + Offset(math.cos(a), math.sin(a)) * r;
+    canvas.drawCircle(
+      head,
+      7,
+      Paint()
+        ..color = const Color(0x55F2B233)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
+    );
+    canvas.drawCircle(head, 3, Paint()..color = const Color(0xFFFFF4D6));
+  }
+
+  @override
+  bool shouldRepaint(_RingPainter old) => old.v != v;
+}
+
+/// A soft diagonal band of light that crosses the card in the first third of every 4 s cycle.
+class _SweepPainter extends CustomPainter {
+  _SweepPainter(this.t, {required this.still}) : super(repaint: t);
+  final Animation<double> t;
+  final bool still;
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (still) return;
+    final p = (t.value / .35).clamp(0.0, 1.0);
+    if (p <= 0 || p >= 1) return;
+    final e = Curves.easeInOut.transform(p);
+    const band = 90.0;
+    final x = -band + (size.width + band * 2) * e;
+    canvas.save();
+    canvas.clipRect(Offset.zero & size);
+    canvas.translate(x, 0);
+    canvas.transform(Matrix4.skewX(-.45).storage);
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, band, size.height),
+      Paint()
+        ..shader = const LinearGradient(colors: [Color(0x00FFFFFF), Color(0x1AFFFFFF), Color(0x00FFFFFF)]).createShader(Rect.fromLTWH(0, 0, band, size.height)),
+    );
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_SweepPainter old) => old.still != still;
+}
+
+/// Seven tiny gold sparks that drift up and twinkle in the top-right corner.
+class _SparkPainter extends CustomPainter {
+  _SparkPainter(this.t, {required this.still}) : super(repaint: t);
+  final Animation<double> t;
+  final bool still;
+  // x (0..1 of a 120 px wide corner), phase, size, speed
+  static const _p = [(.15, .0, 1.6, 1), (.35, .3, 1.2, 1), (.55, .6, 2.0, 1), (.75, .15, 1.4, 1), (.9, .8, 1.8, 1), (.25, .5, 1.2, 1), (.65, .95, 1.5, 1)];
+  @override
+  void paint(Canvas canvas, Size size) {
+    const w = 120.0, h = 90.0;
+    final paint = Paint();
+    for (final (x, ph, r, _) in _p) {
+      final f = still ? ph : (t.value + ph) % 1;
+      final y = h * (1 - f) + 6;
+      final a = still ? .5 : math.sin(f * math.pi);
+      paint.color = Palette.gold400.withValues(alpha: .65 * a);
+      canvas.drawCircle(Offset(size.width - w + x * (w - 12) + 6, y), r, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_SparkPainter old) => old.still != still;
 }
 
 class _Dot extends StatelessWidget {

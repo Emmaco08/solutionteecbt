@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart' show ScrollCacheExtent;
+import 'package:flutter/rendering.dart' show ScrollCacheExtent, RenderShiftedBox, BoxParentData;
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -386,10 +386,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    for (var i = 0; i < sections.length; i++) ...[
-                      if (i > 0) const Gap(Space.s5),
-                      rm ? sections[i] : sections[i].animate(delay: Motion.stagger * i).fadeIn(duration: Motion.slow).slideY(begin: .06, curve: Motion.out),
-                    ],
+                    // Sections that render nothing (daily XP already claimed, challenges off) take no space,
+                    // so the gap between two visible cards is always one Space.s5.
+                    for (var i = 0; i < sections.length; i++)
+                      _SpaceAbove(
+                        i > 0 ? Space.s5 : 0,
+                        rm ? sections[i] : sections[i].animate(delay: Motion.stagger * i).fadeIn(duration: Motion.slow).slideY(begin: .06, curve: Motion.out),
+                      ),
                   ],
                 ),
               ),
@@ -591,4 +594,51 @@ class UpgradeBanner extends StatelessWidget {
       ),
     ),
   );
+}
+
+/// Adds [top] of space above [child] only when the child has a height (a widget that builds nothing adds no gap).
+class _SpaceAbove extends SingleChildRenderObjectWidget {
+  const _SpaceAbove(this.top, Widget child) : super(child: child);
+  final double top;
+  @override
+  RenderObject createRenderObject(BuildContext context) => _RenderSpaceAbove(top);
+  @override
+  void updateRenderObject(BuildContext context, _RenderSpaceAbove r) => r.top = top;
+}
+
+class _RenderSpaceAbove extends RenderShiftedBox {
+  _RenderSpaceAbove(this._top) : super(null);
+  double _top;
+  set top(double v) {
+    if (v == _top) return;
+    _top = v;
+    markNeedsLayout();
+  }
+
+  @override
+  double computeMinIntrinsicHeight(double width) => _h(child?.getMinIntrinsicHeight(width) ?? 0);
+  @override
+  double computeMaxIntrinsicHeight(double width) => _h(child?.getMaxIntrinsicHeight(width) ?? 0);
+  double _h(double h) => h <= 0 ? 0 : h + _top;
+
+  @override
+  Size computeDryLayout(BoxConstraints constraints) {
+    final c = child;
+    if (c == null) return constraints.smallest;
+    final s = c.getDryLayout(constraints);
+    return constraints.constrain(Size(s.width, _h(s.height)));
+  }
+
+  @override
+  void performLayout() {
+    final c = child;
+    if (c == null) {
+      size = constraints.smallest;
+      return;
+    }
+    c.layout(constraints, parentUsesSize: true);
+    final gap = c.size.height <= 0 ? 0.0 : _top;
+    (c.parentData! as BoxParentData).offset = Offset(0, gap);
+    size = constraints.constrain(Size(c.size.width, c.size.height + gap));
+  }
 }
