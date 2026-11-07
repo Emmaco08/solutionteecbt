@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/api.dart';
+import '../../core/providers.dart';
+import '../../data/tests_repo.dart';
 import '../../data/study_repo.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
@@ -217,7 +219,7 @@ class _NoteScreenState extends ConsumerState<NoteScreen> {
           ? const ListSkeleton(items: 7)
           : Stack(
               children: [
-                NoteView(doc: _parse(body), scale: _scale, controller: _scroll, footer: const _CheckYourself()),
+                NoteView(doc: _parse(body), scale: _scale, controller: _scroll, footer: _CheckYourself(subjectId: (it['subject_id'] as num?)?.toInt(), topicId: (it['topic_id'] as num?)?.toInt())),
                 Positioned(
                   left: 0,
                   right: 0,
@@ -239,8 +241,56 @@ class _NoteScreenState extends ConsumerState<NoteScreen> {
   }
 }
 
-class _CheckYourself extends StatelessWidget {
-  const _CheckYourself();
+class _CheckYourself extends ConsumerStatefulWidget {
+  const _CheckYourself({this.subjectId, this.topicId});
+  final int? subjectId, topicId;
+  @override
+  ConsumerState<_CheckYourself> createState() => _CheckYourselfState();
+}
+
+/// "Start a topic drill" builds the test at once with this note's subject and topic (owner, 2026-11-07):
+/// 20 JAMB questions on the topic, 20 minutes; the setup screen only when the note has no topic.
+class _CheckYourselfState extends ConsumerState<_CheckYourself> {
+  bool _busy = false;
+
+  Future<void> _start() async {
+    final sid = widget.subjectId, tid = widget.topicId;
+    if (sid == null || tid == null) {
+      context.push('/test/setup?exam=JAMB&mode=topic');
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      final sb = ref.read(supabaseProvider);
+      final topic = await sb.from('topics').select('name').eq('id', tid).maybeSingle();
+      final exams = await ref.read(examsProvider.future);
+      final jamb = exams.firstWhere((e) => e['code'] == 'JAMB', orElse: () => exams.first);
+      final name = topic?['name'] as String?;
+      if (name == null) throw ApiError('This note has no topic questions yet.');
+      final id = await ref
+          .read(testsRepoProvider)
+          .start(
+            TestRequest(
+              mode: TestMode.topic,
+              examId: (jamb['id'] as num).toInt(),
+              examCode: 'JAMB',
+              subjectIds: [sid],
+              topics: [name],
+              count: 20,
+              limitMinutes: 20,
+              title: 'Topic drill · $name',
+            ),
+            countFor: (_) => 20,
+            minutesPerQuestion: 1,
+          );
+      if (mounted) context.push('/cbt/$id');
+    } catch (e) {
+      if (mounted) toast(context, e is ApiError ? e.message : 'Could not start the drill. Check your internet and try again.', icon: PhosphorIcons.warningCircle(PhosphorIconsStyle.fill));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(top: Space.s6),
@@ -250,9 +300,9 @@ class _CheckYourself extends StatelessWidget {
         children: [
           Text('Check yourself', style: context.ty.body.bold),
           const Gap(Space.s1),
-          Text('Practise questions on this subject in a short test.', style: context.ty.sm.col(context.c.textMuted)),
+          Text('20 questions on this topic in 20 minutes.', style: context.ty.sm.col(context.c.textMuted)),
           const Gap(Space.s3),
-          Btn('Start a topic drill', block: true, onPressed: () => context.push('/test/setup?exam=JAMB&mode=topic')),
+          Btn('Start a topic drill', block: true, loading: _busy, onPressed: _busy ? null : _start),
         ],
       ),
     ),

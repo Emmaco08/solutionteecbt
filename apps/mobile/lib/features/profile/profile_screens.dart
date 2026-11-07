@@ -117,12 +117,15 @@ class ProfileScreen extends ConsumerWidget {
     final stats = ref.watch(practiceStatsProvider).value;
     final subjects = ref.watch(subjectsProvider).value ?? const [];
 
-    final best = history
+    final localBest = history
         .where(_jambFull)
         .map(_score)
         .whereType<Map<String, dynamic>>()
         .map((s) => (s['total'] as num).toInt())
         .fold<int?>(null, (m, v) => m == null || v > m ? v : m);
+    // The server's best too: full tests from any phone and JAMB mock challenges (D-100).
+    final serverBest = (ref.watch(myBestJambProvider).value?['best'] as num?)?.toInt();
+    final best = [?localBest, ?serverBest].fold<int?>(null, (m, v) => m == null || v > m ? v : m);
     final minutes = history.fold<int>(0, (t, a) => t + a.usedMs) ~/ 60000;
     final trend = [for (final a in history.where(_jambFull).toList().reversed) (_score(a)?['total'] as num?)?.toInt()].whereType<int>().toList();
     final bySubject = <int, List<int>>{};
@@ -569,12 +572,14 @@ class HistoryScreen extends ConsumerWidget {
         }
         final scores = [for (final a in list) _score(a)].whereType<Map<String, dynamic>>().toList();
         final avg = scores.isEmpty ? 0 : (scores.map(_pct).reduce((a, b) => a + b) / scores.length).round();
-        final best = list
+        final localBest = list
             .where(_jambFull)
             .map(_score)
             .whereType<Map<String, dynamic>>()
             .map((s) => (s['total'] as num).toInt())
             .fold<int?>(null, (m, v) => m == null || v > m ? v : m);
+        final serverBest = (ref.watch(myBestJambProvider).value?['best'] as num?)?.toInt();
+        final best = [?localBest, ?serverBest].fold<int?>(null, (m, v) => m == null || v > m ? v : m);
         return ListView(
           padding: const EdgeInsets.fromLTRB(Space.s5, Space.s2, Space.s5, Space.s8),
           children: [
@@ -1209,3 +1214,14 @@ class _UpdateRow extends ConsumerWidget {
     );
   }
 }
+
+/// The best and latest JAMB score from the server (any phone, plus JAMB mock challenges).
+final myBestJambProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+  ref.watch(sessionProvider);
+  try {
+    final j = await ref.read(supabaseProvider).rpc('my_best_jamb').timeout(const Duration(seconds: 15));
+    return Map<String, dynamic>.from((j as Map?) ?? const {});
+  } catch (_) {
+    return const {};
+  }
+});
