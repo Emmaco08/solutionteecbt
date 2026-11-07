@@ -72,3 +72,16 @@ Low is designed to keep students happy and still earn from opt-in rewarded video
 2. App: app-open ads, rewarded interstitials, video breaks, Home ads, "Watch to earn" buttons in the right places
    (AI quota, locked year, locked video, review, XP wallet, end of test), ad-pass, a "Watch to earn" hub in Me → XP.
 3. Tests + emulator check; report per format and placement in admin (already logging loads).
+
+## 7. Owner's answers (2026-11-07)
+- Premium is only for money or XP. Ad offers ("watch to earn", rewarded video, server-verified):
+  - **a locked year for 1 hour** — admin sets how many videos (default 1) and the minutes (default 60);
+  - **XP** — admin sets "N videos → X XP" and a daily cap (start: 1 video → 5 XP, at most 20 videos a day). XP from ads
+    is stored like bought XP: spendable in the app, never for cash-prize entries (AdMob: no cash-like rewards);
+  - kept: **more AI prompts**, **Premium note 24 h**, **streak freeze**.
+- No ad break pass. Ultra = the strongest AdMob allows.
+- **AI tutor:** a banner for free users (level ≥ Low? → Medium and up), besides "watch for more prompts".
+- **Age:** asked during sign-up (birth year, required), and existing students get a pop-up once (must answer to go on);
+  used for personalised ads (18+), non-personalised (13–17) and child treatment (under 13).
+- Needs from the owner in AdMob: an **App open** ad unit; server-side verification also on the **Rewarded
+  interstitial** unit (same callback URL).
