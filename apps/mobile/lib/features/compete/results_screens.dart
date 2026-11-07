@@ -106,7 +106,14 @@ class ChallengeResultScreen extends ConsumerWidget {
               AppCard(
                 child: Column(
                   children: [
-                    if (mine['status'] == 'disqualified') ...[
+                    if (mine['status'] == 'playing') ...[
+                      // Still writing (a JAMB mock takes up to 2 hours): no score yet, the board shows those who submitted.
+                      Pill('You are still writing', kind: BadgeKind.warning, icon: PhosphorIcons.hourglass(PhosphorIconsStyle.fill)),
+                      const Gap(Space.s2),
+                      Text('Submit your exam to get your score and your place.', style: context.ty.sm.col(c.textMuted), textAlign: TextAlign.center),
+                      const Gap(Space.s3),
+                      Btn('Back to my exam', block: true, onPressed: () => context.push(ch.isMock ? '/challenges/$id/mock' : '/challenges/$id/play')),
+                    ] else if (mine['status'] == 'disqualified') ...[
                       Pill('Disqualified', kind: BadgeKind.error, icon: PhosphorIcons.shieldWarning(PhosphorIconsStyle.fill)),
                       const Gap(Space.s2),
                       Text('${mine['dq_reason'] ?? 'You left the challenge screen.'}', style: context.ty.sm.col(c.textMuted), textAlign: TextAlign.center),

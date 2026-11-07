@@ -788,6 +788,19 @@ class _ChallengeScreenState extends ConsumerState<ChallengeScreen> {
               ),
             ],
             const Gap(Space.s4),
+            if (ch.live || ch.ended) ...[
+              AppCard(
+                padding: EdgeInsets.zero,
+                child: ListRow(
+                  icon: PhosphorIcons.ranking(PhosphorIconsStyle.fill),
+                  tone: Tone.gold,
+                  title: 'Leaderboard',
+                  caption: ch.ended ? 'Final positions and winners' : '${ch.joined} student${ch.joined == 1 ? '' : 's'} · see who is leading',
+                  onTap: () => openRoute(context, '/test/challenges/${ch.id}/result'),
+                ),
+              ),
+              const Gap(Space.s3),
+            ],
             if (ch.isMock) ...[MockRulesCard(c: ch), const Gap(Space.s3)],
             if (ch.ineligibleText != null) ...[
               InfoBanner(kind: BannerKind.warn, icon: PhosphorIcons.lockSimple(PhosphorIconsStyle.fill), child: Text(ch.ineligibleText!)),
