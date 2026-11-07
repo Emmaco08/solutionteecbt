@@ -43,9 +43,9 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-        // AdMob app id: a public id (not a secret). Google's sample id is used until the owner's is set.
+        // AdMob app id (public, not a secret): SolutionTee CBT's own id from the owner's AdMob account (2026-11-07).
         manifestPlaceholders["admobAppId"] = (project.findProperty("ADMOB_APP_ID") as String?)
-            ?: System.getenv("ADMOB_APP_ID") ?: "ca-app-pub-3940256099942544~3347511713"
+            ?: System.getenv("ADMOB_APP_ID") ?: "ca-app-pub-2578359096210288~4598149074"
     }
 
     // Two builds (D-061): "direct" = APK from the website, pays with Paystack;
