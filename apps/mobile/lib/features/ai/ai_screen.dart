@@ -469,6 +469,7 @@ class _AiScreenState extends ConsumerState<AiScreen> with WidgetsBindingObserver
     Map<String, dynamic>? args,
     int? hintLevel,
     Uint8List? photo,
+    List<Map<String, dynamic>>? then,
   }) {
     if (_busy) return;
     _voiceStop();
@@ -489,6 +490,7 @@ class _AiScreenState extends ConsumerState<AiScreen> with WidgetsBindingObserver
     _workingLevel = null;
     final reply = _Msg(mine: false, done: false)..hintLevel = (useHint && tool == null) ? level : null;
     var started = false;
+    var nextSteps = const <Map<String, dynamic>>[];
     setState(() {
       _msgs.add(_Msg(mine: true, text: shown ?? (t.isEmpty && questionId != null ? 'Explain this question.' : t), image: pic, hasImage: pic != null));
       _msgs.add(reply);
@@ -506,6 +508,7 @@ class _AiScreenState extends ConsumerState<AiScreen> with WidgetsBindingObserver
           chatId: _chatId,
           text: t,
           imageBase64: pic == null ? null : base64Encode(pic),
+          readFirst: true,
           subjectId: _subject,
           hint: useHint,
           hintLevel: level,
@@ -513,6 +516,7 @@ class _AiScreenState extends ConsumerState<AiScreen> with WidgetsBindingObserver
           explain: explain,
           tool: tool,
           args: args,
+          then: then,
         )
         .listen(
           (e) {
@@ -546,9 +550,10 @@ class _AiScreenState extends ConsumerState<AiScreen> with WidgetsBindingObserver
                   _toolDone(reply, card);
                 }
               case AiFollowups(:final items):
-                setState(() => reply.followups = items.where((x) => x.trim().isNotEmpty).take(3).toList());
+                setState(() => reply.followups = items.where((x) => x.trim().isNotEmpty).take(5).toList());
                 _toEnd();
-              case AiDone(:final messageId, :final free):
+              case AiDone(:final messageId, :final free, :final next):
+                if (next.isNotEmpty) nextSteps = next;
                 setState(() {
                   if (_bg == reply) _endBg();
                   reply
@@ -580,6 +585,20 @@ class _AiScreenState extends ConsumerState<AiScreen> with WidgetsBindingObserver
           },
           onDone: () {
             if (!mounted) return;
+            // A request with several steps: the next one starts by itself a moment after this one is done.
+            final steps = nextSteps;
+            if (steps.isNotEmpty) {
+              Future<void>.delayed(const Duration(milliseconds: 900), () {
+                if (!mounted || _busy) return;
+                final s = steps.first;
+                _send(
+                  text: '${s['label'] ?? 'Next step'}',
+                  tool: s['tool'] as String?,
+                  args: s['args'] is Map ? Map<String, dynamic>.from(s['args'] as Map) : null,
+                  then: steps.sublist(1),
+                );
+              });
+            }
             setState(() {
               _sub = null;
               if (!reply.done && !reply.background) {
@@ -704,10 +723,10 @@ class _AiScreenState extends ConsumerState<AiScreen> with WidgetsBindingObserver
     );
     if (src == null) return;
     try {
-      final x = await ImagePicker().pickImage(source: src, maxWidth: 1280, maxHeight: 1280, imageQuality: 72);
+      final x = await ImagePicker().pickImage(source: src, maxWidth: 2048, maxHeight: 2048, imageQuality: 88);
       if (x == null) return;
       final bytes = await x.readAsBytes();
-      if (bytes.length > 2 * 1024 * 1024) {
+      if (bytes.length > 3 * 1024 * 1024) {
         if (mounted) toast(context, 'That photo is too large. Try a closer, simpler photo.', icon: PhosphorIcons.warningCircle(PhosphorIconsStyle.fill));
         return;
       }
@@ -1420,6 +1439,19 @@ class _AiBubble extends StatelessWidget {
     }
     final hasCard = m.card != null && m.card!['type'] != null;
     final hasTool = m.toolRunning || m.toolName != null || hasCard;
+    // Big update 2 (A4): suggested notes and web sources come after the answer, not above it.
+    final cardBelow = hasCard && !m.toolRunning && m.text.isNotEmpty && const {'notes', 'sources'}.contains(m.card!['type']);
+    final toolSlot = AiToolSlot(
+      name: m.toolName ?? '${m.card?['type'] ?? ''}',
+      label: m.toolLabel,
+      running: m.toolRunning,
+      finishing: m.finishing,
+      steps: m.steps,
+      card: m.card,
+      send: send,
+      check: check,
+      onOpenChat: onOpenChat,
+    );
     // While a tool runs, its working card is the only thing shown; the bubble comes back with text, an error or thinking.
     final showBubble = !(hasTool && m.text.isEmpty && m.error == null && !m.thinking && !m.background);
     final showHint = isLast && m.done && m.hintLevel != null && m.text.isNotEmpty && m.error == null && !m.background;
@@ -1437,20 +1469,10 @@ class _AiBubble extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (hasTool)
+            if (hasTool && !cardBelow)
               Padding(
                 padding: EdgeInsets.only(bottom: m.text.isEmpty && !m.thinking ? 0 : Space.s2),
-                child: AiToolSlot(
-                  name: m.toolName ?? '${m.card?['type'] ?? ''}',
-                  label: m.toolLabel,
-                  running: m.toolRunning,
-                  finishing: m.finishing,
-                  steps: m.steps,
-                  card: m.card,
-                  send: send,
-                  check: check,
-                  onOpenChat: onOpenChat,
-                ),
+                child: toolSlot,
               ),
             if (showBubble)
               Padding(
@@ -1506,6 +1528,11 @@ class _AiBubble extends StatelessWidget {
                       ),
                   ],
                 ),
+              ),
+            if (cardBelow)
+              Padding(
+                padding: const EdgeInsets.only(top: Space.s2),
+                child: toolSlot,
               ),
             if (m.done && m.hintLevel != null && m.text.isNotEmpty)
               Padding(

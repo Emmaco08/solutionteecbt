@@ -219,7 +219,12 @@ class _NoteScreenState extends ConsumerState<NoteScreen> {
           ? const ListSkeleton(items: 7)
           : Stack(
               children: [
-                NoteView(doc: _parse(body), scale: _scale, controller: _scroll, footer: _CheckYourself(subjectId: (it['subject_id'] as num?)?.toInt(), topicId: (it['topic_id'] as num?)?.toInt())),
+                NoteView(
+                  doc: _parse(body),
+                  scale: _scale,
+                  controller: _scroll,
+                  footer: _CheckYourself(subjectId: (it['subject_id'] as num?)?.toInt(), topicId: (it['topic_id'] as num?)?.toInt()),
+                ),
                 Positioned(
                   left: 0,
                   right: 0,
@@ -285,7 +290,13 @@ class _CheckYourselfState extends ConsumerState<_CheckYourself> {
           );
       if (mounted) context.push('/cbt/$id');
     } catch (e) {
-      if (mounted) toast(context, e is ApiError ? e.message : 'Could not start the drill. Check your internet and try again.', icon: PhosphorIcons.warningCircle(PhosphorIconsStyle.fill));
+      if (mounted) {
+        toast(
+          context,
+          e is ApiError ? e.message : 'Could not start the drill. Check your internet and try again.',
+          icon: PhosphorIcons.warningCircle(PhosphorIconsStyle.fill),
+        );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }

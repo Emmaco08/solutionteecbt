@@ -7,6 +7,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/image_cache.dart';
 import '../../core/providers.dart';
 import '../../core/secure_screen.dart';
 import '../../data/db.dart';
@@ -69,6 +70,75 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
 
   AppDb get _db => ref.read(dbProvider);
 
+  static bool _titleRepeats(String title, String body) {
+    String norm(String x) => x.replaceFirst('[SAMPLE] ', '').toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), ' ').trim();
+    final t = norm(title).replaceAll(RegExp(r'\s*(\.\.\.|…)$'), '');
+    return t.isNotEmpty && norm(body).startsWith(t);
+  }
+
+  /// Pictures being downloaded before the test: (done, total, some failed).
+  (int, int, bool)? _prep;
+  bool _skipPics = false;
+
+  Widget _prepView() {
+    final c = context.c;
+    final (done, total, failed) = _prep!;
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(Space.s6),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconTile(
+                  failed ? PhosphorIcons.warningCircle(PhosphorIconsStyle.fill) : PhosphorIcons.image(PhosphorIconsStyle.fill),
+                  tone: failed ? Tone.gold : Tone.blue,
+                ),
+                const Gap(Space.s4),
+                Text(failed ? 'Some pictures did not download' : 'Getting the pictures ready', style: context.ty.h3, textAlign: TextAlign.center),
+                const Gap(Space.s2),
+                Text(
+                  failed
+                      ? '$done of $total pictures are ready. Check your data and try again, or start now and they will load during the test.'
+                      : 'Downloading $done of $total so nothing loads during your exam. Your time has not started.',
+                  style: context.ty.sm.col(c.textMuted),
+                  textAlign: TextAlign.center,
+                ),
+                const Gap(Space.s5),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(Radii.pill),
+                  child: LinearProgressIndicator(value: total == 0 ? null : done / total, minHeight: 8),
+                ),
+                if (failed) ...[
+                  const Gap(Space.s5),
+                  Btn(
+                    'Try again',
+                    block: true,
+                    onPressed: () {
+                      setState(() => _prep = (done, total, false));
+                      _load();
+                    },
+                  ),
+                  const Gap(Space.s2),
+                  Btn(
+                    'Start anyway',
+                    kind: BtnKind.ghost,
+                    block: true,
+                    onPressed: () {
+                      _skipPics = true;
+                      _load();
+                    },
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -97,6 +167,30 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
       }
       final ids = (jsonDecode(a.questionIdsJson) as List).cast<String>();
       final rows = await _db.questionsByIds(ids);
+      // Big update 2 (A12): every picture is downloaded before the clock starts, so nothing loads during the exam.
+      final pics = [for (final r in rows) ?r.imagePath];
+      if (pics.isNotEmpty && !_skipPics) {
+        final missing = <String>[];
+        for (final k in pics) {
+          if (await QuestionImageCache.file(k) == null) missing.add(k);
+        }
+        if (missing.isNotEmpty) {
+          if (mounted) setState(() => _prep = (0, missing.length, false));
+          final api = ref.read(apiProvider);
+          final failed = await QuestionImageCache.fetchAll(
+            missing,
+            api.signImage,
+            onProgress: (d, t) {
+              if (mounted && !_skipPics) setState(() => _prep = (d, t, false));
+            },
+          );
+          if (failed.isNotEmpty && !_skipPics) {
+            if (mounted) setState(() => _prep = (missing.length - failed.length, missing.length, true));
+            return; // the student chooses: try again or start anyway
+          }
+        }
+      }
+      _prep = null;
       var resumed = false;
       for (final x in await _db.answersFor(a.id)) {
         if (x.choice != null) _answers[x.questionId] = x.choice!;
@@ -645,6 +739,7 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
         ),
       );
     }
+    if (_a == null && _prep != null) return _prepView();
     if (_a == null || _qs.isEmpty) return const Scaffold(body: Center(child: CircularProgressIndicator()));
     final c = context.c;
     final q = _qs[_i];
@@ -855,7 +950,8 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                if (q.row.passageTitle != null) ...[
+                                // A title that is only the first words of the passage (common in imported papers) is not repeated.
+                                if (q.row.passageTitle != null && !_titleRepeats(q.row.passageTitle!, q.row.passageBody!)) ...[
                                   Text(q.row.passageTitle!.replaceFirst('[SAMPLE] ', ''), style: context.ty.sm.bold),
                                   const Gap(Space.s2),
                                 ],

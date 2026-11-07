@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
+import '../../widgets/question_image.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
 import '../../ui/confetti.dart';
@@ -220,6 +221,7 @@ class _QuizCardState extends State<QuizCard> with AutomaticKeepAliveClientMixin 
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         NoteBody(text: '${q['body'] ?? ''}', scale: .98),
+        if ('${q['image_path'] ?? ''}'.isNotEmpty) ...[const Gap(Space.s3), QuestionImage(imageKey: '${q['image_path']}')],
         const Gap(Space.s3),
         for (final k in keys)
           Padding(

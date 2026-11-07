@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/api.dart';
 import '../../data/ai_repo.dart' show AiChip, aiRepoProvider;
@@ -12,6 +13,7 @@ import '../../data/tests_repo.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
 import '../../ui/kit.dart';
+import '../../widgets/math_text.dart';
 import '../../widgets/phosphor.g.dart';
 import '../premium/paywall.dart';
 import 'ai_quiz.dart';
@@ -27,6 +29,9 @@ IconData aiToolIcon(String name) => switch (name) {
   'qotd' => PhosphorIcons.lightbulb(PhosphorIconsStyle.fill),
   'weak_topics' => PhosphorIcons.chartLineUp(PhosphorIconsStyle.fill),
   'study_plan' => PhosphorIcons.calendarCheck(PhosphorIconsStyle.fill),
+  'remind' || 'reminders' => PhosphorIcons.alarm(PhosphorIconsStyle.fill),
+  'web_search' => PhosphorIcons.newspaper(PhosphorIconsStyle.fill),
+  'photo_read' => PhosphorIcons.camera(PhosphorIconsStyle.fill),
   _ => PhosphorIcons.sparkle(PhosphorIconsStyle.fill),
 };
 
@@ -61,6 +66,7 @@ IconData aiIconByName(String? name, {bool fill = false}) {
     'atom' => PhosphorIcons.atom(st),
     'function' => PhosphorIcons.function(st),
     'note' => PhosphorIcons.note(st),
+    'bell' => PhosphorIcons.bell(st),
     _ => PhosphorIcons.sparkle(st),
   };
 }
@@ -278,6 +284,9 @@ class AiCardView extends StatelessWidget {
       card: card,
       onQuiz: (subject, topic) => send(text: 'Quiz me on $topic', tool: 'quiz', args: {'subject': subject, 'topic': topic, 'count': 3}),
     ),
+    'reminders' => RemindersCard(card: card),
+    'sources' => SourcesCard(card: card),
+    'photo_text' => PhotoTextCard(card: card, send: send),
     'qotd' => _HeaderChip(icon: aiToolIcon('qotd'), text: card['answered'] == true ? "Today's question · answered" : "Today's question · hint only"),
     'plan' =>
       (card['days'] is List && (card['days'] as List).isNotEmpty)
@@ -1120,6 +1129,228 @@ class _DayChip extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Reminders the AI set (big update 2, A1): when each one comes, with a button to cancel it.
+class RemindersCard extends ConsumerStatefulWidget {
+  const RemindersCard({super.key, required this.card});
+  final Map<String, dynamic> card;
+  @override
+  ConsumerState<RemindersCard> createState() => _RemindersCardState();
+}
+
+class _RemindersCardState extends ConsumerState<RemindersCard> {
+  final _gone = <String>{};
+  String? _busy;
+
+  Future<void> _cancel(String id) async {
+    setState(() => _busy = id);
+    final ok = await ref.read(aiRepoProvider).cancelReminder(id);
+    if (!mounted) return;
+    setState(() {
+      _busy = null;
+      if (ok) _gone.add(id);
+    });
+    if (!ok) toast(context, 'Could not cancel it. Check your connection and try again.');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    final items = [
+      for (final i in (widget.card['items'] as List? ?? const []))
+        if (i is Map && !_gone.contains('${i['id']}')) Map<String, dynamic>.from(i),
+    ];
+    final fresh = widget.card['new_id'];
+    if (items.isEmpty) {
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: Pill('No reminders waiting', icon: aiToolIcon('reminders')),
+      );
+    }
+    return AppCard(
+      pad: false,
+      child: Column(
+        children: [
+          for (final (i, r) in items.indexed) ...[
+            if (i > 0) Divider(height: 1, color: c.border),
+            ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: Sizes.tapMin + 8),
+              child: Padding(
+                padding: const EdgeInsets.only(left: Space.s4, right: Space.s2, top: Space.s2, bottom: Space.s2),
+                child: Row(
+                  children: [
+                    IconTile(aiToolIcon('remind'), tone: r['id'] == fresh ? Tone.gold : Tone.blue),
+                    const Gap(Space.s3),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('${r['title'] ?? 'Reminder'}', style: context.ty.sm.bold, maxLines: 2, overflow: TextOverflow.ellipsis),
+                          Text('${r['when'] ?? ''}', style: context.ty.cap.col(c.textMuted)),
+                        ],
+                      ),
+                    ),
+                    _busy == '${r['id']}'
+                        ? const Padding(
+                            padding: EdgeInsets.all(14),
+                            child: SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+                          )
+                        : IconBtn(PhosphorIcons.x(), label: 'Cancel this reminder', size: 20, color: c.textSubtle, onPressed: () => _cancel('${r['id']}')),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Where an internet answer came from (big update 2, A6). Tapping opens the page in the browser.
+class SourcesCard extends StatelessWidget {
+  const SourcesCard({super.key, required this.card});
+  final Map<String, dynamic> card;
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    final items = [
+      for (final i in (card['items'] as List? ?? const []))
+        if (i is Map && '${i['url'] ?? ''}'.startsWith('https://')) Map<String, dynamic>.from(i),
+    ];
+    if (items.isEmpty) return const SizedBox.shrink();
+    return AppCard(
+      pad: false,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(Space.s4, Space.s3, Space.s4, Space.s1),
+            child: Text('Sources', style: context.ty.cap.bold.col(c.textMuted)),
+          ),
+          for (final (i, s) in items.indexed)
+            Pressable(
+              onTap: () => launchUrl(Uri.parse('${s['url']}'), mode: LaunchMode.externalApplication),
+              borderRadius: BorderRadius.circular(Radii.lg),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: Sizes.tapMin),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: Space.s4, vertical: Space.s2),
+                  child: Row(
+                    children: [
+                      SizedBox(width: 24, child: Text('${i + 1}', style: context.ty.sm.bold.col(c.textMuted))),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('${s['title'] ?? ''}', style: context.ty.sm.bold, maxLines: 2, overflow: TextOverflow.ellipsis),
+                            Text(
+                              [s['site'], s['age']].where((x) => '${x ?? ''}'.isNotEmpty).join(' · '),
+                              style: context.ty.cap.col(c.textMuted),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(PhosphorIcons.arrowSquareOut(), size: 18, color: c.textSubtle),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          const Gap(Space.s2),
+        ],
+      ),
+    );
+  }
+}
+
+/// What the AI read from a photo (big update 2, A5). The student fixes anything misread, then taps Solve it.
+class PhotoTextCard extends StatefulWidget {
+  const PhotoTextCard({super.key, required this.card, required this.send});
+  final Map<String, dynamic> card;
+  final AiSendFn send;
+  @override
+  State<PhotoTextCard> createState() => _PhotoTextCardState();
+}
+
+class _PhotoTextCardState extends State<PhotoTextCard> {
+  late final _ctl = TextEditingController(text: '${widget.card['text'] ?? ''}');
+  bool _edit = false, _sent = false;
+
+  @override
+  void dispose() {
+    _ctl.dispose();
+    super.dispose();
+  }
+
+  void _solve() {
+    final t = _ctl.text.trim();
+    if (t.isEmpty) return;
+    setState(() {
+      _sent = true;
+      _edit = false;
+    });
+    final note = '${widget.card['note'] ?? ''}'.trim();
+    widget.send(text: 'Solve this question from my photo step by step${note.isEmpty ? '' : ' ($note)'}:\n\n$t');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              IconTile(aiToolIcon('photo_read'), tone: Tone.blue),
+              const Gap(Space.s3),
+              Expanded(child: Text('What I read from your photo', style: context.ty.body.bold)),
+            ],
+          ),
+          const Gap(Space.s3),
+          if (_edit)
+            TextField(
+              controller: _ctl,
+              minLines: 3,
+              maxLines: 12,
+              autofocus: true,
+              style: context.ty.sm,
+              decoration: const InputDecoration(hintText: 'Fix anything I read wrongly'),
+            )
+          else
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(Space.s3),
+              decoration: BoxDecoration(color: c.surfaceAlt, borderRadius: BorderRadius.circular(Radii.md)),
+              child: MathText(_ctl.text, style: context.ty.sm),
+            ),
+          const Gap(Space.s3),
+          if (_sent)
+            Pill('Sent — solving it', icon: PhosphorIcons.checkCircle(PhosphorIconsStyle.fill))
+          else
+            Row(
+              children: [
+                Expanded(
+                  child: Btn(
+                    _edit ? 'Done' : 'Edit',
+                    kind: BtnKind.outline,
+                    block: true,
+                    leading: _edit ? null : PhosphorIcons.pencilSimple(),
+                    onPressed: () => setState(() => _edit = !_edit),
+                  ),
+                ),
+                const Gap(Space.s2),
+                Expanded(child: Btn('Solve it', block: true, onPressed: _solve)),
+              ],
+            ),
+        ],
       ),
     );
   }

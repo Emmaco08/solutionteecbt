@@ -52,6 +52,28 @@ class ResumeHero extends ConsumerWidget {
     // The clock only runs inside the test, so the time left is fixed while the student is on Home.
     final left = a.limitSeconds == 0 ? null : Duration(seconds: a.limitSeconds) - Duration(milliseconds: a.usedMs);
     final title = (cfg['title'] as String?)?.isNotEmpty == true ? cfg['title'] as String : a.examCode;
+    // A challenge mock runs on the server's clock: it never pauses, so the card counts down live.
+    final deadline = cfg['mock'] != null ? DateTime.tryParse('${cfg['deadline']}') : null;
+    if (deadline != null) {
+      final skew = Duration(milliseconds: (cfg['skew_ms'] as num?)?.toInt() ?? 0);
+      return StreamBuilder<int>(
+        stream: Stream.periodic(const Duration(seconds: 1), (i) => i),
+        builder: (context, _) {
+          final l = deadline.difference(DateTime.now().toUtc().add(skew));
+          return _ResumeCard(
+            examCode: a.examCode,
+            title: title,
+            timed: true,
+            startedAt: a.startedAt,
+            done: done,
+            total: total,
+            left: l.isNegative ? Duration.zero : l,
+            live: true,
+            onContinue: () => context.push('/cbt/${a.id}'),
+          );
+        },
+      );
+    }
     return _ResumeCard(
       examCode: a.examCode,
       title: title,
@@ -83,9 +105,10 @@ class _ResumeCard extends StatefulWidget {
     required this.total,
     required this.left,
     required this.onContinue,
+    this.live = false,
   });
   final String examCode, title;
-  final bool timed;
+  final bool timed, live;
   final DateTime startedAt;
   final int done, total;
   final Duration? left;
@@ -199,7 +222,9 @@ class _ResumeCardState extends State<_ResumeCard> with SingleTickerProviderState
                               const Gap(Space.s2),
                               Flexible(
                                 child: Text(
-                                  'Paused · started ${_ago(widget.startedAt)}',
+                                  widget.live
+                                      ? (widget.left == Duration.zero ? 'Time is up · tap to see your result' : 'Live mock · the clock is running')
+                                      : 'Paused · started ${_ago(widget.startedAt)}',
                                   style: context.ty.cap.bold.col(Palette.gold300),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,

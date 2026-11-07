@@ -58,6 +58,8 @@ class FakeAi implements AiRepo {
     bool explain = false,
     String? tool,
     Map<String, dynamic>? args,
+    bool readFirst = false,
+    List<Map<String, dynamic>>? then,
   }) {
     asked.add({'text': text, 'tool': tool, 'args': args, 'questionId': questionId, 'explain': explain});
     return Stream.fromIterable(events);

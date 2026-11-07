@@ -57,9 +57,12 @@ class AiDelta extends AiEvent {
 }
 
 class AiDone extends AiEvent {
-  AiDone({this.messageId, this.left, this.model, this.free = false});
+  AiDone({this.messageId, this.left, this.model, this.free = false, this.next = const []});
   final String? messageId, model;
   final int? left;
+
+  /// The next steps of a request with several steps ("check my weak topics, then make a plan…"): {tool, args, label}.
+  final List<Map<String, dynamic>> next;
 
   /// True when no prompt was used (a tool the server answered by itself).
   final bool free;
@@ -137,7 +140,16 @@ class AiSseParser {
         'start' => AiStart('${j['chat_id']}'),
         'think' => AiThinking(),
         'd' => AiDelta('${j['c'] ?? ''}'),
-        'done' => AiDone(messageId: j['message_id'] as String?, left: (j['left'] as num?)?.toInt(), model: j['model'] as String?, free: j['free'] == true),
+        'done' => AiDone(
+          messageId: j['message_id'] as String?,
+          left: (j['left'] as num?)?.toInt(),
+          model: j['model'] as String?,
+          free: j['free'] == true,
+          next: [
+            for (final x in (j['next'] as List? ?? const []))
+              if (x is Map) Map<String, dynamic>.from(x),
+          ],
+        ),
         'tool' => AiTool(
           '${j['name'] ?? ''}',
           '${j['state'] ?? ''}',
@@ -174,6 +186,8 @@ class AiRepo {
     bool explain = false,
     String? tool,
     Map<String, dynamic>? args,
+    bool readFirst = false,
+    List<Map<String, dynamic>>? then,
   }) async* {
     final token = _sb.auth.currentSession?.accessToken;
     if (token == null) {
@@ -195,6 +209,8 @@ class AiRepo {
           'explain': explain,
           'tool': ?tool,
           'args': ?args,
+          'read_first': ?(imageBase64 != null && readFirst ? true : null),
+          'then': ?(then == null || then.isEmpty ? null : then),
         });
       final res = await client.send(req).timeout(const Duration(seconds: 40));
       if (res.statusCode != 200) {
@@ -280,6 +296,16 @@ class AiRepo {
       return await _action({'action': 'quiz_check', 'question_id': questionId, 'choice': choice}) ?? const {'ok': false};
     } catch (_) {
       return const {'ok': false};
+    }
+  }
+
+  /// Cancels a reminder the AI set (big update 2, A1).
+  Future<bool> cancelReminder(String id) async {
+    try {
+      final r = await _action({'action': 'reminder_cancel', 'id': id});
+      return r?['ok'] == true;
+    } catch (_) {
+      return false;
     }
   }
 

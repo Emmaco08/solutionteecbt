@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -135,6 +137,9 @@ class Challenge {
 final challengesProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   final uid = currentSession(ref)?.user.id;
   if (uid == null) return const {'on': false};
+  // Refreshed every minute so a challenge the admin just published (or one that just went live) shows on Home.
+  final t = Timer(const Duration(seconds: 60), ref.invalidateSelf);
+  ref.onDispose(t.cancel);
   return cached(ref, 'challenges:$uid', (s) => s.rpc('challenges_list'), (j) => Map<String, dynamic>.from(j as Map));
 });
 

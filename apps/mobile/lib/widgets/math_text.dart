@@ -14,16 +14,34 @@ class MathText extends StatelessWidget {
 
   static final _re = RegExp(r'(\$\$[\s\S]+?\$\$|(?<!\\)\$[^$\n]+?(?<!\\)\$)');
 
+  /// `$\underline{\text{word}}$` (common in English questions) is drawn as underlined text in the app font, not maths.
+  static final _underline = RegExp(r'^\s*\\underline\{\s*(?:\\text(?:rm)?\{([^{}]*)\}|([^{}\\]*))\s*\}\s*$');
+
+  /// Dashes some fonts cannot draw (they show as "_"), turned into a normal hyphen.
+  static String tidy(String s) => s.replaceAll(RegExp('[\u2010\u2011\u2012]'), '-').replaceAll('\u202F', ' ');
+
   @override
   Widget build(BuildContext context) {
     final base = style ?? DefaultTextStyle.of(context).style;
     final spans = <InlineSpan>[];
     var last = 0;
+    final text = tidy(this.text);
     for (final m in _re.allMatches(text)) {
       if (m.start > last) spans.addAll(_plain(text.substring(last, m.start)));
       final raw = m.group(0)!;
       final display = raw.startsWith(r'$$');
       final tex = raw.substring(display ? 2 : 1, raw.length - (display ? 2 : 1));
+      final u = display ? null : _underline.firstMatch(tex);
+      if (u != null) {
+        spans.add(
+          TextSpan(
+            text: u.group(1) ?? u.group(2) ?? '',
+            style: const TextStyle(decoration: TextDecoration.underline),
+          ),
+        );
+        last = m.end;
+        continue;
+      }
       final math = Math.tex(
         tex,
         mathStyle: display ? MathStyle.display : MathStyle.text,

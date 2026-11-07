@@ -1142,7 +1142,8 @@ Future<T?> showSheet<T>(BuildContext context, {required Widget Function(BuildCon
           mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox(
-              height: closeButton ? 44 : 17,
+              width: double.infinity,
+              height: closeButton ? 48 : 17,
               child: Stack(
                 alignment: Alignment.topCenter,
                 children: [
@@ -1154,8 +1155,8 @@ Future<T?> showSheet<T>(BuildContext context, {required Widget Function(BuildCon
                   ),
                   if (closeButton)
                     Positioned(
-                      right: 6,
-                      top: 2,
+                      right: 8,
+                      top: 4,
                       child: IconButton(
                         key: const ValueKey('sheet-close'),
                         tooltip: 'Close',

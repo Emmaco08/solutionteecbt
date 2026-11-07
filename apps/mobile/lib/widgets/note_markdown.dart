@@ -22,6 +22,14 @@ class NoteDoc {
   static const _open = '', _close = '';
   static final _token = RegExp('$_open(\\d+)$_close');
 
+  /// Odd dashes some fonts cannot draw become "-", and `<br>` (AI tables) becomes a line break, or " · " inside a table.
+  static String tidy(String s) => s
+      .replaceAll(RegExp('[\u2010\u2011\u2012]'), '-')
+      .replaceAll('\u202F', ' ')
+      .split('\n')
+      .map((l) => l.replaceAll(RegExp(r'\s*<br\s*/?>\s*(?:[•·]\s*)?', caseSensitive: false), l.trimLeft().startsWith('|') ? ' · ' : '\n'))
+      .join('\n');
+
   /// AI models often write `\[ … \]` and `\( … \)` instead of `$$ … $$` and `$ … $`; both are accepted.
   static String normalizeMath(String s) => s
       .replaceAllMapped(RegExp(r'(?<!\\)\\\[([\s\S]+?)(?<!\\)\\\]'), (m) => '\$\$${m[1]}\$\$')
@@ -29,7 +37,7 @@ class NoteDoc {
 
   factory NoteDoc.parse(String text) {
     final maths = <String>[];
-    final src = normalizeMath(text.replaceAll('\r\n', '\n')).replaceAllMapped(_math, (m) {
+    final src = normalizeMath(tidy(text.replaceAll('\r\n', '\n'))).replaceAllMapped(_math, (m) {
       maths.add(m.group(0)!);
       return '$_open${maths.length - 1}$_close';
     });
@@ -162,10 +170,18 @@ class NoteBlock extends StatelessWidget {
                       ? Text('${start + i}.', style: base.copyWith(fontWeight: kBold))
                       : Padding(
                           padding: EdgeInsets.only(top: 11 * style.scale),
-                          child: Container(
-                            width: 6,
-                            height: 6,
-                            decoration: BoxDecoration(color: style.c.textMuted, shape: depth == 0 ? BoxShape.circle : BoxShape.rectangle),
+                          child: Align(
+                            alignment: Alignment.topLeft,
+                            child: Container(
+                              width: 6,
+                              height: 6,
+                              decoration: depth == 0
+                                  ? BoxDecoration(color: style.c.textMuted, shape: BoxShape.circle)
+                                  : BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: style.c.textMuted, width: 1.4),
+                                    ),
+                            ),
                           ),
                         ),
                 ),

@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -7,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../xp/streak_ui.dart' show myStreakProvider;
 import '../../core/nav.dart';
 import '../../core/config.dart';
 import '../../core/providers.dart';
@@ -126,7 +128,12 @@ class ProfileScreen extends ConsumerWidget {
     // The server's best too: full tests from any phone and JAMB mock challenges (D-100).
     final serverBest = (ref.watch(myBestJambProvider).value?['best'] as num?)?.toInt();
     final best = [?localBest, ?serverBest].fold<int?>(null, (m, v) => m == null || v > m ? v : m);
-    final minutes = history.fold<int>(0, (t, a) => t + a.usedMs) ~/ 60000;
+    final server = ref.watch(myBestJambProvider).value ?? const {};
+    // The phone only knows tests taken on it; the server knows every test (and challenge mocks) on any phone.
+    final localMinutes = history.fold<int>(0, (t, a) => t + a.usedMs) ~/ 60000;
+    final minutes = math.max(localMinutes, (server['minutes'] as num?)?.toInt() ?? 0);
+    final tests = math.max(history.length, (server['tests'] as num?)?.toInt() ?? 0);
+    final streakDays = (ref.watch(myStreakProvider).value?['current'] as num?)?.toInt() ?? stats?.streak ?? 0;
     final trend = [for (final a in history.where(_jambFull).toList().reversed) (_score(a)?['total'] as num?)?.toInt()].whereType<int>().toList();
     final bySubject = <int, List<int>>{};
     for (final a in history) {
@@ -258,9 +265,9 @@ class ProfileScreen extends ConsumerWidget {
                     crossAxisSpacing: Space.s3,
                     childAspectRatio: 2.2,
                     children: [
-                      _Stat(value: '${history.length}', label: 'Tests taken'),
+                      _Stat(value: '$tests', label: 'Tests taken'),
                       _Stat(value: best == null ? '–' : '$best', label: 'Best JAMB score'),
-                      _Stat(value: '${stats?.streak ?? 0} day${stats?.streak == 1 ? '' : 's'}', label: 'Current streak'),
+                      _Stat(value: '$streakDays day${streakDays == 1 ? '' : 's'}', label: 'Current streak'),
                       _Stat(value: minutes >= 60 ? '${minutes ~/ 60}h ${minutes % 60}m' : '${minutes}m', label: 'Time practising'),
                     ],
                   ),
@@ -1219,7 +1226,8 @@ class _UpdateRow extends ConsumerWidget {
 final myBestJambProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   ref.watch(sessionProvider);
   try {
-    final j = await ref.read(supabaseProvider).rpc('my_best_jamb').timeout(const Duration(seconds: 15));
+    final sb = ref.read(supabaseProvider);
+    final j = await sb.rpc('my_stats').timeout(const Duration(seconds: 15)).catchError((_) => sb.rpc('my_best_jamb'));
     return Map<String, dynamic>.from((j as Map?) ?? const {});
   } catch (_) {
     return const {};
