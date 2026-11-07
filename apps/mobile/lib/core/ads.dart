@@ -103,6 +103,10 @@ class Ads {
     );
   }
 
+  /// Load results for the admin report and for finding problems: "news#ok", or "news#e3" (Google's error code; 3 = no
+  /// ad to show, 0 = internal, 1 = bad request, 2 = network).
+  void result(String format, String placement, {int? error}) => log(format, '$placement#${error == null ? 'ok' : 'e$error'}');
+
   /// Counts sent to the server in small batches (admin report).
   void log(String format, String placement, {bool click = false}) {
     final k = '$format|$placement';
@@ -112,7 +116,7 @@ class Ads {
     } else {
       m['impressions'] = m['impressions']! + 1;
     }
-    _flush ??= Timer(const Duration(seconds: 20), _send);
+    _flush ??= Timer(const Duration(seconds: 8), _send);
   }
 
   Future<void> _send() async {
@@ -152,8 +156,12 @@ class Ads {
         onAdLoaded: (ad) {
           _inter = ad;
           _loadingInter = false;
+          result('interstitial', 'break');
         },
-        onAdFailedToLoad: (_) => _loadingInter = false,
+        onAdFailedToLoad: (e) {
+          _loadingInter = false;
+          result('interstitial', 'break', error: e.code);
+        },
       ),
     );
   }
@@ -241,7 +249,8 @@ Future<bool> watchToUnlock(BuildContext context, WidgetRef ref, {required String
         );
         await ad.show(onUserEarnedReward: (_, _) => earned = true);
       },
-      onAdFailedToLoad: (_) {
+      onAdFailedToLoad: (e) {
+        Ads.instance.result('rewarded', placement, error: e.code);
         if (!done.isCompleted) done.complete(false);
       },
     ),
@@ -281,11 +290,16 @@ class _AdBannerState extends ConsumerState<AdBanner> {
       request: c.request,
       listener: BannerAdListener(
         onAdLoaded: (_) {
+          Ads.instance.result('banner', widget.screen);
           if (mounted) setState(() => _ready = true);
         },
         onAdImpression: (_) => Ads.instance.log('banner', widget.screen),
         onAdClicked: (_) => Ads.instance.log('banner', widget.screen, click: true),
-        onAdFailedToLoad: (ad, _) => ad.dispose(),
+        onAdFailedToLoad: (ad, e) {
+          Ads.instance.result('banner', widget.screen, error: e.code);
+          ad.dispose();
+          _ad = null;
+        },
       ),
     )..load();
   }
@@ -351,11 +365,15 @@ class _AdNativeCardState extends ConsumerState<AdNativeCard> {
       ),
       listener: NativeAdListener(
         onAdLoaded: (_) {
+          Ads.instance.result('native', widget.placement);
           if (mounted) setState(() => _ready = true);
         },
         onAdImpression: (_) => Ads.instance.log('native', widget.placement),
         onAdClicked: (_) => Ads.instance.log('native', widget.placement, click: true),
-        onAdFailedToLoad: (ad, _) => ad.dispose(),
+        onAdFailedToLoad: (ad, e) {
+          Ads.instance.result('native', widget.placement, error: e.code);
+          ad.dispose();
+        },
       ),
     )..load();
     if (!_ready) return const SizedBox.shrink();
