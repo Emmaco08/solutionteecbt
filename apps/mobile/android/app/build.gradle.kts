@@ -91,3 +91,11 @@ dependencies {
     // Paystack's own payment sheet inside the direct app (D-089). The Play app pays with Google Play Billing.
     "directImplementation"("com.paystack.android:paystack-ui:0.1.8")
 }
+
+// The newest Google Mobile Ads SDK pulls androidx.lifecycle 2.11 (compose parts), which needs compileSdk 37; our
+// Android Gradle plugin supports 36. Keep lifecycle on 2.9.4 until the toolchain moves to 37 (big update 2, step B).
+configurations.all {
+    resolutionStrategy.eachDependency {
+        if (requested.group == "androidx.lifecycle") useVersion("2.9.4")
+    }
+}
