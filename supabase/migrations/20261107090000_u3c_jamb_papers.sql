@@ -255,3 +255,12 @@ where subject_id = (select id from public.subjects where name = 'Use of English'
 -- paper_take gained (p_match text default null, p_since smallint default null): see the live definition; cbt_paper
 -- passes the section's match/since and calls it with all 11 arguments (null::text, null::smallint where unused).
 -- import_questions: after the insert, rows with a valid `section` set questions.section and section_source = 'import'.
+
+-- ---- Novel per year (owner, 2026-11-07; migrations u3c_novel_per_year, u3c_cbt_paper_year_novel) ----
+-- A year's paper uses THAT year's novel: the year's own novel questions, topped up only with questions naming the same
+-- book (the listed title the year's questions mention most, private.year_novel). Mixed and quick tests keep the current
+-- set novel (match "lekki", since 2025). The novel list is in the blueprint (sections[novel].novels: [{title, match}]):
+--   The Lekki Headmaster · The Life Changer · Sweet Sixteen · In Dependence · The Last Days at Forcados High School.
+-- paper_take: with match/since, the chosen year's own questions of that section always count too.
+-- cbt_paper: for the novel section with a year, label and instruction name that year's book.
+-- (Full definitions: see the live functions; the edits were applied in place.)
