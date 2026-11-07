@@ -85,3 +85,9 @@ Low is designed to keep students happy and still earn from opt-in rewarded video
   used for personalised ads (18+), non-personalised (13–17) and child treatment (under 13).
 - Needs from the owner in AdMob: an **App open** ad unit; server-side verification also on the **Rewarded
   interstitial** unit (same callback URL).
+- **Custom level (owner, 2026-11-07):** admin → Ads → "Custom": the admin picks every placement — banner screens (a
+  checkbox per screen), card ads on Home and every N list items, break-ad spots (after every Nth test, video start/end,
+  notes, quizzes, AI answers, section changes), gap and daily cap, app-open minutes, skippable "earn" video spots and
+  rewarded per day. Stored as `ads.custom`; `ads_preset('custom')` uses it.
+- **Ads everywhere (except the red line):** News list and article, Study pages, results, review, Me, XP, history,
+  novels, bookmarks, settings, notifications, AI tutor; never in the exam/CBT/challenge/mock or at checkout.
