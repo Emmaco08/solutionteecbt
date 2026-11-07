@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/ads.dart';
+import '../../core/house_ads.dart';
 import '../../core/api.dart';
 import '../../core/providers.dart';
 import '../../core/secure_screen.dart';
@@ -174,8 +175,15 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
         final m = player.message.value;
         if (m != null && mounted) toast(context, m, icon: PhosphorIcons.cellSignalLow(PhosphorIconsStyle.fill));
       });
-      // A break ad before the video starts (ads level: "before a video"); the video waits until it is closed.
-      await Ads.instance.breakPoint(ref, 'video_start');
+      // An ad before the video starts (ads level: "before a video"): a brand's video ad when a campaign takes this
+      // slot, otherwise an AdMob break. The lesson waits until it is closed.
+      final ads = ref.read(adsConfigProvider).value ?? AdsConfig.off;
+      final pre = ads.interSpots.contains('video_start') && !AdsGate.blocked ? House.pick('video_pre') : null;
+      if (pre != null && mounted) {
+        await House.showFull(context, pre, 'video_pre');
+      } else {
+        await Ads.instance.breakPoint(ref, 'video_start');
+      }
       if (!mounted) return;
       setState(() => _player = player);
       await player.start(at: Duration(seconds: (pos['seconds'] as num?)?.toInt() ?? 0));
@@ -185,24 +193,47 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     }
   }
 
-  bool _earnOffered = false;
+  bool _earnOffered = false, _midDone = false;
 
-  void _save() {
+  void _save({bool ads = true}) {
     final c = _player?.ctl, item = _item;
     if (c == null || item == null || !c.value.isInitialized) return;
     final d = c.value.duration.inMilliseconds;
     if (d <= 0) return;
-    // The video ended: a skippable "earn XP" video offer, once (ads level: "after a video").
+    if (!ads || !mounted) {
+      _repo.saveProgress(item, c.value.position.inMilliseconds / d, position: {'seconds': c.value.position.inSeconds});
+      return;
+    }
+    final level = ref.read(adsConfigProvider).value ?? AdsConfig.off;
+    // Half-way: a brand's mid-roll video ad, once (levels with a break around videos; never AdMob, it cannot play here).
+    if (!_midDone && c.value.isPlaying && c.value.position.inMilliseconds >= d ~/ 2 && d > 120000 && level.interSpots.contains('video_start')) {
+      _midDone = true;
+      final mid = House.pick('video_mid');
+      if (mid != null) {
+        c.pause();
+        House.showFull(context, mid, 'video_mid').then((_) {
+          if (mounted) _player?.ctl?.play();
+        });
+        return;
+      }
+    }
+    // The video ended: a brand's video ad, or a skippable "earn XP" video offer, once (ads level: "after a video").
     if (!_earnOffered && !c.value.isPlaying && c.value.position.inMilliseconds >= d - 2000) {
       _earnOffered = true;
-      offerEarnVideo(context, ref, 'video_end');
+      final post = level.interSpots.contains('video_end') || level.afterVideo ? House.pick('video_post') : null;
+      if (post != null) {
+        _breakDone = true; // the brand's ad is this video's break
+        House.showFull(context, post, 'video_post');
+      } else {
+        offerEarnVideo(context, ref, 'video_end');
+      }
     }
     _repo.saveProgress(item, c.value.position.inMilliseconds / d, position: {'seconds': c.value.position.inSeconds});
   }
 
   @override
   void dispose() {
-    _save();
+    _save(ads: false);
     _saver?.cancel();
     _player?.dispose();
     if (_secured) SecureScreen.off();

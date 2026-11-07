@@ -832,3 +832,17 @@ The owner asked to run the admin from Vercel instead of the laptop.
 - **Rule kept:** at most one full-screen ad at a time, 30 s after any other, the level's gap and daily cap; banners keep a
   6 px gap from the app's own buttons. Birth year is required in profile setup; students who joined before must answer a
   one-time pop-up.
+
+## D-105 — Our own ads: brand campaigns (house ads), ads v2 part B3 (2026-11-07)
+- **What:** admin → Money → Brand ads. A campaign has a brand, dates, places (banner, card, full-screen break as a
+  picture or video, and video ads before / in the middle of / after our own video lessons), a share of the slots
+  (the rest stays AdMob), a daily cap per student, a weight when brands overlap, a link and button text.
+- **Never more ads:** a campaign only takes a share of slots the ads level already has. Video-lesson ads show only where
+  the level has a break around videos (mid-roll only on videos over 2 minutes, once). Same red line, same gaps and daily
+  break cap as AdMob. Not for Premium, not for students under 13.
+- **Server:** `ad_campaigns`, `ad_campaign_stats` (views/clicks per day and place), `ad_campaign_seen` (per student per
+  day; views over the cap are not counted, a click counts only after a counted view). `house_ads()`, `house_ad_log()`,
+  `can_view_ad_file()` (the website signs `public/ads/…` files only while a running campaign uses them), and admin
+  list/save/delete/report functions (audit-logged). Files are uploaded to the private R2 bucket (pictures ≤ 2 MB,
+  MP4 videos ≤ 60 MB, made "fast start").
+- **Report:** per campaign: views, clicks, click rate, students reached, per day and place, with a CSV for the brand.

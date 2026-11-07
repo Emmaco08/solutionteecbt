@@ -35,6 +35,145 @@ export type Database = {
         }
         Relationships: []
       }
+      ad_campaign_seen: {
+        Row: {
+          campaign_id: string
+          day: string
+          user_id: string
+          views: number
+        }
+        Insert: {
+          campaign_id: string
+          day: string
+          user_id: string
+          views?: number
+        }
+        Update: {
+          campaign_id?: string
+          day?: string
+          user_id?: string
+          views?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_campaign_seen_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "ad_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ad_campaign_stats: {
+        Row: {
+          campaign_id: string
+          clicks: number
+          day: string
+          placement: string
+          views: number
+        }
+        Insert: {
+          campaign_id: string
+          clicks?: number
+          day: string
+          placement: string
+          views?: number
+        }
+        Update: {
+          campaign_id?: string
+          clicks?: number
+          day?: string
+          placement?: string
+          views?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_campaign_stats_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "ad_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ad_campaigns: {
+        Row: {
+          banner_key: string | null
+          brand: string
+          break_key: string | null
+          break_kind: string
+          cap_per_day: number
+          card_body: string | null
+          card_key: string | null
+          card_title: string | null
+          created_at: string
+          created_by: string | null
+          cta: string
+          ends_on: string | null
+          id: string
+          link: string | null
+          name: string
+          placements: string[]
+          share_pct: number
+          skip_after_s: number
+          starts_on: string | null
+          status: string
+          updated_at: string
+          video_key: string | null
+          weight: number
+        }
+        Insert: {
+          banner_key?: string | null
+          brand: string
+          break_key?: string | null
+          break_kind?: string
+          cap_per_day?: number
+          card_body?: string | null
+          card_key?: string | null
+          card_title?: string | null
+          created_at?: string
+          created_by?: string | null
+          cta?: string
+          ends_on?: string | null
+          id?: string
+          link?: string | null
+          name: string
+          placements?: string[]
+          share_pct?: number
+          skip_after_s?: number
+          starts_on?: string | null
+          status?: string
+          updated_at?: string
+          video_key?: string | null
+          weight?: number
+        }
+        Update: {
+          banner_key?: string | null
+          brand?: string
+          break_key?: string | null
+          break_kind?: string
+          cap_per_day?: number
+          card_body?: string | null
+          card_key?: string | null
+          card_title?: string | null
+          created_at?: string
+          created_by?: string | null
+          cta?: string
+          ends_on?: string | null
+          id?: string
+          link?: string | null
+          name?: string
+          placements?: string[]
+          share_pct?: number
+          skip_after_s?: number
+          starts_on?: string | null
+          status?: string
+          updated_at?: string
+          video_key?: string | null
+          weight?: number
+        }
+        Relationships: []
+      }
       ad_daily: {
         Row: {
           clicks: number
@@ -56,6 +195,30 @@ export type Database = {
           format?: string
           impressions?: number
           placement?: string
+        }
+        Relationships: []
+      }
+      ad_progress: {
+        Row: {
+          count: number
+          kind: string
+          ref: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          count?: number
+          kind: string
+          ref?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          count?: number
+          kind?: string
+          ref?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -3343,6 +3506,10 @@ export type Database = {
         Args: { p_nonce: string; p_test_claim?: boolean }
         Returns: Json
       }
+      admin_ad_campaign_delete: { Args: { p_id: string }; Returns: Json }
+      admin_ad_campaign_report: { Args: { p_id: string }; Returns: Json }
+      admin_ad_campaign_save: { Args: { p: Json }; Returns: Json }
+      admin_ad_campaigns: { Args: never; Returns: Json }
       admin_ads_report: { Args: { p_days?: number }; Returns: Json }
       admin_ads_save: { Args: { p_value: Json }; Returns: Json }
       admin_ai_health: { Args: never; Returns: Json }
@@ -3629,6 +3796,7 @@ export type Database = {
       auth_user_status: { Args: { p_email: string }; Returns: string }
       ban_appeal: { Args: { p_reason: string }; Returns: Json }
       can_upload_images: { Args: never; Returns: boolean }
+      can_view_ad_file: { Args: { p_key: string }; Returns: boolean }
       can_view_avatar: { Args: { p_key: string }; Returns: boolean }
       can_view_challenge_image: { Args: { p_key: string }; Returns: boolean }
       can_view_note_image: { Args: { p_key: string }; Returns: boolean }
@@ -3737,6 +3905,11 @@ export type Database = {
           year: number
         }[]
       }
+      house_ad_log: {
+        Args: { p_campaign: string; p_click?: boolean; p_placement: string }
+        Returns: Json
+      }
+      house_ads: { Args: never; Returns: Json }
       import_questions: {
         Args: { p_dry_run?: boolean; p_file_name: string; p_rows: Json }
         Returns: Json

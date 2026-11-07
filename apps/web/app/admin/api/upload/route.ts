@@ -5,7 +5,7 @@ import { hasR2 } from "@/lib/env";
 import { ALLOWED_TYPES, MAX_BYTES, presignPut } from "@/lib/r2";
 
 const Body = z.object({
-  kind: z.enum(["question", "news", "video", "pdf", "cover", "note_image", "receipt", "challenge"]),
+  kind: z.enum(["question", "news", "video", "pdf", "cover", "note_image", "receipt", "challenge", "ad_image", "ad_video"]),
   contentType: z.string(),
   size: z.number().int().positive(),
 });
@@ -19,6 +19,8 @@ const KINDS = {
   challenge: { types: { "image/webp": "webp", "image/png": "png", "image/jpeg": "jpg" } as Record<string, string>, max: MAX_BYTES, prefix: "public/challenges", what: "Use a WebP, PNG or JPG picture.", big: "The picture is over 2 MB. Make it smaller (WebP works best)." },
   receipt: { types: ALLOWED_TYPES, max: MAX_BYTES, prefix: "public/winners", what: "Use a WebP, PNG or JPG image of the receipt.", big: "The image is over 2 MB. Make it smaller (WebP works best)." },
   cover: { types: ALLOWED_TYPES, max: MAX_BYTES, prefix: "s", what: "Use a WebP, PNG, JPG or SVG image.", big: "The image is over 2 MB. Make it smaller (WebP works best)." },
+  ad_image: { types: { "image/webp": "webp", "image/png": "png", "image/jpeg": "jpg", "image/gif": "gif" } as Record<string, string>, max: MAX_BYTES, prefix: "public/ads", what: "Use a WebP, PNG, JPG or GIF picture.", big: "The picture is over 2 MB. Make it smaller (WebP works best)." },
+  ad_video: { types: { "video/mp4": "mp4" } as Record<string, string>, max: 60 * MB, prefix: "public/ads/v", what: "Use an MP4 video (H.264).", big: "The ad video is over 60 MB. Keep brand videos short (15–30 s at 720p is about 5 MB)." },
   video: { types: { "video/mp4": "mp4" } as Record<string, string>, max: 400 * MB, prefix: "v", what: "Use an MP4 video (H.264).", big: "The video is over 400 MB. Export it smaller (360p about 60 MB per 10 minutes)." },
   pdf: { types: { "application/pdf": "pdf" } as Record<string, string>, max: 40 * MB, prefix: "d", what: "Use a PDF file.", big: "The PDF is over 40 MB. Compress it first." },
 } as const;

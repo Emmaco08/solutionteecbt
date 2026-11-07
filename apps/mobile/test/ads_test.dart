@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:solutiontee_cbt/core/ads.dart';
+import 'package:solutiontee_cbt/core/house_ads.dart';
 import 'package:solutiontee_cbt/features/study/note_screens.dart' show NoteView;
 import 'package:solutiontee_cbt/widgets/note_markdown.dart' show NoteDoc;
 
@@ -138,5 +139,52 @@ void main() {
     await t.pump();
     expect(find.text('app'), findsOneWidget);
     expect(find.byType(Column), findsNothing);
+  });
+
+  test('brand campaigns: only where they show, with views left and the file; share 100 always takes the slot', () {
+    HouseAd ad(Map<String, dynamic> m) => HouseAd({
+      'id': 'a',
+      'brand': 'Brand',
+      'placements': ['banner', 'card', 'video_pre'],
+      'share': 100,
+      'weight': 1,
+      'left': 2,
+      'banner': 'public/ads/2026/11/b.webp',
+      'card': 'public/ads/2026/11/c.webp',
+      'card_title': 'Hello',
+      'video': null,
+      ...m,
+    });
+    expect(House.pick('banner', list: [ad({})])?.id, 'a');
+    expect(House.pick('card', list: [ad({})])?.id, 'a');
+    expect(House.pick('break', list: [ad({})]), isNull, reason: 'not one of its places');
+    expect(House.pick('video_pre', list: [ad({})]), isNull, reason: 'no video uploaded');
+    expect(
+      House.pick(
+        'banner',
+        list: [
+          ad({'left': 0}),
+        ],
+      ),
+      isNull,
+      reason: 'daily cap reached',
+    );
+    expect(
+      House.pick(
+        'card',
+        list: [
+          ad({'card_title': null}),
+        ],
+      ),
+      isNull,
+      reason: 'a card needs its title',
+    );
+    expect(House.pick('banner', list: const []), isNull);
+    final rare = ad({'share': 1});
+    var taken = 0;
+    for (var i = 0; i < 400; i++) {
+      if (House.pick('banner', list: [rare]) != null) taken++;
+    }
+    expect(taken, lessThan(40), reason: 'a 1% share leaves almost every slot to AdMob');
   });
 }

@@ -10,6 +10,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' show Supabase;
 
 import '../data/db.dart';
 
+import 'house_ads.dart';
 import 'providers.dart';
 
 /// Google AdMob (big update 2, step B, D-101). The admin sets a level (Off … Ultra) and the server answers with what
@@ -254,6 +255,18 @@ class Ads {
     if (!await _spotAllowed(spot)) return false;
     if (_interToday >= c.interstitialPerDay) return false;
     if (_lastFull != null && DateTime.now().difference(_lastFull!).inSeconds < c.interstitialGapS) return false;
+    // A brand campaign may take this break (its share); it counts toward the same gap and daily cap.
+    final house = House.pick('break');
+    if (house != null) {
+      _lastFull = DateTime.now();
+      _interToday++;
+      try {
+        await db?.kvSet('ads:inter:$_interDay', '$_interToday');
+      } catch (_) {}
+      final shown = await House.breakNow(house);
+      _lastFull = DateTime.now();
+      if (shown) return true;
+    }
     final ad = _inter;
     if (ad == null) {
       unawaited(_loadInter());
@@ -560,10 +573,21 @@ class _AdBannerState extends ConsumerState<AdBanner> {
     super.dispose();
   }
 
+  HouseAd? _house;
+  bool _decided = false;
+
   @override
   Widget build(BuildContext context) {
     final c = ref.watch(adsConfigProvider).value ?? AdsConfig.off;
     if (!c.bannerOn(widget.screen) || AdsGate.blocked) return const SizedBox.shrink();
+    // Our own brand campaigns take their share of this slot (decided once per banner).
+    final houses = ref.watch(houseAdsProvider);
+    if (!_decided && !houses.isLoading) {
+      _decided = true;
+      _house = House.pick('banner', list: houses.value ?? const []);
+    }
+    if (!_decided) return const SizedBox.shrink();
+    if (_house != null) return HouseBanner(ad: _house!);
     _load(c);
     if (!_ready || _ad == null) return const SizedBox.shrink();
     return Padding(
@@ -590,6 +614,8 @@ class AdNativeCard extends ConsumerStatefulWidget {
 class _AdNativeCardState extends ConsumerState<AdNativeCard> {
   NativeAd? _ad;
   bool _ready = false;
+  HouseAd? _house;
+  bool _decided = false;
 
   @override
   void dispose() {
@@ -601,6 +627,13 @@ class _AdNativeCardState extends ConsumerState<AdNativeCard> {
   Widget build(BuildContext context) {
     final c = ref.watch(adsConfigProvider).value ?? AdsConfig.off;
     if (!c.format('native') || AdsGate.blocked) return const SizedBox.shrink();
+    final houses = ref.watch(houseAdsProvider);
+    if (!_decided && !houses.isLoading) {
+      _decided = true;
+      _house = House.pick('card', list: houses.value ?? const []);
+    }
+    if (!_decided) return const SizedBox.shrink();
+    if (_house != null) return HouseCard(ad: _house!);
     final dark = Theme.of(context).brightness == Brightness.dark;
     _ad ??= NativeAd(
       adUnitId: c.unit('native'),

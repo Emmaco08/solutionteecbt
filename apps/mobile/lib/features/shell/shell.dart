@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/ads.dart';
+import '../../core/house_ads.dart';
 import '../../widgets/phosphor.g.dart';
 
 import 'package:url_launcher/url_launcher.dart';
@@ -193,6 +194,7 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
       if (prev?.value?['tier'] != next.value?['tier']) ref.invalidate(adsConfigProvider);
     });
     final ads = ref.watch(adsConfigProvider).value;
+    ref.watch(houseAdsProvider); // brand campaigns, ready for breaks
     if (!_birthAsked && ads != null && ads.askBirthYear) {
       _birthAsked = true;
       Future.delayed(const Duration(seconds: 4), () {

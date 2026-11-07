@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/ads.dart';
+import 'core/house_ads.dart';
 
 import 'features/ai/ai_screen.dart';
 import 'features/auth/auth_screens.dart';
@@ -60,6 +61,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 
   return GoRouter(
     initialLocation: '/splash',
+    navigatorKey: rootNavKey,
     observers: [AdsRouteObserver()],
     refreshListenable: refresh,
     redirect: (context, state) {
