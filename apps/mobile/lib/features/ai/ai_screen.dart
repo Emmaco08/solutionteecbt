@@ -7,6 +7,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:speech_to_text/speech_to_text.dart';
 
 import '../../core/providers.dart';
 import '../../data/ai_repo.dart';
@@ -18,6 +19,7 @@ import '../../widgets/note_markdown.dart';
 import '../../widgets/phosphor.g.dart';
 import '../premium/paywall.dart';
 import '../study/note_screens.dart' show NoteBody;
+import 'ai_cards.dart';
 
 /// One bubble in the chat.
 class _Msg {
@@ -28,7 +30,12 @@ class _Msg {
   final bool hasImage;
   String? id;
   bool done, thinking = false, flagged;
-  String? error;
+  String? error, errorCode;
+
+  /// A tool card: [toolRunning] shows the working card, then [card] replaces it.
+  String? toolName, toolLabel;
+  bool toolRunning = false, free = false;
+  Map<String, dynamic>? card;
   NoteDoc? _doc;
   String? _docText;
 
@@ -42,9 +49,9 @@ class _Msg {
 }
 
 const _suggestions = [
-  r'Explain how to solve $x^2 - 5x + 6 = 0$',
-  'What is the difference between speed and velocity?',
-  'Give me 3 tips for JAMB Use of English',
+  AiChip(r'Explain how to solve $x^2 - 5x + 6 = 0$'),
+  AiChip('What is the difference between speed and velocity?'),
+  AiChip('Give me 3 tips for JAMB Use of English'),
 ];
 
 /// SolutionTee AI chat (prototype `ai` and `ai-out`). [questionId] opens with "explain this past question".
@@ -67,6 +74,10 @@ class _AiScreenState extends ConsumerState<AiScreen> {
   StreamSubscription<AiEvent>? _sub;
   Timer? _paint;
   late final AiRepo _repo;
+  final _speech = SpeechToText();
+  // The mic shows until the phone says it has no speech recogniser; the microphone is asked for on the first tap.
+  bool _voiceOk = true, _voiceReady = false, _listening = false;
+  String _voiceBase = '';
 
   bool get _busy => _sub != null;
 
@@ -75,6 +86,66 @@ class _AiScreenState extends ConsumerState<AiScreen> {
     super.initState();
     _repo = ref.read(aiRepoProvider);
     WidgetsBinding.instance.addPostFrameCallback((_) => _apply(widget));
+  }
+
+  /// First tap on the mic: Android asks for the microphone here, not when the screen opens.
+  Future<bool> _initVoice() async {
+    if (_voiceReady) return true;
+    try {
+      _voiceReady = await _speech.initialize(onStatus: _voiceStatus, onError: (_) => _voiceStop());
+    } catch (_) {
+      _voiceReady = false;
+    }
+    if (!_voiceReady && mounted) {
+      setState(() => _voiceOk = false);
+      toast(context, 'Voice typing is not available. Allow the microphone in Settings, or type your question.', icon: PhosphorIcons.microphone());
+    }
+    return _voiceReady;
+  }
+
+  void _voiceStatus(String s) {
+    if ((s == 'done' || s == 'notListening') && _listening && mounted) setState(() => _listening = false);
+  }
+
+  void _voiceStop() {
+    if (_listening) {
+      _speech.stop();
+      if (mounted) setState(() => _listening = false);
+    }
+  }
+
+  Future<void> _toggleVoice() async {
+    if (_listening) {
+      _voiceStop();
+      return;
+    }
+    HapticFeedback.selectionClick();
+    if (!await _initVoice() || !mounted) return;
+    _voiceBase = _input.text.trim();
+    setState(() => _listening = true);
+    try {
+      await _speech.listen(
+        onResult: (r) {
+          final said = r.recognizedWords;
+          final t = _voiceBase.isEmpty ? said : '$_voiceBase $said';
+          _input.value = TextEditingValue(
+            text: t,
+            selection: TextSelection.collapsed(offset: t.length),
+          );
+        },
+        listenOptions: SpeechListenOptions(
+          partialResults: true,
+          cancelOnError: true,
+          pauseFor: const Duration(seconds: 4),
+          listenFor: const Duration(seconds: 60),
+        ),
+      );
+    } catch (_) {
+      if (mounted) {
+        setState(() => _listening = false);
+        toast(context, 'Could not use the microphone.', icon: PhosphorIcons.warningCircle(PhosphorIconsStyle.fill));
+      }
+    }
   }
 
   @override
@@ -97,6 +168,7 @@ class _AiScreenState extends ConsumerState<AiScreen> {
   void dispose() {
     _sub?.cancel();
     _paint?.cancel();
+    if (_listening) _speech.cancel();
     _input.dispose();
     _scroll.dispose();
     super.dispose();
@@ -122,7 +194,7 @@ class _AiScreenState extends ConsumerState<AiScreen> {
               hasImage: r['has_image'] == true,
               id: r['id'] as String?,
               flagged: r['flagged_at'] != null,
-            ),
+            )..card = r['card'] is Map ? Map<String, dynamic>.from(r['card'] as Map) : null,
           );
         }
       });
@@ -173,8 +245,12 @@ class _AiScreenState extends ConsumerState<AiScreen> {
     });
   }
 
-  void _send({String? text, String? questionId, bool explain = false}) {
+  /// A suggestion chip: sends its [AiChip.text] (or label) and runs its tool, if it has one.
+  void _sendChip(AiChip c) => _send(text: c.tool != null ? c.label : (c.text ?? c.label), tool: c.tool, args: c.tool == null ? null : c.args);
+
+  void _send({String? text, String? questionId, bool explain = false, String? tool, Map<String, dynamic>? args}) {
     if (_busy) return;
+    _voiceStop();
     final t = (text ?? _input.text).trim();
     final photo = _photo;
     if (t.isEmpty && photo == null && questionId == null) return;
@@ -196,6 +272,8 @@ class _AiScreenState extends ConsumerState<AiScreen> {
           hint: _hint,
           questionId: questionId,
           explain: explain,
+          tool: tool,
+          args: args,
         )
         .listen(
           (e) {
@@ -209,19 +287,34 @@ class _AiScreenState extends ConsumerState<AiScreen> {
                   ..thinking = false
                   ..text += text;
                 _schedulePaint();
-              case AiDone(:final messageId):
+              case AiTool(:final name, :final running, :final label, :final card):
+                setState(() {
+                  reply
+                    ..thinking = false
+                    ..toolName = name
+                    ..toolRunning = running
+                    ..toolLabel = running ? label : reply.toolLabel
+                    ..card = running ? reply.card : card;
+                });
+                if (!running) _toEnd();
+              case AiDone(:final messageId, :final free):
                 setState(() {
                   reply
                     ..id = messageId
                     ..done = true
-                    ..thinking = false;
+                    ..thinking = false
+                    ..toolRunning = false
+                    ..free = free;
                 });
+                ref.invalidate(aiSuggestionsProvider);
               case AiFailed(:final message, :final code):
                 setState(() {
                   reply
                     ..done = true
                     ..thinking = false
-                    ..error = message;
+                    ..toolRunning = false
+                    ..error = message
+                    ..errorCode = code;
                 });
                 if (code == 'quota') ref.invalidate(aiQuotaProvider);
             }
@@ -232,7 +325,8 @@ class _AiScreenState extends ConsumerState<AiScreen> {
               _sub = null;
               if (!reply.done) {
                 reply.done = true;
-                if (reply.text.isEmpty && reply.error == null) reply.error = 'The answer did not arrive. Try again.';
+                reply.toolRunning = false;
+                if (reply.text.isEmpty && reply.card == null && reply.error == null) reply.error = 'The answer did not arrive. Try again.';
               }
             });
             _toEnd();
@@ -329,6 +423,8 @@ class _AiScreenState extends ConsumerState<AiScreen> {
     final mine = [for (final code in (profile?['jamb_subjects'] as List? ?? const [])) ...subjects.where((s) => s['code'] == code)];
     final chips = mine.isEmpty ? subjects.take(5).toList() : mine;
     final dark = context.isDark;
+    final serverChips = ref.watch(aiSuggestionsProvider).value ?? const <AiChip>[];
+    final showChips = !_busy && !out && _msgs.isNotEmpty && !_msgs.last.mine && _msgs.last.done && serverChips.isNotEmpty;
 
     return Scaffold(
       appBar: TopBar(
@@ -379,11 +475,7 @@ class _AiScreenState extends ConsumerState<AiScreen> {
                 : _loadingChat
                 ? const Center(child: CircularProgressIndicator())
                 : _msgs.isEmpty
-                ? _Welcome(
-                    first: first,
-                    onSuggest: (s) => _send(text: s),
-                    onSnap: _pickPhoto,
-                  )
+                ? _Welcome(first: first, chips: serverChips.isEmpty ? _suggestions : serverChips, onSuggest: _sendChip, onSnap: _pickPhoto)
                 : ListView.builder(
                     controller: _scroll,
                     padding: const EdgeInsets.fromLTRB(Space.s4, Space.s4, Space.s4, Space.s3),
@@ -419,6 +511,8 @@ class _AiScreenState extends ConsumerState<AiScreen> {
                                   toast(context, 'Copied', icon: PhosphorIcons.copy(PhosphorIconsStyle.fill));
                                 },
                                 onReport: () => _report(m),
+                                send: _send,
+                                check: _repo.quizCheck,
                                 onRetry: i > 0 && _msgs[i - 1].mine
                                     ? () {
                                         final q = _msgs[i - 1];
@@ -432,6 +526,11 @@ class _AiScreenState extends ConsumerState<AiScreen> {
                     },
                   ),
           ),
+          if (showChips)
+            Padding(
+              padding: const EdgeInsets.only(top: Space.s1, bottom: Space.s1),
+              child: AiChipRow(key: ValueKey(serverChips.map((e) => e.label).join('|')), chips: serverChips.take(5).toList(), onTap: _sendChip),
+            ),
           Padding(
             padding: const EdgeInsets.fromLTRB(Space.s4, 4, Space.s4, 4),
             child: Row(
@@ -480,6 +579,9 @@ class _AiScreenState extends ConsumerState<AiScreen> {
             busy: _busy,
             disabled: out,
             hasPhoto: _photo != null,
+            voice: _voiceOk,
+            listening: _listening,
+            onMic: _toggleVoice,
             onAttach: _pickPhoto,
             onSend: () => _send(),
             onStop: () => setState(_stop),
@@ -514,9 +616,10 @@ class _QuotaChip extends StatelessWidget {
 }
 
 class _Welcome extends StatelessWidget {
-  const _Welcome({required this.first, required this.onSuggest, required this.onSnap});
+  const _Welcome({required this.first, required this.chips, required this.onSuggest, required this.onSnap});
   final String first;
-  final ValueChanged<String> onSuggest;
+  final List<AiChip> chips;
+  final ValueChanged<AiChip> onSuggest;
   final VoidCallback onSnap;
   @override
   Widget build(BuildContext context) {
@@ -545,7 +648,8 @@ class _Welcome extends StatelessWidget {
             onTap: onSnap,
           ),
         ),
-        for (final (i, s) in _suggestions.indexed) item(i + 1, _Suggestion(icon: PhosphorIcons.arrowUpRight(), text: s, onTap: () => onSuggest(s))),
+        for (final (i, s) in chips.indexed)
+          item(i + 1, _Suggestion(icon: s.tool == null ? PhosphorIcons.arrowUpRight() : aiToolIcon(s.tool!), text: s.label, onTap: () => onSuggest(s))),
       ],
     );
   }
@@ -665,8 +769,10 @@ class _MyBubble extends StatelessWidget {
 }
 
 class _AiBubble extends StatelessWidget {
-  const _AiBubble({required this.m, required this.dark, required this.onCopy, required this.onReport, this.onRetry});
+  const _AiBubble({required this.m, required this.dark, required this.onCopy, required this.onReport, required this.send, required this.check, this.onRetry});
   final _Msg m;
+  final AiSendFn send;
+  final QuizCheckFn check;
   final bool dark;
   final VoidCallback onCopy, onReport;
   final VoidCallback? onRetry;
@@ -679,23 +785,29 @@ class _AiBubble extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(m.error!, style: context.ty.sm.col(c.error)),
-          if (onRetry != null) ...[
+          if (m.errorCode == 'locked') ...[
+            const Gap(Space.s2),
+            Btn(
+              'Upgrade',
+              kind: BtnKind.accent,
+              sm: true,
+              leading: PhosphorIcons.crownSimple(PhosphorIconsStyle.fill),
+              onPressed: () => showPaywall(context, reason: 'years'),
+            ),
+          ] else if (onRetry != null) ...[
             const Gap(Space.s2),
             Btn('Try again', kind: BtnKind.outline, sm: true, leading: PhosphorIcons.arrowClockwise(), onPressed: onRetry),
           ],
         ],
       );
     } else if (m.text.isEmpty) {
-      content = Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const _TypingDots(),
-          if (m.thinking) ...[const SizedBox(width: 8), Text('Thinking…', style: context.ty.cap.col(c.textMuted))],
-        ],
-      );
+      content = AiTyping(label: m.thinking ? 'Thinking…' : null);
     } else {
       content = NoteBody(text: m.text, scale: .94);
     }
+    final hasTool = m.toolName != null || m.card != null;
+    // While a tool runs, its working card is the only thing shown; the bubble comes back with text, an error or thinking.
+    final showBubble = !(hasTool && m.text.isEmpty && m.error == null && !m.thinking);
     return Align(
       alignment: Alignment.centerLeft,
       child: ConstrainedBox(
@@ -703,20 +815,31 @@ class _AiBubble extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
-                color: c.surface,
-                border: Border.all(color: c.border),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(18),
-                  topRight: Radius.circular(18),
-                  bottomRight: Radius.circular(18),
-                  bottomLeft: Radius.circular(6),
-                ),
+            if (hasTool)
+              Padding(
+                padding: EdgeInsets.only(bottom: m.text.isEmpty && !m.thinking ? 0 : Space.s2),
+                child: AiToolSlot(name: m.toolName!, label: m.toolLabel, running: m.toolRunning, card: m.card, send: send, check: check),
               ),
-              child: RepaintBoundary(child: content),
-            ),
+            if (showBubble)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: c.surface,
+                  border: Border.all(color: c.border),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(18),
+                    topRight: Radius.circular(18),
+                    bottomRight: Radius.circular(18),
+                    bottomLeft: Radius.circular(6),
+                  ),
+                ),
+                child: RepaintBoundary(child: content),
+              ),
+            if (m.done && m.free && m.text.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: Space.s1, left: Space.s1),
+                child: Text('Free · no prompt used', style: context.ty.cap.col(c.textSubtle)),
+              ),
             if (m.done && m.text.isNotEmpty)
               Row(
                 children: [
@@ -737,39 +860,22 @@ class _AiBubble extends StatelessWidget {
   }
 }
 
-class _TypingDots extends StatelessWidget {
-  const _TypingDots();
-  @override
-  Widget build(BuildContext context) {
-    final rm = context.reduceMotion;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (var i = 0; i < 3; i++)
-          Container(
-            width: 7,
-            height: 7,
-            margin: const EdgeInsets.symmetric(horizontal: 2),
-            decoration: BoxDecoration(color: context.c.textSubtle, shape: BoxShape.circle),
-          ).animate(onPlay: (a) => rm ? null : a.repeat(reverse: true)).fadeIn(begin: .3, delay: (150 * i).ms, duration: 450.ms),
-      ],
-    );
-  }
-}
-
 class _Composer extends StatelessWidget {
   const _Composer({
     required this.controller,
     required this.busy,
     required this.disabled,
     required this.hasPhoto,
+    required this.voice,
+    required this.listening,
+    required this.onMic,
     required this.onAttach,
     required this.onSend,
     required this.onStop,
   });
   final TextEditingController controller;
-  final bool busy, disabled, hasPhoto;
-  final VoidCallback onAttach, onSend, onStop;
+  final bool busy, disabled, hasPhoto, voice, listening;
+  final VoidCallback onAttach, onSend, onStop, onMic;
   @override
   Widget build(BuildContext context) {
     final c = context.c;
@@ -811,6 +917,7 @@ class _Composer extends StatelessWidget {
                   ),
                 ),
               ),
+              if (voice) _MicButton(listening: listening, onTap: disabled || busy ? null : onMic),
               const Gap(Space.s2),
               Semantics(
                 button: true,
@@ -831,6 +938,48 @@ class _Composer extends StatelessWidget {
                   ),
                 ),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Microphone button; while listening it shows a pulsing red ring (a still ring with reduce motion).
+class _MicButton extends StatelessWidget {
+  const _MicButton({required this.listening, required this.onTap});
+  final bool listening;
+  final VoidCallback? onTap;
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    final rm = context.reduceMotion;
+    Widget ring = Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: c.errorSoft,
+        border: Border.all(color: c.error, width: 2),
+      ),
+    );
+    if (!rm) ring = ring.animate(onPlay: (a) => a.repeat(reverse: true)).scaleXY(begin: .85, end: 1.15, duration: 700.ms, curve: Curves.easeOut);
+    return Semantics(
+      button: true,
+      label: listening ? 'Stop listening' : 'Speak your question',
+      child: Pressable(
+        onTap: onTap,
+        scale: .9,
+        borderRadius: BorderRadius.circular(24),
+        child: SizedBox(
+          width: 48,
+          height: 48,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              if (listening) ring,
+              Icon(listening ? PhosphorIcons.stop(PhosphorIconsStyle.fill) : PhosphorIcons.microphone(), size: 22, color: listening ? c.error : c.text),
             ],
           ),
         ),

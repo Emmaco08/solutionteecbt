@@ -1,5 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- AI tutor voice input (speech to text, the phone's own recogniser). Asked only when the student taps the mic. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <!-- Screenshot / screen-recording detection in tests and challenges (D-075). Normal permissions, no prompt. -->
     <uses-permission android:name="android.permission.DETECT_SCREEN_CAPTURE"/>
     <uses-permission android:name="android.permission.DETECT_SCREEN_RECORDING"/>
@@ -44,6 +46,9 @@
 
          In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
     <queries>
+        <intent>
+            <action android:name="android.speech.RecognitionService"/>
+        </intent>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>

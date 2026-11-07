@@ -28,6 +28,12 @@ final aiChatsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
 
 final aiRepoProvider = Provider<AiRepo>((ref) => AiRepo(ref));
 
+/// Server-made suggestion chips. Invalidated after each answer so they follow what the student just did.
+final aiSuggestionsProvider = FutureProvider<List<AiChip>>((ref) async {
+  ref.watch(sessionProvider);
+  return ref.read(aiRepoProvider).suggestions();
+});
+
 /// One event from the tutor's stream.
 sealed class AiEvent {}
 
@@ -44,15 +50,41 @@ class AiDelta extends AiEvent {
 }
 
 class AiDone extends AiEvent {
-  AiDone({this.messageId, this.left, this.model});
+  AiDone({this.messageId, this.left, this.model, this.free = false});
   final String? messageId, model;
   final int? left;
+
+  /// True when no prompt was used (a tool the server answered by itself).
+  final bool free;
+}
+
+/// A tool the tutor is running (state `run`, with a [label]) or has finished (state `done`, with a [card] or null).
+class AiTool extends AiEvent {
+  AiTool(this.name, this.state, {this.label, this.card});
+  final String name, state;
+  final String? label;
+  final Map<String, dynamic>? card;
+  bool get running => state == 'run';
+}
+
+/// One suggestion chip: show [label]; tapping sends [text] (or the label) and, when set, runs [tool] with [args].
+class AiChip {
+  const AiChip(this.label, {this.text, this.tool, this.args = const {}});
+  final String label;
+  final String? text, tool;
+  final Map<String, dynamic> args;
+  factory AiChip.fromJson(Map<String, dynamic> j) => AiChip(
+    '${j['label'] ?? ''}',
+    text: j['text'] as String?,
+    tool: j['tool'] as String?,
+    args: j['args'] is Map ? Map<String, dynamic>.from(j['args'] as Map) : const {},
+  );
 }
 
 class AiFailed extends AiEvent {
   AiFailed(this.message, {this.code});
   final String message;
-  final String? code; // quota | slow | busy | banned | auth | net
+  final String? code; // quota | slow | busy | banned | auth | net | locked
 }
 
 /// Turns Server-Sent Events text into [AiEvent]s. Lines may arrive split across network chunks.
@@ -86,7 +118,13 @@ class AiSseParser {
         'start' => AiStart('${j['chat_id']}'),
         'think' => AiThinking(),
         'd' => AiDelta('${j['c'] ?? ''}'),
-        'done' => AiDone(messageId: j['message_id'] as String?, left: (j['left'] as num?)?.toInt(), model: j['model'] as String?),
+        'done' => AiDone(messageId: j['message_id'] as String?, left: (j['left'] as num?)?.toInt(), model: j['model'] as String?, free: j['free'] == true),
+        'tool' => AiTool(
+          '${j['name'] ?? ''}',
+          '${j['state'] ?? ''}',
+          label: j['label'] as String?,
+          card: j['card'] is Map ? Map<String, dynamic>.from(j['card'] as Map) : null,
+        ),
         'error' => AiFailed('${j['message'] ?? 'Something went wrong. Try again.'}', code: j['code'] as String?),
         _ => null,
       };
@@ -112,6 +150,8 @@ class AiRepo {
     bool hint = false,
     String? questionId,
     bool explain = false,
+    String? tool,
+    Map<String, dynamic>? args,
   }) async* {
     final token = _sb.auth.currentSession?.accessToken;
     if (token == null) {
@@ -130,6 +170,8 @@ class AiRepo {
           'hint': hint,
           'question_id': ?questionId,
           'explain': explain,
+          'tool': ?tool,
+          'args': ?args,
         });
       final res = await client.send(req).timeout(const Duration(seconds: 40));
       if (res.statusCode != 200) {
@@ -173,11 +215,49 @@ class AiRepo {
   Future<List<Map<String, dynamic>>> messages(String chatId) async {
     final j = await _sb
         .from('ai_messages')
-        .select('id, role, content, has_image, question_id, hint, model, flagged_at, created_at')
+        .select('id, role, content, has_image, question_id, hint, model, flagged_at, created_at, card')
         .eq('chat_id', chatId)
         .order('created_at', ascending: true)
         .limit(200);
     return rows(j);
+  }
+
+  Map<String, String> get _headers => {
+    'authorization': 'Bearer ${_sb.auth.currentSession?.accessToken ?? ''}',
+    'apikey': Config.supabasePublishableKey,
+    'content-type': 'application/json',
+  };
+
+  Future<Map<String, dynamic>?> _action(Map<String, dynamic> body) async {
+    if (_sb.auth.currentSession?.accessToken == null) return null;
+    final res = await http
+        .post(Uri.parse('${Config.supabaseUrl}/functions/v1/ai-chat'), headers: _headers, body: jsonEncode(body))
+        .timeout(const Duration(seconds: 15));
+    if (res.statusCode != 200) return null;
+    return Map<String, dynamic>.from(jsonDecode(res.body) as Map);
+  }
+
+  /// Suggestion chips made by the server (no prompt used). Empty on any error: the screen then shows its own list.
+  Future<List<AiChip>> suggestions() async {
+    try {
+      final j = await _action({'action': 'suggest'});
+      final list = (j?['chips'] as List?) ?? const [];
+      return [
+        for (final c in list)
+          if (c is Map && '${c['label'] ?? ''}'.isNotEmpty) AiChip.fromJson(Map<String, dynamic>.from(c)),
+      ];
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// Marks one quiz answer on the server (free): {ok, correct, answer, explanation}. `{ok:false}` on any error.
+  Future<Map<String, dynamic>> quizCheck(String questionId, String choice) async {
+    try {
+      return await _action({'action': 'quiz_check', 'question_id': questionId, 'choice': choice}) ?? const {'ok': false};
+    } catch (_) {
+      return const {'ok': false};
+    }
   }
 
   Future<void> deleteChat(String chatId) async {

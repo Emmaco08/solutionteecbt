@@ -26,6 +26,8 @@ class TestRequest {
     this.limitMinutes,
     this.timed = true,
     this.title = '',
+    this.ids = const [],
+    this.years = const [],
   });
   final TestMode mode;
   final int examId;
@@ -37,6 +39,12 @@ class TestRequest {
   final int? limitMinutes; // fixed time (quick, topic); otherwise minutes per question
   final bool timed;
   final String title;
+
+  /// Exact questions picked by the AI tutor (server order). When set, the test is built from these only.
+  final List<String> ids;
+
+  /// The years the AI tutor's [ids] come from.
+  final List<int> years;
 }
 
 final testsRepoProvider = Provider<TestsRepo>((ref) => TestsRepo(ref));
@@ -151,10 +159,30 @@ class TestsRepo {
     return out;
   }
 
+  /// Keeps only the questions whose id is in [ids], in the server's order (first copy of each id), with passage groups together.
+  static List<CachedQuestion> pickByIds(Iterable<CachedQuestion> pool, List<String> ids) {
+    final order = {for (final (i, id) in ids.indexed) id: i};
+    final seen = <String>{};
+    final kept = [
+      for (final q in pool)
+        if (order.containsKey(q.id) && seen.add(q.id)) q,
+    ]..sort((a, b) => order[a.id]!.compareTo(order[b.id]!));
+    return groupPassages(kept);
+  }
+
   /// Builds a test, saves it on the phone (so it can be resumed) and returns its id.
   Future<String> start(TestRequest r, {required int Function(int subjectId) countFor, required double minutesPerQuestion}) async {
     final picked = <CachedQuestion>[];
     for (final (si, sid) in r.subjectIds.indexed) {
+      if (r.ids.isNotEmpty) {
+        // AI tutor test: fetch each year's paper through the plan check and keep only the questions the tutor picked.
+        final pool = <CachedQuestion>[];
+        for (final y in r.years.isNotEmpty ? r.years : await openYears(r.examId, sid)) {
+          pool.addAll(await paper(r.examId, sid, y));
+        }
+        picked.addAll(pickByIds(pool, r.ids));
+        continue;
+      }
       final years = r.year != null ? [r.year!] : await openYears(r.examId, sid);
       if (years.isEmpty) throw ApiError('No open years for this subject yet.');
       List<CachedQuestion> pool;

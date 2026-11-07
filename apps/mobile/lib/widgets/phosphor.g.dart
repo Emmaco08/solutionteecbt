@@ -212,6 +212,8 @@ abstract final class PhosphorIcons {
       s == PhosphorIconsStyle.regular ? const IconData(0xe320, fontFamily: 'PhosphorRegular') : const IconData(0xe320, fontFamily: 'PhosphorFill');
   static IconData megaphone([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe324, fontFamily: 'PhosphorRegular') : const IconData(0xe324, fontFamily: 'PhosphorFill');
+  static IconData microphone([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
+      s == PhosphorIconsStyle.regular ? const IconData(0xe326, fontFamily: 'PhosphorRegular') : const IconData(0xe326, fontFamily: 'PhosphorFill');
   static IconData minusCircle([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe32c, fontFamily: 'PhosphorRegular') : const IconData(0xe32c, fontFamily: 'PhosphorFill');
   static IconData money([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
@@ -240,8 +242,6 @@ abstract final class PhosphorIcons {
       s == PhosphorIconsStyle.regular ? const IconData(0xe3b8, fontFamily: 'PhosphorRegular') : const IconData(0xe3b8, fontFamily: 'PhosphorFill');
   static IconData phoneCall([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe3ba, fontFamily: 'PhosphorRegular') : const IconData(0xe3ba, fontFamily: 'PhosphorFill');
-  static IconData piggyBank([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
-      s == PhosphorIconsStyle.regular ? const IconData(0xea04, fontFamily: 'PhosphorRegular') : const IconData(0xea04, fontFamily: 'PhosphorFill');
   static IconData plant([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xebae, fontFamily: 'PhosphorRegular') : const IconData(0xebae, fontFamily: 'PhosphorFill');
   static IconData play([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
