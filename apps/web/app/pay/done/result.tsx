@@ -3,6 +3,7 @@ import Link from "next/link";
 import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useState } from "react";
 import { CheckCircle, Clock, SpinnerGap, WarningCircle } from "@phosphor-icons/react";
+import { createClient } from "@/lib/supabase/client";
 import { payStatus, type PayStatus } from "./status";
 
 /** Checks the payment every 4 s for up to 3 minutes (the Paystack webhook usually arrives within seconds). */
@@ -10,6 +11,12 @@ export function PayResult({ reference, initial }: { reference: string; initial: 
   const [s, setS] = useState(initial);
   const [tries, setTries] = useState(0);
   const still = useReducedMotion();
+  // Paid: the payment tab is cleared and the website logs out (Premium lives on the account, in the app).
+  useEffect(() => {
+    if (s.status !== "success") return;
+    try { sessionStorage.removeItem("st-pay-pending"); } catch {}
+    void createClient().auth.signOut({ scope: "local" });
+  }, [s.status]);
   useEffect(() => {
     if (s.status !== "pending" && s.status !== "abandoned") return;
     if (tries > 45) return;
@@ -54,6 +61,9 @@ export function PayResult({ reference, initial }: { reference: string; initial: 
       <h1 className="mt-5 text-2xl font-bold">Confirming your payment…</h1>
       <p className="mt-2 text-[15px] text-muted-foreground">{s.status === "unknown" ? "We could not find this payment yet." : "This usually takes a few seconds."} Paid by bank transfer? It can take a few minutes. You do not need to pay again.</p>
       {tries > 45 ? <p className="mt-4 text-sm">Still waiting. Open the app later: Premium turns on by itself when the payment arrives.</p> : null}
+      {tries >= 5 ? (
+        <Link href="/pay" className="mt-5 inline-flex h-11 items-center justify-center rounded-2xl border px-5 text-sm font-bold">Cancelled or want another way to pay? Go back</Link>
+      ) : null}
     </div>
   );
 }

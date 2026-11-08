@@ -95,6 +95,12 @@ class WebApi {
 
   Future<void> deleteAccount() => _post('/api/account/delete', {'confirm': 'DELETE'}, auth: true);
 
+  /// A one-time code (2 minutes, works once) that opens the payment website already logged in (D-115).
+  Future<String?> webHandoff({String? plan}) async {
+    final d = await _post('/api/web/handoff', {'plan': ?plan}, auth: true);
+    return d['code'] as String?;
+  }
+
   /// Students aged 13 to 17: email the parent's or guardian's welcome notice (D-109). Returns the message to show.
   Future<String> sendGuardianNotice(String email) async {
     final d = await _post('/api/account/guardian', {'email': email}, auth: true);

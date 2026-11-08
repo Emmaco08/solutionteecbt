@@ -1,6 +1,8 @@
 // Paystack payments for the direct APK and the website (milestone 4C, docs/plans/phase-4c.md, D-061).
 // POST /functions/v1/paystack   Authorization: Bearer <access token>
-//   {action:"start", plan, code?, source?: "app"|"web", method?, bank?}
+//   {action:"start", plan, code?, source?: "app"|"web", method?, bank?, callback?, cancel?}
+//      callback / cancel (website, D-115): where Paystack sends the student after paying, or when they press Cancel on
+//      Paystack's page. Only our own /pay/done and /pay pages are accepted; the reference is added to the cancel page.
 //      → {free:true, expires_at} when a 100% code covers it, else the payment to open (below)
 //   {action:"start_xp", xp, source?: "app"|"web", method?, bank?}   an XP pack (D-084); the price comes from xp_pack_start()
 //   {action:"start_item", kind:"item"|"year", ref, source?, method?, bank?}   one study item or exam year (D-106); price from content_pay_start()
@@ -40,6 +42,10 @@ const ERR: Record<string, [number, string]> = {
   xp_off: [400, "XP is paused right now."],
 };
 
+/** Pages Paystack may send a student back to (the payment website and the admin site only). */
+const CALLBACK = /^https:\/\/(cbt|admin)\.solutiontee\.com\/pay\/done$/;
+const CANCEL = /^https:\/\/(cbt|admin)\.solutiontee\.com\/pay$/;
+
 const USSD_BANKS: Record<string, string> = { "737": "GTBank", "919": "UBA", "822": "Sterling Bank", "966": "Zenith Bank" };
 
 /** Paystack's public key for the in-app sheet, only when it matches the secret key's mode (test with test, live with live). */
@@ -52,7 +58,7 @@ function publicKey(): string | null {
 
 /** Opens the payment with Paystack for a reference made by pay_start / xp_pack_start (the server's price). */
 async function openPayment(r: Record<string, unknown>, method: string, bank: string, meta: Record<string, unknown>, label: string,
-  bankAcct: { code: string; account_number: string } = { code: "", account_number: "" }) {
+  bankAcct: { code: string; account_number: string } = { code: "", account_number: "" }, back?: { callback?: string; cancel?: string }) {
   const reference = String(r.reference), amount = Number(r.amount_kobo);
   const fail = async (status: number, body: Record<string, unknown> | undefined, kind: string) => {
     await rpc("pay_note", { p_reference: reference, p_provider: "paystack", p_kind: kind, p_ok: false,
@@ -102,8 +108,8 @@ async function openPayment(r: Record<string, unknown>, method: string, bank: str
       email: r.email, amount, currency: "NGN", reference,
       // Card: Paystack's sheet opens straight on the card form. Page: every method Paystack offers (the backup).
       ...(method === "card" ? { channels: ["card"] } : {}),
-      ...(Deno.env.get("PAYSTACK_CALLBACK_URL") ? { callback_url: Deno.env.get("PAYSTACK_CALLBACK_URL") } : {}),
-      metadata,
+      ...(back?.callback ? { callback_url: back.callback } : Deno.env.get("PAYSTACK_CALLBACK_URL") ? { callback_url: Deno.env.get("PAYSTACK_CALLBACK_URL") } : {}),
+      metadata: back?.cancel ? { ...metadata, cancel_action: `${back.cancel}?cancelled=${reference}` } : metadata,
     }),
   });
   if (!init.ok) {
@@ -230,6 +236,10 @@ Deno.serve(async (req) => {
   const bank = String(body.bank ?? "737");
   if (method === "ussd" && !USSD_BANKS[bank]) return json({ error: "Choose your bank for USSD." }, 400);
   const bankAcct = { code: String(body.bank_code ?? ""), account_number: String(body.account_number ?? "") };
+  const back = {
+    callback: typeof body.callback === "string" && CALLBACK.test(body.callback) ? body.callback : undefined,
+    cancel: typeof body.cancel === "string" && CANCEL.test(body.cancel) ? body.cancel : undefined,
+  };
   if (method === "bank" && (!/^[0-9A-Za-z]{2,12}$/.test(bankAcct.code) || !/^[0-9]{10,11}$/.test(bankAcct.account_number))) {
     return json({ error: "Choose your bank or app and enter your 10-digit account number." }, 400);
   }
@@ -245,7 +255,7 @@ Deno.serve(async (req) => {
         return json({ error: message, code: e, plans: r.plans ?? null }, status);
       }
       if (r.free) return json({ free: true, reference: r.reference, expires_at: r.expires_at });
-      return await openPayment(r, method, bank, { payment_id: r.payment_id, plan }, "plan", bankAcct);
+      return await openPayment(r, method, bank, { payment_id: r.payment_id, plan }, "plan", bankAcct, back);
     }
 
     if (action === "start_xp") {
@@ -269,7 +279,7 @@ Deno.serve(async (req) => {
         const [status, message] = ERR[e] ?? (e === "bought" ? [409, "You already own this."] : [400, "This cannot be bought right now."]);
         return json({ error: message, code: e }, status);
       }
-      return await openPayment(r, method, bank, { payment_id: r.payment_id, item: `${kind}:${ref}` }, String(r.title ?? "Study item"), bankAcct);
+      return await openPayment(r, method, bank, { payment_id: r.payment_id, item: `${kind}:${ref}` }, String(r.title ?? "Study item"), bankAcct, back);
     }
 
     if (action === "pay_banks") {

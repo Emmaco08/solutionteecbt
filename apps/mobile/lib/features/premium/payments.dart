@@ -75,11 +75,16 @@ final paySettingsProvider = Provider<PaySettings>((ref) {
   return PaySettings(s is Map ? Map<String, dynamic>.from(s) : const {});
 });
 
-/// Opens the payment website in the browser (Play app, when the admin offers it). The plan is pre-chosen.
-Future<bool> openPayWebsite(WidgetRef ref, {String? plan}) {
+/// Opens the payment website in the browser (Play app, when the admin offers it). The plan is pre-chosen, and a
+/// one-time code logs the student in there (D-115); without it (offline, old website) they log in with their email.
+Future<bool> openPayWebsite(WidgetRef ref, {String? plan}) async {
   final base = Uri.parse(ref.read(paySettingsProvider).websiteUrl);
-  final email = Supabase.instance.client.auth.currentUser?.email;
-  final uri = base.replace(queryParameters: {...base.queryParameters, 'plan': ?plan, 'email': ?email, 'from': 'app'});
+  String? code;
+  try {
+    code = await ref.read(apiProvider).webHandoff(plan: plan).timeout(const Duration(seconds: 8));
+  } catch (_) {}
+  final email = code == null ? Supabase.instance.client.auth.currentUser?.email : null;
+  final uri = base.replace(queryParameters: {...base.queryParameters, 'plan': ?plan, 'h': ?code, 'email': ?email, 'from': 'app'});
   return launchUrl(uri, mode: LaunchMode.externalApplication).catchError((_) => false);
 }
 

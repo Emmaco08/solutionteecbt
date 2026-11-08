@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ArrowRight, CheckCircle, Crown, EnvelopeSimple, LockSimple, ShieldCheck, SignOut, SpinnerGap, Ticket } from "@phosphor-icons/react";
+import { ArrowLeft, ArrowRight, CheckCircle, Crown, EnvelopeSimple, LockSimple, ShieldCheck, SignOut, SpinnerGap, Ticket, XCircle } from "@phosphor-icons/react";
 import type { Session } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 
@@ -13,6 +13,17 @@ type Quote = { list_kobo: number; discount_kobo: number; fee_kobo?: number; amou
 const ng = (kobo: number) => `₦${(kobo / 100).toLocaleString("en-NG")}`;
 const day = (s: string) => new Date(s).toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" });
 const ease = [0.22, 1, 0.36, 1] as const;
+const PENDING = "st-pay-pending"; // the payment opened in Paystack (this tab only)
+const REF = /^st_[0-9a-f]{20}$/;
+const IDLE_MS = 15 * 60_000; // logged out after 15 minutes without activity
+
+/** Our own pages only: Paystack sends the student back here (the server checks these too). */
+function backPages() {
+  const o = window.location.origin;
+  return /^https:\/\/(cbt|admin)\.solutiontee\.com$/.test(o) ? { callback: `${o}/pay/done`, cancel: `${o}/pay` } : {};
+}
+
+type Left = { kind: "checking" | "cancelled"; ref: string } | null;
 
 const QUOTE_ERRORS: Record<string, string> = {
   not_found: "We could not find that code. Check the spelling.", expired: "This code has expired.", used_up: "This code has been used up.",
@@ -41,6 +52,90 @@ export function PayFlow() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const [left, setLeft] = useState<Left>(null);
+  const [handoff, setHandoff] = useState(Boolean(sp.get("h")));
+
+  /** Calls the Paystack Edge Function as the signed-in student. */
+  const edge = useCallback(async (s: Session, body: Record<string, unknown>) => {
+    const r = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/paystack`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${s.access_token}`, apikey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY! },
+      body: JSON.stringify(body),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error ?? "Paystack is not answering. Try again in a moment.");
+    return j as Record<string, unknown>;
+  }, []);
+
+  // From the app (D-115): a one-time code in the link logs the student in, then is removed from the address bar.
+  useEffect(() => {
+    const code = sp.get("h");
+    if (!code) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete("h");
+    url.searchParams.delete("email");
+    window.history.replaceState(null, "", url.pathname + url.search);
+    let live = true;
+    (async () => {
+      try {
+        const r = await fetch("/api/web/handoff/redeem", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ code }) });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok || !j.token_hash) throw new Error(j.error ?? "This link has expired. Log in with your email instead.");
+        await sb.auth.signOut({ scope: "local" }); // never mix two accounts
+        const { error } = await sb.auth.verifyOtp({ token_hash: j.token_hash, type: "magiclink" });
+        if (error) throw new Error("This link has expired. Log in with your email instead.");
+        if (live && j.plan) setPick(String(j.plan));
+      } catch (x) {
+        if (live) setErr(x instanceof Error ? x.message : "This link has expired.");
+      } finally {
+        if (live) setHandoff(false);
+      }
+    })();
+    return () => { live = false; };
+  }, [sp, sb]);
+
+  // Back from Paystack without paying (Cancel on Paystack's page, or the back button): ask the server, never spin forever.
+  useEffect(() => {
+    if (!session) return;
+    let ref = sp.get("cancelled") ?? "";
+    try { ref = ref || (JSON.parse(sessionStorage.getItem(PENDING) ?? "null")?.ref ?? ""); } catch {}
+    if (!REF.test(ref)) return;
+    let live = true;
+    const pressedCancel = Boolean(sp.get("cancelled"));
+    queueMicrotask(() => { if (live) setLeft({ kind: "checking", ref }); });
+    edge(session, { action: pressedCancel ? "cancel" : "check", reference: ref, reason: pressedCancel ? "pressed Cancel on Paystack" : undefined })
+      .then((j) => {
+        if (!live) return;
+        if (j.status === "success" || j.status === "needs_review") {
+          try { sessionStorage.removeItem(PENDING); } catch {}
+          router.replace(`/pay/done?reference=${ref}`);
+          return;
+        }
+        if (j.status === "pending" && !pressedCancel) { setLeft(null); setErr("Your last payment is not finished yet. If you paid by transfer, it can take a few minutes."); return; }
+        try { sessionStorage.removeItem(PENDING); } catch {}
+        setLeft({ kind: "cancelled", ref });
+      })
+      .catch(() => { if (live) setLeft(null); });
+    if (pressedCancel) window.history.replaceState(null, "", window.location.pathname);
+    return () => { live = false; };
+  }, [session, sp, edge, router]);
+
+  // The page can come back from the browser's memory (back button): stop the spinner.
+  useEffect(() => {
+    const show = (e: PageTransitionEvent) => { if (e.persisted) setBusy(false); };
+    window.addEventListener("pageshow", show);
+    return () => window.removeEventListener("pageshow", show);
+  }, []);
+
+  // Logged out after 15 minutes without activity (shared phones and cafés).
+  useEffect(() => {
+    if (!session) return;
+    let t = setTimeout(() => sb.auth.signOut(), IDLE_MS);
+    const poke = () => { clearTimeout(t); t = setTimeout(() => sb.auth.signOut(), IDLE_MS); };
+    const evs = ["pointerdown", "keydown", "scroll"] as const;
+    evs.forEach((e) => window.addEventListener(e, poke, { passive: true }));
+    return () => { clearTimeout(t); evs.forEach((e) => window.removeEventListener(e, poke)); };
+  }, [session, sb]);
 
   useEffect(() => {
     sb.auth.getSession().then(({ data }) => { setSession(data.session); setReady(true); });
@@ -102,23 +197,20 @@ export function PayFlow() {
 
   async function pay() {
     if (!session) return;
-    setBusy(true); setErr(null);
+    setBusy(true); setErr(null); setLeft(null);
     try {
-      const r = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/paystack`, {
-        method: "POST",
-        headers: { "content-type": "application/json", authorization: `Bearer ${session.access_token}`, apikey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY! },
-        body: JSON.stringify({ action: "start", plan: pick, code: applied, source: "web", method: "page" }),
-      });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(j.error ?? "Paystack is not answering. Try again in a moment.");
-      if (j.free) { router.push(`/pay/done?reference=${encodeURIComponent(j.reference)}`); return; }
-      if (!j.url) throw new Error("Paystack did not open. Try again.");
-      window.location.href = j.url;
+      const j = await edge(session, { action: "start", plan: pick, code: applied, source: "web", method: "page", ...backPages() });
+      if (j.free) { router.push(`/pay/done?reference=${encodeURIComponent(String(j.reference))}`); return; }
+      const url = String(j.url ?? "");
+      // Only Paystack's own checkout page, never anywhere else.
+      if (!/^https:\/\/checkout\.paystack\.com\//.test(url) || !REF.test(String(j.reference ?? ""))) throw new Error("Paystack did not open. Try again.");
+      try { sessionStorage.setItem(PENDING, JSON.stringify({ ref: j.reference, at: Date.now() })); } catch {}
+      window.location.assign(url);
     } catch (x) { setErr(x instanceof Error ? x.message : "No internet connection."); setBusy(false); }
   }
 
   const plan = plans.find((p) => p.code === pick);
-  const step = !ready ? "load" : !session ? (codeLen ? "code" : "email") : "plan";
+  const step = !ready || handoff ? "load" : !session ? (codeLen ? "code" : "email") : "plan";
   const anim = { initial: still ? false : { opacity: 0, x: 24 }, animate: { opacity: 1, x: 0 }, exit: still ? undefined : { opacity: 0, x: -24 }, transition: { duration: 0.35, ease } } as const;
 
   return (
@@ -173,6 +265,19 @@ export function PayFlow() {
             <motion.div key="plan" {...anim}>
               <p className="text-sm text-muted-foreground">Logged in as <b className="text-foreground">{session?.user.email}</b></p>
               <h1 className="mt-1 text-2xl font-bold tracking-tight">Choose your plan</h1>
+              <AnimatePresence>
+                {left ? (
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                    <div className={`mt-4 flex items-start gap-3 rounded-2xl p-4 text-sm ${left.kind === "cancelled" ? "bg-warning-soft text-on-warning-soft" : "bg-info-soft text-on-info-soft"}`}>
+                      {left.kind === "checking" ? <SpinnerGap size={20} className="mt-0.5 shrink-0 animate-spin" /> : <XCircle size={20} weight="fill" className="mt-0.5 shrink-0" />}
+                      <div>
+                        <b className="block">{left.kind === "checking" ? "Checking your last payment…" : "Payment cancelled"}</b>
+                        {left.kind === "cancelled" ? <span>Nothing was charged. Choose a plan and try again, or pick another way to pay on Paystack.</span> : null}
+                      </div>
+                    </div>
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
               <div className="mt-5 space-y-3" role="radiogroup" aria-label="Plans">
                 {plans.map((p) => {
                   const on = p.code === pick;
