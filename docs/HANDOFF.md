@@ -70,7 +70,8 @@ picks a level in admin → Money → Ads.
 
 ## Live systems
 
-- Website/admin: Vercel team `solution-tee`, project `solutiontee-cbt`, root `apps/web`, https://admin.solutiontee.com.
+- Website/admin: Vercel team `solution-tee`, project `solutiontee-cbt`, root `apps/web`, https://admin.solutiontee.com (admin) and
+  https://cbt.solutiontee.com (public website + /pay, moved here from the old project `edusolutionteecbt` on 2026-11-08).
   Deploy from the repo root: `npx -y vercel@65.8.0 deploy --prod --yes --scope solution-tee` (only on "deploy").
 - Supabase project `mxeemubacnmcmmmzteax`. Edge Functions in `supabase/functions/` (today's: `ai-chat` v12, `admob-ssv`).
 - **Migrations:** `supabase/migrations/` matches the live migration history exactly (84 files = 84 applied versions, same
