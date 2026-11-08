@@ -83,12 +83,14 @@ jobs:
           # Build number = minutes since 1970, so every build installs over the last one.
           BUILD=$(( $(date +%s) / 60 ))
           NAME=$(grep -E '^version:' pubspec.yaml | sed -E 's/^version:[[:space:]]*([0-9.]+).*/\1/')
-          flutter build apk --release --flavor direct --target-platform android-arm64 \
+          # GitHub's file server sometimes answers 504 while Gradle downloads itself (8 Nov 2026): try up to 3 times.
+          retry() { for i in 1 2 3; do "$@" && return 0; echo "::warning::Build failed (try $i of 3), trying again"; sleep $((i * 30)); done; return 1; }
+          retry flutter build apk --release --flavor direct --target-platform android-arm64 \
             --build-number="$BUILD" --dart-define=APP_VERSION="$NAME"
           cp build/app/outputs/flutter-apk/app-direct-release.apk "$RUNNER_TEMP/app-arm64.apk"
           # The Google Play version (no Paystack, no self-update, Google Play Billing only), for the owner to try
           # before it goes to Play Console. Same signing key, so it installs over the direct app and back.
-          flutter build apk --release --flavor play --target-platform android-arm64 \
+          retry flutter build apk --release --flavor play --target-platform android-arm64 \
             --build-number="$BUILD" --dart-define=APP_VERSION="$NAME"
           cp build/app/outputs/flutter-apk/app-play-release.apk "$RUNNER_TEMP/app-play-arm64.apk"
           echo "APP_NAME_VERSION=$NAME" >> "$GITHUB_ENV"
@@ -139,7 +141,9 @@ jobs:
           set -euo pipefail
           sed -i 's/^org.gradle.jvmargs=.*/org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=1g/' android/gradle.properties
           sed -i 's/^kotlin.daemon.jvmargs=.*/kotlin.daemon.jvmargs=-Xmx2g/' android/gradle.properties
-          flutter build apk --release --flavor direct --target-platform android-x64
+          # GitHub's file server sometimes answers 504 while Gradle downloads itself (8 Nov 2026): try up to 3 times.
+          retry() { for i in 1 2 3; do "$@" && return 0; echo "::warning::Build failed (try $i of 3), trying again"; sleep $((i * 30)); done; return 1; }
+          retry flutter build apk --release --flavor direct --target-platform android-x64
           cp build/app/outputs/flutter-apk/app-direct-release.apk "$RUNNER_TEMP/app-x64.apk"
           ./android/gradlew --stop || true
       - name: Free disk space for the emulator
