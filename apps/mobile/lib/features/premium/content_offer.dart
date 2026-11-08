@@ -79,7 +79,9 @@ class ContentOffer {
 
   /// Why watching is not offered now: 'unlock_cap' (today's limit reached) or 'not_allowed' (the admin keeps it Premium).
   String? get watchBlock => j['watch_block'] as String?;
-  bool get canPay => mode == 'pay' && priceKobo >= 5000 && (!premium || premiumPays);
+  // Pay per item uses Paystack: only in the direct (website) app. Google Play does not allow other payment systems
+  // for digital items in the Play Store app.
+  bool get canPay => store != Store.play && mode == 'pay' && priceKobo >= 5000 && (!premium || premiumPays);
 }
 
 String _time(int minutes) => minutes == 0
