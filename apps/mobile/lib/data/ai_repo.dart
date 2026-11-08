@@ -252,13 +252,37 @@ class AiRepo {
   }
 
   Future<List<Map<String, dynamic>>> messages(String chatId) async {
-    final j = await _sb
+    final recent = _sb
         .from('ai_messages')
         .select('id, role, content, has_image, question_id, hint, model, flagged_at, created_at, card, reaction')
         .eq('chat_id', chatId)
         .order('created_at', ascending: true)
         .limit(200);
-    return rows(j);
+    // Messages older than the archive window live in Neon (D-108): asked for only when the chat itself is old.
+    final chat = await _sb.from('ai_chats').select('created_at').eq('id', chatId).maybeSingle();
+    final created = DateTime.tryParse('${chat?['created_at'] ?? ''}');
+    final old = created != null && DateTime.now().difference(created).inDays >= 13;
+    final results = await Future.wait<List<Map<String, dynamic>>>([
+      recent.then(rows),
+      if (old) _archived(chatId),
+    ]);
+    if (results.length == 1) return results.first;
+    final seen = <String>{};
+    final all = [
+      for (final m in [...results[1], ...results[0]])
+        if (seen.add('${m['id']}')) m,
+    ]..sort((a, b) => '${a['created_at']}'.compareTo('${b['created_at']}'));
+    return all;
+  }
+
+  Future<List<Map<String, dynamic>>> _archived(String chatId) async {
+    try {
+      final r = await _sb.functions.invoke('archive-read', body: {'kind': 'chat', 'chat_id': chatId}).timeout(const Duration(seconds: 8));
+      final d = r.data;
+      return d is Map ? rows(d['messages']) : const [];
+    } catch (_) {
+      return const [];
+    }
   }
 
   Map<String, String> get _headers => {
