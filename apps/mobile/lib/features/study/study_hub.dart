@@ -49,6 +49,7 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
     ref.invalidate(appSettingsProvider);
     ref.invalidate(studyProgressProvider);
     ref.invalidate(bookmarksProvider);
+    ref.invalidate(contentKindsProvider);
     await ref.read(studyProgressProvider.future).catchError((_) => const <Map<String, dynamic>>[]);
   }
 
@@ -57,6 +58,8 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
     final c = context.c;
     final rm = context.reduceMotion;
     final raw = ref.watch(appSettingsProvider).value?['study_sections'];
+    final kinds = ref.watch(contentKindsProvider).value ?? const {};
+    final premium = ref.watch(myPlanProvider).value?['tier'] == 'premium';
     final sections = [
       for (final s in (raw is List ? raw : _defaultSections))
         if ((s as Map)['enabled'] != false) Map<String, dynamic>.from(s),
@@ -109,7 +112,14 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
                       // Videos and documents are always open to browse (owner, D-057): every student sees the whole
                       // list, and each Premium item carries its own lock. Notes and novels lock as a section.
                       const browse = {'doc', 'video_solution', 'lesson'};
-                      final locked = feature != null && !browse.contains(key) && !featureOn(ref, feature);
+                      // The admin's rule for the whole box (How content opens): Premium only locks it for free students;
+                      // watch videos / pay per item / free open it (each item keeps its own lock and offer).
+                      final mode = '${kinds[key] ?? 'default'}';
+                      final locked = mode == 'premium'
+                          ? !premium
+                          : const {'free', 'ads', 'pay'}.contains(mode)
+                          ? false
+                          : feature != null && !browse.contains(key) && !featureOn(ref, feature);
                       final caption = key == 'doc' && syllabus != null && syllabus != 'all' ? '$syllabus free on your plan' : '${s['subtitle'] ?? ''}';
                       final tile = StudyTile(
                         icon: sectionIcon('${s['icon']}'),
@@ -457,3 +467,14 @@ class _StudySearchScreenState extends ConsumerState<StudySearchScreen> {
     );
   }
 }
+
+/// The admin's rule for each Study box (How content opens): {"note": "ads", "novel": "premium", "pq": "default", …}.
+final contentKindsProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+  ref.watch(myPlanProvider);
+  try {
+    final j = await ref.read(supabaseProvider).rpc('content_kinds').timeout(const Duration(seconds: 10));
+    return Map<String, dynamic>.from((j as Map?) ?? const {});
+  } catch (_) {
+    return const {};
+  }
+});
