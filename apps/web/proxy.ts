@@ -25,7 +25,8 @@ export async function proxy(request: NextRequest) {
     if (isPublicPage(p)) return NextResponse.redirect(new URL(p + request.nextUrl.search, "https://cbt.solutiontee.com"), 308);
     if (p === "/") return NextResponse.redirect(new URL("/admin", request.url));
   }
-  if (!p.startsWith("/admin")) return NextResponse.next();
+  // /download is the team's page (D-125): signed-out visitors go to the admin login before any page is sent.
+  if (!p.startsWith("/admin") && p !== "/download") return NextResponse.next();
   let response = NextResponse.next({ request });
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
