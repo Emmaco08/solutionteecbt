@@ -53,7 +53,7 @@ void main() {
     await t.pumpWidget(app(const Scaffold(body: SingleChildScrollView(child: QotdCard())), [qotdProvider.overrideWith(() => fake)]));
     await t.pumpAndSettle();
     expect(find.text('Question of the day'), findsOneWidget);
-    expect(find.text('Mathematics · from JAMB 2019'), findsOneWidget);
+    expect(find.text('Mathematics · Past Question, JAMB 2019'), findsOneWidget);
     expect(find.text('4'), findsOneWidget); // streak
     expect(find.textContaining('Students who got it right'), findsNothing);
 
@@ -75,7 +75,7 @@ void main() {
     FakeQotd.question = {...FakeQotd.question, 'own': true, 'subject': 'General knowledge', 'exam': null, 'year': null};
     await t.pumpWidget(app(const Scaffold(body: SingleChildScrollView(child: QotdCard())), [qotdProvider.overrideWith(() => fake)]));
     await t.pumpAndSettle();
-    expect(find.text('General knowledge · set by SolutionTee'), findsOneWidget);
+    expect(find.text('General knowledge · SolutionTee Mock Question'), findsOneWidget);
     await t.tap(find.text('2'));
     await t.pumpAndSettle();
     expect(find.text('Correct!'), findsOneWidget);

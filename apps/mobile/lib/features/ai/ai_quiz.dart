@@ -188,8 +188,8 @@ class _QuizCardState extends State<QuizCard> with AutomaticKeepAliveClientMixin 
                   Align(
                     alignment: Alignment.centerLeft,
                     child: _ai
-                        ? Pill('AI-written', kind: BadgeKind.gold, icon: PhosphorIcons.sparkle(PhosphorIconsStyle.fill))
-                        : Pill('Real past question', icon: PhosphorIcons.books(PhosphorIconsStyle.fill)),
+                        ? Pill('SolutionTee Mock · AI-written', kind: BadgeKind.gold, icon: PhosphorIcons.sparkle(PhosphorIconsStyle.fill))
+                        : Pill('Past Question', icon: PhosphorIcons.books(PhosphorIconsStyle.fill)),
                   ),
                 ],
               ),

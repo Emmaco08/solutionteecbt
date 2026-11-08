@@ -33,9 +33,14 @@ you take them, then turn it back on.
    email `playreview@solutiontee.com` (or any address you own), a strong password, tick **Auto confirm**. Open the app once
    with it and finish setup with a birth year that makes it 18+. Keep the password to yourself; you type it only into
    Play Console (section 4.2). Optional: give it Premium in admin → Users so reviewers can see everything.
-4. **AdMob:** create the AdMob app (SETUP "Google AdMob") and send Claude the **App ID** `ca-app-pub-…~…` (public, not a
-   secret) so the Play build uses it. Put the 4 ad unit IDs in admin → Money → Ads and keep **Test mode on** until the
-   app is live on Play.
+4. **AdMob:** the app already uses your App ID `ca-app-pub-2578359096210288~4598149074`. Put the ad unit IDs in admin →
+   Money → Ads and keep **Test mode on** until the app is live on Play. Then, in AdMob:
+   - **Privacy & messaging → European regulations → Create message** (pick the app, languages English, Publish). The
+     app shows it only to students in the EEA, UK and Switzerland (D-119).
+   - **Apps → View all apps → link the app to Google Play** once it is published, so AdMob checks
+     `https://cbt.solutiontee.com/app-ads.txt`. In Play Console → Store settings, set **Website** to
+     `https://cbt.solutiontee.com`. If AdMob still says "not found", put the same one-line file at
+     `https://solutiontee.com/app-ads.txt` too.
 5. **Payment settings for the review** (admin → Money → Payment settings): **Google Play payments: on**,
    **"Pay on our website" button: off**, **"Have a code?": off**. Google rejects apps that send users to other ways
    to pay; you can change these after approval at your own risk (see the warning on that page).

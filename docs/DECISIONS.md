@@ -1030,3 +1030,33 @@ The owner asked to run the admin from Vercel instead of the laptop.
 - `/store-kit/<shot>` (no-index) draws the store images at their real sizes from the same screens as the website;
   the finished PNGs and every Play Console answer are in `docs/play-console/`. `public/app-ads.txt` lists the AdMob
   publisher ID.
+
+## D-119 — Lawyer's list: Google consent message (EEA/UK), 24-month inactivity, clean-up of deleted accounts (2026-11-08)
+- **Consent (UMP):** before any ad loads, the app asks Google's User Messaging Platform. In the EEA, UK and Switzerland
+  Google shows its consent message (made in AdMob → Privacy & messaging → European regulations); everywhere else it
+  answers "not required" and nothing shows. Under-18s are tagged as under the age of consent. No ads load until Google
+  says ads may be requested. Settings shows "Ad privacy choices" only where Google requires it. Our own "Personalised ads"
+  switch (adults only, NDPA consent) is unchanged.
+- **AI question photos** are never stored (sent to the AI and dropped; only `has_image` is kept), so the 12-month rule is
+  met by the existing message retention (D-118).
+- **24 months without activity:** activity = sign-in, token refresh, push token seen on app open, or sign-up. At 23
+  months the student gets an email ("log in before <date>"); 30+ days later, still inactive and past 24 months with no
+  running Premium, the account is deleted. Staff accounts (the owner's included) are never selected. Website job
+  `/api/cron/accounts`, nightly Supabase cron `accounts-nightly` (02:20 UTC), at most 100 notices a night (Brevo free plan).
+- **Every deleted account** (app, website, parent turn-off, inactivity) is queued by a trigger on `auth.users`
+  (`private.deleted_users`, id only): the website job removes its photos in R2 (`a/<id>/`), and `archive-mover` (v9)
+  removes its archived AI messages, answers and ad records in Neon. Payment records keep their amounts with the user
+  link cleared (`on delete set null`), for the 6-year tax rule.
+
+## D-120 — "Past Questions" and "SolutionTee Mock Questions" (2026-11-08)
+- Lawyer: label the two kinds clearly so that, if a licence is refused, past questions can be switched off and the app
+  keeps working. `questions.source` is `past` (default; all 33,444 published bank questions today) or `mock`. Challenge
+  and JAMB mock questions are "mock" when written by us (2,980 today) and otherwise take the source of the bank question
+  they were copied from (`question_sources`).
+- App labels: every question in the CBT/test and JAMB mock screen, every challenge question, the question of the day
+  and AI quizzes show "Past Question" (blue) or "SolutionTee Mock" (gold).
+- Admin: "Kind of question" on each question, an optional `source` CSV column (past/mock), counts on the Question bank
+  page, and a super-admin "Hide all past questions" switch (published → review, remembered by `paused_by_switch`, so
+  "Show past questions again" restores exactly those). Tested both ways in a rolled-back transaction.
+- Not covered by the switch: past questions already copied into challenges; replace those challenges' questions if the
+  switch is ever used.

@@ -56,6 +56,9 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
   bool _passageOpen = true, _submitting = false, _timeUpShown = false;
   Object? _error;
 
+  // "Past Question" or "SolutionTee Mock" for each question (lawyer's list, D-120), from the server when online.
+  Map<String, String> _src = {};
+
   // JAMB mock challenge (D-099): the same screen, with answers, leaving and submit going to the server.
   Map<String, dynamic>? _mock;
   DateTime? _leftAt;
@@ -70,6 +73,25 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
   }
 
   AppDb get _db => ref.read(dbProvider);
+
+  Future<void> _loadSources() async {
+    try {
+      final ids = [for (final q in _qs) q.row.id];
+      if (ids.isEmpty) return;
+      final j = await ref.read(supabaseProvider).rpc('question_sources', params: {'p_ids': ids}).timeout(const Duration(seconds: 12));
+      if (!mounted || j is! Map) return;
+      setState(() => _src = {for (final e in j.entries) '${e.key}': '${e.value}'});
+    } catch (_) {}
+  }
+
+  /// Bank tests are past questions until the server says otherwise; mock-exam questions wait for the server.
+  Widget _sourcePill(String id) {
+    final s = _src[id] ?? (_mock == null ? 'past' : null);
+    if (s == null) return const SizedBox.shrink();
+    return s == 'mock'
+        ? Pill('SolutionTee Mock', kind: BadgeKind.gold, icon: PhosphorIcons.sparkle(PhosphorIconsStyle.fill))
+        : Pill('Past Question', icon: PhosphorIcons.books(PhosphorIconsStyle.fill));
+  }
 
   static bool _titleRepeats(String title, String body) {
     String norm(String x) => x.replaceFirst('[SAMPLE] ', '').toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), ' ').trim();
@@ -157,6 +179,7 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
         _i = a.currentIndex.clamp(0, _qs.isEmpty ? 0 : _qs.length - 1);
         _shownAt = DateTime.now();
       });
+      unawaited(_loadSources());
       if (mounted) {
         toast(
           context,
@@ -940,6 +963,8 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
                             ],
                           ),
                         ),
+                        const Gap(Space.s2),
+                        Flexible(child: _sourcePill(q.row.id)),
                         const Spacer(),
                         flagged
                             ? Pill('Flagged', kind: BadgeKind.warning, icon: PhosphorIcons.flag(PhosphorIconsStyle.fill))

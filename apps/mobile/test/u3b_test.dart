@@ -392,7 +392,7 @@ void main() {
       ),
     );
     await settle(t);
-    expect(find.text('AI-written'), findsOneWidget);
+    expect(find.text('SolutionTee Mock · AI-written'), findsOneWidget);
     expect(find.text('1 of 2'), findsOneWidget);
     expect(find.textContaining('What is speed'), findsWidgets);
     expect(find.textContaining('What is mass'), findsNothing);
@@ -456,7 +456,7 @@ void main() {
       ),
     );
     await settle(t);
-    expect(find.text('Real past question'), findsOneWidget);
+    expect(find.text('Past Question'), findsOneWidget);
     await t.tap(find.textContaining('Mass'));
     await settle(t);
     await t.tap(find.text('Explain with AI'));

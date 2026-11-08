@@ -121,9 +121,10 @@ class _QotdCardState extends ConsumerState<QotdCard> {
                     children: [
                       Text('Question of the day', style: context.ty.sm.bold),
                       Text(
+                        // Lawyer's list (D-120): the two kinds are always named the same way.
                         qq['own'] == true
-                            ? [if ((qq['subject'] ?? '').toString().isNotEmpty) qq['subject'], 'set by SolutionTee'].join(' · ')
-                            : '${qq['subject']} · from ${qq['exam']} ${qq['year']}',
+                            ? [if ((qq['subject'] ?? '').toString().isNotEmpty) qq['subject'], 'SolutionTee Mock Question'].join(' · ')
+                            : '${qq['subject']} · Past Question, ${qq['exam']} ${qq['year']}',
                         style: context.ty.cap.col(c.textMuted),
                       ),
                     ],

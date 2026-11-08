@@ -2994,6 +2994,8 @@ export type Database = {
           passage_id: string | null
           section: string | null
           section_source: string | null
+          source: string
+          paused_by_switch: boolean
           status: Database["public"]["Enums"]["content_status"]
           subject_id: number
           topic_id: number | null
@@ -3019,6 +3021,8 @@ export type Database = {
           passage_id?: string | null
           section?: string | null
           section_source?: string | null
+          source?: string
+          paused_by_switch?: boolean
           status?: Database["public"]["Enums"]["content_status"]
           subject_id: number
           topic_id?: number | null
@@ -3044,6 +3048,8 @@ export type Database = {
           passage_id?: string | null
           section?: string | null
           section_source?: string | null
+          source?: string
+          paused_by_switch?: boolean
           status?: Database["public"]["Enums"]["content_status"]
           subject_id?: number
           topic_id?: number | null
@@ -4374,6 +4380,18 @@ export type Database = {
       inactive_mark: {
         Args: { p_ids: string[] }
         Returns: number
+      }
+      question_sources: {
+        Args: { p_ids: string[] }
+        Returns: Json
+      }
+      admin_past_questions: {
+        Args: { p_on: boolean }
+        Returns: Json
+      }
+      admin_question_sources: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
     }
     Enums: {

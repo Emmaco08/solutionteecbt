@@ -119,7 +119,7 @@ choice and stays inside Google's rules:
   - Lighthouse 90+.
 - **Order:** landing page → legal pages → /pay → vouchers → Play products.
 
-## D. Still open from the lawyer's document (not built yet)
+## D. Lawyer's document: built items (D-118 to D-120, 2026-11-08); owner paperwork still open: NDPC, DPIA, licence letters
 - Corrected legal documents (8), published at the URLs above. The business name is
   "SOLUTIONTEE EDUTECH AND ICT SERVICES, Business Name, RC 9123561", not "Limited".
 - The lawyer's text prefers the parent **confirming**. The owner chose **notice + turn off**, which is what is

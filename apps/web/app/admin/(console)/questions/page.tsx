@@ -9,6 +9,7 @@ import { EmptyState, ErrorState, PageHeader, PageSkeleton } from "@/components/a
 import { buttonVariants } from "@/components/ui/button";
 import { QuestionTable, type QRow } from "./question-table";
 import { Filters } from "./filters";
+import { SourcesCard, type SourceCounts } from "./sources-card";
 
 export const metadata: Metadata = { title: "Question bank" };
 const PAGE = 25;
@@ -55,6 +56,7 @@ async function Bank({ searchParams }: { searchParams: PageProps<"/admin/question
     topic: (r.topics as unknown as { name: string } | null)?.name ?? "",
   }));
   const editable = canEditContent(staff.role);
+  const { data: src } = await supabase.rpc("admin_question_sources");
 
   return (
     <>
@@ -66,6 +68,7 @@ async function Bank({ searchParams }: { searchParams: PageProps<"/admin/question
           <Link href="/admin/questions/new" className={buttonVariants()}><Plus size={18} weight="bold" /> New question</Link>
         </> : null}
       />
+      {src ? <SourcesCard c={src as unknown as SourceCounts} superAdmin={staff.role === "super_admin"} /> : null}
       <Filters exams={exams} subjects={subjects} current={{ q: s("q"), exam: s("exam"), subject: s("subject"), year: s("year"), status: status ?? "", section: s("section") }}
         tabs={[["", "All", total], ...counts.map(([st, n]) => [st, STATUS_LABEL[st], n] as [string, string, number])]} />
       {rows.length ? (

@@ -39,6 +39,7 @@ const QuestionSchema = z
     answer: z.enum(["A", "B", "C", "D", "E"], { message: "Choose the correct answer" }),
     explanation: z.string().trim().max(40000).optional(),
     difficulty: z.enum(["easy", "medium", "hard"]).optional().or(z.literal("").transform(() => undefined)),
+    source: z.enum(["past", "mock"]).default("past"),
     image_path: z.string().trim().max(300).optional(),
     status: z.enum(STATUSES),
     section: z.string().trim().optional().refine((v) => !v || SECTION_KEYS.includes(v), "Choose a section from the list"),
@@ -82,7 +83,7 @@ export async function saveQuestion(_prev: SaveState, form: FormData): Promise<Sa
   const row = {
     exam_id: q.exam_id, subject_id: q.subject_id, year: q.year, number: q.number ?? null, topic_id, passage_id: q.passage_id ?? null,
     body: q.body, options, answer: q.answer, explanation: q.explanation || null, difficulty: q.difficulty ?? null,
-    image_path: q.image_path || null, status: q.status,
+    image_path: q.image_path || null, status: q.status, source: q.source,
   };
   // Only an admin's own change marks the section as "admin" (so the sorter never overwrites it).
   if (q.section !== undefined && (q.section ?? "") !== (q.section_orig ?? "")) {
@@ -104,4 +105,14 @@ export async function deleteQuestion(id: string): Promise<ActionResult> {
   if (error) return { ok: false, error: friendlyError(error) };
   revalidatePath("/admin", "layout");
   return { ok: true };
+}
+
+/** Hide every past question (published -> review, remembered) or bring them back. Super admin only (D-120). */
+export async function setPastQuestions(on: boolean): Promise<ActionResult<number>> {
+  await requireStaff(["super_admin"]);
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_past_questions", { p_on: on });
+  if (error) return { ok: false, error: friendlyError(error) };
+  revalidatePath("/admin", "layout");
+  return { ok: true, data: Number((data as { rows?: number } | null)?.rows ?? 0) };
 }

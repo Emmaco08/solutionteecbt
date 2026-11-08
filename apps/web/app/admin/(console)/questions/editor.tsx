@@ -16,6 +16,7 @@ export type EditorQuestion = {
   id?: string; exam_id?: number; subject_id?: number; year?: number; number?: number | null; topic?: string; passage_id?: string | null;
   body?: string; options?: Record<string, string>; answer?: string; explanation?: string | null; difficulty?: string | null;
   image_path?: string | null; status?: "draft" | "review" | "published"; section?: string | null; section_source?: string | null;
+  source?: string | null;
 };
 type Opt = { id: number; code?: string; name: string };
 type PassageOpt = { id: string; label: string };
@@ -111,6 +112,12 @@ export function QuestionEditor({ q, exams, subjects, passages, topics, canDelete
           <div className="space-y-1.5"><Label htmlFor="topic">Topic</Label>
             <input id="topic" name="topic" list="topics" defaultValue={q.topic ?? ""} className={field} placeholder="e.g. Logarithms" />
             <datalist id="topics">{topics.map((t) => <option key={t} value={t} />)}</datalist></div>
+          <div className="space-y-1.5 sm:col-span-2"><Label htmlFor="source">Kind of question</Label>
+            <select id="source" name="source" defaultValue={q.source ?? "past"} className={field}>
+              <option value="past">Past Question (from an official JAMB, WAEC or NECO paper)</option>
+              <option value="mock">SolutionTee Mock Question (our own, written from scratch)</option>
+            </select>
+            <p className="text-xs text-muted-foreground">Students see this label on every question. Mock questions must be new, not a real question with small changes.</p></div>
           <div className="space-y-1.5"><Label htmlFor="difficulty">Difficulty</Label>
             <select id="difficulty" name="difficulty" defaultValue={q.difficulty ?? ""} className={field}>
               <option value="">Not set</option><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option>

@@ -62,6 +62,7 @@ class ChallengePlayScreen extends ConsumerStatefulWidget {
 
 class _ChallengePlayScreenState extends ConsumerState<ChallengePlayScreen> with WidgetsBindingObserver {
   Map<String, dynamic>? _q;
+  final Map<String, String> _src = {}; // "past" / "mock" per question (D-120)
   String? _sending;
   String? _error;
   String? _warning;
@@ -137,12 +138,22 @@ class _ChallengePlayScreenState extends ConsumerState<ChallengePlayScreen> with 
     }
   }
 
+  /// "Past Question" or "SolutionTee Mock" label for the question on screen (lawyer's list, D-120).
+  Future<void> _source(String id) async {
+    if (_src.containsKey(id)) return;
+    try {
+      final j = await ref.read(supabaseProvider).rpc('question_sources', params: {'p_ids': [id]}).timeout(const Duration(seconds: 10));
+      if (mounted && j is Map && j[id] != null) setState(() => _src[id] = '${j[id]}');
+    } catch (_) {}
+  }
+
   void _apply(Map<String, dynamic> r) {
     if (!mounted) return;
     final status = r['status'];
     if (status == 'playing' && r['question'] is Map) {
       final q = Map<String, dynamic>.from(r['question'] as Map);
       final same = q['question_id'] == _q?['question_id'];
+      if (!same) unawaited(_source('${q['question_id']}'));
       setState(() {
         _q = q;
         _sending = null;
@@ -335,6 +346,15 @@ class _ChallengePlayScreenState extends ConsumerState<ChallengePlayScreen> with 
                   _Ring(value: left / seconds, label: '${left.ceil()}', low: left <= 5),
                 ],
               ),
+              if (_src['${q['question_id']}'] case final src?) ...[
+                const Gap(Space.s2),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: src == 'mock'
+                      ? Pill('SolutionTee Mock', kind: BadgeKind.gold, icon: PhosphorIcons.sparkle(PhosphorIconsStyle.fill))
+                      : Pill('Past Question', icon: PhosphorIcons.books(PhosphorIconsStyle.fill)),
+                ),
+              ],
               const Gap(Space.s3),
               MathText(
                 '${q['body']}',

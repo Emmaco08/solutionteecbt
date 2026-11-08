@@ -32,6 +32,7 @@ async function Edit({ params }: { params: PageProps<"/admin/questions/[id]">["pa
           topic: (q.topics as unknown as { name: string } | null)?.name ?? "", passage_id: q.passage_id, body: q.body,
           options: q.options as Record<string, string>, answer: q.answer, explanation: q.explanation, difficulty: q.difficulty,
           image_path: q.image_path, status: q.status, section: q.section, section_source: q.section_source,
+          source: q.source,
         }}
         {...lists}
         canDelete={canEditContent(staff.role)}
