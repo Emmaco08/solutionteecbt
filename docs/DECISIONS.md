@@ -895,9 +895,15 @@ The owner asked to run the admin from Vercel instead of the laptop.
   payments themselves stay on Supabase).
 - **Running totals:** `user_topic_stats` and `question_stats` (trigger on `attempt_answers`) feed weak topics and
   question difficulty, so they keep all history after raw answers move, and run faster.
-- **Mover:** Edge Function `archive-mover`, nightly 02:15 Lagos (pg_cron, token in Vault). `archive_take` → insert
-  into Neon (duplicates skipped) → count in Neon → `archive_drop`. Nothing is deleted before Neon has every row.
-  Log: `archive_runs`.
+- **Mover:** Edge Function `archive-mover`, nightly at 02:15, 02:25 and 02:35 Lagos (pg_cron, token in Vault), 20
+  batches of 1,000 rows per call (the free Edge Function CPU limit stops a call at about 25 batches). `archive_take` →
+  insert into Neon (duplicates skipped) → count in Neon → `archive_drop`. Nothing is deleted before Neon has every
+  row. Log: `archive_runs`. Flagged AI messages stay on Supabase 90 days after the flag (admin AI safety page).
+- **First move (2026-11-08):** 141,998 audit rows copied to `st-archive` (Neon count = rows deleted, no duplicates),
+  then `VACUUM FULL audit_log`. Supabase **417 MB → 125 MB**; `st-archive` 307 MB of 1 GB.
+- **Known effect:** admin challenge analytics for a challenge older than 60 days, and the AI tutor's "most missed"
+  (last 7 days only) read Supabase only. Test review in the app reads the phone's own copy; `archive-read` can serve
+  answers of tests older than 14 days.
 - **Reading:** `archive-read` returns a student's own older AI chat messages or test answers. The app fetches older
   chat messages only for chats 13+ days old.
 - **Secrets:** the Supabase connector's secret saving was paused, so the four Neon connection strings are in

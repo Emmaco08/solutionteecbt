@@ -560,5 +560,6 @@ Notes:
   (SQL editor: `select vault.update_secret((select id from vault.secrets where name='NEON_AI_URL'), '<new string>');`).
 - Check: `GET https://mxeemubacnmcmmmzteax.supabase.co/functions/v1/archive-mover?health=1` shows which ones the
   mover can reach (yes/no only).
-- Windows (days kept on Supabase) are in `app_settings.archive`. The mover runs nightly at 02:15 Lagos (cron
-  `archive-mover`); its runs are in the `archive_runs` table.
+- Windows (days kept on Supabase) are in `app_settings.archive`. The mover runs nightly at 02:15, 02:25 and 02:35
+  Lagos (cron `archive-mover`); its runs are in the `archive_runs` table. Keep `batch` at 1000: the free Edge
+  Function plan stops a call that does much more than 20 batches.

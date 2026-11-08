@@ -124,6 +124,7 @@ Plan: `docs/plans/phase-4.md`.
   - [x] **B3** brand campaigns (D-105): admin Brand ads page (uploads, dates, places, share, cap, report + CSV), app house banner/card/break and video-lesson ads before/middle/after; DB flow tested (rolled back). App tests **175/175**.
   - [x] **Ads limits + welcome + custom exam** (D-107): chosen years only + daily caps for watching, first-day welcome, custom exam (max 40 / English 60), floating sticky banner, quiet picture download, background update download, new earn pop-up. App tests **177/177**.
   - [x] **B4** content access modes (D-106): per kind / per item / per year — free, Premium, watch N videos, pay per item (Paystack v13 `start_item`); admin How content opens + item fields; DB flow tested (rolled back). App tests **176/176**.
+  - [x] **Supabase + Neon** (D-108, plan `docs/plans/backend-neon.md`): audit log saves only changed fields; 4 Neon projects in London; nightly mover with copy → count → delete; running totals for weak topics; old AI chat messages fetched from Neon in the app. First move: 141,998 old audit rows → Neon, Supabase **417 MB → 125 MB**. App change (old chat messages) ships with the next app build.
   - [ ] Step C JAMB countdown · [ ] D Request a tutor · [ ] E Online classes · [ ] F Games · [ ] G Community
 
 ## Phase 5 — Website, classes, community  (approval: `WEBSITE APPROVED`)
