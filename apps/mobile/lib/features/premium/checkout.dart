@@ -245,6 +245,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> with WidgetsBin
     final playPrice = playPrices['${plan['play_product_id'] ?? ''}'];
     final total = paystack ? naira(q.amountKobo) : (playPrice ?? naira(q.listKobo));
     final discounted = paystack && q.discountKobo > 0;
+    final fee = paystack ? q.feeKobo : 0;
     final busy = _stage == _Stage.opening;
     final sample = '${plan['description'] ?? ''}'.startsWith('SAMPLE');
 
@@ -268,8 +269,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> with WidgetsBin
                 const Gap(Space.s3),
                 _row(context, 'Plan', '${plan['name']}'),
                 _row(context, 'Access', q.periodEnd == null ? planPeriod(plan) : 'Until ${payDate(q.periodEnd!)}'),
+                if (discounted || fee > 0) _row(context, 'Price', naira(q.listKobo)),
                 if (discounted) ...[
-                  _row(context, 'Price', naira(q.listKobo)),
                   _row(
                     context,
                     '${q.code} · ${q.label ?? ''}',
@@ -278,6 +279,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> with WidgetsBin
                     icon: PhosphorIcons.ticket(PhosphorIconsStyle.fill),
                   ),
                 ],
+                // The admin chose to add the payment processing fee (D-113): always shown before paying.
+                if (fee > 0) _row(context, 'Payment processing fee', '+${naira(fee)}'),
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: Space.s3),
                   child: Divider(height: 1, color: c.border),

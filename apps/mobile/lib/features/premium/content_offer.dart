@@ -147,7 +147,8 @@ class _OfferSheetState extends ConsumerState<_OfferSheet> {
   Future<void> _buy() async {
     var method = PayMethod.card;
     var bank = '737';
-    final price = _naira(o.priceKobo);
+    final fee = ref.read(paySettingsProvider).paystackFeeKobo(o.priceKobo);
+    final price = fee > 0 ? '${_naira(o.priceKobo + fee)} (incl. ${_naira(fee)} processing fee)' : _naira(o.priceKobo);
     final go = await showSheet<bool>(
       context,
       closeButton: false,
@@ -244,7 +245,7 @@ class _OfferSheetState extends ConsumerState<_OfferSheet> {
           _Option(
             icon: PhosphorIcons.wallet(PhosphorIconsStyle.fill),
             tone: Tone.green,
-            title: 'Pay ${_naira(o.priceKobo)}',
+            title: 'Pay ${_naira(o.priceKobo + ref.watch(paySettingsProvider).paystackFeeKobo(o.priceKobo))}',
             text: 'Just this one. It is yours for good.',
             action: 'Pay',
             busy: _busy,

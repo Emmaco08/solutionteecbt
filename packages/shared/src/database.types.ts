@@ -2371,6 +2371,7 @@ export type Database = {
       }
       payments: {
         Row: {
+          fee_kobo: number
           amount_kobo: number
           channel: string | null
           code_id: string | null
@@ -2397,6 +2398,7 @@ export type Database = {
           xp_pack: number | null
         }
         Insert: {
+          fee_kobo?: number
           amount_kobo: number
           channel?: string | null
           code_id?: string | null
@@ -2423,6 +2425,7 @@ export type Database = {
           xp_pack?: number | null
         }
         Update: {
+          fee_kobo?: number
           amount_kobo?: number
           channel?: string | null
           code_id?: string | null
@@ -2474,6 +2477,7 @@ export type Database = {
       }
       plans: {
         Row: {
+          play_product_id_fee: string | null
           code: string
           description: string | null
           duration_days: number | null
@@ -2486,6 +2490,7 @@ export type Database = {
           sort: number
         }
         Insert: {
+          play_product_id_fee?: string | null
           code: string
           description?: string | null
           duration_days?: number | null
@@ -2498,6 +2503,7 @@ export type Database = {
           sort?: number
         }
         Update: {
+          play_product_id_fee?: string | null
           code?: string
           description?: string | null
           duration_days?: number | null

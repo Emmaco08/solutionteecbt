@@ -17,6 +17,7 @@ const Plan = z.object({
   duration_days: z.union([z.literal("").transform(() => null), z.coerce.number().int().min(1).max(1000)]),
   ends_on: z.union([z.literal("").transform(() => null), z.string().regex(/^\d{4}-\d{2}-\d{2}$/)]),
   play_product_id: z.string().trim().max(100).transform((v) => v || null),
+  play_product_id_fee: z.string().trim().max(100).optional().transform((v) => v || null),
   is_active: on,
 }).refine((p) => p.duration_days !== null || p.ends_on !== null, { message: "Set a number of days or an end date" });
 

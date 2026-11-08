@@ -102,6 +102,10 @@ class _PaywallState extends ConsumerState<_Paywall> {
     final sample = plans.any((p) => '${p['description'] ?? ''}'.startsWith('SAMPLE'));
     final benefits = premiumBenefits(rules);
     final pick = firstOr(plans, (p) => p['code'] == (_pick ?? 'three_months'), fallbackFirst: true);
+    // Play app (D-113): the admin offers Google Play, the payment website, or both.
+    final ps = ref.watch(paySettingsProvider);
+    final playApp = !usesPaystack(ref);
+    final google = !playApp || ps.playGoogle, website = playApp && ps.playWebsite;
     final rm = context.reduceMotion;
     Widget enter(Widget w, int i) =>
         rm ? w : w.animate().fadeIn(delay: (60 + 45 * i).ms, duration: 320.ms).slideY(begin: .12, end: 0, curve: Curves.easeOutCubic);
@@ -187,20 +191,36 @@ class _PaywallState extends ConsumerState<_Paywall> {
           enter(_PlanRow(plan: p, price: price(p), on: identical(p, pick), onTap: () => setState(() => _pick = p['code'] as String)), benefits.length + i),
           const Gap(Space.s4),
         ],
-        Btn(
-          pick.isEmpty ? 'Continue' : 'Continue · ${price(pick)}',
-          kind: BtnKind.accent,
-          block: true,
-          icon: PhosphorIcons.arrowRight(PhosphorIconsStyle.bold),
-          onPressed: pick.isEmpty
-              ? null
-              : () {
-                  HapticFeedback.selectionClick();
-                  final router = GoRouter.of(context);
-                  Navigator.of(context).pop();
-                  router.push('/checkout?plan=${Uri.encodeQueryComponent('${pick['code']}')}');
-                },
-        ),
+        if (google)
+          Btn(
+            pick.isEmpty ? 'Continue' : 'Continue · ${price(pick)}',
+            kind: BtnKind.accent,
+            block: true,
+            icon: PhosphorIcons.arrowRight(PhosphorIconsStyle.bold),
+            onPressed: pick.isEmpty
+                ? null
+                : () {
+                    HapticFeedback.selectionClick();
+                    final router = GoRouter.of(context);
+                    Navigator.of(context).pop();
+                    router.push('/checkout?plan=${Uri.encodeQueryComponent('${pick['code']}')}');
+                  },
+          ),
+        if (google && website) const Gap(Space.s3),
+        if (website)
+          Btn(
+            google ? 'Pay on our website instead' : (pick.isEmpty ? 'Pay on our website' : 'Pay on our website · ${naira(pick['price_kobo'] as num)}'),
+            kind: google ? BtnKind.outline : BtnKind.accent,
+            block: true,
+            icon: PhosphorIcons.globeHemisphereWest(PhosphorIconsStyle.bold),
+            onPressed: pick.isEmpty
+                ? null
+                : () async {
+                    HapticFeedback.selectionClick();
+                    final ok = await openPayWebsite(ref, plan: '${pick['code']}');
+                    if (!ok && context.mounted) toast(context, 'Could not open the website. Please try again.');
+                  },
+          ),
         const Gap(Space.s3),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -209,7 +229,13 @@ class _PaywallState extends ConsumerState<_Paywall> {
             const Gap(Space.s1),
             Flexible(
               child: Text(
-                usesPaystack(ref) ? 'Card · Transfer · USSD · OPay · Zap · Bank apps' : 'Paid securely with Google Play',
+                !playApp
+                    ? 'Card · Transfer · USSD · OPay · Zap · Bank apps'
+                    : website && google
+                    ? 'Google Play here, or card · transfer · USSD · OPay on our website'
+                    : website
+                    ? 'Card · Transfer · USSD · OPay on our website'
+                    : 'Paid securely with Google Play',
                 style: context.ty.cap.bold.col(c.textMuted),
                 textAlign: TextAlign.center,
               ),
@@ -218,7 +244,9 @@ class _PaywallState extends ConsumerState<_Paywall> {
         ),
         const Gap(Space.s1),
         Text(
-          'Premium starts as soon as the payment is confirmed.${usesPaystack(ref) ? ' Have a discount code? Add it at checkout.' : ''}',
+          website
+              ? 'Pay on the website with the same email you use here. Premium shows in the app as soon as the payment is confirmed.'
+              : 'Premium starts as soon as the payment is confirmed.${usesPaystack(ref) ? ' Have a discount code? Add it at checkout.' : ''}',
           textAlign: TextAlign.center,
           style: context.ty.cap.col(c.textSubtle),
         ),

@@ -4,7 +4,7 @@ import { Switch } from "@/components/ui/switch";
 import { RowForm, inputCls } from "@/components/admin/row-form";
 import { savePlan } from "../app-control-actions";
 
-type Plan = { id: number; code: string; name: string; description: string | null; price_naira: number; duration_days: number | null; ends_on: string | null; play_product_id: string | null; is_active: boolean };
+type Plan = { id: number; code: string; name: string; description: string | null; price_naira: number; duration_days: number | null; ends_on: string | null; play_product_id: string | null; play_product_id_fee?: string | null; is_active: boolean };
 
 export function PlanCard({ plan: p, badge, priceLabel }: { plan: Plan; badge: React.ReactNode; priceLabel: string }) {
   return (
@@ -24,6 +24,8 @@ export function PlanCard({ plan: p, badge, priceLabel }: { plan: Plan; badge: Re
         <div className="space-y-1.5"><Label htmlFor={`e${p.id}`}>Ends on (instead of days)</Label><input id={`e${p.id}`} name="ends_on" type="date" defaultValue={p.ends_on ?? ""} className={inputCls} /></div>
         <div className="space-y-1.5"><Label htmlFor={`g${p.id}`}>Google Play product ID</Label><input id={`g${p.id}`} name="play_product_id" defaultValue={p.play_product_id ?? ""} placeholder={`premium_${p.code}`} className={`${inputCls} font-mono`} />
           <p className="text-xs text-muted-foreground">Create a one-time (consumable) product with this ID in Play Console. When you change the price here, change it there too: Google charges its own price.</p></div>
+        <div className="space-y-1.5"><Label htmlFor={`gf${p.id}`}>Google Play product ID with fee (optional)</Label><input id={`gf${p.id}`} name="play_product_id_fee" defaultValue={p.play_product_id_fee ?? ""} placeholder={`premium_${p.code}_fee`} className={`${inputCls} font-mono`} />
+          <p className="text-xs text-muted-foreground">A second product priced with Google’s fee. Used when “Add Google’s fee” is on in Payment settings.</p></div>
         <label className="flex items-center justify-between text-sm"><span>On sale</span><Switch name="is_active" defaultChecked={p.is_active} /></label>
       </RowForm>
     </section>

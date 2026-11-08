@@ -39,6 +39,7 @@ export const NAV: NavGroup[] = [
     items: [
       { href: "/admin/plans", label: "Plans & prices", icon: "SlidersHorizontal", roles: ADMINS },
       { href: "/admin/payments", label: "Payments", icon: "Receipt", roles: ADMINS },
+      { href: "/admin/payments/settings", label: "Payment settings", icon: "ToggleRight", roles: ADMINS },
       { href: "/admin/ads", label: "Ads", icon: "Megaphone", roles: ADMINS },
       { href: "/admin/ads/campaigns", label: "Brand ads", icon: "Storefront", roles: ADMINS },
       { href: "/admin/codes", label: "Redeem codes", icon: "Ticket", roles: ADMINS },

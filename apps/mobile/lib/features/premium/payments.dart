@@ -37,6 +37,52 @@ bool usesPaystackNow(WidgetRef ref) => store == Store.direct || (ref.read(featur
 /// "Redeem a code" (free Premium days): always in the direct build; in the Play build only with `codes_in_play_build`.
 bool showsRedeem(WidgetRef ref) => store == Store.direct || (ref.watch(featureFlagsProvider).value?['codes_in_play_build'] ?? false);
 
+/// Payment settings chosen by the admin (D-113): which ways the Play app offers (Google Play, the payment website, or
+/// both) and whether processing fees are added (Paystack: added to the price; Google: the plan's second Play product).
+class PaySettings {
+  const PaySettings(this.j);
+  final Map<String, dynamic> j;
+  Map<String, dynamic> _m(Object? o) => o is Map ? Map<String, dynamic>.from(o) : const {};
+  Map<String, dynamic> get _play => _m(j['play']);
+  Map<String, dynamic> get _fees => _m(j['fees']);
+
+  /// The payment website is offered in the Play app.
+  bool get playWebsite => _play['website'] == true;
+
+  /// Google Play Billing in the Play app (never both off: then Google stays on).
+  bool get playGoogle => _play['google'] != false || !playWebsite;
+  String get websiteUrl => '${j['website_url'] ?? ''}'.startsWith('https://') ? '${j['website_url']}' : 'https://cbt.solutiontee.com/pay';
+  bool get googleFee => _m(_fees['google'])['on'] == true;
+
+  /// The Paystack processing fee for an amount, the same sum as the server's `private.paystack_fee` (display only:
+  /// the server always works out what is charged).
+  int paystackFeeKobo(int amountKobo) {
+    final f = _m(_fees['paystack']);
+    if (f['on'] != true || amountKobo <= 0) return 0;
+    double n(String k, double d) => (f[k] as num?)?.toDouble() ?? d;
+    final pct = n('pct', 1.5).clamp(0, 20) / 100;
+    final flat = n('flat', 0) * 100, from = n('flat_from', 0) * 100, cap = n('cap', 0) * 100;
+    var total = amountKobo / (1 - pct);
+    if (flat > 0 && total >= from) total = (amountKobo + flat) / (1 - pct);
+    var fee = ((total - amountKobo) / 100).ceil() * 100;
+    if (cap > 0 && fee > cap) fee = cap.toInt();
+    return fee < 0 ? 0 : fee;
+  }
+}
+
+final paySettingsProvider = Provider<PaySettings>((ref) {
+  final s = ref.watch(appSettingsProvider).value?['payments'];
+  return PaySettings(s is Map ? Map<String, dynamic>.from(s) : const {});
+});
+
+/// Opens the payment website in the browser (Play app, when the admin offers it). The plan is pre-chosen.
+Future<bool> openPayWebsite(WidgetRef ref, {String? plan}) {
+  final base = Uri.parse(ref.read(paySettingsProvider).websiteUrl);
+  final email = Supabase.instance.client.auth.currentUser?.email;
+  final uri = base.replace(queryParameters: {...base.queryParameters, 'plan': ?plan, 'email': ?email, 'from': 'app'});
+  return launchUrl(uri, mode: LaunchMode.externalApplication).catchError((_) => false);
+}
+
 /// After a payment or a code: everything that depends on the plan is fetched again.
 void refreshPlan(WidgetRef ref) {
   ref.invalidate(myPlanProvider);
@@ -472,25 +518,33 @@ final playPricesProvider = FutureProvider<Map<String, String>>((ref) async {
   }
 });
 
-/// Plans on sale with their Play product ids.
-final plansForSaleProvider = FutureProvider<List<Map<String, dynamic>>>(
-  (ref) => cached(
+/// Plans on sale with their Play product ids. With the Google fee on (D-113), each plan uses its second Play product
+/// (priced with the fee in Play Console) when it has one.
+final plansForSaleProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  final fee = ref.watch(paySettingsProvider).googleFee;
+  final list = await cached(
     ref,
     'plans_sale',
     (s) => s
         .from('plans')
-        .select('id, code, name, description, price_kobo, duration_days, ends_on, sort, play_product_id')
+        .select('id, code, name, description, price_kobo, duration_days, ends_on, sort, play_product_id, play_product_id_fee')
         .eq('is_active', true)
         .order('sort', ascending: true),
     rows,
-  ),
-);
+  );
+  if (!fee) return list;
+  return [
+    for (final p in list) {...p, if ('${p['play_product_id_fee'] ?? ''}'.isNotEmpty) 'play_product_id': p['play_product_id_fee']},
+  ];
+});
 
 // ---------------------------------------------------------------- codes
 /// The server's price for a plan with an optional discount code (`quote_price`).
 class Quote {
-  const Quote({required this.listKobo, required this.discountKobo, required this.amountKobo, this.code, this.label, this.periodEnd});
-  final int listKobo, discountKobo, amountKobo;
+  const Quote({required this.listKobo, required this.discountKobo, required this.amountKobo, this.feeKobo = 0, this.code, this.label, this.periodEnd});
+
+  /// [feeKobo]: the processing fee the admin chose to add (already inside [amountKobo]).
+  final int listKobo, discountKobo, amountKobo, feeKobo;
   final String? code, label;
   final DateTime? periodEnd;
 }
@@ -532,6 +586,7 @@ class CodeRepo {
       listKobo: (r['list_kobo'] as num).toInt(),
       discountKobo: (r['discount_kobo'] as num).toInt(),
       amountKobo: (r['amount_kobo'] as num).toInt(),
+      feeKobo: (r['fee_kobo'] as num?)?.toInt() ?? 0,
       code: r['code'] as String?,
       label: r['label'] as String?,
       periodEnd: _date(r['period_end']),
