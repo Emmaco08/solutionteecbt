@@ -4,7 +4,10 @@ import { requireStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { env, hasBrevo } from "@/lib/env";
 import { PageHeader, PageSkeleton, Panel, Pill } from "@/components/admin/ui";
-import { signupCodeEmail, resetCodeEmail, passwordChangedEmail, welcomeEmail, inviteEmail } from "@/lib/email-templates";
+import {
+  signupCodeEmail, resetCodeEmail, passwordChangedEmail, welcomeEmail, inviteEmail, guardianNoticeEmail, guardianPrizeEmail,
+  webLoginCodeEmail, deleteCodeEmail, inactiveNoticeEmail, phoneAppealEmail,
+} from "@/lib/email-templates";
 import { TestButton, Preview } from "./email-ui";
 
 export const metadata: Metadata = { title: "Emails" };
@@ -43,6 +46,12 @@ async function Emails() {
     ["Password changed", passwordChangedEmail("27 Oct 2026, 14:30 (Lagos time)")],
     ["Welcome", welcomeEmail("Tolu Adeyemi")],
     ["Staff invite", inviteEmail("https://solutiontee.com/admin/accept?token_hash=example", "Editor", "Ada Okoye")],
+    ["Parent or guardian notice (13 to 17)", guardianNoticeEmail("Tolu Adeyemi", "tolu@example.com", "https://admin.solutiontee.com/guardian/stop?t=example")],
+    ["Parent told about a prize (13 to 17)", guardianPrizeEmail("Tolu Adeyemi", 5000, "Weekly JAMB challenge", "challenge")],
+    ["Website log-in code (to pay)", webLoginCodeEmail("482139")],
+    ["Delete account code (website)", deleteCodeEmail("731904")],
+    ["24 months inactive: last notice", inactiveNoticeEmail("Tolu Adeyemi", "9 December 2026", "https://cbt.solutiontee.com")],
+    ["Phone ban appeal: accepted", phoneAppealEmail(true, "Thank you for explaining. Please keep to one account per phone.")],
   ] as const;
   return (
     <>

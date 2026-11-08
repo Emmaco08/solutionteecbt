@@ -24,7 +24,7 @@ export function Preview({ label, subject, html }: { label: string; subject: stri
         <span className="grow"><b className="block text-sm">{label}</b><span className="block truncate text-xs text-muted-foreground">Subject: {subject}</span></span>
         <CaretDown size={16} className={cn("text-subtle transition-transform", open && "rotate-180")} />
       </button>
-      {open ? <iframe title={`${label} preview`} sandbox="" srcDoc={html} className="h-[520px] w-full rounded-b-xl border-t bg-[#F4F6FA]" /> : null}
+      {open ? <iframe title={`${label} preview`} sandbox="" srcDoc={html} className="h-[720px] w-full rounded-b-xl border-t bg-[#EEF2F8]" /> : null}
     </div>
   );
 }

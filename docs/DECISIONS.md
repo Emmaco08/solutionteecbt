@@ -1094,3 +1094,15 @@ The owner asked to run the admin from Vercel instead of the laptop.
   and they can stop it.
 - The app's own Privacy/Terms summaries lost the "Draft, to be reviewed by a lawyer" banner and now link to the full
   current text on the website.
+
+## D-123 — Professional email design (2026-11-08, revised the same day after the owner's review)
+- First version (navy gradient banner, badges, emoji) was "too AI generic". Revised to a calm company letter: white card
+  with a thin navy top rule, the real brand mark (`/brand/solutiontee-mark-transparent.png` on cbt.solutiontee.com, or
+  EMAIL_LOGO_URL) and name, plain heading, short paragraphs, a plain code box, thin left-rule notes, numbered steps, label
+  and value rows for amounts and dates, one navy button (red outline for "turn off"), "Best wishes, The SolutionTee
+  team", and a quiet footer (why you got it, help email, WhatsApp, website, Privacy, Terms, company line, disclaimer).
+  No badges or pills, no emoji in headings or subjects, no gradients.
+- Covers all 11 emails the website sends. Table layout with inline styles (Gmail, Outlook, Yahoo, phone mail apps),
+  hidden preview line, 600 px on computers, full width under 620 px with smaller heading and code. Checked at 360 px
+  and 680 px for 10 templates: no sideways scrolling, nothing cut off.
+- Admin → Emails previews all of them; "Send me a test email" sends the new design.
