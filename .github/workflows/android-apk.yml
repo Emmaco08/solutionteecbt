@@ -88,11 +88,6 @@ jobs:
           retry flutter build apk --release --flavor direct --target-platform android-arm64 \
             --build-number="$BUILD" --dart-define=APP_VERSION="$NAME"
           cp build/app/outputs/flutter-apk/app-direct-release.apk "$RUNNER_TEMP/app-arm64.apk"
-          # The Google Play version (no Paystack, no self-update, Google Play Billing only), for the owner to try
-          # before it goes to Play Console. Same signing key, so it installs over the direct app and back.
-          retry flutter build apk --release --flavor play --target-platform android-arm64 \
-            --build-number="$BUILD" --dart-define=APP_VERSION="$NAME"
-          cp build/app/outputs/flutter-apk/app-play-release.apk "$RUNNER_TEMP/app-play-arm64.apk"
           echo "APP_NAME_VERSION=$NAME" >> "$GITHUB_ENV"
           echo "APP_BUILD=$BUILD" >> "$GITHUB_ENV"
 
@@ -100,9 +95,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: apk
-          path: |
-            ${{ runner.temp }}/app-arm64.apk
-            ${{ runner.temp }}/app-play-arm64.apk
+          path: ${{ runner.temp }}/app-arm64.apk
           retention-days: 3
 
       - name: Remember the version
@@ -110,6 +103,76 @@ jobs:
         run: |
           echo "name=$APP_NAME_VERSION" >> "$GITHUB_OUTPUT"
           echo "build=$APP_BUILD" >> "$GITHUB_OUTPUT"
+
+      - name: Remove the signing key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/direct.jks" android/app/google-services.json
+
+  # The Google Play version (no Paystack, no self-update, Google Play Billing only) for the owner to try before Play
+  # Console (D-112). Its own machine, so it never delays or blocks the direct app on /download. Same signing key and
+  # build number as the direct app, so it installs over it and back.
+  play:
+    needs: [apk]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: apps/mobile
+    env:
+      APP_NAME_VERSION: ${{ needs.apk.outputs.name }}
+      APP_BUILD: ${{ needs.apk.outputs.build }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.9
+          cache: true
+
+      - name: Get packages
+        run: flutter pub get
+
+      - name: Ask the website for the signing key
+        run: |
+          set -euo pipefail
+          TOKEN=$(curl -sSf -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=solutiontee-apk" | jq -r .value)
+          echo "::add-mask::$TOKEN"
+          curl -sSf -X POST "$SITE/api/ci/apk" -H "Authorization: Bearer $TOKEN" -H "content-type: application/json" -d '{"step":"start"}' -o "$RUNNER_TEMP/start.json"
+          PW=$(jq -r .password "$RUNNER_TEMP/start.json")
+          echo "::add-mask::$PW"
+          jq -r .keystore "$RUNNER_TEMP/start.json" | base64 -d > "$RUNNER_TEMP/direct.jks"
+          GS=$(jq -r '.google_services // ""' "$RUNNER_TEMP/start.json")
+          if [ -n "$GS" ]; then echo "$GS" | base64 -d > android/app/google-services.json; else echo "No Firebase file: push will be off in this build"; fi
+          {
+            echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/direct.jks"
+            echo "ANDROID_KEYSTORE_PASSWORD=$PW"
+            echo "ANDROID_KEY_PASSWORD=$PW"
+            echo "ANDROID_KEY_ALIAS=$(jq -r .alias "$RUNNER_TEMP/start.json")"
+          } >> "$GITHUB_ENV"
+          rm "$RUNNER_TEMP/start.json"
+
+      - name: Build the Google Play APK
+        run: |
+          set -euo pipefail
+          sed -i 's/^org.gradle.jvmargs=.*/org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=1g/' android/gradle.properties
+          sed -i 's/^kotlin.daemon.jvmargs=.*/kotlin.daemon.jvmargs=-Xmx2g/' android/gradle.properties
+          retry() { for i in 1 2 3; do "$@" && return 0; echo "::warning::Build failed (try $i of 3), trying again"; sleep $((i * 30)); done; return 1; }
+          retry flutter build apk --release --flavor play --target-platform android-arm64 \
+            --build-number="$APP_BUILD" --dart-define=APP_VERSION="$APP_NAME_VERSION"
+          cp build/app/outputs/flutter-apk/app-play-release.apk "$RUNNER_TEMP/app-play-arm64.apk"
+
+      - name: Keep the Google Play APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk-play
+          path: ${{ runner.temp }}/app-play-arm64.apk
+          retention-days: 3
 
       - name: Remove the signing key
         if: always()
@@ -207,6 +270,25 @@ jobs:
             -d "{\"step\":\"publish\",\"name\":\"$APK\",\"version\":\"$VERSION\",\"built_at\":\"$BUILT\",\"build\":$APP_BUILD}"
           echo
           echo "### The new app is on $SITE/download (version $VERSION, $(du -m "$FILE" | cut -f1) MB)" >> "$GITHUB_STEP_SUMMARY"
+
+  publish-play:
+    needs: [apk, play, publish]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      APP_NAME_VERSION: ${{ needs.apk.outputs.name }}
+      APP_BUILD: ${{ needs.apk.outputs.build }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: apk-play
+          path: ${{ runner.temp }}
+      - name: Put the Google Play version on /download?channel=play
+        run: |
+          set -euo pipefail
+          BUILT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          VERSION="$APP_NAME_VERSION-$(date -u +%Y%m%d%H%M)"
+          token() { curl -sSf -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=solutiontee-apk" | jq -r .value; }
           # The Google Play version goes to /download?channel=play ("publish-play"; a website without it just says no).
           PLAY="$RUNNER_TEMP/app-play-arm64.apk"
           if [ -f "$PLAY" ]; then
