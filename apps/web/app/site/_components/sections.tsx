@@ -155,32 +155,31 @@ export function AiShowcase() {
 }
 
 /* ------------------------------------------------------------------ how it works */
-const STEPS = [
-  [DeviceMobile, "Get the app", "Download it free and create your account with your email."],
-  [Books, "Pick your exam", "Choose JAMB, WAEC or NECO, your subjects and your target score."],
-  [Exam, "Practise and improve", "Take timed tests, read the explanations and fix your weak topics."],
-] as const;
+const STEP_ICONS = [DeviceMobile, Books, Exam] as const;
 
-export function HowItWorks() {
+export function HowItWorks({ title, steps }: { title: string; steps: { title: string; text: string }[] }) {
   const ref = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start 80%", "end 60%"] });
   const width = useTransform(scrollYProgress, [0, 1], ["0%", "100%"]);
   return (
     <section className="bg-background py-20 sm:py-24">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
-        <Reveal className="text-center"><h2 className="text-[32px] font-bold tracking-tight sm:text-[40px]">Start in three steps</h2></Reveal>
+        <Reveal className="text-center"><h2 className="text-[32px] font-bold tracking-tight sm:text-[40px]">{title}</h2></Reveal>
         <div ref={ref} className="relative mt-14 grid gap-10 md:grid-cols-3">
           <div className="absolute left-[16%] right-[16%] top-7 hidden h-1 rounded-full bg-border md:block" aria-hidden>
             <motion.div style={{ width }} className="h-full rounded-full bg-[#F2B233]" />
           </div>
-          {STEPS.map(([Icon, title, text], i) => (
-            <Reveal key={title} delay={0.1 * i} className="relative text-center">
+          {steps.map(({ title, text }, i) => {
+            const Icon = STEP_ICONS[i % STEP_ICONS.length]!;
+            return (
+            <Reveal key={i} delay={0.1 * i} className="relative text-center">
               <span className="relative mx-auto grid size-14 place-items-center rounded-2xl bg-[#0B1F44] text-white shadow-lg"><Icon size={26} weight="fill" /></span>
               <p className="mt-2 text-xs font-bold text-[#2563B3]">Step {i + 1}</p>
               <h3 className="mt-1 text-lg font-bold">{title}</h3>
               <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-muted-foreground">{text}</p>
             </Reveal>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>
@@ -236,7 +235,7 @@ export function Pricing({ plans }: { plans: PricePlan[] }) {
 }
 
 /* ------------------------------------------------------------------ download */
-export function Download({ playUrl }: { playUrl: string }) {
+export function Download({ playUrl, title, text }: { playUrl: string; title: string; text: string }) {
   return (
     <section id="download" className="scroll-mt-20 bg-background py-20 sm:py-24">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
@@ -244,8 +243,8 @@ export function Download({ playUrl }: { playUrl: string }) {
           <div className="relative overflow-hidden rounded-[36px] bg-[#0B1F44] px-6 py-14 text-center text-white sm:px-12">
             <div className="pointer-events-none absolute -right-20 -top-20 size-72 rounded-full bg-[#F2B233]/25 blur-3xl" aria-hidden />
             <div className="pointer-events-none absolute -bottom-24 -left-16 size-72 rounded-full bg-[#2563B3]/40 blur-3xl" aria-hidden />
-            <h2 className="relative text-[32px] font-bold tracking-tight sm:text-[40px]">Your exam is coming. Start today.</h2>
-            <p className="relative mx-auto mt-4 max-w-xl text-[17px] text-[#C9D5EA]">Free to download. Works on Android phones with 3 GB of memory or more.</p>
+            <h2 className="relative text-[32px] font-bold tracking-tight sm:text-[40px]">{title}</h2>
+            <p className="relative mx-auto mt-4 max-w-xl text-[17px] text-[#C9D5EA]">{text}</p>
             <div className="relative mt-8 flex flex-col justify-center gap-3 sm:flex-row">
               {playUrl ? (
                 <a href={playUrl} className="inline-flex h-14 items-center justify-center gap-2.5 rounded-2xl bg-white px-6 font-bold text-[#0B1F44] transition-transform hover:-translate-y-0.5"><GooglePlayLogo size={24} weight="fill" /> Get it on Google Play</a>
@@ -263,24 +262,16 @@ export function Download({ playUrl }: { playUrl: string }) {
 }
 
 /* ------------------------------------------------------------------ FAQ */
-const FAQ = [
-  ["Is SolutionTee CBT free?", "Yes. You can practise free every day. Premium opens every past-question year, video solutions, lessons and more AI tutor help."],
-  ["How do I pay without a card?", "On this website you can pay with bank transfer, USSD, OPay and other bank apps through Paystack. Log in with the same email you use in the app, and Premium shows in the app at once."],
-  ["Does Premium renew by itself?", "No. You pay once for the period you choose. Nothing is taken from your account later."],
-  ["Can I use it without data?", "Yes. Download questions while you have data, then practise offline. Your results sync later."],
-  ["Is the AI tutor safe for students?", "It only helps with schoolwork and exam topics, and it refuses anything else. Students under 18 never see personalised ads."],
-  ["Who can use SolutionTee CBT?", "Students aged 13 and older. If you are 13 to 17, we let a parent or guardian know you joined."],
-  ["Is this the official JAMB, WAEC or NECO app?", "No. SolutionTee CBT is an independent exam-practice platform and is not affiliated with or endorsed by JAMB, WAEC or NECO."],
-] as const;
+export type FaqItem = { q: string; a: string };
 
-export function Faq() {
+export function Faq({ title, items }: { title: string; items: FaqItem[] }) {
   const [open, setOpen] = useState<number | null>(0);
   return (
     <section id="faq" className="scroll-mt-20 bg-[#F4F6FA] py-20 dark:bg-[#0A1730] sm:py-24">
       <div className="mx-auto max-w-3xl px-4 sm:px-6">
-        <Reveal className="text-center"><h2 className="text-[32px] font-bold tracking-tight sm:text-[40px]">Questions students ask</h2></Reveal>
+        <Reveal className="text-center"><h2 className="text-[32px] font-bold tracking-tight sm:text-[40px]">{title}</h2></Reveal>
         <div className="mt-10 space-y-3">
-          {FAQ.map(([q, a], i) => (
+          {items.map(({ q, a }, i) => (
             <Reveal key={q} delay={0.03 * i}>
               <div className="rounded-2xl border bg-card">
                 <button type="button" className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left font-bold" aria-expanded={open === i} onClick={() => setOpen(open === i ? null : i)}>
@@ -304,7 +295,7 @@ export function Faq() {
 }
 
 /* ------------------------------------------------------------------ footer */
-export function SiteFooter() {
+export function SiteFooter({ tagline = "Learn. Think. Solve." }: { tagline?: string }) {
   return (
     <footer className="bg-[#06132B] py-12 text-[#8FA2C4]">
       <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 sm:px-6 md:flex-row md:justify-between">
@@ -314,7 +305,7 @@ export function SiteFooter() {
             <img src="/brand/favicon.svg" alt="" className="size-9 rounded-xl" />
             <span className="text-[17px] font-bold">SolutionTee <span className="text-[#F2B233]">CBT</span></span>
           </div>
-          <p className="mt-3 text-sm">Learn. Think. Solve.</p>
+          <p className="mt-3 text-sm">{tagline}</p>
           <p className="mt-4 text-xs leading-5">SOLUTIONTEE EDUTECH AND ICT SERVICES, a registered Business Name, RC 9123561. Diamond Estate, 1 Obashoro St, off Command Road, Ipaja, Lagos.</p>
         </div>
         <div className="grid grid-cols-2 gap-8 text-sm">

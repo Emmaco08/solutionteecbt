@@ -4381,6 +4381,18 @@ export type Database = {
         Args: { p_ids: string[] }
         Returns: number
       }
+      minor_win_notices_due: {
+        Args: { p_limit?: number }
+        Returns: Json
+      }
+      minor_win_notice_mark: {
+        Args: { p_error?: string; p_id: number; p_ok: boolean }
+        Returns: undefined
+      }
+      admin_minor_win_notices: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       question_sources: {
         Args: { p_ids: string[] }
         Returns: Json

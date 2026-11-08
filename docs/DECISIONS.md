@@ -1060,3 +1060,37 @@ The owner asked to run the admin from Vercel instead of the laptop.
   "Show past questions again" restores exactly those). Tested both ways in a rolled-back transaction.
 - Not covered by the switch: past questions already copied into challenges; replace those challenges' questions if the
   switch is ever used.
+
+## D-121 — Cash prizes for students aged 13 to 17, with a parent email after each win (2026-11-08)
+- Lawyer: allowed if the parent is emailed after the win. New admin switch *Flags & settings → Legal switches →
+  Students aged 13 to 17 can win cash too* (`app_settings.cash_prizes.teens`, off by default; works only while cash
+  prizes are on). `private.cash_min_age()` is then 13 instead of 18, so entry, claims and invite cash follow.
+- A cash win by an under-18 (challenge prize set on `challenge_entries.prize`, or a cash `referral_rewards` row) queues
+  `private.guardian_prize_notices`. The website job (`/api/cron/accounts`, every 10 minutes via cron
+  `minor-win-notices`, only when something is queued) emails the parent or guardian from `guardian_consents`.
+  The email says what was won, that entry was free, that it is paid to a parent's or guardian's account, and that they
+  can reply within 7 days to stop it.
+- Claims by under-18s are refused until that email has gone out (`prize_claim_rules`, `referral_minor_claim`); without
+  a parent email on file the student is asked to contact support. The claim form already takes the guardian's name,
+  phone and bank account. Winners & payouts shows "Parents told" with the status of each email.
+- Tested in a rolled-back transaction: a 15-year-old's win queued the email, the claim was refused, then allowed after
+  the email was marked sent.
+
+## D-122 — Website CMS, invite and challenge sections, store images 6 and 7, legal text that follows the cash switch (2026-11-08)
+- **Admin → Website** edits cbt.solutiontee.com: section on/off switches (exams strip, subjects ribbon, feature tour,
+  "and there's more", **Invite friends and earn**, **Practise in challenges and win**, three steps, prices, download,
+  FAQ), announcement bar, hero texts, the two earn sections (title, text, points), steps, download box, FAQ list and
+  footer line. Stored in `app_settings.site_cms`, cleaned by `mergeCms` both when saving and when reading (defaults
+  fill anything missing). Saving refreshes the site at once (`updateTag("site")`).
+- Texts can use `{rewards}` (now "Premium days and XP"; "cash prizes, Premium days and XP" while cash is on),
+  `{pct}`, `{maxPct}`, `{xp}`, `{finishXp}`, `{cashNaira}`, `{cashEvery}`, `{questions}`, `{firstYear}`, `{lastYear}`,
+  filled from the live settings, so a text never promises cash while cash is off.
+- New phone screens `InviteScreen` and `ChallengeScreen` (same style as the others; cash shown only when on) are used on
+  the website and for store images `/store-kit/6`, `/7` (Premium days + XP, for Play now) and `6-cash`, `7-cash` (for
+  later). PNGs in `docs/play-console/graphics/`.
+- **Privacy Policy and Terms** carry `<!-- if cash=off|adults|teens|on -->` paragraphs; the pages show only the ones that
+  match the switches (`cashState`, refreshed when an admin flips a cash switch). Off: cash is switched off. 18+: who can
+  win, prize payout data. 13+: parents are emailed after a win, the prize is paid to the parent's or guardian's account,
+  and they can stop it.
+- The app's own Privacy/Terms summaries lost the "Draft, to be reviewed by a lawyer" banner and now link to the full
+  current text on the website.

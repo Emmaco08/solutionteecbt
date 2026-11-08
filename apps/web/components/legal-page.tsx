@@ -2,10 +2,15 @@ import fs from "node:fs";
 import path from "node:path";
 import Link from "next/link";
 import { Marked } from "marked";
+import { applyCashBlocks, cashState } from "@/lib/site";
 
-/** A published legal page from content/legal/<name>.md (our own text, read at build time). D-118. */
-export function LegalPage({ name }: { name: "privacy" | "terms" | "refunds" }) {
-  const md = fs.readFileSync(path.join(process.cwd(), "content", "legal", `${name}.md`), "utf8");
+/**
+ * A published legal page from content/legal/<name>.md (our own text, D-118). Paragraphs marked `<!-- if cash=… -->`
+ * follow the admin's cash prize switches (off / 18+ / 13+ with parent email), D-122.
+ */
+export async function LegalPage({ name }: { name: "privacy" | "terms" | "refunds" }) {
+  const raw = fs.readFileSync(path.join(process.cwd(), "content", "legal", `${name}.md`), "utf8");
+  const md = applyCashBlocks(raw, await cashState());
   const html = new Marked({ gfm: true }).parse(md, { async: false }) as string;
   return (
     <div className="min-h-dvh bg-background">

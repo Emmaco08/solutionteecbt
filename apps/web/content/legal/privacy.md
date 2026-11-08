@@ -45,6 +45,12 @@ We **do not sell** personal data.
 - **Practice content:** answers, flags, bookmarks; questions you ask the AI tutor, photos of questions you send it, voice questions (turned into text, see 4.3); reactions and reports about AI answers.
 - **Challenges:** challenge entries and answers.
 - **Payments:** the plan or item you buy, the amount, any discount codes and the payment reference. Card, bank and USSD details are entered with **Paystack** or **Google Play**, not with us.
+<!-- if cash=adults -->
+- **Prize payouts:** when you claim a cash prize, the bank name, account number and account name to pay, checked with Paystack. Kept with the payment records (section 10).
+<!-- end -->
+<!-- if cash=teens -->
+- **Prize payouts:** when you claim a cash prize, the bank name, account number and account name to pay (for students aged 13 to 17, the parent's or guardian's, with their name and phone number), checked with Paystack. Kept with the payment records (section 10).
+<!-- end -->
 - **Support:** messages you send us by email or WhatsApp.
 - **Invitations:** your referral code, and the fact that a friend joined with it.
 
@@ -88,7 +94,15 @@ We do not collect precise location, contacts, SMS or call logs, health data or b
 - **Under 13:** accounts cannot be created. If the year of birth shows a student is under 13, the account is deleted at once and nothing is kept.
 - **13 to 17:** the student gives the email address of a parent or guardian. We email the parent or guardian a welcome notice with a plain summary of this policy and the Terms, and a button to **turn the account off**. If they turn it off, the student can no longer log in and the account is deleted after 30 days. We keep a record of each notice (who, when, which policy version).
 - **Ads for under-18s:** never personalised; general-audience content only (Google's "teen" setting).
-- **Cash prizes** are switched off. If they are switched on in future, they will be for students aged 18 and over only.
+<!-- if cash=off -->
+- **Cash prizes** are switched off. If they are switched on in future, this section will say who can win and how.
+<!-- end -->
+<!-- if cash=adults -->
+- **Cash prizes** are on for some free-to-enter challenges and for the invite-friends reward. Only students **aged 18 and over** can enter cash-prize challenges, win or claim cash.
+<!-- end -->
+<!-- if cash=teens -->
+- **Cash prizes** are on for some free-to-enter challenges and for the invite-friends reward. Students **aged 18 and over** and students **aged 13 to 17** can win cash. When a student aged 13 to 17 wins, **we email their parent or guardian** (to the address given at sign-up) before the prize can be claimed. The prize is paid **to the parent's or guardian's bank account**, and we record their name and phone number with the claim. The parent or guardian can reply to that email to stop the payment.
+<!-- end -->
 - Parents and guardians can contact privacy@solutiontee.com at any time to review, correct or delete their child's data.
 
 ## 7. Who we share data with

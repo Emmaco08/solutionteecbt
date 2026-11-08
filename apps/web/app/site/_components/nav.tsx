@@ -4,14 +4,15 @@ import { AnimatePresence, motion, useMotionValueEvent, useScroll } from "motion/
 import { useState } from "react";
 import { List, X } from "@phosphor-icons/react";
 
-const LINKS = [
+const DEFAULT_LINKS: [string, string][] = [
   ["#features", "Features"],
   ["#ai", "AI tutor"],
   ["#pricing", "Pricing"],
   ["#faq", "FAQ"],
-] as const;
+];
 
-export function SiteNav() {
+/** Menu; [links] follow the sections switched on in admin → Website. */
+export function SiteNav({ links: LINKS = DEFAULT_LINKS }: { links?: [string, string][] }) {
   const { scrollY } = useScroll();
   const [solid, setSolid] = useState(false);
   const [open, setOpen] = useState(false);

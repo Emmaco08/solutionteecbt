@@ -41,7 +41,9 @@ async function Settings() {
           </Panel>
           <Panel title="Legal switches (turn on only with written approval)" bodyClassName="divide-y py-1">
             <AppSwitch k="cash_prizes" field="on" on={sw("cash_prizes", "on", false)} title="Cash prizes and cash referral rewards"
-              text="Off (now): challenges can only give Premium days, XP and badges, and no cash can be claimed. Turn on only after the Lagos State Lotteries and Gaming Authority (LSLGA) approves in writing. When on: cash challenges are free to enter and only for students aged 18 and over." />
+              text="Off (now): challenges can only give Premium days, XP and badges, and no cash can be claimed. Turn on only after the Lagos State Lotteries and Gaming Authority (LSLGA) approves in writing. When on: cash challenges are free to enter and only for students aged 18 and over (unless the next switch is on)." />
+            <AppSwitch k="cash_prizes" field="teens" on={sw("cash_prizes", "teens", false)} title="Students aged 13 to 17 can win cash too"
+              text="Only works while cash prizes are on. A student aged 13 to 17 can enter and win; within 10 minutes of the win we email their parent or guardian, and the prize can only be claimed after that email has gone out. It is paid to the parent's or guardian's account. The Privacy Policy and Terms change to say this automatically." />
             <AppSwitch k="exam_logos" field="on" on={sw("exam_logos", "on", false)} title="Show the JAMB, WAEC and NECO logos"
               text="Off (now): the app shows our own exam badges with the exam name in plain text. Turn on only after each exam body gives written permission to use its logo." />
           </Panel>

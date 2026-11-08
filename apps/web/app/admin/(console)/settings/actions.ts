@@ -1,5 +1,5 @@
 "use server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { z } from "zod";
 import { requireStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -11,6 +11,7 @@ export async function setFlag(key: string, enabled: boolean): Promise<ActionResu
   const supabase = await createClient();
   const { error } = await supabase.from("feature_flags").update({ enabled }).eq("key", key);
   if (error) return { ok: false, error: friendlyError(error) };
+  if (key === "cash_prizes") updateTag("site"); // the website, Privacy Policy and Terms follow the cash switches (D-122)
   revalidatePath("/admin", "layout");
   return { ok: true };
 }
@@ -57,7 +58,7 @@ const SWITCHES: Record<string, string[]> = {
   screen_protection: ["whole_app", "exams"],
   app_update: ["force"],
   google_auth: ["enabled"],
-  cash_prizes: ["on"], // D-110
+  cash_prizes: ["on", "teens"], // D-110, D-121
   exam_logos: ["on"], // D-111
 };
 

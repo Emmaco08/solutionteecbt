@@ -2,8 +2,9 @@
 import { AnimatePresence, animate, motion, useReducedMotion } from "motion/react";
 import { useEffect, useState } from "react";
 import {
-  ArrowRight, BatteryFull, Books, Calculator, Camera, CaretLeft, CaretRight, ChartBar, Exam, FilePdf, Flag, GridFour, House,
-  Lightning, NotePencil, PaperPlaneRight, Play, PlayCircle, Sparkle, SquaresFour, Student, Trophy, UserCircle, WifiHigh,
+  ArrowRight, BatteryFull, Books, Calculator, Camera, CaretLeft, CaretRight, ChartBar, CheckCircle, Clock, Copy, Crown, Exam, FilePdf, Flag,
+  Gift, GridFour, House, Lightning, Money, NotePencil, PaperPlaneRight, Play, PlayCircle, Sparkle, SquaresFour, Student, Trophy, UserCircle,
+  Users, WhatsappLogo, WifiHigh,
 } from "@phosphor-icons/react";
 
 /* Colours from design/tokens.json (the app's own). */
@@ -398,6 +399,136 @@ export function LeaderScreen({ play = true }: { play?: boolean }) {
         <span className="grid size-10 place-items-center rounded-full text-[13px] font-bold" style={{ background: GOLD, color: NAVY }}>TA</span>
         <span className="grow"><b className="block text-[15px]">You</b><span className="text-[12px] text-[#C9D5EA]">38 points to reach the top 100</span></span>
         <b className="text-[18px]">287</b>
+      </motion.div>
+      <BottomNav active="test" />
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ invite friends (D-122) */
+const FRIENDS: [string, string, string, boolean][] = [
+  ["CO", "Chidi O.", "Joined Monday", true], ["AE", "Amaka E.", "Joined Tuesday", true], ["MB", "Musa B.", "Finishing a test", false], ["FA", "Funmi A.", "Joined today", true],
+];
+
+/** The app's Invite friends screen: code, WhatsApp share, discount and rewards. [cash] shows the cash meter (only when cash is on). */
+export function InviteScreen({ play = true, cash = false }: { play?: boolean; cash?: boolean }) {
+  const step = useScript(play, [500, 1400, 5200]);
+  const shown = step >= 1 || !play;
+  const pct = step >= 2 || !play ? 35 : 30;
+  return (
+    <div className="relative h-full w-full overflow-hidden" style={{ background: BG, color: TEXT }}>
+      <div className="bg-white">
+        <StatusBar />
+        <div className="flex items-center gap-2 px-3 pb-3"><CaretLeft size={24} weight="bold" /><p className="text-[19px] font-bold">Invite friends</p></div>
+      </div>
+      <div className="space-y-3 px-4 pt-3">
+        <div className="relative overflow-hidden rounded-3xl p-5 text-white" style={{ background: `linear-gradient(135deg, ${NAVY}, #183A78)` }}>
+          <span className="absolute -right-10 -top-10 size-36 rounded-full blur-2xl" style={{ background: "rgba(242,178,51,.45)" }} />
+          <Gift size={30} weight="fill" style={{ color: GOLD }} />
+          <p className="mt-2 text-[22px] font-bold">{cash ? "Invite friends, earn rewards" : "Get Premium cheaper"}</p>
+          <p className="text-[13px] text-[#C9D5EA]">Every friend who joins with your code gives you 5% off Premium{cash ? " and counts toward cash" : " and 50 XP"}.</p>
+          <div className="mt-4 flex items-center justify-between rounded-2xl px-4 py-3" style={{ background: "rgba(255,255,255,.1)" }}>
+            <span><span className="block text-[12px] text-[#DCE4F2]">Your code</span><b className="text-[24px] tracking-[0.18em]">TOLU42</b></span>
+            <span className="grid size-11 place-items-center rounded-xl" style={{ background: "rgba(255,255,255,.14)" }}><Copy size={20} weight="bold" /></span>
+          </div>
+          <span className="mt-3 flex h-12 items-center justify-center gap-2 rounded-2xl text-[15px] font-bold" style={{ background: "#25D366", color: "#06132B" }}>
+            <WhatsappLogo size={22} weight="fill" /> Share on WhatsApp
+          </span>
+        </div>
+        <div className="rounded-2xl bg-white p-4">
+          <div className="flex items-center justify-between"><b className="text-[15px]">Your discount</b><b className="text-[22px] tabular-nums" style={{ color: "#15803D" }}>{pct}%</b></div>
+          <div className="mt-2 h-2.5 overflow-hidden rounded-full" style={{ background: "#E7ECF4" }}>
+            <motion.div initial={false} animate={{ width: `${pct}%` }} transition={{ duration: 0.8 }} className="h-full rounded-full" style={{ background: "#16A34A" }} />
+          </div>
+          <p className="mt-1.5 text-[12px]" style={{ color: MUTED }}>Used on your next Premium payment.</p>
+        </div>
+        {cash ? (
+          <div className="flex items-center gap-3 rounded-2xl bg-white p-4">
+            <span className="grid size-11 place-items-center rounded-xl" style={{ background: "#FDF1DC", color: "#A16207" }}><Money size={24} weight="fill" /></span>
+            <span className="grow"><b className="block text-[15px]">₦5,000 cash every 20 friends</b><span className="text-[12px]" style={{ color: MUTED }}>12 of 20 · 8 more to go</span></span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3 rounded-2xl bg-white p-4">
+            <span className="grid size-11 place-items-center rounded-xl" style={{ background: "#FDF1DC", color: "#A16207" }}><Lightning size={24} weight="fill" /></span>
+            <span className="grow"><b className="block text-[15px]">+50 XP for every friend</b><span className="text-[12px]" style={{ color: MUTED }}>Spend XP on Premium days and streak freezes</span></span>
+          </div>
+        )}
+        <p className="px-1 pt-1 text-[14px] font-bold">Your friends (7)</p>
+        <div className="rounded-2xl bg-white">
+          {FRIENDS.map(([ini, name, note, ok], i) => (
+            <motion.div key={ini} initial={false} animate={{ opacity: shown ? 1 : 0, x: shown ? 0 : 30 }} transition={{ delay: 0.1 * i }}
+              className="flex items-center gap-3 border-b px-4 py-2.5" style={{ borderColor: BORDER }}>
+              <span className="grid size-9 place-items-center rounded-full text-[12px] font-bold" style={{ background: "#EEF2F9" }}>{ini}</span>
+              <span className="grow"><b className="block text-[14px]">{name}</b><span className="text-[12px]" style={{ color: MUTED }}>{note}</span></span>
+              <span className="flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-bold" style={ok ? { background: "#DCFCE7", color: "#15803D" } : { background: "#FEF3C7", color: "#92400E" }}>
+                {ok ? <><CheckCircle size={14} weight="fill" /> Counted</> : "Waiting"}
+              </span>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+      <BottomNav active="me" />
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ challenges (D-122) */
+/** The app's Challenges screen: a live weekly challenge with its prizes, upcoming ones, and a reward toast. */
+export function ChallengeScreen({ play = true, cash = false }: { play?: boolean; cash?: boolean }) {
+  const step = useScript(play, [600, 1800, 4800]);
+  const toast = step >= 2 || !play;
+  const prizes: [string, string][] = cash
+    ? [["1st", "₦10,000"], ["2nd", "₦5,000"], ["3rd", "₦2,500"]]
+    : [["1st", "30 days Premium"], ["2nd", "14 days Premium"], ["3rd", "7 days Premium"]];
+  const xp = ["+200 XP", "+100 XP", "+50 XP"];
+  const upcoming: [string, string, string][] = [
+    ["Mathematics sprint", "20 questions · 15 min", "Sat 7:00 pm"], ["Biology blitz", "25 questions · 20 min", "Sun 5:00 pm"], ["Use of English", "40 questions · 30 min", "Fri 8:00 pm"],
+  ];
+  return (
+    <div className="relative h-full w-full overflow-hidden" style={{ background: BG, color: TEXT }}>
+      <div className="bg-white">
+        <StatusBar />
+        <div className="px-4 pb-3"><p className="text-[20px] font-bold">Challenges</p><p className="text-[13px]" style={{ color: MUTED }}>Practise with students across Nigeria. Free to join.</p></div>
+        <div className="mx-4 mb-3 grid grid-cols-3 rounded-2xl p-1 text-center text-[14px] font-bold" style={{ background: "#EEF2F9" }}>
+          <span className="rounded-xl bg-white py-2 shadow">Live</span><span className="py-2" style={{ color: MUTED }}>Upcoming</span><span className="py-2" style={{ color: MUTED }}>Past</span>
+        </div>
+      </div>
+      <div className="space-y-3 px-4 pt-3">
+        <div className="relative overflow-hidden rounded-3xl p-5 text-white" style={{ background: `linear-gradient(135deg, ${NAVY}, #183A78)` }}>
+          <span className="absolute -right-10 -top-10 size-36 rounded-full blur-2xl" style={{ background: "rgba(242,178,51,.45)" }} />
+          <div className="flex items-center gap-2 text-[12px] font-bold">
+            <motion.span animate={play ? { opacity: [1, 0.3, 1] } : undefined} transition={{ duration: 1.4, repeat: Infinity }} className="size-2.5 rounded-full" style={{ background: "#22C55E" }} />
+            LIVE NOW · 1,248 playing
+          </div>
+          <p className="mt-2 text-[22px] font-bold">Weekly JAMB challenge</p>
+          <p className="flex items-center gap-1.5 text-[13px] text-[#C9D5EA]"><Clock size={15} weight="bold" /> 2 h 14 min left · 40 questions</p>
+          <div className="mt-4 grid grid-cols-3 gap-2">
+            {prizes.map(([place, prize], i) => (
+              <div key={place} className="rounded-2xl px-2 py-2.5 text-center" style={{ background: i === 0 ? GOLD : "rgba(255,255,255,.1)", color: i === 0 ? NAVY : "#fff" }}>
+                {i === 0 ? <Crown size={18} weight="fill" className="mx-auto" /> : <Trophy size={18} weight="fill" className="mx-auto" />}
+                <b className="block text-[12px]">{place}</b>
+                <span className="block text-[12px] font-bold leading-4">{prize}</span>
+                <span className="block text-[11px] opacity-80">{xp[i]}</span>
+              </div>
+            ))}
+          </div>
+          <span className="mt-4 flex h-12 items-center justify-center gap-2 rounded-2xl text-[15px] font-bold" style={{ background: GOLD, color: NAVY }}>Join free <ArrowRight size={18} weight="bold" /></span>
+        </div>
+        <p className="px-1 pt-1 text-[14px] font-bold">Coming up</p>
+        <div className="rounded-2xl bg-white">
+          {upcoming.map(([t, d, w]) => (
+            <div key={t} className="flex items-center gap-3 border-b px-4 py-3" style={{ borderColor: BORDER }}>
+              <span className="grid size-10 place-items-center rounded-xl" style={{ background: "#EEF2F9", color: NAVY }}><Users size={20} weight="fill" /></span>
+              <span className="grow"><b className="block text-[14px]">{t}</b><span className="text-[12px]" style={{ color: MUTED }}>{d}</span></span>
+              <span className="text-[12px] font-bold" style={{ color: BLUE }}>{w}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <motion.div initial={false} animate={{ y: toast ? 0 : 140, opacity: toast ? 1 : 0 }} transition={{ type: "spring", stiffness: 220, damping: 22 }}
+        className="absolute inset-x-3 bottom-[90px] flex items-center gap-3 rounded-2xl px-4 py-3 text-white" style={{ background: NAVY }}>
+        <span className="grid size-10 place-items-center rounded-full" style={{ background: GOLD, color: NAVY }}><Trophy size={20} weight="fill" /></span>
+        <span className="grow"><b className="block text-[15px]">You finished 2nd! 🎉</b><span className="text-[12px] text-[#C9D5EA]">{cash ? "₦5,000 + 100 XP added" : "14 days Premium + 100 XP added"}</span></span>
       </motion.div>
       <BottomNav active="test" />
     </div>

@@ -1,6 +1,6 @@
 "use client";
 import { Phone3D } from "@/app/site/_components/phone";
-import { AiScreen, CbtScreen, LeaderScreen, ResultScreen, StudyScreen } from "@/app/site/_components/screens";
+import { AiScreen, CbtScreen, ChallengeScreen, InviteScreen, LeaderScreen, ResultScreen, StudyScreen } from "@/app/site/_components/screens";
 
 /** Google Play store images (D-118), drawn at their real pixel size and captured with a headless browser. */
 const SHOTS: Record<string, { title: string; text: string; screen: React.ReactNode; accent?: string }> = {
@@ -9,6 +9,12 @@ const SHOTS: Record<string, { title: string; text: string; screen: React.ReactNo
   "3": { title: "Stuck? Ask your AI tutor", text: "Snap a question and get the steps", screen: <AiScreen play={false} /> },
   "4": { title: "Video solutions & lessons", text: "Learn it properly, then practise", screen: <StudyScreen play={false} /> },
   "5": { title: "Challenges & leaderboards", text: "Practise with students across Nigeria", screen: <LeaderScreen play={false} /> },
+  // D-122: earn by inviting and by practising in challenges. "6"/"7" match the app while cash prizes are off (Premium days
+  // and XP); "6-cash"/"7-cash" are for when the admin turns cash prizes on (approval first).
+  "6": { title: "Invite friends & earn", text: "Up to 100% off Premium, plus XP for every friend", screen: <InviteScreen play={false} /> },
+  "7": { title: "Practise in challenges & win", text: "Free to join · win Premium days and XP", screen: <ChallengeScreen play={false} /> },
+  "6-cash": { title: "Invite friends & earn", text: "Premium discounts, XP and cash rewards", screen: <InviteScreen play={false} cash /> },
+  "7-cash": { title: "Practise in challenges & win", text: "Free to join · win cash, Premium and XP", screen: <ChallengeScreen play={false} cash /> },
 };
 
 export function Shot({ id }: { id: string }) {

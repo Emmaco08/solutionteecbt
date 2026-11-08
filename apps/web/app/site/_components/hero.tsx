@@ -18,14 +18,16 @@ function Chip({ children, className, delay = 0 }: { children: React.ReactNode; c
   );
 }
 
-export function Hero({ questions, firstYear, lastYear, playUrl }: { questions: number; firstYear: number; lastYear: number; playUrl: string }) {
+export function Hero({ badge, title, highlight, subtitle, playUrl }: { badge: string; title: string; highlight: string; subtitle: string; playUrl: string }) {
   const ref = useRef<HTMLElement>(null);
   const still = useReducedMotion();
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
   const frontY = useTransform(scrollYProgress, [0, 1], [0, still ? 0 : 140]);
   const backY = useTransform(scrollYProgress, [0, 1], [0, still ? 0 : 60]);
   const glowScale = useTransform(scrollYProgress, [0, 1], [1, 1.4]);
-  const words = ["Practise", "like", "it’s", "the", "real", "exam."];
+  // Admin → Website: plain words, then the gold highlighted words.
+  const plain = title.split(/\s+/).filter(Boolean);
+  const words = [...plain, ...highlight.split(/\s+/).filter(Boolean)];
   return (
     <section ref={ref} className="relative overflow-hidden bg-[#06132B] pb-24 pt-28 text-white sm:pt-32 lg:pb-32">
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,.045)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.045)_1px,transparent_1px)] bg-[size:44px_44px] [mask-image:radial-gradient(ellipse_at_top,black_30%,transparent_75%)]" aria-hidden />
@@ -36,19 +38,18 @@ export function Hero({ questions, firstYear, lastYear, playUrl }: { questions: n
         <div>
           <motion.p initial={still ? false : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease }}
             className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-bold text-[#F2B233]">
-            <Sparkle size={14} weight="fill" /> JAMB · WAEC · NECO CBT practice
+            <Sparkle size={14} weight="fill" /> {badge}
           </motion.p>
           <h1 className="text-[42px] font-bold leading-[1.06] tracking-tight sm:text-[60px]">
             {words.map((w, i) => (
-              <motion.span key={i} className={`mr-[0.25em] inline-block ${i >= 4 ? "bg-gradient-to-r from-[#F2B233] to-[#FFD66B] bg-clip-text text-transparent" : ""}`}
+              <motion.span key={i} className={`mr-[0.25em] inline-block ${i >= plain.length ? "bg-gradient-to-r from-[#F2B233] to-[#FFD66B] bg-clip-text text-transparent" : ""}`}
                 initial={still ? false : { opacity: 0, y: 32, rotateX: -60, filter: "blur(8px)" }} animate={{ opacity: 1, y: 0, rotateX: 0, filter: "blur(0px)" }}
                 transition={{ duration: 0.7, delay: 0.08 * i, ease }}>{w}</motion.span>
             ))}
           </h1>
           <motion.p initial={still ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.5, ease }}
             className="mt-5 max-w-xl text-[17px] leading-7 text-[#C9D5EA]">
-            {questions.toLocaleString("en-NG")}+ past questions from {firstYear} to {lastYear}, a timed CBT that feels like exam day, every answer explained,
-            and an AI tutor that helps you understand. Learn. Think. Solve.
+            {subtitle}
           </motion.p>
           <motion.div initial={still ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.65, ease }}
             className="mt-8 flex flex-col gap-3 sm:flex-row">

@@ -2,7 +2,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { hasServiceKey, hasR2 } from "@/lib/env";
 import { json } from "@/lib/auth-email";
 import { sendEmail } from "@/lib/email";
-import { inactiveNoticeEmail } from "@/lib/email-templates";
+import { guardianPrizeEmail, inactiveNoticeEmail } from "@/lib/email-templates";
 import { deletePrefix } from "@/lib/r2";
 
 export const maxDuration = 60;
@@ -15,6 +15,7 @@ type Due = { notify: { id: string; email: string; name: string }[]; delete: stri
  * 1. accounts with no activity for 23 months get an email: "log in before <date> or it is deleted";
  * 2. accounts told 30+ days ago that stayed inactive (24 months, no running Premium) are deleted;
  * 3. every deleted account (any route) loses its photos in R2 (`a/<user id>/`). Neon copies: archive-mover.
+ * Also (every 10 minutes, body {"only":"minor_wins"}): emails the parent of a student aged 13 to 17 who won cash (D-121).
  * Staff accounts (the owner's included) are never selected by the database.
  */
 export async function POST(req: Request) {
@@ -24,8 +25,21 @@ export async function POST(req: Request) {
   const { data: ok } = token ? await svc.rpc("push_cron_ok", { p_token: token }) : { data: false };
   if (ok !== true) return json({ error: "forbidden" }, 403);
 
-  const report = { notified: 0, notice_failed: 0, deleted: 0, delete_failed: 0, files_removed: 0, files_failed: 0 };
+  const report = { parents_told: 0, parents_failed: 0, notified: 0, notice_failed: 0, deleted: 0, delete_failed: 0, files_removed: 0, files_failed: 0 };
   const started = Date.now();
+
+  // 0. Parents of students aged 13 to 17 who won cash (D-121; every 10 minutes and nightly).
+  const { data: wins } = await svc.rpc("minor_win_notices_due", { p_limit: 50 });
+  for (const w of (wins ?? []) as { id: number; kind: "challenge" | "referral"; amount: number; title: string | null; child: string; guardian_email: string }[]) {
+    if (Date.now() - started > 25_000) break;
+    const mail = guardianPrizeEmail(w.child, w.amount, w.title ?? "", w.kind);
+    const sent = await sendEmail({ to: w.guardian_email, ...mail, from: "support", tags: ["guardian-prize"] });
+    await svc.rpc("minor_win_notice_mark", { p_id: w.id, p_ok: sent.ok, p_error: sent.error ?? undefined });
+    if (sent.ok) report.parents_told++;
+    else report.parents_failed++;
+  }
+  const body = (await req.json().catch(() => ({}))) as { only?: string };
+  if (body.only === "minor_wins") return json({ ok: true, ...report, ms: Date.now() - started });
   const { data, error } = await svc.rpc("inactive_due", { p_limit: 100 });
   if (error) return json({ error: error.message }, 500);
   const due = (data ?? { notify: [], delete: [] }) as unknown as Due;

@@ -16,7 +16,15 @@ By creating an account or using the Service you agree to these Terms, our [Priva
 1.2 **Age.** You must give your true year of birth.
 - You must be **13 or older** to have an account.
 - If you are **13 to 17**, a parent or guardian must agree to these Terms for you. We email the parent or guardian you name; they can turn your account off at any time.
-- Cash-prize challenges are switched off. If they are offered in future, they will be free to enter and for people **aged 18 and over** only.
+<!-- if cash=off -->
+- Cash-prize challenges are switched off. If they are offered in future, they will be free to enter, and these Terms will say who can win.
+<!-- end -->
+<!-- if cash=adults -->
+- Cash-prize challenges and cash invite rewards are free to enter and only for people **aged 18 and over**.
+<!-- end -->
+<!-- if cash=teens -->
+- Cash-prize challenges and cash invite rewards are free to enter, for people **aged 18 and over** and for students **aged 13 to 17**. If you are 13 to 17 and win cash, we email your parent or guardian first, the prize is paid to your parent's or guardian's bank account, and they can tell us not to pay it.
+<!-- end -->
 
 1.3 One person, one account, one account per phone. You must not create several accounts, share an account, or use cloned, modified or emulated copies of the app.
 
@@ -40,7 +48,12 @@ By creating an account or using the Service you agree to these Terms, our [Priva
 
 3.5 **Discount codes and free-days codes** work only as described when you enter them; up to three discount codes can be used on one payment. Codes have no cash value.
 
+<!-- if cash=off -->
 3.6 **Challenges and mock exams:** timed competitions. Rewards are Premium days, XP and badges. Rules, scoring and tie-breakers are shown before you join.
+<!-- end -->
+<!-- if cash=on -->
+3.6 **Challenges and mock exams:** timed competitions. Rewards are Premium days, XP, badges and, in some challenges, **cash prizes**. Cash-prize challenges are always free to enter (no money and no XP). Rules, scoring, tie-breakers, prizes and who can win are shown before you join. Winners give the account to pay in the app within 7 days; we may check identity and fair play before paying, and we post winners (first name, state) on the Winners wall.
+<!-- end -->
 
 3.7 We may change, add or remove features, years, questions, prices and limits. We try to give notice of important changes. Changes do not reduce Premium you have already paid for.
 

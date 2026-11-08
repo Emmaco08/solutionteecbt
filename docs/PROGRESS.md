@@ -130,6 +130,7 @@ Plan: `docs/plans/phase-4.md`.
   - [x] **Back to the app + codes** (D-116, D-117): after a website payment the app opens on its success screen; up to 3 discount codes on the website; "Have a code?" in the Play app. Migration tested (₦5,000 − 10% − ₦500 = ₦4,000; 4 codes refused). App build via GitHub.
   - [x] **Play Console kit** (D-118): legal pages, /delete-account, 12-month retention, `.aab` build + /download/aab, store images and `docs/play-console/README.md`. Deployed 2026-11-08.
   - [x] **Lawyer's list finished** (D-119, D-120): Google consent message for EEA/UK, 24-month inactivity deletion with email notice, clean-up of deleted accounts in R2 and Neon, "Past Questions" / "SolutionTee Mock" labels with a super-admin switch. Owner paperwork left: NDPC registration, DPIA, licence letters to JAMB/WAEC/NECO.
+  - [x] **Cash for 13 to 17 + website CMS** (D-121, D-122): admin switch for teen cash prizes with a parent email after each win (claims wait for it); admin → Website edits every section of cbt.solutiontee.com with on/off switches, new Invite & earn and Challenges sections; Privacy/Terms follow the cash switches; store images 6 and 7. **Waiting:** "deploy". **Next:** email templates, then the analytics dashboard.
   - [ ] Step C JAMB countdown · [ ] D Request a tutor · [ ] E Online classes · [ ] F Games · [ ] G Community
 
 ## Phase 5 — Website, classes, community  (approval: `WEBSITE APPROVED`)

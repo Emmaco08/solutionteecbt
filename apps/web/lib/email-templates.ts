@@ -163,3 +163,26 @@ export function inactiveNoticeEmail(name: string, deleteOn: string, appLink: str
     text: `${hiPlain}\n\nYou have not used SolutionTee CBT for almost 2 years. To protect your data, we delete accounts that are not used for 2 years.\n\nYour account and practice history will be deleted on ${deleteOn}.\n\nWant to keep it? Just open the app and log in before then: ${appLink}\n\nIf you do nothing, your account is deleted for good. Payment records are kept only as the law requires.\n\n${DISCLAIMER}`,
   };
 }
+
+/** A student aged 13 to 17 won cash (D-121, lawyer): their parent or guardian is told before the prize is paid. */
+export function guardianPrizeEmail(childName: string, amountNaira: number, title: string, kind: "challenge" | "referral") {
+  const child = childName.trim() ? esc(childName.trim().split(" ")[0]!) : "Your child";
+  const childPlain = childName.trim() ? childName.trim().split(" ")[0]! : "Your child";
+  const amount = `₦${amountNaira.toLocaleString("en-NG")}`;
+  const what = kind === "challenge" ? `a prize in the SolutionTee challenge “${esc(title)}”` : "a reward for inviting friends to SolutionTee CBT";
+  const whatPlain = kind === "challenge" ? `a prize in the SolutionTee challenge "${title}"` : "a reward for inviting friends to SolutionTee CBT";
+  return {
+    subject: `${childPlain} has won ${amount} on SolutionTee CBT 🎉`,
+    html: layout("A prize for your child", `<p style="margin:0 0 12px">Hello,</p>
+      <p style="margin:0 0 12px">Good news: <b>${child}</b> has won <b>${amount}</b>, ${what}. Well done to them!</p>
+      <p style="margin:0 0 6px"><b>What happens next</b></p>
+      <ul style="margin:0 0 12px;padding-left:20px">
+        <li style="margin:0 0 6px">Because ${child} is under 18, the prize is paid <b>to a parent or guardian's bank account</b>, which ${child} will give us in the app with your name and phone number.</li>
+        <li style="margin:0 0 6px">Entering was free. Nobody paid money or XP to take part.</li>
+        <li style="margin:0 0 6px">We may call the number given to confirm before we pay.</li>
+      </ul>
+      <p style="margin:0 0 12px"><b>If you do not agree</b> with ${child} receiving this prize, just reply to this email within 7 days and we will not pay it.</p>
+      <p style="margin:20px 0 0;font-size:13px;color:${MUTED}">You are receiving this because ${child} named you as their parent or guardian on SolutionTee CBT.</p>`),
+    text: `Hello,\n\nGood news: ${childPlain} has won ${amount}, ${whatPlain}. Well done to them!\n\nWhat happens next:\n- Because ${childPlain} is under 18, the prize is paid to a parent or guardian's bank account, which ${childPlain} will give us in the app with your name and phone number.\n- Entering was free. Nobody paid money or XP to take part.\n- We may call the number given to confirm before we pay.\n\nIf you do not agree with ${childPlain} receiving this prize, just reply to this email within 7 days and we will not pay it.\n\nYou are receiving this because ${childPlain} named you as their parent or guardian on SolutionTee CBT.\n\n${DISCLAIMER}`,
+  };
+}

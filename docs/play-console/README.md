@@ -11,6 +11,9 @@ Package name: **`com.solutiontee.cbt`**. Pages and files referred to below are a
 | App icon 512 × 512 | `graphics/app-icon-512.png` |
 | Feature graphic 1024 × 500 | `graphics/feature-graphic-1024x500.png` |
 | Phone screenshots 1080 × 1920 (5) | `graphics/phone-1-cbt.png` … `graphics/phone-5-leaderboard.png` |
+| `graphics/phone-6-invite-friends.png` | Phone screenshot 6: invite friends and earn (Premium discount + XP) |
+| `graphics/phone-7-challenges.png` | Phone screenshot 7: practise in challenges and win (Premium days + XP) |
+| `graphics/phone-6-invite-friends-cash.png`, `phone-7-challenges-cash.png` | Use instead of 6 and 7 **only** after cash prizes are approved and switched on |
 | Privacy Policy | https://cbt.solutiontee.com/privacy |
 | Terms of Service | https://cbt.solutiontee.com/terms |
 | Refund Policy | https://cbt.solutiontee.com/refunds |

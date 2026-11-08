@@ -984,7 +984,6 @@ class LegalScreen extends ConsumerWidget {
   final String page;
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final c = context.c;
     final settings = ref.watch(appSettingsProvider).value ?? const {};
     final company = (settings['company'] as Map?) ?? const {};
     final disclaimer = (settings['disclaimer'] as String?) ?? Config.disclaimer;
@@ -993,12 +992,13 @@ class LegalScreen extends ConsumerWidget {
         'Privacy Policy',
         const [
           ('What we collect', 'Your name, email, phone (optional), school, state, exam choices, answers, scores, AI chats and payment records.'),
-          ('Why', 'To run your account, show your progress, give AI help, prevent cheating and pay prizes. We never sell your data.'),
+          ('Why', 'To run your account, show your progress, give AI help and prevent cheating. We never sell your data.'),
           (
             'Who we share with',
             'Our hosting and database provider, our AI provider (to answer your questions), Paystack and Google (for payments). Each only gets what it needs.',
           ),
           ('Your rights', 'You can see, correct or delete your data at any time in Me, Settings. We follow the Nigeria Data Protection Act 2023.'),
+          ('Under 18', 'Students aged 13 to 17 give a parent or guardian\'s email; we send them a notice and they can turn the account off.'),
         ],
       ),
       'about' => (
@@ -1023,9 +1023,18 @@ class LegalScreen extends ConsumerWidget {
             'Premium and payments',
             'Premium gives access for the time you paid for. Payments through Google Play follow Google’s refund rules; website payments follow our refund policy.',
           ),
-          ('Challenges and prizes', 'Prizes are paid after a fair-play review and identity check. Leaving the challenge screen disqualifies an entry.'),
+          (
+            'Challenges and prizes',
+            'Rewards are Premium days, XP and badges. Leaving the challenge screen disqualifies an entry. The full Terms say when cash prizes are on and who can win.',
+          ),
         ],
       ),
+    };
+    // The full, current text is on the website; it follows the admin's switches (D-122).
+    final fullUrl = switch (page) {
+      'privacy' => 'https://cbt.solutiontee.com/privacy',
+      'about' => null,
+      _ => 'https://cbt.solutiontee.com/terms',
     };
     return Scaffold(
       appBar: TopBar(title: title, lined: true),
@@ -1033,24 +1042,20 @@ class LegalScreen extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(Space.s5, Space.s4, Space.s5, Space.s8),
         children: [
           if (page == 'about') ...[const Align(alignment: Alignment.centerLeft, child: Mark(height: 48)), const Gap(Space.s3)],
-          if (page != 'about')
+          if (fullUrl != null)
             InfoBanner(
-              kind: BannerKind.warn,
               icon: PhosphorIcons.scales(PhosphorIconsStyle.fill),
-              child: Text.rich(
-                TextSpan(
-                  children: [
-                    TextSpan(text: 'Draft. ', style: context.ty.sm.bold.col(c.onWarningSoft)),
-                    const TextSpan(text: 'To be reviewed by a lawyer before launch.'),
-                  ],
-                ),
-              ),
+              child: const Text('A short summary. The full text is on our website and is the one that applies.'),
             ),
           for (final (h, t) in parts) ...[
             const Gap(Space.s6),
             Text(h, style: context.ty.h2.copyWith(fontSize: 19, height: 26 / 19)),
             const Gap(Space.s2),
             Text(t, style: context.ty.body.copyWith(fontSize: 16, height: 27 / 16)),
+          ],
+          if (fullUrl != null) ...[
+            const Gap(Space.s6),
+            Btn('Read the full ${title.toLowerCase()}', kind: BtnKind.outline, onPressed: () => _open(context, Uri.parse(fullUrl))),
           ],
           if (page == 'about') ...[
             const Gap(Space.s5),

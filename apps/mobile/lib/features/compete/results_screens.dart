@@ -476,7 +476,9 @@ class _ClaimPrizeScreenState extends ConsumerState<ClaimPrizeScreen> {
             const Gap(Space.s3),
             InfoBanner(
               icon: PhosphorIcons.users(PhosphorIconsStyle.fill),
-              child: const Text('Because you are under 18, the prize is paid to your parent or guardian, and they must agree.'),
+              child: const Text(
+                'Because you are under 18, the prize is paid to your parent or guardian. We have emailed them about your win, and they can tell us if they do not agree.',
+              ),
             ),
             const Gap(Space.s3),
             Field(label: 'Parent or guardian full name', controller: _gName),
