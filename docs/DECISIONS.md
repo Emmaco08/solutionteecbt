@@ -980,3 +980,23 @@ The owner asked to run the admin from Vercel instead of the laptop.
   unknown emails, Brevo template) → `verifyOtp(type: recovery)` in the browser → plans + `quote_price` (discount, fee)
   → Paystack Edge Function `start` with `source: web, method: page` (every Paystack method) → Paystack.
 - `/pay/done`: shows the result by payment reference (status, plan name, Premium end date only), checking every 4 s.
+
+## D-115 — Website: 3D phone feature tour, safer payments, cancel detection, app-to-web login (2026-11-08)
+- **Landing:** a CSS 3D phone (`Phone3D`: frame, buttons, camera island, moving glass reflection, pointer tilt, float) shows
+  live re-creations of the real app screens at the app's 390×844 design size: CBT exam (answer, Next, question map), result
+  (score ring, subject bars, topics), AI tutor (photo question, step-by-step answer, follow-up chips), Study hub (tiles →
+  video solution playing), leaderboard (podium, ranks, "You" bar). Hero: two phones + floating chips + parallax. Feature
+  tour: five steps, each with three "how it works" points; on large screens a sticky phone switches screens as each step
+  scrolls past, on phones each step has its own phone. Subject ribbon, reduce-motion respected throughout.
+- **App → website without logging in again:** `POST /api/web/handoff` (app token) → 256-bit one-time code (sha256 stored in
+  `web_handoffs`, 2 minutes, 10 an hour) → the app opens `/pay?h=…` → `POST /api/web/handoff/redeem` marks it used in
+  the same statement that checks it, then returns a magic-link token hash → the browser `verifyOtp` signs in (any older
+  website session is signed out first) and the code is removed from the address bar.
+- **Cancel detection:** the website sends `callback` (/pay/done) and `cancel` (/pay) with each payment; the Paystack Edge
+  Function (v18) accepts only our own pages and makes Paystack's Cancel button return to `/pay?cancelled=<ref>`. /pay
+  then asks the server (`cancel`, which checks Paystack first) and shows "Payment cancelled, nothing was charged". The
+  back button and pages restored from browser memory are handled too (pending reference in sessionStorage, `pageshow`).
+- **Security:** CSP (no third-party scripts, `frame-ancestors 'none'`, `form-action 'self'`), HSTS, nosniff, COOP,
+  Permissions-Policy; payment pages `Referrer-Policy: no-referrer` and `no-store`; the browser only follows a
+  `https://checkout.paystack.com/` address; the website logs out after 15 minutes idle and right after a successful payment.
+  Unchanged: price only from the server, webhook HMAC + verify, amount check, idempotent grants.

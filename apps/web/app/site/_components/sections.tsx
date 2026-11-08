@@ -3,8 +3,8 @@ import Link from "next/link";
 import { AnimatePresence, motion, useInView, useReducedMotion, useScroll, useTransform } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import {
-  ArrowRight, Books, CaretDown, ChartLineUp, Check, CloudArrowDown, Crown, DeviceMobile, DownloadSimple, Exam, GooglePlayLogo,
-  Lightbulb, Robot, ShieldCheck, Sparkle, Trophy, VideoCamera, WifiSlash,
+  ArrowRight, Books, CaretDown, Check, CloudArrowDown, Crown, DeviceMobile, DownloadSimple, Exam, GooglePlayLogo,
+  Lightbulb, ShieldCheck, Sparkle, WifiSlash,
 } from "@phosphor-icons/react";
 import { CountUp, Reveal, ease } from "./motion";
 
@@ -42,23 +42,19 @@ export function ExamStrip({ subjects, studyItems }: { subjects: number; studyIte
 
 /* ------------------------------------------------------------------ features */
 const FEATURES = [
-  [Exam, "A real CBT, every time", "Timed tests that look and work like the JAMB, WAEC and NECO computer-based tests, with auto-submit and your score at once."],
-  [Lightbulb, "Every answer explained", "See why the right answer is right, step by step, in simple English. Maths shows the working."],
-  [Robot, "AI tutor for schoolwork", "Stuck? Ask in your own words or snap a photo of a question. It explains like a patient teacher, and only helps with study."],
-  [VideoCamera, "Video lessons & notes", "Short video solutions, topic lessons, lesson notes, novel summaries and the syllabus in one place."],
-  [ChartLineUp, "Know your weak topics", "Your results show which topics need work, and your estimated JAMB score as you improve."],
-  [Trophy, "Challenges & streaks", "Weekly challenges, leaderboards, XP and streaks keep you practising. Win Premium days and XP."],
   [WifiSlash, "Works offline", "Download questions and practise without data. Your results sync when you are back online."],
   [CloudArrowDown, "Light on data", "A data saver, small downloads and no heavy videos unless you tap them. Made for Nigerian networks."],
+  [Lightbulb, "Question of the day", "One new question every day to keep your brain warm, with a streak to protect."],
+  [ShieldCheck, "Safe for students", "No personalised ads for under-18s, a parent notice for 13 to 17, and an AI tutor that only does schoolwork."],
 ] as const;
 
 export function Features() {
   return (
-    <section id="features" className="scroll-mt-20 bg-background py-20 sm:py-28">
+    <section className="bg-background pb-20 pt-4 sm:pb-28">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <Reveal className="mx-auto max-w-2xl text-center">
-          <p className="text-sm font-bold uppercase tracking-wider text-[#2563B3]">Everything in one app</p>
-          <h2 className="mt-3 text-[32px] font-bold leading-tight tracking-tight sm:text-[40px]">Built to help you pass, not just practise</h2>
+          <p className="text-sm font-bold uppercase tracking-wider text-[#2563B3]">And there’s more</p>
+          <h2 className="mt-3 text-[32px] font-bold leading-tight tracking-tight sm:text-[40px]">Made for Nigerian students</h2>
         </Reveal>
         <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {FEATURES.map(([Icon, title, text], i) => (
@@ -75,6 +71,29 @@ export function Features() {
           ))}
         </div>
       </div>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ subjects ribbon */
+const SUBJECTS = ["Use of English", "Mathematics", "Physics", "Chemistry", "Biology", "Government", "Economics", "Literature in English",
+  "Commerce", "Accounting", "Geography", "CRS", "IRS", "Agricultural Science", "History"];
+
+export function SubjectMarquee() {
+  const still = useReducedMotion();
+  const row = (dir: 1 | -1, list: string[]) => (
+    <div className="flex overflow-hidden [mask-image:linear-gradient(90deg,transparent,black_10%,black_90%,transparent)]">
+      <motion.div className="flex shrink-0 gap-3 pr-3" animate={still ? undefined : { x: dir === 1 ? ["0%", "-50%"] : ["-50%", "0%"] }} transition={{ duration: 40, repeat: Infinity, ease: "linear" }}>
+        {[...list, ...list].map((t, i) => (
+          <span key={i} className="whitespace-nowrap rounded-full border bg-card px-4 py-2 text-sm font-bold shadow-[var(--shadow-1)]">{t}</span>
+        ))}
+      </motion.div>
+    </div>
+  );
+  return (
+    <section className="space-y-3 border-b bg-[#F4F6FA] py-8 dark:bg-[#0A1730]" aria-label="Subjects">
+      {row(1, SUBJECTS)}
+      {row(-1, [...SUBJECTS].reverse())}
     </section>
   );
 }

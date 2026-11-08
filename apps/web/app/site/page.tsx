@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { siteData, paystackFee } from "@/lib/site";
 import { SiteNav } from "./_components/nav";
 import { Hero } from "./_components/hero";
-import { AiShowcase, Download, ExamStrip, Faq, Features, HowItWorks, Pricing, SiteFooter, type PricePlan } from "./_components/sections";
+import { Download, ExamStrip, Faq, Features, HowItWorks, Pricing, SiteFooter, SubjectMarquee, type PricePlan } from "./_components/sections";
+import { FeatureTour } from "./_components/tour";
 
 export const metadata: Metadata = {
   title: { absolute: "SolutionTee CBT · JAMB, WAEC and NECO CBT practice" },
@@ -23,8 +24,9 @@ export default async function SitePage() {
       <main>
         <Hero questions={d.questions} firstYear={d.firstYear} lastYear={d.lastYear} playUrl={d.playUrl} />
         <ExamStrip subjects={d.subjects} studyItems={d.studyItems} />
+        <SubjectMarquee />
+        <FeatureTour />
         <Features />
-        <AiShowcase />
         <HowItWorks />
         <Pricing plans={plans} />
         <Download playUrl={d.playUrl} />
