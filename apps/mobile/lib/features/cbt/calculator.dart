@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
 import '../../ui/kit.dart';
-import '../../widgets/phosphor.g.dart';
 
 /// Calculator sheet (prototype CBT calculator): the sum on top, the answer below (shrinks to fit),
 /// thousands separators and left-to-right chaining like a simple calculator.
@@ -173,12 +172,8 @@ class _CalculatorState extends State<_Calculator> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Expanded(child: Text('Calculator', style: context.ty.h3)),
-            IconBtn(PhosphorIcons.x(), label: 'Close', onPressed: () => Navigator.pop(context)),
-          ],
-        ),
+        // The sheet has its own close button (one X only).
+        Text('Calculator', style: context.ty.h3),
         Container(
           height: 108,
           margin: const EdgeInsets.fromLTRB(0, Space.s3, 0, Space.s4),

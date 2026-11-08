@@ -871,9 +871,14 @@ class _AiScreenState extends ConsumerState<AiScreen> with WidgetsBindingObserver
                             child: InfoBanner(
                               kind: BannerKind.err,
                               icon: PhosphorIcons.hourglassLow(PhosphorIconsStyle.fill),
-                              child: GestureDetector(
-                                onTap: () => showPaywall(context, reason: 'ai'),
-                                child: const Text("That was your last prompt today. Tap to see Premium (100 a day)."),
+                              // Out of prompts: a short video for more, or Premium (owner, 2026-11-08).
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('That was your last prompt today. Watch a short video for more, or go Premium (100 a day).'),
+                                  const Gap(Space.s2),
+                                  _MorePrompts(onGot: () => setState(() {})),
+                                ],
                               ),
                             ),
                           );

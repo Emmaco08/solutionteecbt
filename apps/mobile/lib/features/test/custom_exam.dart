@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -263,37 +265,116 @@ class _CustomExamScreenState extends ConsumerState<CustomExamScreen> {
 
   Future<void> _start(int examId, List<Map<String, dynamic>> subs, int minutes) async {
     final order = [for (final s in subs) (s['id'] as num).toInt()].where(_subjects.contains).toList();
+    var req = TestRequest(
+      mode: TestMode.custom,
+      examId: examId,
+      examCode: widget.examCode,
+      subjectIds: order,
+      years: _years.toList(),
+      counts: {for (final s in order) s: _counts[s] ?? 20},
+      subjectTopics: {
+        for (final s in order)
+          if ((_topics[s] ?? const {}).isNotEmpty) s: _topics[s]!.toList(),
+      },
+      topics: [for (final s in order) ...?_topics[s]],
+      limitMinutes: minutes,
+      timed: _timed,
+      title: 'Custom ${widget.examCode} exam',
+    );
     setState(() => _starting = true);
     try {
-      final id = await ref
-          .read(testsRepoProvider)
-          .start(
-            TestRequest(
-              mode: TestMode.custom,
-              examId: examId,
-              examCode: widget.examCode,
-              subjectIds: order,
-              years: _years.toList(),
-              counts: {for (final s in order) s: _counts[s] ?? 20},
-              subjectTopics: {
-                for (final s in order)
-                  if ((_topics[s] ?? const {}).isNotEmpty) s: _topics[s]!.toList(),
-              },
-              topics: [for (final s in order) ...?_topics[s]],
-              limitMinutes: minutes,
-              timed: _timed,
-              title: 'Custom ${widget.examCode} exam',
-            ),
-            countFor: (sid) => _counts[sid] ?? 20,
-            minutesPerQuestion: 1,
-          );
-      ref.invalidate(unfinishedProvider);
-      ref.invalidate(practiceStatsProvider);
-      if (mounted) context.pushReplacement('/cbt/$id');
+      while (true) {
+        try {
+          final id = await ref.read(testsRepoProvider).start(req, countFor: (sid) => _counts[sid] ?? 20, minutesPerQuestion: 1);
+          ref.invalidate(unfinishedProvider);
+          ref.invalidate(practiceStatsProvider);
+          if (mounted) context.pushReplacement('/cbt/$id');
+          return;
+        } on CustomShortfall catch (e) {
+          if (!mounted) return;
+          final choice = await _shortfall(e, subs);
+          if (!mounted || choice == null) return;
+          if (choice == 'ai') {
+            final x = e.items.first;
+            final subject = '${subs.firstWhere((s) => s['id'] == x.subjectId, orElse: () => const {})['name'] ?? ''}';
+            final topic = x.topics.join(', ');
+            final args = Uri.encodeComponent(jsonEncode({'subject': subject, 'topic': topic, 'count': (x.want - x.have).clamp(5, 20)}));
+            context.go('/ai?tool=ai_quiz&args=$args&label=${Uri.encodeComponent('New questions on ${topic.isEmpty ? subject : topic}')}');
+            return;
+          }
+          req = choice == 'years' ? req.copyWith(fillOtherYears: true) : req.copyWith(shortOk: true);
+        }
+      }
     } on ApiError catch (e) {
       if (mounted) toast(context, e.message, icon: PhosphorIcons.warningCircle(PhosphorIconsStyle.fill));
     } finally {
       if (mounted) setState(() => _starting = false);
     }
   }
+
+  /// Not enough questions for the chosen topics / years: start with fewer, add from other years, or let the AI tutor
+  /// write new questions on the topic.
+  Future<String?> _shortfall(CustomShortfall e, List<Map<String, dynamic>> subs) => showSheet<String>(
+    context,
+    builder: (ctx) {
+      final c = ctx.c;
+      String name(int id) => '${subs.firstWhere((s) => s['id'] == id, orElse: () => const {})['name'] ?? 'Subject'}';
+      final have = e.items.fold<int>(0, (t, x) => t + x.have);
+      Widget option(IconData ic, Tone tone, String title, String text, String value) => Padding(
+        padding: const EdgeInsets.only(bottom: Space.s3),
+        child: AppCard(
+          onTap: () => Navigator.pop(ctx, value),
+          child: Row(
+            children: [
+              IconTile(ic, tone: tone, size: 44, radius: 12, iconSize: 22),
+              const Gap(Space.s3),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: ctx.ty.sm.bold),
+                    Text(text, style: ctx.ty.cap.col(c.textMuted)),
+                  ],
+                ),
+              ),
+              Icon(PhosphorIcons.caretRight(), size: 18, color: c.textSubtle),
+            ],
+          ),
+        ),
+      );
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(child: IconTile(PhosphorIcons.warningCircle(PhosphorIconsStyle.fill), tone: Tone.gold, size: 56, radius: 28, iconSize: 30)),
+          const Gap(Space.s3),
+          Text('Not enough questions yet', style: ctx.ty.h2, textAlign: TextAlign.center),
+          const Gap(Space.s2),
+          for (final x in e.items)
+            Text(
+              '${name(x.subjectId)}${x.topics.isEmpty ? '' : ' · ${x.topics.join(', ')}'}: ${x.have} of ${x.want}',
+              style: ctx.ty.sm.col(c.textMuted),
+              textAlign: TextAlign.center,
+            ),
+          const Gap(Space.s4),
+          if (e.yearsChosen)
+            option(
+              PhosphorIcons.calendarBlank(PhosphorIconsStyle.fill),
+              Tone.blue,
+              'Add questions from my other years',
+              'Same topics, from the other years open on your plan.',
+              'years',
+            ),
+          option(
+            PhosphorIcons.sparkle(PhosphorIconsStyle.fill),
+            Tone.gold,
+            'Let the AI tutor write new questions',
+            'Fresh questions on the same topic, with answers explained.',
+            'ai',
+          ),
+          if (have > 0)
+            option(PhosphorIcons.play(PhosphorIconsStyle.fill), Tone.green, 'Start with $have questions', 'Begin now with the questions we have.', 'short'),
+        ],
+      );
+    },
+  );
 }

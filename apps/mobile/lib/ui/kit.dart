@@ -502,7 +502,7 @@ class AppChip extends StatelessWidget {
         child: AnimatedContainer(
           duration: Motion.fast,
           constraints: const BoxConstraints(minHeight: 36),
-          padding: const EdgeInsets.symmetric(horizontal: Space.s3),
+          padding: const EdgeInsets.symmetric(horizontal: Space.s3, vertical: 6),
           decoration: BoxDecoration(
             color: on ? c.primary : c.surface,
             borderRadius: BorderRadius.circular(Radii.pill),
@@ -512,7 +512,11 @@ class AppChip extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (icon != null) ...[Icon(icon, size: 16, color: on ? c.onPrimary : c.textMuted), const SizedBox(width: 6)],
-              Text(label, style: context.ty.sm.bold.col(on ? c.onPrimary : c.textMuted)),
+              // Long labels (topic names) wrap to two lines and never run off the screen (owner, 2026-11-08).
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: (MediaQuery.sizeOf(context).width - 96).clamp(120, 900)),
+                child: Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, softWrap: true, style: context.ty.sm.bold.col(on ? c.onPrimary : c.textMuted)),
+              ),
               if (dot) ...[
                 const SizedBox(width: 6),
                 Container(

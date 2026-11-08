@@ -32,6 +32,8 @@ class TestRequest {
     this.years = const [],
     this.counts = const {},
     this.subjectTopics = const {},
+    this.shortOk = false,
+    this.fillOtherYears = false,
   });
   final TestMode mode;
   final int examId;
@@ -53,6 +55,37 @@ class TestRequest {
   /// Custom exam: questions per subject, and the topics chosen per subject (empty = every topic).
   final Map<int, int> counts;
   final Map<int, List<String>> subjectTopics;
+
+  /// Custom exam with too few questions for the choice: start anyway with fewer, or add from the other open years.
+  final bool shortOk, fillOtherYears;
+
+  TestRequest copyWith({bool? shortOk, bool? fillOtherYears}) => TestRequest(
+    mode: mode,
+    examId: examId,
+    examCode: examCode,
+    subjectIds: subjectIds,
+    year: year,
+    topics: topics,
+    count: count,
+    limitMinutes: limitMinutes,
+    timed: timed,
+    title: title,
+    ids: ids,
+    years: years,
+    counts: counts,
+    subjectTopics: subjectTopics,
+    shortOk: shortOk ?? this.shortOk,
+    fillOtherYears: fillOtherYears ?? this.fillOtherYears,
+  );
+}
+
+/// A custom exam choice with too few questions (the student decides what to do).
+class CustomShortfall implements Exception {
+  CustomShortfall(this.items, {required this.yearsChosen});
+  final List<({int subjectId, List<String> topics, int have, int want})> items;
+
+  /// Only some years were chosen (so the other open years can fill the gap).
+  final bool yearsChosen;
 }
 
 final testsRepoProvider = Provider<TestsRepo>((ref) => TestsRepo(ref));
@@ -296,6 +329,7 @@ class TestsRepo {
   Future<String> start(TestRequest r, {required int Function(int subjectId) countFor, required double minutesPerQuestion}) async {
     final picked = <CachedQuestion>[];
     final sectionsBySubject = <String, List<Map<String, dynamic>>>{};
+    final shortfall = <({int subjectId, List<String> topics, int have, int want})>[];
     for (final (si, sid) in r.subjectIds.indexed) {
       if (r.ids.isNotEmpty) {
         // AI tutor test: fetch each year's paper through the plan check and keep only the questions the tutor picked.
@@ -348,19 +382,30 @@ class TestsRepo {
           // The student's own exam: their years (only open ones), their topics, their number of questions.
           final want = r.counts[sid] ?? 20;
           final tps = r.subjectTopics[sid] ?? const <String>[];
-          final yrs = r.years.isEmpty
+          final chosen = r.years.isEmpty
               ? [...years]
               : [
                   for (final y in r.years)
                     if (years.contains(y)) y,
                 ];
-          if (yrs.isEmpty) yrs.addAll(years);
-          yrs.shuffle(_rnd);
+          if (chosen.isEmpty) chosen.addAll(years);
+          chosen.shuffle(_rnd);
           pool = [];
-          for (final y in yrs) {
+          for (final y in chosen) {
             pool.addAll((await paper(r.examId, sid, y)).where((q) => tps.isEmpty || tps.contains(q.topic)));
             if (pool.length >= want * 3) break;
           }
+          if (pool.length < want && r.fillOtherYears) {
+            // Not enough in the chosen years: add from the student's other open years.
+            for (final y in [
+              for (final y in years)
+                if (!chosen.contains(y)) y,
+            ]..shuffle(_rnd)) {
+              pool.addAll((await paper(r.examId, sid, y)).where((q) => tps.isEmpty || tps.contains(q.topic)));
+              if (pool.length >= want * 2) break;
+            }
+          }
+          if (pool.length < want) shortfall.add((subjectId: sid, topics: tps, have: pool.length, want: want));
           pool = groupPassages(pool..shuffle(_rnd)).take(want).toList();
         case TestMode.topic:
           pool = [];
@@ -371,6 +416,9 @@ class TestsRepo {
           pool = (pool..shuffle(_rnd)).take(r.count).toList();
       }
       picked.addAll(pool);
+    }
+    if (r.mode == TestMode.custom && shortfall.isNotEmpty && !r.shortOk) {
+      throw CustomShortfall(shortfall, yearsChosen: r.years.isNotEmpty && !r.fillOtherYears);
     }
     if (picked.isEmpty) {
       throw ApiError(r.mode == TestMode.topic ? 'No questions for these topics yet. Try other topics.' : 'No questions found for this choice yet.');

@@ -823,7 +823,7 @@ class StickyAds extends ConsumerWidget {
                 ),
                 Padding(
                   padding: EdgeInsets.only(bottom: pad.bottom),
-                  child: const _StickyBanner(slot: 'sticky_bottom', padding: EdgeInsets.only(top: 6)),
+                  child: const _StickyBanner(slot: 'sticky_bottom'),
                 ),
               ],
             ),
@@ -836,11 +836,14 @@ class StickyAds extends ConsumerWidget {
 
 /// The sticky banner inside the tab screens: just above the tab bar, with a small gap so it is never tapped by mistake.
 class ShellStickyBanner extends ConsumerWidget {
-  const ShellStickyBanner({super.key});
+  const ShellStickyBanner({super.key, this.hidden = false});
+
+  /// Not on the AI tutor (it would cover the message box: owner, 2026-11-08).
+  final bool hidden;
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final c = ref.watch(adsConfigProvider).value ?? AdsConfig.off;
-    if (c.sticky == 'off') return const SizedBox.shrink();
+    if (c.sticky == 'off' || hidden) return const SizedBox.shrink();
     // Only while the tab screens are on top: a banner hidden under another page must never load (AdMob rule).
     return ValueListenableBuilder<int>(
       valueListenable: AdsGate.notifier,
