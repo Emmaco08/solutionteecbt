@@ -24,8 +24,9 @@ function paystackFee(price: number, f: PaySettings["fees"]["paystack"]) {
 
 const ng = (n: number) => `₦${n.toLocaleString("en-NG")}`;
 
-export function PaymentSettingsForm({ initial, plans }: { initial: PaySettings; plans: { name: string; price: number; fee_id: string | null }[] }) {
+export function PaymentSettingsForm({ initial, plans, playUrl }: { initial: PaySettings; plans: { name: string; price: number; fee_id: string | null }[]; playUrl: string }) {
   const [s, setS] = useState(initial);
+  const [play, setPlay] = useState(playUrl);
   const ps = s.fees.paystack, gs = s.fees.google;
   const setPay = (k: keyof typeof ps, v: number | boolean) => setS({ ...s, fees: { ...s.fees, paystack: { ...ps, [k]: v } } });
   const setGoogle = (k: keyof typeof gs, v: number | boolean) => setS({ ...s, fees: { ...s.fees, google: { ...gs, [k]: v } } });
@@ -57,6 +58,9 @@ export function PaymentSettingsForm({ initial, plans }: { initial: PaySettings; 
         {!s.play.google && !s.play.website ? <p className="mt-3 text-sm text-destructive">Choose at least one.</p> : null}
         <div className="mt-4 space-y-1.5"><Label htmlFor="website_url">Payment website</Label>
           <input id="website_url" name="website_url" value={s.website_url} onChange={(e) => setS({ ...s, website_url: e.target.value })} className={`${inputCls} font-mono`} /></div>
+        <div className="mt-4 space-y-1.5"><Label htmlFor="play_url">Google Play link (for the website’s download button)</Label>
+          <input id="play_url" name="play_url" value={play} onChange={(e) => setPlay(e.target.value)} placeholder="https://play.google.com/store/apps/details?id=…" className={`${inputCls} font-mono`} />
+          <p className="text-xs text-muted-foreground">Empty: the website shows “Google Play: coming soon”. The website updates within an hour.</p></div>
       </section>
 
       <section className="rounded-2xl border bg-card p-5 shadow-[var(--shadow-1)]">

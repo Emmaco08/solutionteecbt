@@ -951,3 +951,32 @@ The owner asked to run the admin from Vercel instead of the laptop.
 - Payments on Play follow Google's rules: Google Play Billing in the app, and no link to the website (Nigeria is not
   in Google's external-link programmes). Website payments and voucher PINs happen outside the app. Plan and owner
   decisions: `docs/plans/play-launch.md`.
+
+## D-113 — Payment settings: Google Play / website link / both, processing fees (admin, 2026-11-08)
+- Owner's choice: the admin decides which ways the Google Play app offers, and whether processing fees are added.
+- `app_settings.payments` (public) `{play:{google, website}, website_url, fees:{paystack:{on,pct,flat,flat_from,cap}, google:{on,pct}}}`.
+  Admin page: **Money → Payment settings**.
+- **Play app:** Google Play Billing, a "Pay on our website" button (opens `website_url?plan=…&email=…&from=app` in the
+  browser), or both; never neither. Admin sees a warning: outside Google's billing-choice countries a link to another
+  way to pay breaks Google Play's payments policy and can get updates rejected. It can be turned off at any time without an
+  app update.
+- **Paystack fee:** `private.paystack_fee` grosses the price up so the business still receives the price after Paystack's cut
+  (default 1.5% + ₦100 from ₦2,500, cap ₦2,000), rounded up to a whole naira. It is applied in `private.price` (plans) and
+  `content_pay_start` (items), stored in `payments.fee_kobo`, and shown as its own line before paying (app checkout,
+  item sheet, website).
+- **Google fee:** Google charges the Play Console price, so each plan may have a second product `plans.play_product_id_fee`.
+  With the Google fee on, the app sells that product; `pay_play_confirm` accepts either product. The admin page shows the
+  price to set in Play Console.
+
+## D-114 — Public website and website payments (2026-11-08)
+- Same Next.js app: `/site` (landing) and `/pay` (payments). The proxy serves `/site` at `/` on any `cbt.*` host and sends
+  `/admin` on that host to admin.solutiontee.com.
+- Landing: Motion (Framer Motion) scroll reveals, word-by-word hero, a phone that answers a practice question in a loop
+  (our own question), count-ups, an AI chat demo, a scroll-drawn steps line, live plans, prices and fee from the
+  database (cached for an hour), FAQ, footer with the legal business name and disclaimer. Follows reduce-motion.
+  The Google Play button reads `app_settings.site.play_url` (set in Payment settings; "coming soon" until then).
+  The APK button points at `/download/apk`.
+- `/pay`: log-in code by email (`/api/web/login-code` → a Supabase **recovery** code, never creates an account, same answer for
+  unknown emails, Brevo template) → `verifyOtp(type: recovery)` in the browser → plans + `quote_price` (discount, fee)
+  → Paystack Edge Function `start` with `source: web, method: page` (every Paystack method) → Paystack.
+- `/pay/done`: shows the result by payment reference (status, plan name, Premium end date only), checking every 4 s.

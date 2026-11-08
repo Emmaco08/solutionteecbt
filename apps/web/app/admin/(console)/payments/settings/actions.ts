@@ -19,6 +19,7 @@ const Settings = z.object({
   paystack_cap: num(0, 100_000),
   google_on: on,
   google_pct: num(0, 50),
+  play_url: z.string().trim().max(300).refine((v) => v === "" || v.startsWith("https://play.google.com/"), "The Google Play link must start with https://play.google.com/"),
 });
 
 /** Payment settings (D-113): how the Play app takes payments, and whether processing fees are added. Logged by the settings trigger. */
@@ -39,6 +40,9 @@ export async function savePaymentSettings(form: FormData): Promise<ActionResult>
   const supabase = await createClient();
   const { error } = await supabase.from("app_settings").upsert({ key: "payments", value, is_public: true }, { onConflict: "key" });
   if (error) return { ok: false, error: friendlyError(error) };
+  // The public website's Google Play button (cbt.solutiontee.com, D-114).
+  const { error: e2 } = await supabase.from("app_settings").upsert({ key: "site", value: { play_url: s.play_url }, is_public: true }, { onConflict: "key" });
+  if (e2) return { ok: false, error: friendlyError(e2) };
   revalidatePath("/admin", "layout");
   return { ok: true, message: "Payment settings saved. Phones get them the next time the app opens." };
 }

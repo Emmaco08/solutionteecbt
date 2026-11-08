@@ -127,3 +127,13 @@ export function guardianNoticeEmail(childName: string, childEmail: string, stopL
     text: `Hello,\n\n${childPlain} (${childEmail}) has created a SolutionTee CBT account and gave us your email as their parent or guardian. Welcome!\n\nSolutionTee CBT helps students practise for JAMB, WAEC and NECO in a real CBT, with answers explained, video lessons, notes and an AI tutor for schoolwork only.\n\nBy receiving this email and letting ${childPlain} keep using the app, you agree, for ${childPlain} and for yourself, to our Privacy Policy and Terms of Service. You do not need to click anything to approve.\n\nThe short version:\n- We collect only what the app needs: name, email, state, school (optional), year of birth, exam choices, practice results and AI tutor chats.\n- We never sell personal data. Students under 18 never see personalised ads.\n- Cash prizes are switched off. Rewards are Premium days, XP and badges.\n- Payments are always optional.\n- You can ask us to see, correct or delete ${childPlain}'s data at any time by replying to this email.\n\nIf you do not agree, open this link to turn off ${childPlain}'s account (deleted after 30 days):\n${stopLink}\n\nThe full Privacy Policy and Terms are in the app under Me → Legal.\n\n${DISCLAIMER}`,
   };
 }
+
+/** Website log-in code (cbt.solutiontee.com/pay, D-114). Only sent to existing accounts. */
+export function webLoginCodeEmail(code: string) {
+  return {
+    subject: `${code} is your SolutionTee log-in code`,
+    html: layout("Log in to pay", `<p style="margin:0">Use this code to log in on the SolutionTee website and get Premium:</p>${codeBox(code)}
+      <p style="margin:0;color:${MUTED};font-size:13px">It works for 10 minutes. If this was not you, ignore this email. Nobody can log in without this code.</p>`),
+    text: `Use this code to log in on the SolutionTee website and get Premium: ${code}\n\nIt works for 10 minutes. If this was not you, ignore this email.\n\n${DISCLAIMER}`,
+  };
+}

@@ -21,11 +21,13 @@ async function Settings() {
   await requireStaff(["super_admin", "admin"]);
   const supabase = await createClient();
   const [s, plans] = await Promise.all([
-    supabase.from("app_settings").select("value").eq("key", "payments").maybeSingle(),
+    supabase.from("app_settings").select("key, value").in("key", ["payments", "site"]),
     supabase.from("plans").select("name, price_kobo, play_product_id_fee, is_active").order("sort"),
   ]);
   if (s.error || plans.error) return <ErrorState message={(s.error ?? plans.error)!.message} />;
-  const v = (s.data?.value ?? {}) as Partial<PaySettings>;
+  const byKey = Object.fromEntries((s.data ?? []).map((r) => [r.key, r.value]));
+  const v = (byKey.payments ?? {}) as Partial<PaySettings>;
+  const playUrl = String((byKey.site as { play_url?: string } | undefined)?.play_url ?? "");
   const initial: PaySettings = {
     play: { ...DEFAULTS.play, ...(v.play ?? {}) },
     website_url: v.website_url ?? DEFAULTS.website_url,
@@ -34,7 +36,7 @@ async function Settings() {
   return (
     <>
       <PageHeader title="Payment settings" description="How students pay in the Google Play app, and whether processing fees are added. Changes reach phones the next time the app opens; no app update needed." />
-      <PaymentSettingsForm initial={initial} plans={(plans.data ?? []).filter((p) => p.is_active).map((p) => ({ name: p.name, price: p.price_kobo / 100, fee_id: p.play_product_id_fee }))} />
+      <PaymentSettingsForm initial={initial} playUrl={playUrl} plans={(plans.data ?? []).filter((p) => p.is_active).map((p) => ({ name: p.name, price: p.price_kobo / 100, fee_id: p.play_product_id_fee }))} />
     </>
   );
 }
