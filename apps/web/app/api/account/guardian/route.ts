@@ -48,7 +48,7 @@ export async function POST(req: Request) {
   );
   if (e2) return json({ error: "Could not save. Try again." }, 500);
 
-  const stop = `${env.siteUrl.replace(/\/+$/, "")}/guardian/stop?t=${link}`;
+  const stop = `${env.publicUrl.replace(/\/+$/, "")}/guardian/stop?t=${link}`; // parents use the public website, never the admin (D-125)
   const sent = await sendEmail({ to: email, ...guardianNoticeEmail(String(p?.full_name ?? ""), user.email, stop), from: "info", tags: ["guardian-notice"] });
   if (!sent.ok) return json({ error: "We could not send the email. Check the address and try again." }, 502);
   await svc.from("guardian_consents").update({ sent_at: now, send_count: (old?.send_count ?? 0) + 1 }).eq("user_id", user.id);

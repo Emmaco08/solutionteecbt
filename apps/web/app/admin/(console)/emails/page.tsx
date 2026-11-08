@@ -6,7 +6,8 @@ import { env, hasBrevo } from "@/lib/env";
 import { PageHeader, PageSkeleton, Panel, Pill } from "@/components/admin/ui";
 import {
   signupCodeEmail, resetCodeEmail, passwordChangedEmail, welcomeEmail, inviteEmail, guardianNoticeEmail, guardianPrizeEmail,
-  webLoginCodeEmail, deleteCodeEmail, inactiveNoticeEmail, phoneAppealEmail,
+  webLoginCodeEmail, deleteCodeEmail, inactiveNoticeEmail, phoneAppealEmail, accountBannedEmail, accountUnbannedEmail, secondAccountBlockedEmail,
+  phoneAllowedEmail, banAppealEmail, paymentReceiptEmail, prizePaidEmail, guardianTurnedOffEmail, deleteAppCodeEmail, accountDeletedEmail,
 } from "@/lib/email-templates";
 import { TestButton, Preview } from "./email-ui";
 
@@ -38,7 +39,8 @@ async function brevoStatus(): Promise<BrevoStatus> {
 async function Emails() {
   await requireStaff(["super_admin", "admin"]);
   const supabase = await createClient();
-  const [status, sent] = await Promise.all([brevoStatus(), supabase.rpc("email_sent_last_24h")]);
+  const [status, sent, outbox] = await Promise.all([brevoStatus(), supabase.rpc("email_sent_last_24h"), supabase.rpc("admin_email_outbox")]);
+  const ob = (outbox.data ?? { waiting: 0, failed: 0, sent_7d: {} }) as { waiting: number; failed: number; sent_7d: Record<string, number> };
   const used = Number(sent.data ?? 0);
   const templates = [
     ["Sign-up code", signupCodeEmail("Tolu Adeyemi", "48213907")],
@@ -52,6 +54,16 @@ async function Emails() {
     ["Delete account code (website)", deleteCodeEmail("731904")],
     ["24 months inactive: last notice", inactiveNoticeEmail("Tolu Adeyemi", "9 December 2026", "https://cbt.solutiontee.com")],
     ["Phone ban appeal: accepted", phoneAppealEmail(true, "Thank you for explaining. Please keep to one account per phone.")],
+    ["Account suspended (ban)", accountBannedEmail("Tolu Adeyemi", "More than one account to collect rewards")],
+    ["Account open again (ban removed)", accountUnbannedEmail("Tolu Adeyemi")],
+    ["Second account paused on a phone", secondAccountBlockedEmail("Tolu Adeyemi")],
+    ["Allowed on a shared phone", phoneAllowedEmail("Tolu Adeyemi")],
+    ["Ban appeal decided", banAppealEmail("Tolu Adeyemi", false, "We found several accounts made on the same day.")],
+    ["Payment receipt", paymentReceiptEmail("Tolu Adeyemi", { reference: "st_8f2a91c04b7e3d5a6f10", provider: "paystack", amount_kobo: 507500, fee_kobo: 7500, plan: "3 Months", at: "2026-11-08T12:00:00Z", expires_at: "2027-02-06T12:00:00Z" })],
+    ["Prize paid", prizePaidEmail("Tolu Adeyemi", 5000, "Weekly JAMB challenge", "GTBank")],
+    ["Parent turned the account off (to the student)", guardianTurnedOffEmail("Tolu Adeyemi")],
+    ["Delete account code (app)", deleteAppCodeEmail("528391")],
+    ["Account deleted (goodbye)", accountDeletedEmail("Tolu Adeyemi")],
   ] as const;
   return (
     <>
@@ -65,6 +77,14 @@ async function Emails() {
               <li className="flex items-center justify-between">Sent in the last 24 hours <b className="tnum">{used} / 280</b></li>
               {status.domains.map((d) => <li key={d.domain} className="flex items-center justify-between">{d.domain} {d.ok ? <Pill tone="ok">Verified</Pill> : <Pill>Not verified (not used)</Pill>}</li>)}
             </ul>
+          </Panel>
+          <Panel title="Automatic emails">
+            <ul className="space-y-2.5 text-sm">
+              <li className="flex items-center justify-between">Waiting to send <b className="tnum">{ob.waiting}</b></li>
+              <li className="flex items-center justify-between">Failed 5 times {ob.failed ? <Pill tone="error">{ob.failed}</Pill> : <b className="tnum">0</b>}</li>
+              {Object.entries(ob.sent_7d).map(([k, n]) => <li key={k} className="flex items-center justify-between text-muted-foreground">{k.replace(/_/g, " ")} (7 days) <b className="tnum text-foreground">{n}</b></li>)}
+            </ul>
+            <p className="mt-3 text-xs text-muted-foreground">Bans, paused phones, appeals, receipts, prizes and parent turn-offs are sent within 5 minutes. They stop when 220 emails were sent in a day, so log-in codes always get through.</p>
           </Panel>
           <Panel title="Who sends what">
             <ul className="space-y-2 text-sm">

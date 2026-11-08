@@ -2,6 +2,7 @@
 import { useMemo, useState } from "react";
 import { CheckCircle, SpinnerGap, Trash } from "@phosphor-icons/react";
 import { createClient } from "@/lib/supabase/client";
+import { DELETE_REASONS } from "@/app/api/account/delete/reasons";
 
 /** Email → code → type DELETE → the account is deleted by the same server endpoint the app uses. */
 export function DeleteFlow() {
@@ -10,6 +11,8 @@ export function DeleteFlow() {
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [word, setWord] = useState("");
+  const [reason, setReason] = useState("");
+  const [why, setWhy] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
@@ -41,7 +44,7 @@ export function DeleteFlow() {
       const { data } = await sb.auth.getSession();
       const token = data.session?.access_token;
       if (!token) throw new Error("Please start again.");
-      const r = await fetch("/api/account/delete", { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify({ confirm: "DELETE" }) });
+      const r = await fetch("/api/account/delete", { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify({ confirm: "DELETE", via: "web", reason, note: why }) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error ?? "We could not delete the account. Contact support.");
       await sb.auth.signOut({ scope: "local" });
@@ -56,7 +59,7 @@ export function DeleteFlow() {
         <div className="text-center">
           <CheckCircle size={48} weight="fill" className="mx-auto text-[#16A34A]" />
           <h2 className="mt-3 text-xl font-bold">Your account has been deleted</h2>
-          <p className="mt-2 text-sm text-muted-foreground">We are sorry to see you go. You can create a new account at any time.</p>
+          <p className="mt-2 text-sm text-muted-foreground">We have emailed you a confirmation. We are sorry to see you go, and you can create a new account at any time.</p>
         </div>
       ) : step === "email" ? (
         <form onSubmit={send}>
@@ -76,10 +79,23 @@ export function DeleteFlow() {
         </form>
       ) : (
         <form onSubmit={del}>
-          <p className="text-sm"><b>This cannot be undone.</b> Type <b>DELETE</b> to delete the account for {email}.</p>
+          <fieldset>
+            <legend className="text-sm font-bold">Before you go, why are you deleting your account?</legend>
+            <div className="mt-3 grid gap-2">
+              {DELETE_REASONS.map((r) => (
+                <label key={r} className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 text-sm ${reason === r ? "border-[#2563B3] bg-[#2563B3]/5" : ""}`}>
+                  <input type="radio" name="reason" value={r} checked={reason === r} onChange={() => setReason(r)} className="size-4 accent-[#2563B3]" /> {r}
+                </label>
+              ))}
+            </div>
+            <textarea value={why} onChange={(e) => setWhy(e.target.value)} maxLength={500} rows={3} placeholder="Anything else you would like to tell us? (optional)"
+              className="mt-3 w-full rounded-2xl border bg-background px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring" />
+            <p className="mt-1 text-xs text-muted-foreground">Your answer helps us improve. It is kept without your name or email.</p>
+          </fieldset>
+          <p className="mt-5 text-sm"><b>This cannot be undone.</b> Type <b>DELETE</b> to delete the account for {email}.</p>
           <input value={word} onChange={(e) => setWord(e.target.value)} aria-label="Type DELETE" className="mt-3 h-12 w-full rounded-2xl border bg-background px-4 font-bold uppercase outline-none focus:ring-2 focus:ring-ring" />
           {err ? <p className="mt-3 rounded-xl bg-error-soft px-3 py-2 text-sm text-on-error-soft">{err}</p> : null}
-          <button type="submit" disabled={busy || word.trim().toUpperCase() !== "DELETE"} className={`${btn} bg-[#B42318] text-white`}>{busy ? <SpinnerGap size={18} className="animate-spin" /> : <Trash size={18} weight="bold" />} Delete my account</button>
+          <button type="submit" disabled={busy || !reason || word.trim().toUpperCase() !== "DELETE"} className={`${btn} bg-[#B42318] text-white`}>{busy ? <SpinnerGap size={18} className="animate-spin" /> : <Trash size={18} weight="bold" />} Delete my account</button>
         </form>
       )}
     </section>

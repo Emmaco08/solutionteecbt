@@ -4385,6 +4385,12 @@ export type Database = {
         Args: { p_days?: number }
         Returns: Json
       }
+      email_outbox_due: { Args: { p_limit?: number }; Returns: Json }
+      email_outbox_mark: { Args: { p_error?: string; p_id: number; p_ok: boolean }; Returns: undefined }
+      admin_email_outbox: { Args: Record<PropertyKey, never>; Returns: Json }
+      delete_code_start: { Args: { p_hash: string; p_note: string; p_reason: string; p_user: string }; Returns: string }
+      delete_code_check: { Args: { p_hash: string; p_user: string }; Returns: Json }
+      delete_reason_log: { Args: { p_note: string; p_reason: string; p_user: string; p_via: string }; Returns: undefined }
       minor_win_notices_due: {
         Args: { p_limit?: number }
         Returns: Json

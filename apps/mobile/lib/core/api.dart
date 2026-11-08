@@ -93,7 +93,14 @@ class WebApi {
     return d['url'] as String;
   }
 
-  Future<void> deleteAccount() => _post('/api/account/delete', {'confirm': 'DELETE'}, auth: true);
+  /// Step 1 of deleting an account (D-126): sends the reason and emails a 6-digit code. Returns the masked email.
+  Future<String> deleteAccountStart({required String reason, String note = ''}) async {
+    final d = await _post('/api/account/delete/start', {'reason': reason, 'note': note}, auth: true);
+    return (d['email'] as String?) ?? 'your email';
+  }
+
+  /// Step 2: deletes the account with the emailed code.
+  Future<void> deleteAccount({required String code}) => _post('/api/account/delete', {'confirm': 'DELETE', 'code': code, 'via': 'app'}, auth: true);
 
   /// A one-time code (2 minutes, works once) that opens the payment website already logged in (D-115).
   Future<String?> webHandoff({String? plan}) async {

@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { hasR2 } from "@/lib/env";
 import { readJson } from "@/lib/r2";
 import { apkInfoKey, type ApkInfo } from "./apk/route";
+import { requireStaff } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Download the Android app",
@@ -23,6 +24,7 @@ export default function Page({ searchParams }: { searchParams: Promise<{ channel
 
 async function Download({ searchParams }: { searchParams: Promise<{ channel?: string }> }) {
   await connection();
+  await requireStaff(); // the team's download page: signed-in staff only (D-125). Students use cbt.solutiontee.com.
   const channel = (await searchParams).channel;
   const test = channel === "test", play = channel === "play";
   const info = hasR2() ? await readJson<ApkInfo>(apkInfoKey(test ? "test" : play ? "play" : "main")).catch(() => null) : null;

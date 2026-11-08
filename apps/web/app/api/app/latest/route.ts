@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { hasR2 } from "@/lib/env";
+import { env, hasR2 } from "@/lib/env";
 import { readJson } from "@/lib/r2";
 import { apkInfoKey, type ApkInfo } from "@/app/download/apk/route";
 
@@ -12,7 +12,9 @@ export async function GET(req: Request) {
   const channel = new URL(req.url).searchParams.get("channel");
   const info = await readJson<ApkInfo>(apkInfoKey(channel));
   if (!info) return NextResponse.json({ error: "No app yet" }, { status: 404 });
-  const origin = new URL(req.url).origin;
+  // Downloads come from the public website (D-125); old apps that still ask admin.solutiontee.com get the same link.
+  const reqUrl = new URL(req.url);
+  const origin = /(^|\.)solutiontee\.com$/.test(reqUrl.hostname) ? env.publicUrl.replace(/\/+$/, "") : reqUrl.origin;
   const res = NextResponse.json({
     version: info.version, build: info.build ?? null, size: info.size, built_at: info.built_at,
     url: `${origin}/download/apk${channel === "test" ? "?channel=test" : ""}`,

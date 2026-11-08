@@ -320,3 +320,181 @@ export function inactiveNoticeEmail(name: string, deleteOn: string, appLink: str
     text: `${first(name) ? `Hi ${first(name)},` : "Hi,"}\n\nYou have not used SolutionTee CBT for almost two years. To protect your data, we delete accounts that have not been used for two years.\n\nYour account will be deleted on ${deleteOn}.\n\nTo keep it, open the app and log in before then: ${appLink}\n\nIf you do nothing, your account is deleted for good. Payment records are kept only as the law requires.${footText()}`,
   };
 }
+
+/* ------------------------------------------------------------------ account status and important moments (D-127) */
+const naira = (kobo: number) => `₦${Math.round(kobo / 100).toLocaleString("en-NG")}`;
+const day = (iso: string | null | undefined) =>
+  iso ? new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "Africa/Lagos" }) : "";
+const hello = (name: string) => (first(name) ? `Hi ${esc(first(name))},` : "Hi,");
+const helloText = (name: string) => (first(name) ? `Hi ${first(name)},` : "Hi,");
+
+/** Account banned (by an admin, or because the phone was banned). */
+export function accountBannedEmail(name: string, reason: string | null) {
+  const why = (reason ?? "").trim() || "Breaking our rules of conduct.";
+  return {
+    subject: "Your SolutionTee account has been suspended",
+    html: layout({
+      title: "Account suspended", preheader: "Your account has been suspended. Here is why and how to appeal.", heading: "Your account has been suspended",
+      body: p(hello(name)) + p("We have suspended your SolutionTee CBT account, so you cannot use the app with it for now.")
+        + details([["Reason", esc(why)]])
+        + h2("Think this is a mistake?")
+        + p("Open the app and log in. You will see the reason and a button to <b>send an appeal</b>. A person reads every appeal, usually within 2 working days, and we email you the answer.")
+        + small("Any Premium time you paid for is kept while we review an appeal. Our rules are in the Terms of Service, section 8.") + signoff,
+      why: "You are receiving this because of a change to your SolutionTee CBT account.",
+    }),
+    text: `${helloText(name)}\n\nWe have suspended your SolutionTee CBT account.\n\nReason: ${why}\n\nThink this is a mistake? Open the app and log in to see the reason and send an appeal. A person reads every appeal, usually within 2 working days.${footText()}`,
+  };
+}
+
+export function accountUnbannedEmail(name: string) {
+  return {
+    subject: "Your SolutionTee account is open again",
+    html: layout({
+      title: "Account open again", preheader: "You can use SolutionTee CBT again.", heading: "Your account is open again",
+      body: p(hello(name)) + p("Good news: your SolutionTee CBT account is no longer suspended. Open the app and log in to carry on practising.")
+        + note("Please keep to our rules: one account per person and per phone, and no cheating in challenges.") + button("Open SolutionTee CBT", SITE) + signoff,
+    }),
+    text: `${helloText(name)}\n\nYour SolutionTee CBT account is no longer suspended. Open the app and log in to carry on.\n\nPlease keep to our rules: one account per person and per phone.${footText()}`,
+  };
+}
+
+/** A second account signed in on a phone that already has one. */
+export function secondAccountBlockedEmail(name: string) {
+  return {
+    subject: "Your SolutionTee account is paused on this phone",
+    html: layout({
+      title: "One account per phone", preheader: "This phone already has a SolutionTee account.", heading: "This phone already has an account",
+      body: p(hello(name)) + p("You logged in to SolutionTee CBT on a phone that another account already uses. To keep challenges and rewards fair, each phone can have <b>one account</b>, so this account is paused on that phone.")
+        + h2("What you can do")
+        + steps([
+          ["Use your first account", "Log out and log in with the account that was on this phone first."],
+          ["Sharing with a brother or sister?", "Reply to this email with both names and the email addresses of both accounts. If it is a real family phone, we can allow both."],
+          ["Use your own phone", "This account works normally on a phone that has no other account."],
+        ])
+        + small("Making several accounts to collect rewards is against our Terms of Service and can lead to every account being suspended.") + signoff,
+      why: "You are receiving this because your SolutionTee CBT account was used on a shared phone.",
+    }),
+    text: `${helloText(name)}\n\nYou logged in on a phone that another SolutionTee CBT account already uses. Each phone can have one account, so this account is paused on that phone.\n\nWhat you can do:\n1. Log in with the account that was on this phone first.\n2. Sharing with a brother or sister? Reply with both names and both email addresses and we can allow both.\n3. Use this account on your own phone.${footText()}`,
+  };
+}
+
+export function phoneAllowedEmail(name: string) {
+  return {
+    subject: "You can use SolutionTee on your phone again",
+    html: layout({
+      title: "Allowed on this phone", preheader: "We have allowed your account on the shared phone.", heading: "You are allowed on this phone",
+      body: p(hello(name)) + p("We checked the phone you share, and your account can now be used on it. Open the app and you can carry on straight away.")
+        + button("Open SolutionTee CBT", SITE) + signoff,
+    }),
+    text: `${helloText(name)}\n\nWe checked the phone you share, and your account can now be used on it. Open the app to carry on.${footText()}`,
+  };
+}
+
+export function banAppealEmail(name: string, accepted: boolean, noteText: string | null) {
+  const head = accepted ? "Your appeal was accepted" : "Your appeal was not accepted";
+  const line = accepted
+    ? "We have reviewed your appeal and your account is open again. Open the app and log in to carry on."
+    : "We have reviewed your appeal carefully. The suspension stays in place.";
+  return {
+    subject: `SolutionTee CBT: ${head.toLowerCase()}`,
+    html: layout({
+      title: head, preheader: line, heading: head,
+      body: p(hello(name)) + p(line) + ((noteText ?? "").trim() ? note(esc(noteText!.trim())) : "") + (accepted ? button("Open SolutionTee CBT", SITE) : "") + signoff,
+    }),
+    text: `${helloText(name)}\n\n${line}${(noteText ?? "").trim() ? `\n\n${noteText!.trim()}` : ""}${footText()}`,
+  };
+}
+
+/** Receipt after a successful Paystack or Google Play payment. */
+export function paymentReceiptEmail(name: string, d: { reference?: string; provider?: string; amount_kobo?: number; discount_kobo?: number; fee_kobo?: number; plan?: string | null; item?: string | null; at?: string; expires_at?: string | null }) {
+  const what = d.plan ? `${d.plan} Premium` : d.item ? `Single item (${d.item})` : "Premium";
+  const rows: [string, string][] = [["Bought", esc(what)], ["Amount paid", naira(d.amount_kobo ?? 0)]];
+  if (d.discount_kobo) rows.push(["Discount", `− ${naira(d.discount_kobo)}`]);
+  if (d.fee_kobo) rows.push(["Includes processing fee", naira(d.fee_kobo)]);
+  rows.push(["Paid with", d.provider === "play" ? "Google Play" : "Paystack"], ["Date", day(d.at)]);
+  if (d.expires_at) rows.push(["Premium until", day(d.expires_at)]);
+  if (d.reference) rows.push(["Reference", `<span style="font-family:monospace">${esc(d.reference)}</span>`]);
+  return {
+    subject: `Your SolutionTee receipt: ${what}`,
+    html: layout({
+      title: "Receipt", preheader: `Thank you. ${what} is active${d.expires_at ? ` until ${day(d.expires_at)}` : ""}.`, heading: "Thank you for your payment",
+      body: p(hello(name)) + p(`Your payment went through and <b>${esc(what)}</b> is active on your account.`) + details(rows)
+        + p("Premium does not renew by itself. Nothing else will be taken from your account.", `color:${MUTED};font-size:14px`)
+        + small(`Keep this email as your receipt. Questions about a payment? Reply with the reference. Refunds follow our <a href="${SITE}/refunds" style="color:${MUTED}">Refund Policy</a>.`) + signoff,
+      why: "You are receiving this because you paid for SolutionTee CBT.",
+    }),
+    text: `${helloText(name)}\n\nThank you. Your payment went through and ${what} is active.\n\n${rows.map(([k, v]) => `${k}: ${v.replace(/<[^>]+>/g, "")}`).join("\n")}\n\nPremium does not renew by itself. Keep this email as your receipt. Refund Policy: ${SITE}/refunds${footText()}`,
+  };
+}
+
+export function prizePaidEmail(name: string, amountNaira: number, title: string | null, bank: string | null) {
+  const amount = `₦${Math.round(amountNaira).toLocaleString("en-NG")}`;
+  return {
+    subject: `Your SolutionTee prize of ${amount} has been paid`,
+    html: layout({
+      title: "Prize paid", preheader: `We have sent your prize of ${amount}.`, heading: "Your prize has been paid",
+      body: p(hello(name)) + p("Congratulations again. We have sent your prize to the account you gave us.")
+        + details([["Prize", amount], ...(title ? [["Challenge", esc(title)] as [string, string]] : []), ...(bank ? [["Bank", esc(bank)] as [string, string]] : [])])
+        + small("Transfers usually arrive within minutes, but some banks take up to 24 hours. If it has not arrived after a day, reply to this email.") + signoff,
+    }),
+    text: `${helloText(name)}\n\nWe have sent your prize of ${amount}${title ? ` for "${title}"` : ""} to the account you gave us. Transfers can take up to 24 hours.${footText()}`,
+  };
+}
+
+export function guardianTurnedOffEmail(name: string) {
+  return {
+    subject: "Your SolutionTee account has been turned off",
+    html: layout({
+      title: "Account turned off", preheader: "Your parent or guardian turned your account off.", heading: "Your account has been turned off",
+      body: p(hello(name)) + p("Your parent or guardian has turned off your SolutionTee CBT account, so you can no longer log in. The account and its data will be deleted after 30 days.")
+        + p("If this was a mistake, ask your parent or guardian to reply to this email within 30 days and we can turn it back on.") + signoff,
+    }),
+    text: `${helloText(name)}\n\nYour parent or guardian has turned off your SolutionTee CBT account. It will be deleted after 30 days.\n\nIf this was a mistake, ask them to reply to this email within 30 days.${footText()}`,
+  };
+}
+
+/** The code that confirms deleting an account from the app. */
+export function deleteAppCodeEmail(code: string) {
+  return {
+    subject: `${code} is your code to delete your SolutionTee account`,
+    html: layout({
+      title: "Confirm account deletion", preheader: `Your code to delete your account is ${code}.`, heading: "Confirm you want to delete your account",
+      body: p("You asked to delete your SolutionTee CBT account in the app. Type this code in the app to confirm:") + codeBox(code, "It works for 10 minutes.")
+        + note("Deleting is permanent: your progress, XP, streaks and any Premium time left are lost. If you did not ask for this, change your password in the app and ignore this email.", "danger") + signoff,
+    }),
+    text: `You asked to delete your SolutionTee CBT account. Your code is: ${code}\n\nIt works for 10 minutes. If you did not ask for this, change your password and ignore this email.${footText()}`,
+  };
+}
+
+/** Sent right after an account is deleted (app or website). */
+export function accountDeletedEmail(name: string) {
+  return {
+    subject: "Your SolutionTee account has been deleted",
+    html: layout({
+      title: "Account deleted", preheader: "Your account and data have been deleted.", heading: "Your account has been deleted",
+      body: p(hello(name)) + p("As you asked, your SolutionTee CBT account has been deleted. Your profile, practice history, AI chats and progress are removed (copies in our backups are cleared within 30 days).")
+        + p("We keep only what the law requires, such as payment records for tax, without your account details.", `color:${MUTED};font-size:14px`)
+        + p("Thank you for practising with us. We wish you the very best in your exams. You are always welcome back.")
+        + small("Did not delete your account? Reply to this email straight away.") + signoff,
+      why: "You are receiving this because your SolutionTee CBT account was deleted.",
+    }),
+    text: `${helloText(name)}\n\nAs you asked, your SolutionTee CBT account has been deleted. Your profile, practice history, AI chats and progress are removed (backups within 30 days). We keep only what the law requires, such as payment records.\n\nThank you for practising with us. Good luck in your exams.\n\nDid not delete your account? Reply straight away.${footText()}`,
+  };
+}
+
+/** Builds the email for an outbox row (D-127). Unknown kinds return null and are marked failed. */
+export function outboxEmail(kind: string, name: string, data: Record<string, unknown>) {
+  const s = (k: string) => (typeof data[k] === "string" ? (data[k] as string) : null);
+  const n = (k: string) => (typeof data[k] === "number" ? (data[k] as number) : 0);
+  switch (kind) {
+    case "account_banned": return accountBannedEmail(name, s("reason"));
+    case "account_unbanned": return accountUnbannedEmail(name);
+    case "second_account_blocked": return secondAccountBlockedEmail(name);
+    case "phone_allowed": return phoneAllowedEmail(name);
+    case "ban_appeal": return banAppealEmail(name, data.accepted === true, s("note"));
+    case "payment_receipt": return paymentReceiptEmail(name, data as Parameters<typeof paymentReceiptEmail>[1]);
+    case "prize_paid": return prizePaidEmail(name, n("amount"), s("title"), s("bank"));
+    case "guardian_turned_off": return guardianTurnedOffEmail(name);
+    default: return null;
+  }
+}

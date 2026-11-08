@@ -18,7 +18,7 @@ async function Fraud() {
   if (error) return <ErrorState message={error.message} />;
   return (
     <>
-      <PageHeader title="Fraud & bans" description="One account per phone, checked by the server at sign-up and every sign-in, also for dual apps and app cloners. Ban an account, or ban a whole phone so nobody can create or use an account on it (they can only appeal). Everything is in the audit log." />
+      <PageHeader title="Fraud & bans" description="One account per phone. Decide paused second accounts and appeals in To do; every decision emails the student and is kept in the audit log." />
       <FraudBoard d={data as unknown as FraudData} />
     </>
   );

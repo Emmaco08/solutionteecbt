@@ -2,7 +2,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { hasServiceKey, hasR2 } from "@/lib/env";
 import { json } from "@/lib/auth-email";
 import { sendEmail } from "@/lib/email";
-import { guardianPrizeEmail, inactiveNoticeEmail } from "@/lib/email-templates";
+import { guardianPrizeEmail, inactiveNoticeEmail, outboxEmail } from "@/lib/email-templates";
 import { deletePrefix } from "@/lib/r2";
 
 export const maxDuration = 60;
@@ -38,8 +38,20 @@ export async function POST(req: Request) {
     if (sent.ok) report.parents_told++;
     else report.parents_failed++;
   }
+  // 0b. Important moments queued by the database (D-127): bans, phone blocks, appeals, receipts, prizes, parent turn-off.
+  const { data: outbox } = await svc.rpc("email_outbox_due", { p_limit: 60 });
+  let outboxSent = 0, outboxFailed = 0;
+  for (const o of (outbox ?? []) as { id: number; kind: string; data: Record<string, unknown>; email: string; name: string }[]) {
+    if (Date.now() - started > 40_000) break;
+    const mail = outboxEmail(o.kind, o.name, o.data ?? {});
+    if (!mail) { await svc.rpc("email_outbox_mark", { p_id: o.id, p_ok: false, p_error: `Unknown email kind ${o.kind}` }); outboxFailed++; continue; }
+    const sent = await sendEmail({ to: o.email, ...mail, from: o.kind === "payment_receipt" ? "info" : "support", tags: [`outbox-${o.kind}`] });
+    await svc.rpc("email_outbox_mark", { p_id: o.id, p_ok: sent.ok, p_error: sent.error ?? undefined });
+    if (sent.ok) outboxSent++; else outboxFailed++;
+  }
+  Object.assign(report, { emails_sent: outboxSent, emails_failed: outboxFailed });
   const body = (await req.json().catch(() => ({}))) as { only?: string };
-  if (body.only === "minor_wins") return json({ ok: true, ...report, ms: Date.now() - started });
+  if (body.only === "minor_wins" || body.only === "emails") return json({ ok: true, ...report, ms: Date.now() - started });
   const { data, error } = await svc.rpc("inactive_due", { p_limit: 100 });
   if (error) return json({ error: error.message }, 500);
   const due = (data ?? { notify: [], delete: [] }) as unknown as Due;

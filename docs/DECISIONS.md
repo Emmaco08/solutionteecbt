@@ -1132,3 +1132,40 @@ The owner asked to run the admin from Vercel instead of the laptop.
   validated categorical slots for splits, 2px lines, bars ≤24px with 4px ends, hover tooltips, values in text, readable
   on phones (2 tiles per row, HTML date labels). Checked at 1280 px, 390 px and in dark mode with sample data; the SQL
   was checked against live data.
+
+## D-125 — admin.solutiontee.com is only for staff; students and parents use cbt.solutiontee.com (2026-11-08)
+- Parent "turn off" links, delete-account, pay, privacy, terms, refunds and the store images live on cbt.solutiontee.com.
+  On admin.solutiontee.com these paths redirect (308) to cbt, so old links in emails keep working; "/" goes to /admin.
+- `/download` (the team's page with test and Google Play builds) and `/download/aab` need a signed-in staff member with
+  2-step login; `/download/apk?channel=test|play` too. The students' app file `/download/apk` stays public and
+  `/api/app/latest` now points downloads at cbt.solutiontee.com (old apps asking the admin address still work).
+- New app builds call the API on cbt.solutiontee.com; the invite message links to cbt.solutiontee.com.
+- Admin hardening: `X-Robots-Tag: noindex` on every admin page, robots.txt disallows admin/api/download/one-time pages,
+  admin pages are never cached, never framed, send no referrer to other sites (on top of login + 2-step + RLS).
+
+## D-126 — Deleting an account: reason, email code, goodbye email (2026-11-08)
+- App: Settings → Delete account → what is removed + "Why are you leaving?" (9 reasons + optional note) → "Email me a
+  code" (`/api/account/delete/start`: 6-digit code, 10 minutes, one a minute, five an hour, only its hash stored) →
+  type the code → deleted → "Your account has been deleted" email.
+- Website /delete-account: email code (sign-in) → reason → type DELETE; the server accepts it only if that email
+  sign-in was less than 15 minutes ago. Older app versions without a code are told to update or use the website.
+- Reasons go to `account_deletion_reasons` with no user id or email (reason, note, app/web, days as a member, had
+  Premium), readable by staff only.
+
+## D-127 — Emails for important moments (2026-11-08)
+- `private.email_outbox`, filled by database triggers, sent by the website job every 5 minutes (only when something is
+  waiting): account suspended (with reason and how to appeal), account open again, second account paused on a phone
+  (what to do, family phones), allowed on a shared phone, ban appeal decided, payment receipt (plan, amount, fee,
+  reference, Premium until), prize paid, parent turned the account off. The same kind is not repeated within 10
+  minutes; an accepted appeal replaces the "open again" email. Sending stops at 220 emails a day so log-in codes
+  always get through (Brevo free plan: 300). Admin → Emails shows waiting/failed/sent and previews every email.
+
+## D-128 — Fraud page fixed and redesigned (2026-11-08)
+- Bug: a phone is known by two ids (phone-wide and Android ID). "Allow" changed only one, so the student stayed paused
+  and admins had to allow twice (the page hid the second card). `admin_device_allow` now updates every id of the phone;
+  accounts already half-allowed were fixed; `admin_fraud` returns each phone once with all its ids and a real
+  "paused" status per account. Tested: one Allow → the account works.
+- New page: a short "how it works", four totals, tabs To do (appeals + paused second accounts with Allow / Ban),
+  Shared phones (plain statuses: first on this phone / allowed by an admin / paused / banned), Banned (accounts, phones,
+  decided appeals) and Activity (events + phones with warning signs). Ban reasons are typed in a dialog with ready
+  reasons instead of browser pop-ups. Every decision emails the student.

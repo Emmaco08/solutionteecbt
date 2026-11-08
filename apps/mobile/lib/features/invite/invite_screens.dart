@@ -36,7 +36,7 @@ class AccountStatus extends Notifier<Map<String, dynamic>?> {
 /// The WhatsApp / share message with the student's code.
 String inviteText(String code) =>
     'Join me on SolutionTee CBT to practise JAMB, WAEC and NECO past questions. Use my code $code when you sign up. '
-    'Get the app: https://admin.solutiontee.com/download';
+    'Get the app: https://cbt.solutiontee.com';
 
 int _i(Object? v, [int d = 0]) => (v as num?)?.toInt() ?? d;
 

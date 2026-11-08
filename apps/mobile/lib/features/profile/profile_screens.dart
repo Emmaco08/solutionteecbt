@@ -28,6 +28,7 @@ import '../premium/checkout.dart';
 import '../premium/payments.dart';
 import '../notifications/turn_on_sheet.dart';
 import 'me_extras.dart';
+import '../auth/auth_screens.dart' show CodeBoxes;
 
 const _supportEmailFallback = 'support@mail.solutiontee.com';
 
@@ -1082,113 +1083,195 @@ class DeleteAccountScreen extends ConsumerStatefulWidget {
   ConsumerState<DeleteAccountScreen> createState() => _DeleteAccountScreenState();
 }
 
+/// Reasons a student can pick before deleting (the same list as the website, D-126).
+const deleteReasons = [
+  'I finished my exams',
+  "I don't use it any more",
+  'Too many ads',
+  'Premium is too expensive',
+  'The app has problems or is slow',
+  'I found another app',
+  'I have another account',
+  'Privacy worries',
+  'Other',
+];
+
+/// Delete account (D-126): 1) what is removed + why are you leaving, 2) a 6-digit code sent to the email,
+/// 3) the code deletes the account and a goodbye email is sent.
 class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
-  final _ctl = TextEditingController();
+  final _note = TextEditingController();
+  final _code = TextEditingController();
+  final _focus = FocusNode();
+  String? _reason;
+  String? _sentTo;
   bool _busy = false;
   String? _error;
 
   @override
   void dispose() {
-    _ctl.dispose();
+    _note.dispose();
+    _code.dispose();
+    _focus.dispose();
     super.dispose();
   }
 
-  Future<void> _delete() async {
-    final sure = await showAppDialog<bool>(
-      context,
-      title: 'Delete account now?',
-      body: 'This cannot be undone.',
-      actions: [
-        Builder(
-          builder: (ctx) => Row(
-            children: [
-              Expanded(
-                child: Btn('Cancel', kind: BtnKind.outline, block: true, onPressed: () => Navigator.pop(ctx, false)),
-              ),
-              const Gap(Space.s3),
-              Expanded(
-                child: Btn('Delete', kind: BtnKind.danger, block: true, onPressed: () => Navigator.pop(ctx, true)),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-    if (sure != true) return;
+  Future<void> _sendCode() async {
+    final reason = _reason;
+    if (reason == null) return;
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
-      await ref.read(apiProvider).deleteAccount();
-      await signOutAndWipe(ref);
+      final to = await ref.read(apiProvider).deleteAccountStart(reason: reason, note: _note.text.trim());
       if (!mounted) return;
-      context.go('/welcome');
-      Future.delayed(const Duration(milliseconds: 400), () {
-        if (mounted) toast(context, 'Your account has been deleted.', icon: PhosphorIcons.trash(PhosphorIconsStyle.fill));
-      });
+      setState(() => _sentTo = to);
+      _code.clear();
+      _focus.requestFocus();
     } catch (e) {
-      setState(() => _error = e.toString());
+      if (mounted) setState(() => _error = e.toString());
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
+  Future<void> _delete() async {
+    final code = _code.text.trim();
+    if (code.length != 6 || _busy) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await ref.read(apiProvider).deleteAccount(code: code);
+      await signOutAndWipe(ref);
+      if (!mounted) return;
+      context.go('/welcome');
+      Future.delayed(const Duration(milliseconds: 400), () {
+        if (mounted) toast(context, 'Your account has been deleted. We emailed you a confirmation.', icon: PhosphorIcons.trash(PhosphorIconsStyle.fill));
+      });
+    } catch (e) {
+      if (mounted) setState(() => _error = e.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Widget _reasonTile(String r) {
+    final c = context.c;
+    final on = _reason == r;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Space.s2),
+      child: Pressable(
+        onTap: _busy ? null : () => setState(() => _reason = r),
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 48),
+          padding: const EdgeInsets.symmetric(horizontal: Space.s4, vertical: Space.s3),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: on ? c.secondary : c.border, width: on ? 2 : 1),
+          ),
+          child: Row(
+            children: [
+              Icon(on ? PhosphorIcons.checkCircle(PhosphorIconsStyle.fill) : PhosphorIcons.circle(), size: 22, color: on ? c.secondary : c.textMuted),
+              const Gap(Space.s3),
+              Expanded(child: Text(r, style: context.ty.body.copyWith(fontSize: 15, height: 20 / 15))),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.c;
-    final ready = _ctl.text.trim() == 'DELETE';
+    final codeStep = _sentTo != null;
     return Scaffold(
       appBar: const TopBar(title: 'Delete account'),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(Space.s5, Space.s2, Space.s5, Space.s8),
-        children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: IconTile(PhosphorIcons.warning(PhosphorIconsStyle.fill), tone: Tone.red, size: 56, radius: 16),
-          ),
-          const Gap(Space.s4),
-          Text('We are sad to see you go', style: context.ty.h1),
-          const Gap(Space.s4),
-          Text('Deleting your account is permanent. This will remove:', style: context.ty.body.col(c.textMuted)),
-          const Gap(Space.s4),
-          for (final t in const [
-            'Your profile and login',
-            'Your test history and scores',
-            'Your AI chat history',
-            'Any Premium time you have left (no refund)',
-          ]) ...[
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(PhosphorIcons.xCircle(PhosphorIconsStyle.fill), size: 20, color: c.error),
-                const Gap(Space.s3),
-                Expanded(
-                  child: Text(t, style: context.ty.body.copyWith(fontSize: 14, height: 20 / 14)),
+        children: codeStep
+            ? [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: IconTile(PhosphorIcons.envelopeSimple(PhosphorIconsStyle.fill), tone: Tone.red, size: 56, radius: 16),
                 ),
+                const Gap(Space.s4),
+                Text('Check your email', style: context.ty.h1),
+                const Gap(Space.s2),
+                Text('We sent a 6-digit code to $_sentTo. Type it here to delete your account for good.', style: context.ty.body.col(c.textMuted)),
+                const Gap(Space.s5),
+                Center(child: CodeBoxes(controller: _code, focus: _focus, length: 6, bad: _error != null)),
+                if (_error != null) ...[
+                  const Gap(Space.s3),
+                  Text(_error!, style: context.ty.sm.col(c.error), textAlign: TextAlign.center),
+                ],
+                const Gap(Space.s4),
+                Center(
+                  child: Btn('Send a new code', kind: BtnKind.ghost, onPressed: _busy ? null : _sendCode),
+                ),
+              ]
+            : [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: IconTile(PhosphorIcons.warning(PhosphorIconsStyle.fill), tone: Tone.red, size: 56, radius: 16),
+                ),
+                const Gap(Space.s4),
+                Text('We are sad to see you go', style: context.ty.h1),
+                const Gap(Space.s3),
+                Text('Deleting your account is permanent. This removes:', style: context.ty.body.col(c.textMuted)),
+                const Gap(Space.s3),
+                for (final t in const [
+                  'Your profile and login',
+                  'Your test history, scores, XP and streaks',
+                  'Your AI chat history',
+                  'Any Premium time you have left (no refund)',
+                ]) ...[
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(PhosphorIcons.xCircle(PhosphorIconsStyle.fill), size: 20, color: c.error),
+                      const Gap(Space.s3),
+                      Expanded(child: Text(t, style: context.ty.body.copyWith(fontSize: 14, height: 20 / 14))),
+                    ],
+                  ),
+                  const Gap(Space.s2),
+                ],
+                const Gap(Space.s2),
+                const InfoBanner(child: Text('Payment records are kept for 6 years because the law requires it. They are not linked to your profile.')),
+                const Gap(Space.s5),
+                Text('Why are you leaving?', style: context.ty.h3),
+                const Gap(Space.s1),
+                Text('Your answer helps us improve. It is kept without your name or email.', style: context.ty.cap.col(c.textMuted)),
+                const Gap(Space.s3),
+                for (final r in deleteReasons) _reasonTile(r),
+                const Gap(Space.s2),
+                Field(label: 'Anything else you would like to tell us? (optional)', controller: _note, maxLength: 500),
+                if (_error != null) ...[
+                  const Gap(Space.s3),
+                  Text(_error!, style: context.ty.sm.col(c.error)),
+                ],
               ],
-            ),
-            const Gap(Space.s3),
-          ],
-          const Gap(Space.s1),
-          const InfoBanner(child: Text('Payment records are kept for 6 years because the law requires it. They are not linked to your profile.')),
-          const Gap(Space.s4),
-          Field(
-            label: 'Type DELETE to confirm',
-            hint: 'DELETE',
-            controller: _ctl,
-            caps: TextCapitalization.characters,
-            onChanged: (_) => setState(() {}),
-            error: _error,
-          ),
-        ],
       ),
       bottomNavigationBar: FooterCta(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Btn('Delete my account', kind: BtnKind.danger, block: true, loading: _busy, onPressed: ready ? _delete : null),
+            codeStep
+                ? ValueListenableBuilder<TextEditingValue>(
+                    valueListenable: _code,
+                    builder: (context, v, _) => Btn(
+                      'Delete my account',
+                      kind: BtnKind.danger,
+                      block: true,
+                      loading: _busy,
+                      onPressed: v.text.trim().length == 6 ? _delete : null,
+                    ),
+                  )
+                : Btn('Email me a code', kind: BtnKind.danger, block: true, loading: _busy, onPressed: _reason == null ? null : _sendCode),
             const Gap(Space.s2),
             Btn('Cancel', kind: BtnKind.ghost, onPressed: _busy ? null : () => context.pop()),
           ],

@@ -38,3 +38,13 @@ export const canEditContent = (r: StaffRole) => r === "super_admin" || r === "ad
 export const canManage = (r: StaffRole) => r === "super_admin" || r === "admin";
 /** Study content (notes, videos, novels, documents): teachers may edit too. */
 export const canEditStudy = (r: StaffRole) => r === "super_admin" || r === "admin" || r === "editor" || r === "teacher";
+
+/** True for a signed-in staff member with 2-step login (for route handlers that must not redirect). */
+export async function isStaffRequest(): Promise<boolean> {
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+  if (!claims?.sub || claims.aal !== "aal2") return false;
+  const { data: row } = await supabase.from("staff").select("role").eq("user_id", claims.sub).maybeSingle();
+  return Boolean(row);
+}

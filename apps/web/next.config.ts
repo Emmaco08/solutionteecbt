@@ -26,6 +26,18 @@ const secure = [
 // Payment pages: never cached, never send the address (with its one-time code) to another site.
 const payOnly = [...secure, { key: "Referrer-Policy", value: "no-referrer" }, { key: "Cache-Control", value: "no-store, max-age=0" }];
 
+// Admin pages: strict but without a CSP (the editors load R2 images and math fonts); signed-in only (proxy + layout).
+const adminOnly = [
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
+  { key: "Referrer-Policy", value: "same-origin" },
+  { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), interest-cohort=()" },
+  { key: "Cache-Control", value: "private, no-store, max-age=0" },
+  { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
+];
+
 const nextConfig: NextConfig = {
   async headers() {
     return [
@@ -39,6 +51,11 @@ const nextConfig: NextConfig = {
       { source: "/terms", headers: secure },
       { source: "/refunds", headers: secure },
       { source: "/api/web/:path*", headers: [{ key: "Cache-Control", value: "no-store" }, { key: "X-Content-Type-Options", value: "nosniff" }] },
+      // The admin site (D-125): never in search engines, never in a frame, never cached, no referrer to other sites.
+      { source: "/:path*", has: [{ type: "host", value: "admin.solutiontee.com" }], headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }] },
+      { source: "/admin/:path*", headers: adminOnly },
+      { source: "/admin", headers: adminOnly },
+      { source: "/download", headers: adminOnly },
     ];
   },
   // Workspace package written in TypeScript (CSV validator, DB types).

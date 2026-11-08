@@ -27,6 +27,8 @@ export const env = {
     logoUrl: read("EMAIL_LOGO_URL"),
   },
   siteUrl: read("NEXT_PUBLIC_SITE_URL") || "http://localhost:3000",
+  /** The public website for students and parents (D-125); admin.solutiontee.com is only for staff. */
+  publicUrl: read("NEXT_PUBLIC_PUBLIC_URL") || "https://cbt.solutiontee.com",
 };
 
 export const hasServiceKey = () => Boolean(env.supabaseSecretKey);

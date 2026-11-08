@@ -51,7 +51,7 @@ void main() {
   test('the share message carries the code and the download link', () {
     final m = inviteText('TOLU-7K3P');
     expect(m, contains('TOLU-7K3P'));
-    expect(m, contains('https://admin.solutiontee.com/download'));
+    expect(m, contains('https://cbt.solutiontee.com'));
   });
 
   test('old /invite links open inside the Me tab', () {
