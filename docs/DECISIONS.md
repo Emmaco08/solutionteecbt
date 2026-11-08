@@ -1106,3 +1106,29 @@ The owner asked to run the admin from Vercel instead of the laptop.
   hidden preview line, 600 px on computers, full width under 620 px with smaller heading and code. Checked at 360 px
   and 680 px for 10 templates: no sideways scrolling, nothing cut off.
 - Admin → Emails previews all of them; "Send me a test email" sends the new design.
+
+## D-124 — Full analytics dashboard (2026-11-08)
+- `public.admin_analytics(p_days)` (staff only; Lagos days; students = non-staff accounts) returns everything the
+  dashboard shows in one call. "Active" = a test, an AI question (`ai_usage`, not archived), the question of the day,
+  a challenge, a study item or the app opened (push token seen). Revenue = successful Paystack + Google Play payments
+  (codes counted separately). Retention: next day (joined 2–31 days ago), week 2 (active 7–13 days after joining),
+  month (30–36 days after).
+- Admin → Dashboard: period 7 / 30 / 90 days and tabs:
+  - **Overview:** students, active (vs previous period), revenue, Premium now, active today/week/month, tests, AI
+    questions, new students; daily trends for active, new, tests and revenue.
+  - **Students:** retention, age groups, exams, target score, course area, top subject combinations, JAMB subjects,
+    states, app versions.
+  - **Learning:** tests finished, average full mock score, question of the day, AI tutor, study items, XP; kinds of test
+    with average %, subjects practised with accuracy, tests by hour (Lagos time), active by weekday.
+  - **Challenges:** held/live/coming, entries, players, finished fairly, disqualified, cash paid, claims waiting,
+    recent challenges table.
+  - **Payments** (admins only): revenue, paying students, average per payer, paid vs started, revenue per day, how
+    payments ended, revenue by plan, Paystack vs Google Play vs codes, Paystack methods, discount codes, ads shown,
+    clicks and click rate.
+- **Course:** the app does not ask for an intended course, so "course area" is worked out from the JAMB subject
+  combination (Medicine and health; Engineering and physical sciences; Life and agricultural; Computing and maths;
+  Business; Arts, law and humanities; Social sciences). Asking students for their course is the owner's decision.
+- Charts follow the dataviz rules: plain SVG/HTML, one series per trend in brand blue (#2563B3 / #5B8DEF dark),
+  validated categorical slots for splits, 2px lines, bars ≤24px with 4px ends, hover tooltips, values in text, readable
+  on phones (2 tiles per row, HTML date labels). Checked at 1280 px, 390 px and in dark mode with sample data; the SQL
+  was checked against live data.

@@ -4381,6 +4381,10 @@ export type Database = {
         Args: { p_ids: string[] }
         Returns: number
       }
+      admin_analytics: {
+        Args: { p_days?: number }
+        Returns: Json
+      }
       minor_win_notices_due: {
         Args: { p_limit?: number }
         Returns: Json

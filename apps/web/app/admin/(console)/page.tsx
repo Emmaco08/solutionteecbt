@@ -1,12 +1,13 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { ArrowRight, Database, FileCsv, Plus, Trophy, Sparkle, CurrencyNgn, WarningCircle, CheckCircle } from "@phosphor-icons/react/dist/ssr";
+import { ArrowRight, Database, FileCsv, Plus, WarningCircle, CheckCircle } from "@phosphor-icons/react/dist/ssr";
 import { requireStaff, canManage } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { hasR2 } from "@/lib/env";
-import { Panel, Pill, ErrorState, PageSkeleton, when } from "@/components/admin/ui";
+import { Panel, ErrorState, PageSkeleton, when } from "@/components/admin/ui";
 import { buttonVariants } from "@/components/ui/button";
+import { Challenges, Learning, Overview, Payments, PeriodTabs, Students, TABS, type Analytics, type Tab } from "./analytics";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -15,20 +16,27 @@ type Dash = {
   questions_review: number; years_published: number; imports_7d: number; banned: number; by_subject: { name: string; n: number }[];
 };
 
-export default function Page() {
-  return <Suspense fallback={<PageSkeleton rows={8} />}><Dashboard /></Suspense>;
+export default function Page({ searchParams }: PageProps<"/admin">) {
+  return <Suspense fallback={<PageSkeleton rows={8} />}><Dashboard searchParams={searchParams} /></Suspense>;
 }
 
-async function Dashboard() {
+async function Dashboard({ searchParams }: { searchParams: PageProps<"/admin">["searchParams"] }) {
   const staff = await requireStaff();
+  const sp = await searchParams;
+  const days = [7, 30, 90].includes(Number(sp.days)) ? Number(sp.days) : 30;
+  const money = canManage(staff.role); // payments and revenue: admins only
+  const tabs = TABS.filter(([k]) => k !== "payments" || money);
+  const tab = (tabs.find(([k]) => k === sp.tab)?.[0] ?? "overview") as Tab;
   const supabase = await createClient();
-  const [{ data, error }, audit, plans] = await Promise.all([
+  const [{ data, error }, analytics, audit, plans] = await Promise.all([
     supabase.rpc("admin_dashboard"),
+    supabase.rpc("admin_analytics", { p_days: days }),
     canManage(staff.role) ? supabase.from("audit_log").select("id, at, action, table_name, row_id").order("at", { ascending: false }).limit(6) : Promise.resolve({ data: [] as { id: number; at: string; action: string; table_name: string; row_id: string | null }[] }),
     supabase.from("plans").select("description").ilike("description", "SAMPLE%"),
   ]);
   if (error) return <ErrorState message={error.message} />;
   const d = data as unknown as Dash;
+  const a = analytics.data as unknown as Analytics | null;
   const hour = new Date().getHours();
   const greet = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
@@ -40,12 +48,6 @@ async function Dashboard() {
     !hasR2() && { tone: "error", text: "Image storage (Cloudflare R2) is not set up, so image upload is off.", href: "/admin/settings" },
   ].filter(Boolean) as { tone: "warn" | "error"; text: string; href: string }[];
 
-  const kpis = [
-    { label: "Students", value: d.students, sub: `+${d.new_students_7d} in the last 7 days` },
-    { label: "Premium students", value: d.premium, sub: d.students ? `${Math.round((d.premium / d.students) * 100)}% of students` : "No students yet" },
-    { label: "Questions", value: d.questions, sub: `${d.questions_published} published` },
-    { label: "Years published", value: d.years_published, sub: `${d.imports_7d} import${d.imports_7d === 1 ? "" : "s"} this week` },
-  ];
   const maxSubj = Math.max(1, ...d.by_subject.map((s) => s.n));
 
   return (
@@ -76,16 +78,12 @@ async function Dashboard() {
         <p className="flex items-center gap-2 rounded-2xl border bg-card px-4 py-3 text-sm"><CheckCircle size={18} weight="fill" className="text-success" /> Nothing needs your attention right now.</p>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {kpis.map((k) => (
-          <div key={k.label} className="rounded-2xl border bg-card p-5 shadow-[var(--shadow-1)]">
-            <span className="text-sm font-bold text-muted-foreground">{k.label}</span>
-            <b className="tnum mt-1.5 block text-[28px] leading-[34px] tracking-[-0.4px]">{k.value.toLocaleString()}</b>
-            <span className="text-xs text-muted-foreground">{k.sub}</span>
-          </div>
-        ))}
-      </div>
+      <PeriodTabs days={days} tab={tab} tabs={tabs} />
+      {!a ? <ErrorState message={analytics.error?.message ?? "Could not load the numbers."} /> : tab === "students" ? <Students a={a} />
+        : tab === "learning" ? <Learning a={a} /> : tab === "challenges" ? <Challenges a={a} /> : tab === "payments" && money ? <Payments a={a} />
+        : <Overview a={a} money={money} />}
 
+      {tab === "overview" ? (
       <div className="grid gap-4 xl:grid-cols-3">
         <Panel title="Questions by subject" className="xl:col-span-2" actions={<Link href="/admin/questions" className="text-sm font-bold text-[var(--c-link)]">Open bank</Link>}>
           {d.by_subject.length ? (
@@ -107,30 +105,17 @@ async function Dashboard() {
         <Panel title="Recent activity" actions={canManage(staff.role) ? <Link href="/admin/audit" className="text-sm font-bold text-[var(--c-link)]">View all</Link> : null}>
           {audit.data?.length ? (
             <ul className="divide-y text-sm">
-              {audit.data.map((a) => (
-                <li key={a.id} className="flex justify-between gap-3 py-2.5">
-                  <span><b className="capitalize">{a.action.replace(/_/g, " ")}</b> <span className="text-muted-foreground">{a.table_name.replace(/_/g, " ")}</span></span>
-                  <span className="whitespace-nowrap text-xs text-muted-foreground">{when(a.at)}</span>
+              {audit.data.map((ev) => (
+                <li key={ev.id} className="flex justify-between gap-3 py-2.5">
+                  <span><b className="capitalize">{ev.action.replace(/_/g, " ")}</b> <span className="text-muted-foreground">{ev.table_name.replace(/_/g, " ")}</span></span>
+                  <span className="whitespace-nowrap text-xs text-muted-foreground">{when(ev.at)}</span>
                 </li>
               ))}
             </ul>
           ) : <p className="py-6 text-center text-sm text-muted-foreground">{canManage(staff.role) ? "No admin activity yet." : "Activity is visible to admins."}</p>}
         </Panel>
       </div>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        {[
-          { icon: <CurrencyNgn size={20} />, title: "Revenue and payments", phase: "Phase 4", text: "Paystack and Google Play payments, verified on the server." },
-          { icon: <Sparkle size={20} />, title: "AI tutor health", phase: "Phase 4", text: "Prompts answered, speed and the NVIDIA rate limit." },
-          { icon: <Trophy size={20} />, title: "Live challenge", phase: "Phase 4b", text: "Players, fair-play checks and winners." },
-        ].map((c) => (
-          <div key={c.title} className="rounded-2xl border border-dashed bg-card/60 p-5">
-            <div className="flex items-center justify-between"><span className="text-muted-foreground">{c.icon}</span><Pill>{c.phase}</Pill></div>
-            <b className="mt-3 block">{c.title}</b>
-            <p className="mt-1 text-sm text-muted-foreground">{c.text}</p>
-          </div>
-        ))}
-      </div>
+      ) : null}
     </div>
   );
 }
