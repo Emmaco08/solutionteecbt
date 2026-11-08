@@ -6,8 +6,8 @@ import { Trash } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { inputCls } from "@/components/admin/row-form";
 import { EmptyState } from "@/components/admin/ui";
-import { saveDefaults, saveWelcome, saveYear } from "./actions";
-import { KINDS, MODES, type AccessData, type Defaults, type Mode, type Rule, type Welcome } from "./shared";
+import { saveCustomExam, saveDefaults, saveWelcome, saveYear } from "./actions";
+import { KINDS, MODES, type AccessData, type Defaults, type Mode, type CustomExam, type Rule, type Welcome } from "./shared";
 
 const naira = (kobo: number) => "₦" + Math.round(kobo / 100).toLocaleString("en-NG");
 
@@ -44,6 +44,7 @@ export function AccessBoard({ d }: { d: AccessData }) {
     limits: d.defaults?.limits ?? { year_per_day: 2, item_per_day: {} },
   });
   const [welcome, setWelcome] = useState<Welcome>({ on: false, hours: 24, ads_level: "low", extra_years: 2, ...(d.welcome ?? {}) });
+  const [custom, setCustom] = useState<CustomExam>({ on: true, who: "everyone", max_questions: 40, max_english: 60, max_minutes: 180, ...(d.custom ?? {}) });
   const adsYears = defs.years.ads_years ?? {};
   const setAdsYears = (exam: number, v: number[] | "all") =>
     setDefs((x) => ({ ...x, years: { ...x.years, ads_years: { ...(x.years.ads_years ?? {}), [String(exam)]: v } } }));
@@ -129,6 +130,23 @@ export function AccessBoard({ d }: { d: AccessData }) {
           ))}
         </div>
         <Button onClick={save} disabled={pending}>{pending ? "Saving…" : "Save"}</Button>
+      </section>
+
+      <section className="space-y-4 rounded-2xl border border-border bg-card p-5">
+        <h2 className="font-bold">Custom exam</h2>
+        <p className="text-sm text-muted-foreground">Students build their own test: subjects, questions per subject, topics, years (only their open years) and time.</p>
+        <div className="flex flex-wrap items-end gap-4">
+          <label className="flex items-center gap-2 pb-2 text-sm"><input type="checkbox" className="size-4" checked={custom.on} onChange={(e) => setCustom({ ...custom, on: e.target.checked })} /> On</label>
+          <label className="text-sm">Who can use it
+            <select className={`${inputCls} mt-1 w-40`} value={custom.who} onChange={(e) => setCustom({ ...custom, who: e.target.value as CustomExam["who"] })}>
+              <option value="everyone">Everyone</option><option value="premium">Premium only</option>
+            </select>
+          </label>
+          <label className="text-sm">Most questions per subject<input type="number" min={5} max={100} className={`${inputCls} mt-1 w-24`} value={custom.max_questions} onChange={(e) => setCustom({ ...custom, max_questions: Number(e.target.value) })} /></label>
+          <label className="text-sm">Most for English<input type="number" min={5} max={100} className={`${inputCls} mt-1 w-24`} value={custom.max_english} onChange={(e) => setCustom({ ...custom, max_english: Number(e.target.value) })} /></label>
+          <label className="text-sm">Longest time (minutes)<input type="number" min={10} max={300} className={`${inputCls} mt-1 w-24`} value={custom.max_minutes} onChange={(e) => setCustom({ ...custom, max_minutes: Number(e.target.value) })} /></label>
+          <Button disabled={pending} onClick={() => run(async () => { const r = await saveCustomExam(custom); if (r.ok) { toast.success(r.message ?? "Saved"); router.refresh(); } else toast.error(r.error); })}>Save custom exam</Button>
+        </div>
       </section>
 
       <section className="space-y-4 rounded-2xl border border-border bg-card p-5">

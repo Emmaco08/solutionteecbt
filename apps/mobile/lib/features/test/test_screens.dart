@@ -21,6 +21,7 @@ import '../home/home_screen.dart';
 import '../setup/setup_screen.dart';
 import '../premium/paywall.dart';
 import '../compete/compete_data.dart';
+import 'custom_exam.dart';
 import 'leaderboard_screen.dart';
 
 /// Test tab (prototype: test): navy "Full JAMB simulation" hero, practice modes, other exams, offline note.
@@ -122,6 +123,14 @@ class TestHubScreen extends ConsumerWidget {
             'Quick test',
             '20 questions · 15 minutes',
             () => context.push('/test/setup?exam=JAMB&mode=quick'),
+          ),
+          const Gap(Space.s2),
+          modeCard(
+            PhosphorIcons.listChecks(PhosphorIconsStyle.fill),
+            Tone.red,
+            'Custom exam',
+            'Your subjects, questions, topics and time',
+            () => openCustomExam(context, ref, 'JAMB'),
           ),
           const Gap(Space.s2),
           modeCard(
@@ -257,7 +266,7 @@ class _TestSetupScreenState extends ConsumerState<TestSetupScreen> {
     TestMode.subject => 'One subject at a time, timed.',
     TestMode.topic => 'Only the topics you pick. Great for weak areas.',
     TestMode.quick => '20 mixed questions in 15 minutes.',
-    TestMode.year => '',
+    TestMode.year || TestMode.custom => '',
   };
 
   @override

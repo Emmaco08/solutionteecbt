@@ -13,7 +13,7 @@ import '../features/cbt/scoring.dart';
 import 'db.dart';
 import 'paper_sections.dart';
 
-enum TestMode { full, subject, year, quick, topic }
+enum TestMode { full, subject, year, quick, topic, custom }
 
 /// What the student chose on the Test setup screen.
 class TestRequest {
@@ -30,6 +30,8 @@ class TestRequest {
     this.title = '',
     this.ids = const [],
     this.years = const [],
+    this.counts = const {},
+    this.subjectTopics = const {},
   });
   final TestMode mode;
   final int examId;
@@ -45,8 +47,12 @@ class TestRequest {
   /// Exact questions picked by the AI tutor (server order). When set, the test is built from these only.
   final List<String> ids;
 
-  /// The years the AI tutor's [ids] come from.
+  /// The years the AI tutor's [ids] come from; for a custom exam, the years the student chose (empty = all open years).
   final List<int> years;
+
+  /// Custom exam: questions per subject, and the topics chosen per subject (empty = every topic).
+  final Map<int, int> counts;
+  final Map<int, List<String>> subjectTopics;
 }
 
 final testsRepoProvider = Provider<TestsRepo>((ref) => TestsRepo(ref));
@@ -338,6 +344,24 @@ class TestsRepo {
           final y = years[_rnd.nextInt(years.length)];
           final share = r.count ~/ r.subjectIds.length + (si < r.count % r.subjectIds.length ? 1 : 0);
           pool = groupPassages((await paper(r.examId, sid, y))..shuffle(_rnd)).take(share).toList();
+        case TestMode.custom:
+          // The student's own exam: their years (only open ones), their topics, their number of questions.
+          final want = r.counts[sid] ?? 20;
+          final tps = r.subjectTopics[sid] ?? const <String>[];
+          final yrs = r.years.isEmpty
+              ? [...years]
+              : [
+                  for (final y in r.years)
+                    if (years.contains(y)) y,
+                ];
+          if (yrs.isEmpty) yrs.addAll(years);
+          yrs.shuffle(_rnd);
+          pool = [];
+          for (final y in yrs) {
+            pool.addAll((await paper(r.examId, sid, y)).where((q) => tps.isEmpty || tps.contains(q.topic)));
+            if (pool.length >= want * 3) break;
+          }
+          pool = groupPassages(pool..shuffle(_rnd)).take(want).toList();
         case TestMode.topic:
           pool = [];
           for (final y in r.year != null ? [r.year!] : years) {
@@ -368,6 +392,7 @@ class TestsRepo {
               'subjects': r.subjectIds,
               'year': r.year,
               'topics': r.topics,
+              if (r.mode == TestMode.custom) 'counts': {for (final e in r.counts.entries) '${e.key}': e.value},
               'timed': r.timed,
               'title': r.title,
               if (sectionsBySubject.isNotEmpty) 'sections': sectionsBySubject,

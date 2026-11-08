@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { requireStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { friendlyError, type ActionResult } from "@/lib/result";
-import { KINDS, MODES, type Defaults, type Mode, type Rule, type Welcome } from "./shared";
+import { KINDS, MODES, type Defaults, type Mode, type CustomExam, type Rule, type Welcome } from "./shared";
 
 const n = (v: unknown, min: number, max: number, def: number) => {
   const x = Math.round(Number(v));
@@ -69,4 +69,17 @@ export async function saveWelcome(w: Welcome): Promise<ActionResult> {
   if (error) return { ok: false, error: friendlyError(error) };
   revalidatePath("/admin/content-access");
   return { ok: true, message: w.on ? "First-day welcome is on for new students." : "First-day welcome is off." };
+}
+
+export async function saveCustomExam(c: CustomExam): Promise<ActionResult> {
+  await requireStaff(["super_admin", "admin"]);
+  const value = {
+    on: !!c.on, who: c.who === "premium" ? "premium" : "everyone",
+    max_questions: n(c.max_questions, 5, 100, 40), max_english: n(c.max_english, 5, 100, 60), max_minutes: n(c.max_minutes, 10, 300, 180),
+  };
+  const supabase = await createClient();
+  const { error } = await supabase.from("app_settings").upsert({ key: "custom_exam", value, is_public: true });
+  if (error) return { ok: false, error: friendlyError(error) };
+  revalidatePath("/admin/content-access");
+  return { ok: true, message: "Custom exam saved. Students get it the next time the app loads settings." };
 }

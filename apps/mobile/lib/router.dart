@@ -11,6 +11,7 @@ import 'core/house_ads.dart';
 import 'features/ai/ai_screen.dart';
 import 'features/auth/auth_screens.dart';
 import 'features/cbt/cbt_screen.dart';
+import 'features/test/custom_exam.dart';
 import 'features/home/home_screen.dart';
 import 'features/news/news_screens.dart';
 import 'features/notifications/notifications_screen.dart';
@@ -179,6 +180,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             ],
           ),
         ],
+      ),
+      GoRoute(
+        path: '/test/custom',
+        builder: (_, s) => CustomExamScreen(examCode: s.uri.queryParameters['exam'] ?? 'JAMB'),
       ),
       GoRoute(
         path: '/test/setup',

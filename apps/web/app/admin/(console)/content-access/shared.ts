@@ -4,6 +4,7 @@ export type Rule = { mode: Mode; ads?: number; hours?: number; price_kobo?: numb
 export type YearsRule = Rule & { ads_years?: Record<string, number[] | "all"> };
 export type Limits = { year_per_day?: number; item_per_day?: Record<string, number> };
 export type Defaults = { items: Record<string, Rule>; years: YearsRule; limits?: Limits };
+export type CustomExam = { on: boolean; who: "everyone" | "premium"; max_questions: number; max_english: number; max_minutes: number };
 export type Welcome = { on: boolean; hours: number; ads_level: string; extra_years: number };
 export type YearRule = { exam_id: number; exam: string; year: number; access: Mode; ad_count: number | null; ad_hours: number | null; price_kobo: number | null; pay_premium: boolean | null };
 export type AccessData = {
@@ -11,6 +12,7 @@ export type AccessData = {
   exams: { id: number; code: string; years: number[] | null }[];
   sales: { kind: string; ref: string; sold: number; kobo: number }[];
   welcome?: Welcome | null;
+  custom?: CustomExam | null;
 };
 export const KINDS: { id: string; label: string }[] = [
   { id: "video_solution", label: "Video solutions" }, { id: "lesson", label: "Video lessons" }, { id: "note", label: "Lesson notes" },

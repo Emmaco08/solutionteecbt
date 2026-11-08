@@ -862,3 +862,16 @@ The owner asked to run the admin from Vercel instead of the laptop.
 - **App:** a locked item/year opens a "How to open it" sheet: watch (with progress), pay (all Paystack ways), or
   Premium; it opens the content once the server says so.
 - **Known gap:** the admin Payments list shows no plan name for an item payment (the timeline note says what it was).
+
+## D-107 — Ads limits, first-day welcome, custom exam, background updates (2026-11-08)
+- **Watching ads opens only what the admin allows:** How content opens → per exam, no years / chosen years / all years
+  can be opened by watching (default: none until the admin picks), plus daily caps (years per day, items per kind per
+  day). The server refuses anything else (`watch_block`), and the break pop-up only offers allowed years
+  (`ad_year_suggest`).
+- **First-day welcome** (off by default): for N hours after joining, a lighter ads level and N extra free years per exam,
+  silently (`welcome_settings` in `ads_config`, `welcome_extra_years` in `year_open`).
+- **Custom exam:** subjects, questions per subject (default max 40, English 60), topics, open years only, time; mode
+  `custom` on the server; the admin sets on/off, everyone or Premium, and the limits.
+- **App:** sticky banner floats over the screen just above the tab bar (placement follows the router); CBT pictures
+  download behind the normal loading circle; "No ads" is the first Premium benefit; new animated earn pop-up for XP and
+  for opening a year; updates download through Android's download manager (keep going when the app is closed).
