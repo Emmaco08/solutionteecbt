@@ -53,7 +53,13 @@ export async function saveSettings(form: FormData): Promise<ActionResult> {
   return { ok: true };
 }
 
-const SWITCHES: Record<string, string[]> = { screen_protection: ["whole_app", "exams"], app_update: ["force"], google_auth: ["enabled"] };
+const SWITCHES: Record<string, string[]> = {
+  screen_protection: ["whole_app", "exams"],
+  app_update: ["force"],
+  google_auth: ["enabled"],
+  cash_prizes: ["on"], // D-110
+  exam_logos: ["on"], // D-111
+};
 
 /** One switch inside a JSON setting (D-080): screen protection and in-app updates. Logged by the settings trigger. */
 export async function setAppSwitch(key: string, field: string, on: boolean): Promise<ActionResult> {

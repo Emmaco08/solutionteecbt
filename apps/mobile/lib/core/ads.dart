@@ -10,6 +10,7 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show Supabase;
 
 import '../data/db.dart';
+import '../features/setup/age_gate.dart' show blockUnder13;
 
 import 'earn_offer.dart';
 import 'house_ads.dart';
@@ -70,7 +71,8 @@ class AdsConfig {
     };
   }
 
-  AdRequest get request => AdRequest(nonPersonalizedAds: !personalised);
+  /// Personalised only when the server allows it (18+) and the student said yes in Settings (D-110).
+  AdRequest get request => AdRequest(nonPersonalizedAds: !(personalised && adsConsent));
 }
 
 /// What the server says this student sees. Read when the app opens (and after sign-in / Premium changes).
@@ -686,9 +688,12 @@ List<Widget> withNativeAds(WidgetRef ref, int count, Widget Function(int i) buil
 /// Students who joined before we asked: the birth year is asked once and must be answered to go on (personalised ads
 /// only for 18+, non-personalised 13-17, child treatment under 13). New students give it during profile setup.
 bool _askingBirthYear = false;
-Future<void> askBirthYearOnce(BuildContext context, WidgetRef ref) async {
+
+/// [force]: asked by the age rules (D-109) even when ads are off. Under 13 deletes the account (no data kept).
+Future<void> askBirthYearOnce(BuildContext context, WidgetRef ref, {bool force = false}) async {
   final c = ref.read(adsConfigProvider).value ?? AdsConfig.off;
-  if (!c.askBirthYear || _askingBirthYear) return;
+  if ((!c.askBirthYear && !force) || _askingBirthYear) return;
+  var under13 = false;
   _askingBirthYear = true;
   try {
     final now = DateTime.now().year;
@@ -718,7 +723,7 @@ Future<void> askBirthYearOnce(BuildContext context, WidgetRef ref) async {
                     initialValue: picked,
                     menuMaxHeight: 360,
                     decoration: const InputDecoration(labelText: 'Birth year'),
-                    items: [for (var y = now - 8; y >= now - 60; y--) DropdownMenuItem(value: y, child: Text('$y'))],
+                    items: [for (var y = now - 6; y >= now - 70; y--) DropdownMenuItem(value: y, child: Text('$y'))],
                     onChanged: (v) => set(() => picked = v),
                   ),
                   if (err != null) ...[const SizedBox(height: 8), Text(err!, style: TextStyle(color: Theme.of(ctx).colorScheme.error))],
@@ -732,7 +737,8 @@ Future<void> askBirthYearOnce(BuildContext context, WidgetRef ref) async {
                               err = null;
                             });
                             try {
-                              await ref.read(supabaseProvider).rpc('set_birth_year', params: {'p_year': picked});
+                              final r = await ref.read(supabaseProvider).rpc('set_birth_year', params: {'p_year': picked});
+                              under13 = r is Map && r['why'] == 'under_13';
                               if (ctx.mounted) Navigator.pop(ctx);
                             } catch (_) {
                               set(() {
@@ -751,6 +757,7 @@ Future<void> askBirthYearOnce(BuildContext context, WidgetRef ref) async {
       ),
     );
     ref.invalidate(adsConfigProvider);
+    if (under13 && context.mounted) await blockUnder13(context, ref);
   } finally {
     _askingBirthYear = false;
   }
@@ -787,13 +794,40 @@ class StickyPlace {
     _update();
   }
 
+  /// No ads at all while signing up or setting up the account (owner, 2026-11-08): welcome, sign-up, code, setup,
+  /// parent step and age screens.
+  static const noAdPaths = {
+    '/splash',
+    '/welcome',
+    '/onboarding',
+    '/login',
+    '/signup',
+    '/verify',
+    '/forgot',
+    '/reset',
+    '/setup',
+    '/guardian',
+    '/age-blocked',
+    '/account-paused',
+    '/welcome-new',
+  };
+  static bool _gated = false;
+
   static void _update() {
     final r = _router;
     if (r == null) return;
-    final m = r.routerDelegate.currentConfiguration.matches;
+    final conf = r.routerDelegate.currentConfiguration;
+    final m = conf.matches;
     final v = m.isNotEmpty && m.last is ShellRouteMatch;
+    final noAds = noAdPaths.contains(conf.uri.path);
     // Changed after the frame: navigation happens while widgets are being built.
-    WidgetsBinding.instance.addPostFrameCallback((_) => shellOnTop.value = v);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      shellOnTop.value = v;
+      if (noAds != _gated) {
+        _gated = noAds;
+        noAds ? AdsGate.enter() : AdsGate.leave();
+      }
+    });
   }
 }
 

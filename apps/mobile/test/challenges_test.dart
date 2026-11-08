@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:solutiontee_cbt/core/providers.dart' show cashPrizesOn;
 import 'package:go_router/go_router.dart';
 import 'package:solutiontee_cbt/core/nav.dart';
 import 'package:solutiontee_cbt/core/secure_screen.dart';
@@ -137,6 +138,8 @@ void main() {
   });
 
   testWidgets('details: prizes, fair-play rules, and Start needs the agreement', (t) async {
+    cashPrizesOn = true; // cash prizes after the regulator's approval (admin switch, D-110)
+    addTearDown(() => cashPrizesOn = false);
     final api = FakeApi();
     await t.pumpWidget(app('/test/challenges/c1', api));
     await settle(t);

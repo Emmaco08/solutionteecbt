@@ -254,8 +254,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       'animation': 'cbt',
     },
     {
-      'title': 'Win cash prizes every week',
-      'body': 'Answer our weekly challenge fast and right to win money. Free and Premium students can join, and play is fair for everyone.',
+      'title': 'Weekly challenges',
+      'body': 'Answer fast and right to climb the leaderboard and win Premium days and XP. Free and Premium students can join, and play is fair for everyone.',
       'animation': 'trophy',
     },
     {'title': 'SolutionTee AI tutor', 'body': 'Stuck on a question? Ask our AI tutor. It explains step by step, like a patient teacher.', 'animation': 'ai'},

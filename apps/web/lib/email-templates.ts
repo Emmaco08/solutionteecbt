@@ -96,3 +96,34 @@ export function phoneAppealEmail(accepted: boolean, note: string) {
     text: `Hi,\n\n${line}${note.trim() ? `\n\n${note.trim()}` : ""}\n\n${DISCLAIMER}`,
   };
 }
+
+/**
+ * Parent/guardian notice for a student aged 13 to 17 (D-109). Reading it is enough: the parent only acts to turn
+ * the account off. Plain summary of the Privacy Policy and Terms; the full text is in the app (Me → Legal).
+ */
+export function guardianNoticeEmail(childName: string, childEmail: string, stopLink: string) {
+  const child = childName.trim() ? esc(childName.trim().split(" ")[0]!) : "Your child";
+  const childPlain = childName.trim() ? childName.trim().split(" ")[0]! : "Your child";
+  const li = (s: string) => `<li style="margin:0 0 6px">${s}</li>`;
+  return {
+    subject: `${childPlain} has joined SolutionTee CBT`,
+    html: layout("Welcome to SolutionTee CBT", `<p style="margin:0 0 12px">Hello,</p>
+      <p style="margin:0 0 12px"><b>${child}</b> (${esc(childEmail)}) has created a SolutionTee CBT account and gave us your email as their parent or guardian. Welcome! 🎉</p>
+      <p style="margin:0 0 12px">SolutionTee CBT helps students practise for JAMB, WAEC and NECO in a real computer-based test, with every answer explained, video lessons, study notes and an AI tutor that only helps with schoolwork.</p>
+      <p style="margin:0 0 6px"><b>What this means for you</b></p>
+      <p style="margin:0 0 12px">By receiving this email and letting ${child} keep using the app, you agree, for ${child} and for yourself, to our Privacy Policy and Terms of Service. <b>You do not need to click anything to approve.</b></p>
+      <p style="margin:0 0 6px"><b>The short version of how we look after ${child}'s data</b></p>
+      <ul style="margin:0 0 12px;padding-left:20px">
+        ${li("We collect only what the app needs: name, email, state, school (optional), year of birth, exam choices, practice results and AI tutor chats.")}
+        ${li("We never sell personal data. Students under 18 never see personalised ads, only general, age-appropriate ones.")}
+        ${li("Cash prizes are switched off. Rewards are Premium days, XP and badges.")}
+        ${li("Payments are always optional. Free practice is available every day.")}
+        ${li(`You can ask us to see, correct or delete ${child}'s data at any time by replying to this email.`)}
+      </ul>
+      <p style="margin:0 0 6px"><b>If you do not agree</b></p>
+      <p style="margin:0 0 16px">Tap the button below. ${child}'s account will be turned off at once and deleted after 30 days.</p>
+      <a href="${esc(stopLink)}" style="display:inline-block;background:#FFFFFF;color:#B42318;border:2px solid #B42318;font-weight:700;text-decoration:none;padding:12px 20px;border-radius:12px">Turn off ${child}'s account</a>
+      <p style="margin:20px 0 0;font-size:13px;color:${MUTED}">The full Privacy Policy and Terms of Service are in the app under Me → Legal. Questions? Just reply to this email.</p>`),
+    text: `Hello,\n\n${childPlain} (${childEmail}) has created a SolutionTee CBT account and gave us your email as their parent or guardian. Welcome!\n\nSolutionTee CBT helps students practise for JAMB, WAEC and NECO in a real CBT, with answers explained, video lessons, notes and an AI tutor for schoolwork only.\n\nBy receiving this email and letting ${childPlain} keep using the app, you agree, for ${childPlain} and for yourself, to our Privacy Policy and Terms of Service. You do not need to click anything to approve.\n\nThe short version:\n- We collect only what the app needs: name, email, state, school (optional), year of birth, exam choices, practice results and AI tutor chats.\n- We never sell personal data. Students under 18 never see personalised ads.\n- Cash prizes are switched off. Rewards are Premium days, XP and badges.\n- Payments are always optional.\n- You can ask us to see, correct or delete ${childPlain}'s data at any time by replying to this email.\n\nIf you do not agree, open this link to turn off ${childPlain}'s account (deleted after 30 days):\n${stopLink}\n\nThe full Privacy Policy and Terms are in the app under Me → Legal.\n\n${DISCLAIMER}`,
+  };
+}

@@ -17,7 +17,12 @@ class SolutionTeeApp extends ConsumerWidget {
     final router = ref.watch(routerProvider);
     StickyPlace.attach(router); // where the sticky banner goes (above the tab bar or at the bottom)
     // Screenshots / screen recording follow the admin's switches (D-080) whenever the settings load (same values = no-op).
-    final p = ref.watch(appSettingsProvider).value?['screen_protection'];
+    final all = ref.watch(appSettingsProvider).value;
+    final cp = all?['cash_prizes'], lg = all?['exam_logos'];
+    cashPrizesOn = cp is Map && cp['on'] == true;
+    examLogosOn = lg is Map && lg['on'] == true;
+    adsConsent = ref.watch(profileProvider).value?['ads_consent'] == true;
+    final p = all?['screen_protection'];
     SecureScreen.policy(wholeApp: p is Map && p['whole_app'] == true, exams: !(p is Map && p['exams'] == false));
     return MaterialApp.router(
       title: 'SolutionTee CBT',

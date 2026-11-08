@@ -193,7 +193,7 @@ class TestHubScreen extends ConsumerWidget {
           PhosphorIcons.trophy(PhosphorIconsStyle.fill),
           Tone.gold,
           'Challenges & events',
-          'Weekly cash prizes and special events',
+          cashPrizesOn ? 'Weekly cash prizes and special events' : 'Weekly challenges, Premium and XP rewards',
           () => openRoute(context, '/test/challenges'),
         ),
       if (ref.watch(leaderboardOnProvider).value == true) const LeaderboardEntry(),

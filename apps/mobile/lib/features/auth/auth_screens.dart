@@ -28,7 +28,7 @@ String friendlyAuth(Object e) {
   final m = e is AuthException ? e.message : e.toString();
   if (RegExp('invalid login', caseSensitive: false).hasMatch(m)) return 'That email or password is not correct. Try again or reset it.';
   if (RegExp('not confirmed', caseSensitive: false).hasMatch(m)) return 'Confirm your email first. We can send you a new code.';
-  if (RegExp('banned', caseSensitive: false).hasMatch(m)) return 'This account has been suspended. Contact support.';
+  if (RegExp('banned', caseSensitive: false).hasMatch(m)) return 'This account is turned off (by our team or a parent or guardian). Contact support.';
   if (RegExp('expired|invalid', caseSensitive: false).hasMatch(m)) return 'That code is not right. Check and try again.';
   if (RegExp('rate|too many', caseSensitive: false).hasMatch(m)) return 'Too many tries. Wait a minute and try again.';
   if (RegExp('socket|network|connection|host', caseSensitive: false).hasMatch(m)) return 'No internet connection. Check your data or Wi-Fi.';
@@ -793,7 +793,7 @@ class _NewPasswordScreenState extends ConsumerState<NewPasswordScreen> {
   }
 }
 
-/// Big code boxes (two groups for 8 digits) with a blinking cursor; the real text field lies on top of them.
+/// Big code boxes (6 digits in one row; 8 digits in two groups) with a blinking cursor; the real text field lies on top of them.
 class CodeBoxes extends StatefulWidget {
   const CodeBoxes({super.key, required this.controller, required this.focus, required this.length, this.ok = false, this.bad = false});
   final TextEditingController controller;

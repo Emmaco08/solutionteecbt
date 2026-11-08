@@ -355,7 +355,7 @@ class NoChallengeCard extends StatelessWidget {
                   ),
                   const Gap(Space.s3),
                   Text(
-                    'New challenges with prizes come every week. We tell you the moment one starts, so keep practising.',
+                    'New challenges with rewards come every week. We tell you the moment one starts, so keep practising.',
                     style: context.ty.sm.col(const Color(0xFFC9D5EA)),
                   ),
                   const Gap(Space.s4),
@@ -464,7 +464,7 @@ class ChallengesScreen extends ConsumerWidget {
       appBar: TopBar(
         title: 'Challenges & events',
         onBack: () => context.canPop() ? context.pop() : context.go('/test'),
-        subtitle: 'Win prizes. Free and Premium can join.',
+        subtitle: cashPrizesOn ? 'Win prizes. Free and Premium can join.' : 'Win Premium days and XP. Free and Premium can join.',
         actions: [IconBtn(PhosphorIcons.sealCheck(), label: 'Winners wall', onPressed: () => openRoute(context, '/test/winners-wall'))],
       ),
       body: asyncView(

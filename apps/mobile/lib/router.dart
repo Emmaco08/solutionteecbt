@@ -19,6 +19,7 @@ import 'features/onboarding/onboarding_screens.dart';
 import 'features/premium/checkout.dart';
 import 'features/profile/profile_screens.dart';
 import 'features/results/results_screens.dart';
+import 'features/setup/age_gate.dart';
 import 'features/setup/setup_screen.dart';
 import 'features/shell/shell.dart';
 import 'features/study/doc_screens.dart';
@@ -53,6 +54,7 @@ const _public = {
   '/phone-banned',
   '/clone-blocked',
   '/help',
+  '/age-blocked',
 };
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -92,6 +94,9 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, s) => NewPasswordScreen(args: s.extra as ResetArgs? ?? ResetArgs.last),
       ),
       GoRoute(path: '/setup', builder: (_, _) => const SetupScreen()),
+      GoRoute(path: '/guardian', builder: (_, _) => const GuardianScreen()),
+      GoRoute(path: '/age-blocked', builder: (_, _) => const AgeBlockedScreen()),
+      GoRoute(path: '/account-paused', builder: (_, _) => const AccountPausedScreen()),
       GoRoute(path: '/welcome-new', builder: (_, _) => const WelcomeNewScreen()),
       GoRoute(path: '/welcome-back', builder: (_, _) => const WelcomeBackScreen()),
       StatefulShellRoute.indexedStack(

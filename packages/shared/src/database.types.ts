@@ -2600,12 +2600,58 @@ export type Database = {
           },
         ]
       }
+      guardian_consents: {
+        Row: {
+          child_birth_year: number
+          created_at: string
+          guardian_email: string
+          method: string
+          policy_version: string
+          send_count: number
+          sent_at: string | null
+          token_hash: string
+          updated_at: string
+          user_id: string
+          withdrawn_at: string | null
+        }
+        Insert: {
+          child_birth_year: number
+          created_at?: string
+          guardian_email: string
+          method?: string
+          policy_version: string
+          send_count?: number
+          sent_at?: string | null
+          token_hash: string
+          updated_at?: string
+          user_id: string
+          withdrawn_at?: string | null
+        }
+        Update: {
+          child_birth_year?: number
+          created_at?: string
+          guardian_email?: string
+          method?: string
+          policy_version?: string
+          send_count?: number
+          sent_at?: string | null
+          token_hash?: string
+          updated_at?: string
+          user_id?: string
+          withdrawn_at?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_path: string | null
           ban_reason: string | null
           banned_at: string | null
+          ads_consent: boolean
+          ads_consent_at: string | null
           birth_year: number | null
+          paused_at: string | null
+          paused_reason: string | null
           created_at: string
           full_name: string | null
           hide_on_leaderboard: boolean
@@ -2628,7 +2674,11 @@ export type Database = {
           avatar_path?: string | null
           ban_reason?: string | null
           banned_at?: string | null
+          ads_consent?: boolean
+          ads_consent_at?: string | null
           birth_year?: number | null
+          paused_at?: string | null
+          paused_reason?: string | null
           created_at?: string
           full_name?: string | null
           hide_on_leaderboard?: boolean
@@ -2651,7 +2701,11 @@ export type Database = {
           avatar_path?: string | null
           ban_reason?: string | null
           banned_at?: string | null
+          ads_consent?: boolean
+          ads_consent_at?: string | null
           birth_year?: number | null
+          paused_at?: string | null
+          paused_reason?: string | null
           created_at?: string
           full_name?: string | null
           hide_on_leaderboard?: boolean

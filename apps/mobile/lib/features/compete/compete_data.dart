@@ -43,7 +43,9 @@ class Challenge {
   String get id => '${j['id']}';
   String get title => '${j['title']}';
   String? get subtitle => j['subtitle'] as String?;
-  String get kind => '${j['kind']}';
+
+  /// 'cash' counts only while cash prizes are switched on (D-110); otherwise it shows as an event.
+  String get kind => j['kind'] == 'cash' && !cashPrizesOn ? 'event' : '${j['kind']}';
   String get icon => '${j['icon'] ?? 'trophy'}';
   String? get exam => j['exam'] as String?;
   String get status => '${j['status']}';
@@ -51,7 +53,7 @@ class Challenge {
   DateTime get endsAt => DateTime.parse('${j['ends_at']}').toLocal();
   int get questions => (j['questions'] as num?)?.toInt() ?? 0;
   int get seconds => (j['seconds'] as num?)?.toInt() ?? 30;
-  List<int> get prizes => [for (final p in (j['prizes'] as List? ?? const [])) (p as num).toInt()];
+  List<int> get prizes => cashPrizesOn ? [for (final p in (j['prizes'] as List? ?? const [])) (p as num).toInt()] : const [];
   String? get reward => j['reward'] as String?;
   int get joined => (j['joined'] as num?)?.toInt() ?? 0;
   int get allowedExits => (j['allowed_exits'] as num?)?.toInt() ?? 0;

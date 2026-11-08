@@ -86,6 +86,11 @@ jobs:
           flutter build apk --release --flavor direct --target-platform android-arm64 \
             --build-number="$BUILD" --dart-define=APP_VERSION="$NAME"
           cp build/app/outputs/flutter-apk/app-direct-release.apk "$RUNNER_TEMP/app-arm64.apk"
+          # The Google Play version (no Paystack, no self-update, Google Play Billing only), for the owner to try
+          # before it goes to Play Console. Same signing key, so it installs over the direct app and back.
+          flutter build apk --release --flavor play --target-platform android-arm64 \
+            --build-number="$BUILD" --dart-define=APP_VERSION="$NAME"
+          cp build/app/outputs/flutter-apk/app-play-release.apk "$RUNNER_TEMP/app-play-arm64.apk"
           echo "APP_NAME_VERSION=$NAME" >> "$GITHUB_ENV"
           echo "APP_BUILD=$BUILD" >> "$GITHUB_ENV"
 
@@ -93,7 +98,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: apk
-          path: ${{ runner.temp }}/app-arm64.apk
+          path: |
+            ${{ runner.temp }}/app-arm64.apk
+            ${{ runner.temp }}/app-play-arm64.apk
           retention-days: 3
 
       - name: Remember the version
@@ -196,3 +203,18 @@ jobs:
             -d "{\"step\":\"publish\",\"name\":\"$APK\",\"version\":\"$VERSION\",\"built_at\":\"$BUILT\",\"build\":$APP_BUILD}"
           echo
           echo "### The new app is on $SITE/download (version $VERSION, $(du -m "$FILE" | cut -f1) MB)" >> "$GITHUB_STEP_SUMMARY"
+          # The Google Play version goes to /download?channel=play ("publish-play"; a website without it just says no).
+          PLAY="$RUNNER_TEMP/app-play-arm64.apk"
+          if [ -f "$PLAY" ]; then
+            PAPK="solutiontee-cbt-$VERSION-play.apk"
+            TOKEN=$(token); echo "::add-mask::$TOKEN"
+            URL=$(curl -sSf -X POST "$SITE/api/ci/apk" -H "Authorization: Bearer $TOKEN" -H "content-type: application/json" \
+              -d "{\"step\":\"upload\",\"name\":\"$PAPK\"}" | jq -r .url)
+            echo "::add-mask::$URL"
+            curl -sSf -X PUT -H "content-type: application/vnd.android.package-archive" --upload-file "$PLAY" "$URL" -o /dev/null
+            TOKEN=$(token); echo "::add-mask::$TOKEN"
+            curl -sS -X POST "$SITE/api/ci/apk" -H "Authorization: Bearer $TOKEN" -H "content-type: application/json" \
+              -d "{\"step\":\"publish-play\",\"name\":\"$PAPK\",\"version\":\"$VERSION\",\"built_at\":\"$BUILT\",\"build\":$APP_BUILD}" || true
+            echo
+            echo "### Google Play version: $SITE/download?channel=play" >> "$GITHUB_STEP_SUMMARY"
+          fi

@@ -288,8 +288,8 @@ class _Wallet extends StatelessWidget {
           const SectTitle('Get Premium with XP'),
           _PremiumWithXp(options: rows(d['premium_options']), balance: _i(d['balance'])),
         ],
-        // XP packs are paid with Paystack: only in the direct (website) app, never in the Play Store app (Play payments rule).
-        if (rows(d['packs']).isNotEmpty && store != Store.play) ...[const SectTitle('Buy XP'), _BuyXp(packs: rows(d['packs']))],
+        // XP cannot be bought any more (D-110): it is earned. The server refuses packs while xp.buy_on is off.
+        if (d['buy_on'] == true && rows(d['packs']).isNotEmpty && store != Store.play) ...[const SectTitle('Buy XP'), _BuyXp(packs: rows(d['packs']))],
         const Gap(Space.s2),
         Text('You can also spend XP on challenge entries and streak freezes.', style: context.ty.cap.col(c.textSubtle), textAlign: TextAlign.center),
         const Gap(Space.s3),

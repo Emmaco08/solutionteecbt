@@ -57,7 +57,7 @@ class WebApi {
   /// Always succeeds the same way (privacy). Returns the code length when a code was sent.
   Future<int> forgotPassword(String email) async {
     final d = await _post('/api/auth/forgot-password', {'email': email});
-    return (d['codeLength'] as num?)?.toInt() ?? 8;
+    return (d['codeLength'] as num?)?.toInt() ?? 6;
   }
 
   Future<void> notify(String event) async {
@@ -94,4 +94,10 @@ class WebApi {
   }
 
   Future<void> deleteAccount() => _post('/api/account/delete', {'confirm': 'DELETE'}, auth: true);
+
+  /// Students aged 13 to 17: email the parent's or guardian's welcome notice (D-109). Returns the message to show.
+  Future<String> sendGuardianNotice(String email) async {
+    final d = await _post('/api/account/guardian', {'email': email}, auth: true);
+    return (d['message'] as String?) ?? 'Email sent.';
+  }
 }

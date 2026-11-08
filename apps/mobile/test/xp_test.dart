@@ -84,14 +84,15 @@ void main() {
     expect(find.text('You have enough XP'), findsOneWidget);
   });
 
-  testWidgets('Buy XP: packs with the admin\'s naira prices, and the rule about cash challenges', (t) async {
+  testWidgets('XP cannot be bought (D-110): no Buy XP even when the server still lists packs', (t) async {
     await t.pumpWidget(wrap(const XpWalletScreen(), wallet()));
     await settle(t);
-    await t.scrollUntilVisible(find.text('Buy XP'), 300, scrollable: find.byType(Scrollable).first);
-    await t.scrollUntilVisible(find.textContaining('not on cash-prize challenges'), 300, scrollable: find.byType(Scrollable).first);
-    expect(find.text('550 XP'), findsOneWidget);
-    expect(find.text('₦500'), findsOneWidget);
-    expect(find.text('₦1,000'), findsOneWidget);
+    for (var i = 0; i < 6; i++) {
+      await t.drag(find.byType(Scrollable).first, const Offset(0, -400));
+      await t.pump();
+      expect(find.text('Buy XP'), findsNothing);
+      expect(find.text('₦500'), findsNothing);
+    }
   });
 
   testWidgets('inside the tabs (like the app), the Premium-with-XP pop-up opens and Cancel closes it', (t) async {

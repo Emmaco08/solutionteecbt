@@ -25,6 +25,7 @@ import '../invite/invite_screens.dart';
 import '../xp/streak_ui.dart';
 import '../notifications/turn_on_sheet.dart';
 import '../premium/payments.dart';
+import '../setup/age_gate.dart';
 
 /// Branch order in router.dart: home, study, test, ai, me.
 const _branchOf = {'home': 0, 'study': 1, 'test': 2, 'ai_chat': 3, 'profile': 4};
@@ -120,7 +121,8 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
         context.go('/banned');
       } else if (st['phone_taken'] == true) {
         context.go('/phone-taken');
-      } else {
+      } else if (await checkAge(context, ref) && mounted) {
+        // Age rules (D-109): under 13, missing parent email or a parent turned the account off.
         await _dailyPopups();
       }
     } catch (_) {}

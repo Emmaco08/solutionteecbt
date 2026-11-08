@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:solutiontee_cbt/core/providers.dart' show cashPrizesOn;
 import 'package:solutiontee_cbt/core/device.dart';
 import 'package:solutiontee_cbt/core/nav.dart';
 import 'package:solutiontee_cbt/features/invite/invite_screens.dart';
@@ -59,6 +60,8 @@ void main() {
   });
 
   testWidgets('invite: code, discount from the server, cash progress and friends with their status', (t) async {
+    cashPrizesOn = true;
+    addTearDown(() => cashPrizesOn = false);
     await t.pumpWidget(wrap(const InviteScreen()));
     await settle(t);
     expect(find.text('TOLU-7K3P'), findsOneWidget);
@@ -85,6 +88,8 @@ void main() {
   });
 
   testWidgets('invite: a cash reward asks for bank details, never a PIN', (t) async {
+    cashPrizesOn = true;
+    addTearDown(() => cashPrizesOn = false);
     await t.pumpWidget(
       wrap(
         const InviteScreen(),

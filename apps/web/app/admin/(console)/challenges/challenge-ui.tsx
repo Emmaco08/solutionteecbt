@@ -140,12 +140,12 @@ export function ChallengeForm({ c, subjects }: { c?: ChallengeRow; subjects: Sub
         ) : null}
         <div className="space-y-1.5"><Label htmlFor="cXp">Entry fee in XP (0 = free)</Label>
           <input id="cXp" name="xp_fee" type="number" min={0} step={10} defaultValue={c?.xp_fee ?? 0} className={inputCls} />
-          <span className="text-xs text-muted-foreground">{kind === "cash" ? "Cash prize: only XP earned in the app is accepted, never bought XP." : "Earned and bought XP are both accepted."}</span></div>
+          <span className="text-xs text-muted-foreground">{kind === "cash" ? "Cash-prize challenges must be free to enter: leave this at 0 (the server refuses an XP fee). Cash prizes also need the switch in Flags & settings." : "XP is only earned in the app (it cannot be bought)."}</span></div>
         <div className="space-y-1.5"><Label htmlFor="cExam">Exam logo (optional)</Label>
           <select id="cExam" name="exam_code" defaultValue={c?.exam_code ?? ""} className={inputCls}><option value="">None</option><option>JAMB</option><option>WAEC</option><option>NECO</option></select></div>
       </div>
       {kind !== "practice" ? (
-        <div className="space-y-1.5"><Label>Cash prizes in naira (leave 0 for none)</Label>
+        <div className="space-y-1.5"><Label>Cash prizes in naira (leave 0: cash prizes are switched off until the regulator approves)</Label>
           <div className="grid grid-cols-3 gap-2">{[0, 1, 2].map((i) => (
             <input key={i} name={`p${i + 1}`} type="number" min={0} step={500} aria-label={`${i + 1} place prize`} defaultValue={c?.prizes?.[i] ?? 0} className={inputCls} placeholder={["1st", "2nd", "3rd"][i]} />
           ))}</div>

@@ -39,6 +39,12 @@ async function Settings() {
             <AppSwitch k="screen_protection" field="exams" on={sw("screen_protection", "exams", true)} title="Block in tests, challenges and Premium videos"
               text="CBT tests, challenges, challenge answer reviews and Premium videos. Recommended on, so questions are not shared." />
           </Panel>
+          <Panel title="Legal switches (turn on only with written approval)" bodyClassName="divide-y py-1">
+            <AppSwitch k="cash_prizes" field="on" on={sw("cash_prizes", "on", false)} title="Cash prizes and cash referral rewards"
+              text="Off (now): challenges can only give Premium days, XP and badges, and no cash can be claimed. Turn on only after the Lagos State Lotteries and Gaming Authority (LSLGA) approves in writing. When on: cash challenges are free to enter and only for students aged 18 and over." />
+            <AppSwitch k="exam_logos" field="on" on={sw("exam_logos", "on", false)} title="Show the JAMB, WAEC and NECO logos"
+              text="Off (now): the app shows our own exam badges with the exam name in plain text. Turn on only after each exam body gives written permission to use its logo." />
+          </Panel>
           <Panel title="Sign in with Google" bodyClassName="divide-y py-1">
             <AppSwitch k="google_auth" field="enabled" on={sw("google_auth", "enabled", false)} title="Show “Continue with Google”"
               text="On: students can create an account and log in with their Google account on the sign-up and log-in screens. Turn on only after the Google setup in SETUP §17 is done." />

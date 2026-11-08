@@ -909,3 +909,45 @@ The owner asked to run the admin from Vercel instead of the laptop.
 - **Secrets:** the Supabase connector's secret saving was paused, so the four Neon connection strings are in
   **Supabase Vault** (`NEON_*_URL`). Functions read them via `neon_url()` (service role only). Edge Function secrets
   with the same names, if added later, take priority. Never in git or the app.
+
+## D-109 — Age rules: under 13 blocked, parent/guardian notice for 13–17 (2026-11-08)
+- **Why:** NDPA 2023 s.31 and the lawyer's combined decisions (8 Nov 2026). Owner's flow: the parent gets a welcome
+  notice and only acts to withdraw ("seeing the email is consent").
+- **Under 13:** `set_birth_year` refuses the year (nothing stored); the app deletes the new account at once
+  (`/api/account/delete`) and shows "SolutionTee CBT is for students aged 13 and older". The year is asked neutrally.
+- **13–17:** setup step "Your parent or guardian" → `POST /api/account/guardian` (website) saves
+  `guardian_consents` (email, child's birth year, `method = email_notice`, policy version, sha256 of a one-time link
+  token, sent time) and sends the notice by Brevo. The link opens `/guardian/stop` → the parent ticks "I am the
+  parent or guardian" and turns the account off: `withdrawn_at`, `profiles.paused_at`, Supabase Auth ban, audit row;
+  cron `guardian-withdrawn-delete` deletes the account 30 days later.
+- **Existing accounts:** the shell calls `age_status()` after the ban checks: unknown → asks the birth year once
+  (even with ads off); 13–17 without a notice → `/guardian`; paused → `/account-paused`.
+- **Risk noted:** the lawyer's text prefers a parent *confirmation*. `method` allows `email_confirm` later.
+
+## D-110 — Cash prizes off (admin switch), XP not for sale, personalised ads only with an adult's "yes" (2026-11-08)
+- **Cash:** `app_settings.cash_prizes` `{on:false, min_age:18}`. Triggers:
+  - `challenges`: no prizes while off; a cash challenge must have `xp_fee = 0`;
+  - `challenge_entries`: cash challenges are 18+ only;
+  - `prize_claims`: refused while off, and 18+ only;
+  - `referral_rewards`: no new cash rewards while off or under 18; claims refused while off.
+  - Old closed cash challenges keep their history.
+  - App: global `cashPrizesOn` hides prize amounts, the cash badge, My winnings and the referral cash meter. The
+    onboarding slide now promises Premium days and XP.
+- **XP:** `app_settings.xp.buy_on = false`; trigger on `payments` refuses XP packs; "Buy XP" hidden. Spending XP
+  (Premium, freezes, events) stays.
+- **Ads:** `ads_config` already allows personalised ads only for 18+. Now `profiles.ads_consent` (off by default,
+  `set_ads_consent`, adults only) must also be on: *Settings → Personalised ads*. NDPA s.26: consent must be a clear
+  yes.
+
+## D-111 — Exam-body logos behind an admin switch (2026-11-08)
+- `app_settings.exam_logos.on` (default off). `ExamLogo` shows `ExamBadge` (exam colour, graduation-cap icon, the
+  exam name in plain text) until JAMB, WAEC and NECO give written permission. Plain-text exam names stay (nominative
+  use, with the disclaimer). This replaces CLAUDE.md §5 "every card shows the body's logo" while the switch is off.
+
+## D-112 — Google Play preview build on /download; Play payments plan (2026-11-08)
+- The workflow also builds `--flavor play` (no Paystack, no self-update, no install permission). It is published with
+  step `publish-play` to `apk/play.json`, which is `/download?channel=play`. It never touches `apk/latest.json`, so
+  the direct app's updater never offers it.
+- Payments on Play follow Google's rules: Google Play Billing in the app, and no link to the website (Nigeria is not
+  in Google's external-link programmes). Website payments and voucher PINs happen outside the app. Plan and owner
+  decisions: `docs/plans/play-launch.md`.

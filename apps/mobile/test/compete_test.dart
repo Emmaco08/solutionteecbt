@@ -95,6 +95,8 @@ void main() {
   });
 
   testWidgets('leaderboard: podium, ranks and my own rank pinned', (t) async {
+    examLogosOn = true;
+    addTearDown(() => examLogosOn = false);
     final top = [
       for (final (i, n, s) in [(1, 'Abdullahi M.', 372), (2, 'Chiamaka O.', 366), (3, 'Temi', 361), (4, 'Zainab Y.', 348), (5, 'Ebuka C.', 344)])
         {'rank': i, 'name': n, 'state': 'Lagos', 'score': s, 'me': i == 4},
@@ -134,6 +136,8 @@ void main() {
   });
 
   testWidgets('leaderboard: WAEC has one board per subject', (t) async {
+    examLogosOn = true;
+    addTearDown(() => examLogosOn = false);
     final asked = <LbKey>[];
     await t.pumpWidget(
       app(const LeaderboardScreen(), [

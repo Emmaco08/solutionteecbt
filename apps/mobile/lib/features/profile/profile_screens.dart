@@ -366,7 +366,8 @@ class ProfileScreen extends ConsumerWidget {
                         caption: 'Get Premium cheaper',
                         onTap: () => openRoute(context, '/me/invite'),
                       ),
-                      ListRow(icon: PhosphorIcons.wallet(PhosphorIconsStyle.fill), title: 'My winnings', onTap: () => openRoute(context, '/me/winnings')),
+                      if (cashPrizesOn)
+                        ListRow(icon: PhosphorIcons.wallet(PhosphorIconsStyle.fill), title: 'My winnings', onTap: () => openRoute(context, '/me/winnings')),
                       ListRow(
                         icon: PhosphorIcons.sealCheck(PhosphorIconsStyle.fill),
                         title: 'Winners wall',
@@ -672,6 +673,22 @@ Future<void> _setLeaderboardPhoto(BuildContext context, WidgetRef ref, bool show
   }
 }
 
+bool _adult(WidgetRef ref) {
+  final by = (ref.watch(profileProvider).value?['birth_year'] as num?)?.toInt();
+  return by != null && DateTime.now().year - by >= 18;
+}
+
+/// Personalised ads (adults only, off until the student turns it on: NDPA consent must be a clear "yes", D-110).
+Future<void> _setAdsConsent(BuildContext context, WidgetRef ref, bool on) async {
+  try {
+    await ref.read(supabaseProvider).rpc('set_ads_consent', params: {'p_on': on});
+    ref.invalidate(profileProvider);
+    if (context.mounted) toast(context, on ? 'Ads can now match your interests' : 'Ads will not use your activity');
+  } catch (_) {
+    if (context.mounted) toast(context, 'Could not save. Check your internet and try again.');
+  }
+}
+
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
   @override
@@ -761,6 +778,19 @@ class SettingsScreen extends ConsumerWidget {
                 ),
               ],
             ),
+            // Privacy choices: personalised ads only for 18+, and only after they say yes.
+            if (_adult(ref))
+              ListCard(
+                children: [
+                  toggle(
+                    PhosphorIcons.megaphone(PhosphorIconsStyle.fill),
+                    'Personalised ads',
+                    'Off: ads do not use your activity. You can change this any time.',
+                    ref.watch(profileProvider).value?['ads_consent'] == true,
+                    (v) => _setAdsConsent(context, ref, v),
+                  ),
+                ],
+              ),
             ListCard(
               children: [
                 ListRow(icon: PhosphorIcons.books(PhosphorIconsStyle.fill), title: 'Change JAMB subjects', onTap: () => context.push('/subjects')),

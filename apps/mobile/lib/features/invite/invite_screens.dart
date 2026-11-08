@@ -86,7 +86,10 @@ class _InviteBody extends ConsumerWidget {
     }
     final code = '${d['code']}';
     final per = _i(d['pct_per_friend'], 10), maxPct = _i(d['max_pct'], 100), pct = _i(d['discount_pct']);
-    final counted = _i(d['counted']), every = _i(d['cash_every']), cash = _i(d['cash_naira']), cap = _i(d['monthly_cap'], 20);
+    final counted = _i(d['counted']),
+        every = cashPrizesOn ? _i(d['cash_every']) : 0,
+        cash = cashPrizesOn ? _i(d['cash_naira']) : 0,
+        cap = _i(d['monthly_cap'], 20);
     final friends = rows(d['friends']), rewards = rows(d['rewards']);
     final waiting = friends.where((f) => f['status'] == 'pending').length;
     final premiumRule = d['count_on'] == 'premium';

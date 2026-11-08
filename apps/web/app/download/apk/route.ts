@@ -3,8 +3,10 @@ import { hasR2 } from "@/lib/env";
 import { presignDownload, readJson } from "@/lib/r2";
 
 export type ApkInfo = { key: string; version: string; size: number; built_at: string; branch?: string; build?: number };
-/** "main" is the build from the main branch (for the team); "test" is the newest build from any other branch (D-060). */
-export const apkInfoKey = (channel: string | null | undefined) => (channel === "test" ? "apk/test.json" : "apk/latest.json");
+/** "main" is the build from the main branch (for the team); "test" is the newest build from any other branch (D-060);
+ *  "play" is the Google Play version of the newest build, for trying before Play Console (D-112). */
+export const apkInfoKey = (channel: string | null | undefined) =>
+  channel === "test" ? "apk/test.json" : channel === "play" ? "apk/play.json" : "apk/latest.json";
 
 /** GET /download/apk → a 10-minute link to the latest Android test app in the private bucket (D-059). */
 export async function GET(req: Request) {

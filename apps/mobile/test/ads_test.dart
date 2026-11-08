@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:solutiontee_cbt/core/providers.dart' show adsConsent;
 import 'package:solutiontee_cbt/core/ads.dart';
 import 'package:solutiontee_cbt/core/house_ads.dart';
 import 'package:solutiontee_cbt/features/premium/content_offer.dart';
@@ -52,6 +53,9 @@ void main() {
     });
     expect(c.unit('rewarded'), 'ca-app-pub-1111111111111111/3333333333');
     expect(c.unit('banner'), startsWith('ca-app-pub-3940256099942544/'), reason: 'an empty unit falls back to a test unit');
+    expect(c.request.nonPersonalizedAds, isTrue, reason: 'adults too: only after they say yes in Settings (D-110)');
+    adsConsent = true;
+    addTearDown(() => adsConsent = false);
     expect(c.request.nonPersonalizedAds, isFalse);
   });
 

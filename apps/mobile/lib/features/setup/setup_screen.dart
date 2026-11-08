@@ -13,6 +13,7 @@ import '../../ui/subject_icons.dart';
 import '../../widgets/exam_logo.dart';
 import '../../widgets/phosphor.g.dart';
 import '../../widgets/states.dart';
+import 'age_gate.dart';
 
 const nigerianStates = [
   'Abia',
@@ -54,8 +55,8 @@ const nigerianStates = [
   'Zamfara',
 ];
 
-/// Profile setup (prototype: setup): 1 about you, 2 exams + target score, 3 JAMB subjects (English + 3).
-/// Saved to `profiles`. Without JAMB the subjects step is skipped.
+/// Profile setup (prototype: setup): about you, [parent or guardian, for ages 13 to 17 (D-109)], exams + target score,
+/// JAMB subjects (English + 3). Saved to `profiles`. Without JAMB the subjects step is skipped. Under 13: no account.
 class SetupScreen extends ConsumerStatefulWidget {
   const SetupScreen({super.key, this.subjectsOnly = false});
 
@@ -67,6 +68,8 @@ class SetupScreen extends ConsumerStatefulWidget {
 
 class _SetupScreenState extends ConsumerState<SetupScreen> {
   int _step = 1;
+  final _guardianKey = GlobalKey<GuardianStepState>();
+  bool _guardianDone = false, _birthLocked = false;
   final _name = TextEditingController(), _phone = TextEditingController(), _school = TextEditingController();
   String? _state, _birth;
   final _exams = <String>{'JAMB'};
@@ -76,7 +79,17 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
   String? _nameErr, _stateErr, _birthErr, _error;
 
   bool get _jamb => _exams.contains('JAMB');
-  int get _total => _jamb ? 3 : 2;
+  bool get _teen {
+    final y = int.tryParse(_birth ?? '');
+    if (y == null) return false;
+    final a = ageFromYear(y);
+    return a >= minAge && a < adultAge;
+  }
+
+  /// The steps, in order: about, guardian (13 to 17), exams, subjects (JAMB).
+  List<String> get _steps => ['about', if (_teen) 'guardian', 'exams', if (_jamb) 'subjects'];
+  int get _total => _steps.length;
+  String get _id => widget.subjectsOnly ? 'subjects' : _steps[(_step - 1).clamp(0, _steps.length - 1)];
 
   @override
   void initState() {
@@ -92,7 +105,10 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       _phone.text = (p['phone'] as String?) ?? '';
       _school.text = (p['school'] as String?) ?? '';
       _state = p['state'] as String?;
-      if (p['birth_year'] != null) _birth = '${p['birth_year']}';
+      if (p['birth_year'] != null) {
+        _birth = '${p['birth_year']}';
+        _birthLocked = true; // set once, on the server
+      }
     }
   }
 
@@ -138,12 +154,6 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
             'target_score': _jamb ? _target.round() : null,
           })
           .eq('id', uid);
-      // Birth year (required): which ads suit the student's age; set once, on the server.
-      final by = int.tryParse(_birth ?? '');
-      if (by != null) {
-        await Supabase.instance.client.rpc('set_birth_year', params: {'p_year': by});
-        ref.invalidate(adsConfigProvider);
-      }
       ref.invalidate(profileProvider);
       await ref.read(profileProvider.future);
       if (mounted) context.go('/welcome-new');
@@ -154,16 +164,72 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     }
   }
 
-  void _continue() {
-    if (_step == 1) {
+  /// After "Tell us about you": the details and the year of birth go to the server now (the parent email needs the
+  /// name and age). Under 13: the new account is deleted at once. Returns false when setup must stop here.
+  Future<bool> _saveAbout() async {
+    final by = int.parse(_birth!);
+    if (ageFromYear(by) < minAge) {
+      await blockUnder13(context, ref);
+      return false;
+    }
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      final sb = Supabase.instance.client;
+      await sb
+          .from('profiles')
+          .update({
+            'full_name': _name.text.trim(),
+            'phone': _phone.text.trim().isEmpty ? null : _phone.text.trim(),
+            'state': _state,
+            'school': _school.text.trim().isEmpty ? null : _school.text.trim(),
+          })
+          .eq('id', sb.auth.currentUser!.id);
+      if (!_birthLocked) {
+        final r = Map<String, dynamic>.from(await sb.rpc('set_birth_year', params: {'p_year': by}) as Map);
+        if (r['why'] == 'under_13') {
+          if (mounted) await blockUnder13(context, ref);
+          return false;
+        }
+        _birthLocked = true;
+        ref.invalidate(adsConfigProvider);
+      }
+      if (_teen && !_guardianDone) {
+        final g = await sb.from('guardian_consents').select('sent_at').maybeSingle();
+        _guardianDone = g?['sent_at'] != null;
+      }
+      return true;
+    } catch (_) {
+      if (mounted) setState(() => _error = 'Could not save. Check your internet and try again.');
+      return false;
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _continue() async {
+    if (_id == 'about') {
       setState(() {
         _nameErr = _name.text.trim().length < 2 ? 'Enter your full name' : null;
         _stateErr = _state == null ? 'Choose your state' : null;
         _birthErr = _birth == null ? 'Choose the year you were born' : null;
       });
       if (_nameErr != null || _stateErr != null || _birthErr != null) return;
+      if (!await _saveAbout() || !mounted) return;
+      if (_teen && _guardianDone) {
+        setState(() => _step += 2); // the parent email already went out: straight to the exams
+        return;
+      }
     }
-    if (_step == 2 && _exams.isEmpty) {
+    if (_id == 'guardian' && !_guardianDone) {
+      setState(() => _saving = true);
+      final ok = await _guardianKey.currentState?.send() ?? false;
+      if (mounted) setState(() => _saving = false);
+      if (!ok || !mounted) return;
+    }
+    if (_id == 'exams' && _exams.isEmpty) {
       toast(context, 'Pick at least one exam.', icon: PhosphorIcons.info(PhosphorIconsStyle.fill));
       return;
     }
@@ -176,12 +242,13 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final body = switch (_step) {
-      1 => _about(),
-      2 => _examsStep(),
+    final body = switch (_id) {
+      'about' => _about(),
+      'guardian' => GuardianStep(key: _guardianKey, footerButton: false, onSent: () => _guardianDone = true),
+      'exams' => _examsStep(),
       _ => _subjectsStep(),
     };
-    final canFinish = _step != 3 || _subjects.length == 3;
+    final canFinish = _id != 'subjects' || _subjects.length == 3;
     if (widget.subjectsOnly) {
       return Scaffold(
         appBar: const TopBar(title: 'Change JAMB subjects'),
@@ -201,12 +268,12 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     return PopScope(
       canPop: _step == 1,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop && _step > 1) setState(() => _step--);
+        if (!didPop && _step > 1) setState(() => _step -= (_id == 'exams' && _teen && _guardianDone) ? 2 : 1);
       },
       child: Scaffold(
         appBar: TopBar(
           showBack: _step > 1,
-          onBack: () => setState(() => _step--),
+          onBack: () => setState(() => _step -= (_id == 'exams' && _teen && _guardianDone) ? 2 : 1),
           center: Padding(
             padding: const EdgeInsets.symmetric(horizontal: Space.s4),
             child: StepsBar(step: _step, total: _total),
@@ -228,7 +295,16 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (_error != null) ...[ErrText(_error!), const Gap(Space.s3)],
-              Btn(_step == _total ? 'Finish setup' : 'Continue', block: true, loading: _saving, onPressed: canFinish ? _continue : null),
+              Btn(
+                _step == _total
+                    ? 'Finish setup'
+                    : _id == 'guardian' && !_guardianDone
+                    ? 'Send the email'
+                    : 'Continue',
+                block: true,
+                loading: _saving,
+                onPressed: canFinish ? _continue : null,
+              ),
             ],
           ),
         ),
@@ -289,7 +365,8 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       label: 'Year you were born',
       value: _birth,
       hint: 'Choose the year',
-      options: [for (var y = DateTime.now().year - 8; y >= DateTime.now().year - 60; y--) '$y'],
+      // Set once: after it is saved only that year is offered.
+      options: _birthLocked && _birth != null ? [_birth!] : [for (var y = DateTime.now().year - 6; y >= DateTime.now().year - 70; y--) '$y'],
       error: _birthErr,
       onChanged: (v) => setState(() {
         _birth = v;

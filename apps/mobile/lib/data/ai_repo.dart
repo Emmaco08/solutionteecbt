@@ -262,10 +262,7 @@ class AiRepo {
     final chat = await _sb.from('ai_chats').select('created_at').eq('id', chatId).maybeSingle();
     final created = DateTime.tryParse('${chat?['created_at'] ?? ''}');
     final old = created != null && DateTime.now().difference(created).inDays >= 13;
-    final results = await Future.wait<List<Map<String, dynamic>>>([
-      recent.then(rows),
-      if (old) _archived(chatId),
-    ]);
+    final results = await Future.wait<List<Map<String, dynamic>>>([recent.then(rows), if (old) _archived(chatId)]);
     if (results.length == 1) return results.first;
     final seen = <String>{};
     final all = [

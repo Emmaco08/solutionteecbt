@@ -88,6 +88,15 @@ Future<T> cached<T>(Ref ref, String key, Future<Object?> Function(SupabaseClient
 
 List<Map<String, dynamic>> rows(Object? j) => [for (final r in (j as List? ?? const [])) Map<String, dynamic>.from(r as Map)];
 
+/// Admin switches read once per app start from public settings (set in app.dart):
+/// cash prizes and cash referral rewards (off until the regulator approves, D-110) and the exam bodies' own logos
+/// (off until JAMB, WAEC and NECO give written permission: typographic badges are shown instead, D-111).
+bool cashPrizesOn = false;
+bool examLogosOn = false;
+
+/// The student turned on personalised ads in Settings (adults only; set in app.dart from the profile).
+bool adsConsent = false;
+
 final appSettingsProvider = FutureProvider<Map<String, dynamic>>(
   (ref) => cached(ref, 'app_settings', (s) => s.from('app_settings').select('key, value'), (j) => {for (final r in rows(j)) r['key'] as String: r['value']}),
 );
