@@ -791,6 +791,22 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                 ],
               ),
+            // Google's consent choices, only where the law asks for them (EEA/UK, D-119).
+            ValueListenableBuilder<bool>(
+              valueListenable: Ads.privacyOptions,
+              builder: (context, show, _) => !show
+                  ? const SizedBox.shrink()
+                  : ListCard(
+                      children: [
+                        ListRow(
+                          icon: PhosphorIcons.shieldCheck(PhosphorIconsStyle.fill),
+                          title: 'Ad privacy choices',
+                          caption: 'How Google may use your data for ads',
+                          onTap: Ads.showPrivacyOptions,
+                        ),
+                      ],
+                    ),
+            ),
             ListCard(
               children: [
                 ListRow(icon: PhosphorIcons.books(PhosphorIconsStyle.fill), title: 'Change JAMB subjects', onTap: () => context.push('/subjects')),

@@ -147,3 +147,19 @@ export function deleteCodeEmail(code: string) {
     text: `Someone asked to delete the SolutionTee CBT account for this email. Your code is: ${code}\n\nIt works for 10 minutes. If this was not you, ignore this email: nothing will be deleted.\n\n${DISCLAIMER}`,
   };
 }
+
+/** 24 months without activity (Privacy Policy §10, D-119): sent 30+ days before the account is deleted. */
+export function inactiveNoticeEmail(name: string, deleteOn: string, appLink: string) {
+  const hi = name.trim() ? `Hi ${esc(name.trim().split(" ")[0]!)},` : "Hi,";
+  const hiPlain = name.trim() ? `Hi ${name.trim().split(" ")[0]!},` : "Hi,";
+  return {
+    subject: "Your SolutionTee account will be deleted soon",
+    html: layout("Keep your account?", `<p style="margin:0 0 12px">${hi}</p>
+      <p style="margin:0 0 12px">You have not used SolutionTee CBT for almost 2 years. To protect your data, we delete accounts that are not used for 2 years.</p>
+      <p style="margin:0 0 12px"><b>Your account and practice history will be deleted on ${esc(deleteOn)}.</b></p>
+      <p style="margin:0 0 16px">Want to keep it? Just open the app and log in before then. Nothing else is needed.</p>
+      <a href="${esc(appLink)}" style="display:inline-block;background:${GOLD};color:${NAVY};font-weight:700;text-decoration:none;padding:12px 20px;border-radius:12px">Open SolutionTee CBT</a>
+      <p style="margin:20px 0 0;font-size:13px;color:${MUTED}">If you do nothing, your account is deleted for good. Payment records are kept only as the law requires.</p>`),
+    text: `${hiPlain}\n\nYou have not used SolutionTee CBT for almost 2 years. To protect your data, we delete accounts that are not used for 2 years.\n\nYour account and practice history will be deleted on ${deleteOn}.\n\nWant to keep it? Just open the app and log in before then: ${appLink}\n\nIf you do nothing, your account is deleted for good. Payment records are kept only as the law requires.\n\n${DISCLAIMER}`,
+  };
+}

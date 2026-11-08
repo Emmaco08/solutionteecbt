@@ -83,7 +83,8 @@ final adsConfigProvider = FutureProvider<AdsConfig>((ref) async {
     final j = await ref.read(supabaseProvider).rpc('ads_config').timeout(const Duration(seconds: 12));
     final c = AdsConfig(Map<String, dynamic>.from((j as Map?) ?? const {}));
     Ads.instance._db = ref.read(dbProvider);
-    if (c.on) await Ads.instance._init(c);
+    // No ads until Google's consent check says ads may be requested (EEA/UK message, D-119).
+    if (c.on && !await Ads.instance._init(c)) return AdsConfig.off;
     return c;
   } catch (_) {
     return AdsConfig.off;
@@ -116,9 +117,59 @@ class Ads {
   final _pending = <String, Map<String, int>>{};
   Timer? _flush;
 
-  Future<void> _init(AdsConfig c) async {
+  /// True when Google says this student can change their consent choice (EEA/UK): Settings shows "Ad privacy choices".
+  static final privacyOptions = ValueNotifier<bool>(false);
+
+  /// Google's User Messaging Platform (lawyer's list, D-119). Students in the EEA, UK and Switzerland see Google's
+  /// consent message (set up in AdMob → Privacy & messaging) before any ad loads; everywhere else Google answers "not
+  /// required" and nothing shows. Under-18s are tagged as under the age of consent. Never throws; false = no ads now.
+  Future<bool> _consent(AdsConfig c) async {
+    try {
+      final info = Completer<void>();
+      ConsentInformation.instance.requestConsentInfoUpdate(
+        ConsentRequestParameters(tagForUnderAgeOfConsent: c.ageGroup != 'adult'),
+        () {
+          if (!info.isCompleted) info.complete();
+        },
+        (_) {
+          if (!info.isCompleted) info.complete();
+        },
+      );
+      await info.future.timeout(const Duration(seconds: 10));
+      final form = Completer<void>();
+      unawaited(
+        ConsentForm.loadAndShowConsentFormIfRequired((_) {
+          if (!form.isCompleted) form.complete();
+        }),
+      );
+      await form.future.timeout(const Duration(minutes: 5));
+    } catch (_) {}
+    try {
+      privacyOptions.value =
+          await ConsentInformation.instance.getPrivacyOptionsRequirementStatus() == PrivacyOptionsRequirementStatus.required;
+      return await ConsentInformation.instance.canRequestAds();
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Opens Google's consent choices again (Settings → Ad privacy choices).
+  static Future<void> showPrivacyOptions() async {
+    final done = Completer<void>();
+    unawaited(
+      ConsentForm.showPrivacyOptionsForm((_) {
+        if (!done.isCompleted) done.complete();
+      }),
+    );
+    try {
+      await done.future.timeout(const Duration(minutes: 5));
+    } catch (_) {}
+  }
+
+  Future<bool> _init(AdsConfig c) async {
     _c = c;
-    if (_started) return;
+    if (_started) return true;
+    if (!await _consent(c)) return false;
     _started = true;
     await MobileAds.instance.initialize();
     await MobileAds.instance.updateRequestConfiguration(
@@ -134,6 +185,7 @@ class Ads {
     );
     // Have a break ad ready before the first break (otherwise the first break only starts loading one).
     unawaited(_loadInter());
+    return true;
   }
 
   /// Load results for the admin report and for finding problems: "news#ok", or "news#e3" (Google's error code; 3 = no

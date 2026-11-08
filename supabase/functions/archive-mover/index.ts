@@ -156,5 +156,29 @@ Deno.serve(async (req) => {
       report[`retention_${db}`] = { error: e instanceof Error ? e.message : String(e) };
     }
   }
+  // Deleted accounts (any route: app, website, parent turn-off, 24 months inactive; D-119): their archived rows go too.
+  try {
+    const { data: ids, error } = await admin.rpc("deleted_users_pending", { p_what: "neon", p_limit: 500 });
+    if (error) throw new Error(error.message);
+    const list = (ids ?? []) as string[];
+    if (list.length) {
+      const these = "select (x)::uuid from jsonb_array_elements_text($1::jsonb) x";
+      const plan: [string, string[]][] = [
+        ["NEON_AI_URL", ["ai_messages"]],
+        ["NEON_HISTORY_URL", ["attempt_answers", "challenge_answers"]],
+        ["NEON_ANALYTICS_URL", ["ad_rewards"]],
+      ];
+      for (const [db, tables] of plan) {
+        const url = await neonUrl(db);
+        if (!url) throw new Error(`${db} is not set`);
+        const sql = neon(url);
+        for (const t of tables) await sql.query(`delete from ${t} where user_id = any(${these})`, [JSON.stringify(list)]);
+      }
+      await admin.rpc("deleted_users_done", { p_what: "neon", p_ids: list });
+    }
+    report.deleted_users = { cleaned: list.length };
+  } catch (e) {
+    report.deleted_users = { error: e instanceof Error ? e.message : String(e) };
+  }
   return json({ ok: true, report, ms: Date.now() - started });
 });

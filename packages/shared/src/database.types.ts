@@ -4359,6 +4359,22 @@ export type Database = {
         Args: { p_source?: string; p_uid: string; p_xp: number }
         Returns: Json
       }
+      deleted_users_done: {
+        Args: { p_ids: string[]; p_what: string }
+        Returns: number
+      }
+      deleted_users_pending: {
+        Args: { p_limit?: number; p_what: string }
+        Returns: string[]
+      }
+      inactive_due: {
+        Args: { p_limit?: number }
+        Returns: Json
+      }
+      inactive_mark: {
+        Args: { p_ids: string[] }
+        Returns: number
+      }
     }
     Enums: {
       attempt_status: "submitted" | "abandoned"

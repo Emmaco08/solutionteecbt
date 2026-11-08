@@ -48,3 +48,26 @@ export const ALLOWED_TYPES: Record<string, string> = {
   "image/webp": "webp", "image/png": "png", "image/jpeg": "jpg", "image/svg+xml": "svg",
 };
 export const MAX_BYTES = 2 * 1024 * 1024;
+
+/** Deletes every file whose name starts with [prefix] (a deleted student's photos: `a/<user id>/`). Returns how many. */
+export async function deletePrefix(prefix: string): Promise<number> {
+  if (!/^a\/[0-9a-f-]{36}\/$/.test(prefix)) throw new Error("Only a student's own folder can be removed");
+  let n = 0;
+  for (let round = 0; round < 20; round++) {
+    const url = new URL(`${env.r2.endpoint}/${env.r2.bucket}`);
+    url.searchParams.set("list-type", "2");
+    url.searchParams.set("prefix", prefix);
+    url.searchParams.set("max-keys", "200");
+    const r = await client().fetch(url.toString(), { cache: "no-store" });
+    if (!r.ok) throw new Error(`R2 list ${prefix}: HTTP ${r.status}`);
+    const keys = [...(await r.text()).matchAll(/<Key>([^<]+)<\/Key>/g)].map((m) => m[1]!.replace(/&amp;/g, "&"));
+    if (!keys.length) break;
+    for (const key of keys) {
+      if (!key.startsWith(prefix)) continue;
+      const d = await client().fetch(objectUrl(key), { method: "DELETE" });
+      if (!d.ok && d.status !== 404) throw new Error(`R2 delete ${key}: HTTP ${d.status}`);
+      n++;
+    }
+  }
+  return n;
+}
