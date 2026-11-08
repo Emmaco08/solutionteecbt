@@ -67,6 +67,11 @@ async function Download({ searchParams }: { searchParams: Promise<{ channel?: st
         </a>
       )}
       {play && (
+        <a href="/download/aab" className="mt-3 flex h-11 w-full items-center justify-center rounded-xl border text-sm font-bold hover:bg-muted">
+          Google Play Console file (.aab) for uploading
+        </a>
+      )}
+      {play && (
         <p className="mt-3 rounded-xl bg-info-soft px-3 py-2 text-xs text-on-info-soft">
           It installs over the normal app and keeps your account. To go back, install the normal app from{" "}
           <a href="/download" className="font-semibold underline">this page</a> again.

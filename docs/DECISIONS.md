@@ -1000,3 +1000,33 @@ The owner asked to run the admin from Vercel instead of the laptop.
   Permissions-Policy; payment pages `Referrer-Policy: no-referrer` and `no-store`; the browser only follows a
   `https://checkout.paystack.com/` address; the website logs out after 15 minutes idle and right after a successful payment.
   Unchanged: price only from the server, webhook HMAC + verify, amount check, idempotent grants.
+
+## D-116 — Back to the app after paying on the website (2026-11-08)
+- The app registers `solutiontee://app/paid?ref=…&plan=…` (intent filter, VIEW + BROWSABLE). On Android, Chrome opens it
+  with an `intent://…#Intent;scheme=solutiontee;package=com.solutiontee.cbt;end` link from /pay/done.
+- When the payment was started from the app (`from=app`, kept in sessionStorage), /pay/done opens the app by itself 0.9 s
+  after the server confirms success, and also shows a "Back to the app" button. The website signs out at the same time.
+- The app never trusts the link: `PaidReturnScreen` checks the reference format, asks the server (`pay check`) and only
+  then shows the normal Premium success screen; it retries every 5 seconds for up to 2 minutes.
+
+## D-117 — Up to 3 discount codes per payment; codes in the Google Play app (2026-11-08)
+- Codes travel comma-separated in the existing `p_code` field, so old app versions keep working with one code.
+  `private.price` applies them one after another (each on the price left after the earlier ones), refuses a 4th
+  (`too_many_codes`), keeps at least ₦100 to pay and returns each code's share; `payments.extra_code_ids` and
+  `code_discounts` record them; `finish_payment` counts every code as used.
+- Google Play cannot take our prices, so in the Play app "Have a code?" (admin feature flag `codes_in_play_build`) redeems
+  free-days codes directly. A money-off code shows "Pay on the website with CODE" when website pay is switched on, and
+  otherwise explains it cannot be used with Google Play. For Play review, keep the website button and this switch off
+  (outside-payment steering rule).
+
+## D-118 — Legal pages, data retention, Play bundle and store kit (2026-11-08)
+- Privacy Policy, Terms and Refund Policy live as Markdown in `apps/web/content/legal/` and render at /privacy, /terms,
+  /refunds (lawyer-approved text). /delete-account deletes an account from the website (email code → type DELETE), as
+  Google Play requires a web deletion link.
+- Retention: AI tutor messages and per-student rewarded-ad records are kept 12 months (cron `ai-retention` on Supabase;
+  `archive-mover` v8 trims Neon).
+- The GitHub workflow also builds the Play `.aab` (`aab` + `publish-aab` jobs); it is offered at /download/aab for
+  admins, signed with the upload key, for Google Play App Signing.
+- `/store-kit/<shot>` (no-index) draws the store images at their real sizes from the same screens as the website;
+  the finished PNGs and every Play Console answer are in `docs/play-console/`. `public/app-ads.txt` lists the AdMob
+  publisher ID.

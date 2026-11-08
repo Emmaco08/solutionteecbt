@@ -5,6 +5,7 @@ import { objectSize, presignPut, writeJson } from "@/lib/r2";
 import type { ApkInfo } from "@/app/download/apk/route";
 
 const APK = "application/vnd.android.package-archive";
+const AAB = "application/octet-stream";
 const read = (k: string) => (process.env[k] ?? "").trim();
 
 /**
@@ -13,6 +14,7 @@ const read = (k: string) => (process.env[k] ?? "").trim();
  *   {step:"start"}   → the app signing key and Firebase app file (kept as Vercel secrets) for this build
  *   {step:"upload", name} → a 10-minute upload link for apk/<name> in the private bucket
  *   {step:"publish", name, version, built_at, build} → checks the file arrived, then points /download at it
+ *   {step:"publish-aab", …} → the Google Play Console bundle (.aab) for the owner to upload (/download/aab).
  *   {step:"publish-play", …} → the same for the Google Play version (/download?channel=play). Never touches
  *     apk/latest.json, so the direct app's in-app update never offers the Play version.
  */
@@ -37,9 +39,9 @@ export async function POST(req: Request) {
   if (!apkNameOk(body.name)) return NextResponse.json({ error: "Bad file name" }, { status: 400 });
   const key = `apk/${body.name}`;
 
-  if (body.step === "upload") return NextResponse.json({ url: await presignPut(key, APK) }, { headers: { "Cache-Control": "no-store" } });
+  if (body.step === "upload") return NextResponse.json({ url: await presignPut(key, key.endsWith(".aab") ? AAB : APK) }, { headers: { "Cache-Control": "no-store" } });
 
-  if (body.step === "publish" || body.step === "publish-play") {
+  if (body.step === "publish" || body.step === "publish-play" || body.step === "publish-aab") {
     const size = await objectSize(key);
     if (!size || size < 1024 * 1024) return NextResponse.json({ error: "The APK did not arrive" }, { status: 409 });
     const version = typeof body.version === "string" && /^[0-9A-Za-z.+-]{1,60}$/.test(body.version) ? body.version : body.name.slice(16, -4);
@@ -47,7 +49,8 @@ export async function POST(req: Request) {
     // The Android versionCode (minutes since 1970): the app compares it with its own to know an update exists (D-080).
     const build = typeof body.build === "number" && Number.isInteger(body.build) && body.build > 0 ? body.build : undefined;
     const info: ApkInfo & { commit: string } = { key, version, size, built_at: builtAt, branch, commit: claims.sha, build };
-    await writeJson(body.step === "publish-play" ? "apk/play.json" : "apk/latest.json", info);
+    if (body.step === "publish-aab" ? !key.endsWith(".aab") : !key.endsWith(".apk")) return NextResponse.json({ error: "Wrong file type" }, { status: 400 });
+    await writeJson(body.step === "publish-play" ? "apk/play.json" : body.step === "publish-aab" ? "apk/aab.json" : "apk/latest.json", info);
     return NextResponse.json(info);
   }
   return NextResponse.json({ error: "Unknown step" }, { status: 400 });

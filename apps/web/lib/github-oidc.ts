@@ -77,4 +77,5 @@ export function apkBuildAllowed(c: GithubClaims): boolean {
 }
 
 /** APK file names the workflow may upload: solutiontee-cbt-<version>.apk. */
-export const apkNameOk = (name: unknown): name is string => typeof name === "string" && /^solutiontee-cbt-[0-9][0-9A-Za-z.+-]{0,60}\.apk$/.test(name);
+/** App files from the workflow: the APKs (.apk) and the Google Play Console bundle (.aab, D-118). */
+export const apkNameOk = (name: unknown): name is string => typeof name === "string" && /^solutiontee-cbt-[0-9][0-9A-Za-z.+-]{0,60}\.(apk|aab)$/.test(name);
