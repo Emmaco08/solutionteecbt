@@ -23,6 +23,7 @@ laptop pulls this branch). Read `CLAUDE.md`, then this file, then `docs/PROGRESS
 | Big update 2 · step B | **Google AdMob** ads: admin levels Off…Ultra, banners, card ads, break ads, server-verified "watch to unlock", age rules, admin **Ads** page | D-101 | 171 | deployed |
 | Ads v2 · B2 | Rebuilt levels + Custom, sticky banners, Ultra random breaks, app-open, video/note/quiz/section breaks, cards in notes, Home/AI/News ads, watch for XP, watch to open a year, birth year required | D-104 | 174 | deployed |
 | Ads v2 · B3 | Brand campaigns (house ads): banner, card, break, video-lesson ads before/middle/after; admin **Brand ads** + report/CSV | D-105 | 175 | deployed |
+| Ads limits · welcome · custom exam | Chosen years only + daily caps for watching, first-day welcome, custom exam (max 40 / English 60), Study boxes follow the kind rule, floating sticky banner, quiet picture download, background update download, new earn pop-up | D-107 | 177 | deployed |
 | Ads v2 · B4 | How Study content opens: free / Premium / watch N ads / pay per item (Paystack); admin **How content opens** + item fields | D-106 | 176 | deployed |
 
 Big update 2 needs the owner's approval word per step (plan `docs/plans/big-update-2.md`). Ads are **Off** until the owner
@@ -40,7 +41,7 @@ picks a level in admin → Money → Ads.
 
 ## Website "deploy" status
 
-- The admin website was deployed on 2026-11-07 after the ads v2 work (Ads v2 + Custom, Brand ads, How content opens).
+- The admin website was deployed on 2026-11-07 again on 2026-11-08 after ads limits, welcome and custom exam.
   Nothing in `apps/web` is waiting.
 - Rule: the website is deployed only when the owner replies **"deploy"**.
 
