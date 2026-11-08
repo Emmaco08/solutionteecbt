@@ -14,6 +14,17 @@ const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE
 });
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { "content-type": "application/json" } });
 
+// Neon connection strings: Edge Function secret if set, otherwise Supabase Vault (via neon_url, service role only).
+const urls = new Map<string, string>();
+async function neonUrl(name: string): Promise<string | null> {
+  const env = Deno.env.get(name);
+  if (env) return env;
+  if (urls.has(name)) return urls.get(name)!;
+  const { data } = await admin.rpc("neon_url", { p_name: name });
+  if (typeof data === "string" && data) urls.set(name, data);
+  return typeof data === "string" && data ? data : null;
+}
+
 type Kind = {
   db: string; // secret name
   table: string;
@@ -69,7 +80,7 @@ const KINDS: Record<string, Kind> = {
 const PER_ROW = new Set(["audit", "payment_events", "ai_calls", "ai_messages", "ad_rewards", "ad_daily"]);
 
 async function moveOnce(name: string, k: Kind, batch: number): Promise<{ moved: number; done: boolean }> {
-  const url = Deno.env.get(k.db);
+  const url = await neonUrl(k.db);
   if (!url) throw new Error(`${k.db} is not set`);
   const { data, error } = await admin.rpc("archive_take", { p_kind: name, p_limit: batch });
   if (error) throw new Error(`take ${name}: ${error.message}`);
@@ -95,6 +106,14 @@ async function moveOnce(name: string, k: Kind, batch: number): Promise<{ moved: 
 }
 
 Deno.serve(async (req) => {
+  // Setup check (GET ?health=1): which Neon secrets this function can see. Names and yes/no only, never the values.
+  if (req.method === "GET" && new URL(req.url).searchParams.get("health") === "1") {
+    const want = ["NEON_ARCHIVE_URL", "NEON_HISTORY_URL", "NEON_AI_URL", "NEON_ANALYTICS_URL"];
+    const seen = Object.keys(Deno.env.toObject()).filter((k) => k.toUpperCase().includes("NEON"));
+    const vault: Record<string, boolean> = {};
+    for (const k of want) vault[k] = !!(await neonUrl(k));
+    return json({ set: Object.fromEntries(want.map((k) => [k, !!Deno.env.get(k)])), available: vault, neon_like_names: seen });
+  }
   if (req.method !== "POST") return json({ error: "POST only" }, 405);
   const cron = req.headers.get("x-cron-token");
   const ok = cron ? (await admin.rpc("push_cron_ok", { p_token: cron })).data === true : false;

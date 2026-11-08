@@ -15,6 +15,17 @@ const cors = {
   "access-control-allow-methods": "POST, OPTIONS",
 };
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { ...cors, "content-type": "application/json" } });
+
+// Neon connection strings: Edge Function secret if set, otherwise Supabase Vault (via neon_url, service role only).
+const urls = new Map<string, string>();
+async function neonUrl(name: string): Promise<string | null> {
+  const env = Deno.env.get(name);
+  if (env) return env;
+  if (urls.has(name)) return urls.get(name)!;
+  const { data } = await admin.rpc("neon_url", { p_name: name });
+  if (typeof data === "string" && data) urls.set(name, data);
+  return typeof data === "string" && data ? data : null;
+}
 const UUID = /^[0-9a-f-]{36}$/;
 
 Deno.serve(async (req) => {
@@ -28,7 +39,7 @@ Deno.serve(async (req) => {
 
   try {
     if (body.kind === "chat" && UUID.test(body.chat_id ?? "")) {
-      const url = Deno.env.get("NEON_AI_URL");
+      const url = await neonUrl("NEON_AI_URL");
       if (!url) return json({ messages: [] });
       const rows = await neon(url).query(
         `select id, role, content, has_image, flagged_at, card, reaction, created_at
@@ -38,7 +49,7 @@ Deno.serve(async (req) => {
       return json({ messages: rows });
     }
     if (body.kind === "attempt" && UUID.test(body.attempt_id ?? "")) {
-      const url = Deno.env.get("NEON_HISTORY_URL");
+      const url = await neonUrl("NEON_HISTORY_URL");
       if (!url) return json({ answers: [] });
       const rows = await neon(url).query(
         `select question_id, choice, is_correct, flagged, time_ms from attempt_answers where attempt_id = $1 and user_id = $2`,

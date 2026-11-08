@@ -875,3 +875,31 @@ The owner asked to run the admin from Vercel instead of the laptop.
 - **App:** sticky banner floats over the screen just above the tab bar (placement follows the router); CBT pictures
   download behind the normal loading circle; "No ads" is the first Premium benefit; new animated earn pop-up for XP and
   for opening a year; updates download through Android's download manager (keep going when the app is closed).
+
+## D-108 — Supabase + Neon: live data on Supabase, growing history on Neon (2026-11-08)
+- **Why:** Supabase was at 417 MB of 500 MB. 75% (312 MB) was the audit log: every edit saved two full copies of the
+  row (144,000 question edits alone = 271 MB). Real app data was about 100 MB. Plan: `docs/plans/backend-neon.md`.
+- **Audit log:** saves only the fields that changed; edits that change only `updated_at/updated_by` are skipped.
+- **Supabase keeps** everything a student waits for: auth, profiles, payments, entitlements, XP, all content with its
+  server-side locks, recent answers and chats, challenges, settings.
+- **Neon (free, London `aws-eu-west-2`)**, one database per job:
+  - `st-archive` (wandering-unit-72542883): audit log, payment events, AI call logs;
+  - `st-history` (broad-night-56722155): test and challenge answers;
+  - `st-ai` (summer-union-46331421): AI chat messages;
+  - `st-analytics` (wild-truth-62109375): ad statistics and reward records.
+
+  New projects are added only when one nears 1 GB (free plan: 1 GB each, 20 GB total), never spread thin, because
+  each Neon project sleeps after 5 minutes.
+- **Windows** (`app_settings.archive`): audit 30 days, test answers 14, AI chats 14, challenge answers 60, AI call
+  logs 30, ad data 90, payment events 365. Rows still in use never move (unexpired ad unlocks, pending rewards; the
+  payments themselves stay on Supabase).
+- **Running totals:** `user_topic_stats` and `question_stats` (trigger on `attempt_answers`) feed weak topics and
+  question difficulty, so they keep all history after raw answers move, and run faster.
+- **Mover:** Edge Function `archive-mover`, nightly 02:15 Lagos (pg_cron, token in Vault). `archive_take` → insert
+  into Neon (duplicates skipped) → count in Neon → `archive_drop`. Nothing is deleted before Neon has every row.
+  Log: `archive_runs`.
+- **Reading:** `archive-read` returns a student's own older AI chat messages or test answers. The app fetches older
+  chat messages only for chats 13+ days old.
+- **Secrets:** the Supabase connector's secret saving was paused, so the four Neon connection strings are in
+  **Supabase Vault** (`NEON_*_URL`). Functions read them via `neon_url()` (service role only). Edge Function secrets
+  with the same names, if added later, take priority. Never in git or the app.

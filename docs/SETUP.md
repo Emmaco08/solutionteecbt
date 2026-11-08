@@ -548,3 +548,17 @@ Notes:
    `https://mxeemubacnmcmmmzteax.supabase.co/functions/v1/admob-ssv` (AdMob tests it; it answers "ok").
 5. Add your payment details in AdMob (Payments) — AdMob pays out monthly once the threshold is reached.
 6. In admin → Ads: choose a level, keep **Test mode** on while testing on your phone, then turn it off for real ads.
+
+## Neon (history databases, D-108)
+- Account: console.neon.tech (organisation `org-fancy-sea-53782923`), Free plan. Four projects in **London**:
+  `st-archive`, `st-history`, `st-ai`, `st-analytics`. Each has one database (`archive`, `history`, `ai`,
+  `analytics`) and the role `st_app`.
+- The old project "SolutionTee CBT" (US East) is unused. Keep or delete it in the Neon console.
+- Connection strings live in **Supabase Vault** as `NEON_ARCHIVE_URL`, `NEON_HISTORY_URL`, `NEON_AI_URL`,
+  `NEON_ANALYTICS_URL`. Edge Function secrets with the same names (Supabase → Edge Functions → Secrets) override
+  them. To rotate a password: Neon console → project → Roles → st_app → Reset password, then update the Vault secret
+  (SQL editor: `select vault.update_secret((select id from vault.secrets where name='NEON_AI_URL'), '<new string>');`).
+- Check: `GET https://mxeemubacnmcmmmzteax.supabase.co/functions/v1/archive-mover?health=1` shows which ones the
+  mover can reach (yes/no only).
+- Windows (days kept on Supabase) are in `app_settings.archive`. The mover runs nightly at 02:15 Lagos (cron
+  `archive-mover`); its runs are in the `archive_runs` table.
