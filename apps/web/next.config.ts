@@ -34,6 +34,10 @@ const nextConfig: NextConfig = {
       { source: "/pay", headers: payOnly },
       { source: "/pay/:path*", headers: payOnly },
       { source: "/guardian/:path*", headers: payOnly },
+      { source: "/delete-account", headers: payOnly },
+      { source: "/privacy", headers: secure },
+      { source: "/terms", headers: secure },
+      { source: "/refunds", headers: secure },
       { source: "/api/web/:path*", headers: [{ key: "Cache-Control", value: "no-store" }, { key: "X-Content-Type-Options", value: "nosniff" }] },
     ];
   },

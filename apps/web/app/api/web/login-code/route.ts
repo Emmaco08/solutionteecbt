@@ -2,10 +2,10 @@ import { z } from "zod";
 import { createServiceClient } from "@/lib/supabase/server";
 import { hasBrevo, hasServiceKey } from "@/lib/env";
 import { sendEmail } from "@/lib/email";
-import { webLoginCodeEmail } from "@/lib/email-templates";
+import { deleteCodeEmail, webLoginCodeEmail } from "@/lib/email-templates";
 import { allowSend, clientIp, EMAIL_RULE, json } from "@/lib/auth-email";
 
-const Body = z.object({ email: z.string().trim().toLowerCase().max(254) });
+const Body = z.object({ email: z.string().trim().toLowerCase().max(254), purpose: z.enum(["pay", "delete"]).optional() });
 
 /**
  * POST /api/web/login-code  { email }   (payment website, D-114)
@@ -27,7 +27,9 @@ export async function POST(req: Request) {
   if (error || !data.user?.email_confirmed_at) return json(same);
   if (data.user.banned_until && new Date(data.user.banned_until) > new Date()) return json(same);
 
-  const sent = await sendEmail({ to: email, ...webLoginCodeEmail(data.properties.email_otp), from: "noreply", tags: ["web-login-code"] });
+  const del = parsed.data.purpose === "delete";
+  const mail = del ? deleteCodeEmail(data.properties.email_otp) : webLoginCodeEmail(data.properties.email_otp);
+  const sent = await sendEmail({ to: email, ...mail, from: "noreply", tags: [del ? "delete-code" : "web-login-code"] });
   if (!sent.ok) return json({ error: "We could not send your code. Try again in a minute." }, 502);
   return json({ ...same, codeLength: data.properties.email_otp.length });
 }

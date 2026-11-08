@@ -146,3 +146,18 @@
 .note-preview pre code { background: none; padding: 0; }
 .note-preview hr { margin: 20px 0; border-color: var(--c-border); }
 .note-preview .katex-display { overflow-x: auto; overflow-y: hidden; padding: 4px 0; }
+
+/* Published legal pages (/privacy, /terms, /refunds): plain, readable typography. */
+.legal { font-size: 15px; line-height: 1.7; }
+.legal h1 { font-size: 32px; line-height: 1.2; font-weight: 700; margin: 0 0 16px; letter-spacing: -0.01em; }
+.legal h2 { font-size: 21px; font-weight: 700; margin: 32px 0 10px; }
+.legal h3 { font-size: 17px; font-weight: 700; margin: 22px 0 8px; }
+.legal p, .legal ul, .legal ol, .legal table, .legal blockquote { margin: 0 0 12px; }
+.legal ul { list-style: disc; padding-left: 22px; }
+.legal ol { list-style: decimal; padding-left: 22px; }
+.legal li { margin: 4px 0; }
+.legal a { color: var(--c-secondary, #2563B3); text-decoration: underline; }
+.legal blockquote { border-left: 4px solid #F2B233; padding: 8px 14px; background: var(--c-primary-soft, #EEF2F9); border-radius: 8px; }
+.legal table { width: 100%; border-collapse: collapse; font-size: 14px; display: block; overflow-x: auto; }
+.legal th, .legal td { border: 1px solid var(--c-border, #DCE3EF); padding: 8px 10px; text-align: left; vertical-align: top; }
+.legal th { background: var(--c-primary-soft, #EEF2F9); font-weight: 700; }

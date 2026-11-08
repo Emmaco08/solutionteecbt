@@ -137,3 +137,13 @@ export function webLoginCodeEmail(code: string) {
     text: `Use this code to log in on the SolutionTee website and get Premium: ${code}\n\nIt works for 10 minutes. If this was not you, ignore this email.\n\n${DISCLAIMER}`,
   };
 }
+
+/** Account deletion from the website (cbt.solutiontee.com/delete-account, Google Play requirement, D-118). */
+export function deleteCodeEmail(code: string) {
+  return {
+    subject: `${code} is your code to delete your SolutionTee account`,
+    html: layout("Delete your account", `<p style="margin:0">Someone asked to delete the SolutionTee CBT account for this email. Use this code on the website to confirm:</p>${codeBox(code)}
+      <p style="margin:0;color:${MUTED};font-size:13px">It works for 10 minutes. If this was not you, ignore this email: nothing will be deleted.</p>`),
+    text: `Someone asked to delete the SolutionTee CBT account for this email. Your code is: ${code}\n\nIt works for 10 minutes. If this was not you, ignore this email: nothing will be deleted.\n\n${DISCLAIMER}`,
+  };
+}

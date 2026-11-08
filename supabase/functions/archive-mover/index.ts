@@ -144,5 +144,17 @@ Deno.serve(async (req) => {
       await admin.from("archive_runs").insert({ kind: name, moved: 0, ok: false, note: msg.slice(0, 300) });
     }
   }
+  // Retention (Privacy Policy §10, D-118): AI tutor messages and per-student rewarded-ad records are kept for 12 months.
+  for (const [db, sql] of [
+    ["NEON_AI_URL", "delete from ai_messages where created_at < now() - interval '12 months'"],
+    ["NEON_ANALYTICS_URL", "delete from ad_rewards where created_at < now() - interval '12 months'"],
+  ] as const) {
+    try {
+      const url = await neonUrl(db);
+      if (url) await neon(url).query(sql);
+    } catch (e) {
+      report[`retention_${db}`] = { error: e instanceof Error ? e.message : String(e) };
+    }
+  }
   return json({ ok: true, report, ms: Date.now() - started });
 });
