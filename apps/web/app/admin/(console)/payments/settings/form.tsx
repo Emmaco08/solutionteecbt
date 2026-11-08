@@ -24,9 +24,10 @@ function paystackFee(price: number, f: PaySettings["fees"]["paystack"]) {
 
 const ng = (n: number) => `₦${n.toLocaleString("en-NG")}`;
 
-export function PaymentSettingsForm({ initial, plans, playUrl }: { initial: PaySettings; plans: { name: string; price: number; fee_id: string | null }[]; playUrl: string }) {
+export function PaymentSettingsForm({ initial, plans, playUrl, playCodes }: { initial: PaySettings; plans: { name: string; price: number; fee_id: string | null }[]; playUrl: string; playCodes: boolean }) {
   const [s, setS] = useState(initial);
   const [play, setPlay] = useState(playUrl);
+  const [codes, setCodes] = useState(playCodes);
   const ps = s.fees.paystack, gs = s.fees.google;
   const setPay = (k: keyof typeof ps, v: number | boolean) => setS({ ...s, fees: { ...s.fees, paystack: { ...ps, [k]: v } } });
   const setGoogle = (k: keyof typeof gs, v: number | boolean) => setS({ ...s, fees: { ...s.fees, google: { ...gs, [k]: v } } });
@@ -49,6 +50,10 @@ export function PaymentSettingsForm({ initial, plans, playUrl }: { initial: PayS
             <Switch name="play_website" checked={s.play.website} onCheckedChange={(v) => setS({ ...s, play: { ...s.play, website: v } })} />
           </label>
         </div>
+        <label className="flex items-center gap-4 border-t py-3">
+          <span className="grow"><b className="block text-sm">“Have a code?” in the Google Play app</b><small className="block text-[13px] text-muted-foreground">Free-Premium-days codes work right in the app. Discount codes (% or ₦ off) open the payment website with the code added, when the website button above is on. Google Play’s own promo codes are made in Play Console and typed in Google’s payment screen.</small></span>
+          <Switch name="play_codes" checked={codes} onCheckedChange={setCodes} />
+        </label>
         {s.play.website ? (
           <p className="mt-3 rounded-xl bg-warning-soft px-3 py-2 text-sm text-on-warning-soft">
             <b>Google Play rule:</b> outside Google’s billing-choice countries (US, UK, EEA), Google does not allow a Play app to send students

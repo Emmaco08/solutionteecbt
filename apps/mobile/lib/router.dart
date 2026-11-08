@@ -17,6 +17,7 @@ import 'features/news/news_screens.dart';
 import 'features/notifications/notifications_screen.dart';
 import 'features/onboarding/onboarding_screens.dart';
 import 'features/premium/checkout.dart';
+import 'features/premium/paid_return.dart';
 import 'features/profile/profile_screens.dart';
 import 'features/results/results_screens.dart';
 import 'features/setup/age_gate.dart';
@@ -288,6 +289,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/checkout',
         builder: (_, s) => CheckoutScreen(planCode: s.uri.queryParameters['plan'] ?? 'three_months'),
+      ),
+      GoRoute(
+        // Back from the payment website (D-116): solutiontee://app/paid?ref=…&plan=…
+        path: '/paid',
+        builder: (_, s) => PaidReturnScreen(reference: s.uri.queryParameters['ref'] ?? '', plan: s.uri.queryParameters['plan']),
       ),
       GoRoute(
         path: '/pay-success',

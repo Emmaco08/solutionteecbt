@@ -2,21 +2,35 @@
 import Link from "next/link";
 import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useState } from "react";
-import { CheckCircle, Clock, SpinnerGap, WarningCircle } from "@phosphor-icons/react";
+import { ArrowSquareOut, CheckCircle, Clock, SpinnerGap, WarningCircle } from "@phosphor-icons/react";
 import { createClient } from "@/lib/supabase/client";
 import { payStatus, type PayStatus } from "./status";
+
+/** The app's own link back (D-116). Chrome needs the intent: form; the plain scheme is the fallback for other browsers. */
+function appLink(reference: string, plan?: string) {
+  const q = `ref=${encodeURIComponent(reference)}${plan ? `&plan=${encodeURIComponent(plan)}` : ""}`;
+  const android = typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent);
+  return android ? `intent://app/paid?${q}#Intent;scheme=solutiontee;package=com.solutiontee.cbt;end` : `solutiontee://app/paid?${q}`;
+}
 
 /** Checks the payment every 4 s for up to 3 minutes (the Paystack webhook usually arrives within seconds). */
 export function PayResult({ reference, initial }: { reference: string; initial: PayStatus }) {
   const [s, setS] = useState(initial);
   const [tries, setTries] = useState(0);
   const still = useReducedMotion();
-  // Paid: the payment tab is cleared and the website logs out (Premium lives on the account, in the app).
+  const [fromApp, setFromApp] = useState(false);
+  // Paid: the payment tab is cleared and the website logs out (Premium lives on the account, in the app). Opened from the
+  // app: straight back into the app, which shows its own "Premium is on" screen after checking with the server.
   useEffect(() => {
     if (s.status !== "success") return;
-    try { sessionStorage.removeItem("st-pay-pending"); } catch {}
+    let app = false;
+    try { sessionStorage.removeItem("st-pay-pending"); app = sessionStorage.getItem("st-from-app") === "1"; sessionStorage.removeItem("st-from-app"); } catch {}
     void createClient().auth.signOut({ scope: "local" });
-  }, [s.status]);
+    if (!app) return;
+    queueMicrotask(() => setFromApp(true));
+    const t = setTimeout(() => window.location.assign(appLink(reference, s.plan)), 900);
+    return () => clearTimeout(t);
+  }, [s.status, s.plan, reference]);
   useEffect(() => {
     if (s.status !== "pending" && s.status !== "abandoned") return;
     if (tries > 45) return;
@@ -31,8 +45,11 @@ export function PayResult({ reference, initial }: { reference: string; initial: 
         <motion.span initial={still ? false : { scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 260, damping: 16 }}
           className="mx-auto grid size-20 place-items-center rounded-full bg-[#E8F7EE] text-[#16A34A]"><CheckCircle size={48} weight="fill" /></motion.span>
         <h1 className="mt-5 text-2xl font-bold">Premium is on! 🎉</h1>
-        <p className="mt-2 text-[15px] text-muted-foreground">{s.plan ? `${s.plan} plan` : "Your plan"}{until ? `, until ${until}` : ""}. Open the SolutionTee app: Premium is already there (log in with the same email).</p>
-        <Link href="/" className="mt-6 inline-flex h-12 items-center justify-center rounded-2xl bg-[#0B1F44] px-6 font-bold text-white dark:bg-white dark:text-[#0B1F44]">Back to the website</Link>
+        <p className="mt-2 text-[15px] text-muted-foreground">{s.plan ? `${s.plan} plan` : "Your plan"}{until ? `, until ${until}` : ""}. {fromApp ? "Taking you back to the app…" : "Premium is already in the SolutionTee app (log in with the same email)."}</p>
+        <a href={appLink(reference, s.plan)} className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#F2B233] px-6 font-bold text-[#0B1F44]">
+          <ArrowSquareOut size={18} weight="bold" /> Back to the app
+        </a>
+        <Link href="/" className="mt-3 inline-flex h-11 items-center justify-center rounded-2xl px-6 text-sm font-bold text-muted-foreground">Back to the website</Link>
       </div>
     );
   }

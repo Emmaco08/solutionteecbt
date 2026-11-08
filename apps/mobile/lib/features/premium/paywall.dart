@@ -11,6 +11,7 @@ import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
 import '../../ui/kit.dart';
 import '../../widgets/phosphor.g.dart';
+import 'checkout.dart' show showRedeemSheet;
 import 'content_offer.dart';
 import 'payments.dart';
 
@@ -220,6 +221,13 @@ class _PaywallState extends ConsumerState<_Paywall> {
                     final ok = await openPayWebsite(ref, plan: '${pick['code']}');
                     if (!ok && context.mounted) toast(context, 'Could not open the website. Please try again.');
                   },
+          ),
+        // Google Play app (D-117): codes — free Premium days here, discount codes on the website (when offered).
+        if (playApp && showsRedeem(ref))
+          TextButton.icon(
+            onPressed: pick.isEmpty ? null : () => showRedeemSheet(context, plan: '${pick['code']}'),
+            icon: Icon(PhosphorIcons.ticket(), size: 18),
+            label: const Text('Have a code?'),
           ),
         const Gap(Space.s3),
         Row(

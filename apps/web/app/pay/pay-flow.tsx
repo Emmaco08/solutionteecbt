@@ -8,7 +8,11 @@ import type { Session } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 
 type Plan = { code: string; name: string; description: string | null; price_kobo: number; duration_days: number | null; ends_on: string | null };
-type Quote = { list_kobo: number; discount_kobo: number; fee_kobo?: number; amount_kobo: number; label?: string | null; code?: string | null; period_end?: string | null };
+type Quote = {
+  list_kobo: number; discount_kobo: number; fee_kobo?: number; amount_kobo: number; label?: string | null; code?: string | null; period_end?: string | null;
+  codes?: { code: string; off_kobo: number; label: string }[];
+};
+const MAX_CODES = 3;
 
 const ng = (kobo: number) => `₦${(kobo / 100).toLocaleString("en-NG")}`;
 const day = (s: string) => new Date(s).toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" });
@@ -31,6 +35,7 @@ const QUOTE_ERRORS: Record<string, string> = {
   wrong_plan: "This code does not work on this plan.", too_many_tries: "Too many wrong codes. Please wait an hour.",
   covered: "Your Premium already covers this plan’s end date.", banned: "This account cannot make payments. Contact support.",
   plan: "This plan is not on sale any more. Pick another.", days_code: "This code gives free days: redeem it in the app (Me → Redeem a code).",
+  too_many_codes: "You can use up to 3 codes on one payment.", paused: "This code is paused right now.", not_started: "This code does not work yet.",
 };
 
 /** The payment website (D-114): log in with an email code, pick a plan, pay with Paystack (every method Paystack offers). */
@@ -47,7 +52,9 @@ export function PayFlow() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [pick, setPick] = useState<string>(sp.get("plan") ?? "three_months");
   const [discount, setDiscount] = useState("");
-  const [applied, setApplied] = useState<string | null>(null);
+  // Up to 3 discount codes on one payment (D-117). A code can also come in the link (from the app).
+  const [codes, setCodes] = useState<string[]>(() => (sp.get("code") ?? "").split(/[\s,;]+/).filter(Boolean).map((c) => c.toUpperCase()).slice(0, MAX_CODES));
+  const applied = codes.length ? codes.join(",") : null;
   const [quote, setQuote] = useState<Quote | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -66,6 +73,11 @@ export function PayFlow() {
     if (!r.ok) throw new Error(j.error ?? "Paystack is not answering. Try again in a moment.");
     return j as Record<string, unknown>;
   }, []);
+
+  // Opened from the app: after paying, /pay/done sends the student straight back into the app (D-116).
+  useEffect(() => {
+    if (sp.get("from") === "app") { try { sessionStorage.setItem("st-from-app", "1"); } catch {} }
+  }, [sp]);
 
   // From the app (D-115): a one-time code in the link logs the student in, then is removed from the address bar.
   useEffect(() => {
@@ -157,7 +169,11 @@ export function PayFlow() {
     const { data, error } = await sb.rpc("quote_price", { p_plan: plan, p_code: code ?? undefined });
     if (error) { setErr("Could not load the price. Check your internet and try again."); return false; }
     const r = data as unknown as Quote & { ok: boolean; error?: string };
-    if (!r.ok) { setErr(QUOTE_ERRORS[r.error ?? ""] ?? "That code cannot be used."); return false; }
+    if (!r.ok) {
+      const which = (r as { code?: string }).code;
+      setErr(`${which ? `${which}: ` : ""}${QUOTE_ERRORS[r.error ?? ""] ?? "That code cannot be used."}`);
+      return false;
+    }
     setErr(null);
     setQuote(r);
     return true;
@@ -170,7 +186,10 @@ export function PayFlow() {
       if (!live) return;
       const r = data as unknown as (Quote & { ok: boolean; error?: string }) | null;
       if (error || !r) setErr("Could not load the price. Check your internet and try again.");
-      else if (!r.ok) setErr(QUOTE_ERRORS[r.error ?? ""] ?? "That code cannot be used.");
+      else if (!r.ok) {
+        const which = (r as { code?: string }).code;
+        setErr(`${which ? `${which}: ` : ""}${QUOTE_ERRORS[r.error ?? ""] ?? "That code cannot be used."}`);
+      }
       else { setErr(null); setQuote(r); }
     });
     return () => { live = false; };
@@ -282,7 +301,7 @@ export function PayFlow() {
                 {plans.map((p) => {
                   const on = p.code === pick;
                   return (
-                    <button key={p.code} type="button" role="radio" aria-checked={on} onClick={() => { setPick(p.code); setApplied(null); setDiscount(""); }}
+                    <button key={p.code} type="button" role="radio" aria-checked={on} onClick={() => setPick(p.code)}
                       className={`flex w-full items-center gap-4 rounded-2xl border-2 p-4 text-left transition-colors ${on ? "border-[#2563B3] bg-[#EEF4FC] dark:bg-[#16284A]" : "border-border hover:border-[#2563B3]/50"}`}>
                       <span className={`grid size-6 shrink-0 place-items-center rounded-full border-2 ${on ? "border-[#2563B3] bg-[#2563B3] text-white" : "border-border"}`}>{on ? <CheckCircle size={16} weight="fill" /> : null}</span>
                       <span className="grow"><b className="block">{p.name}</b><small className="text-muted-foreground">{p.duration_days ? `${p.duration_days} days` : p.ends_on ? `Until ${day(p.ends_on)}` : ""}</small></span>
@@ -291,17 +310,37 @@ export function PayFlow() {
                   );
                 })}
               </div>
-              <div className="mt-4 flex gap-2">
+              <form className="mt-4 flex gap-2" onSubmit={async (e) => {
+                e.preventDefault();
+                const d = discount.trim().toUpperCase();
+                if (!d || codes.includes(d)) { setDiscount(""); return; }
+                if (codes.length >= MAX_CODES) { setErr(QUOTE_ERRORS.too_many_codes); return; }
+                const next = [...codes, d];
+                if (await loadQuote(pick, next.join(","))) { setCodes(next); setDiscount(""); }
+              }}>
                 <div className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-xl border bg-background px-3">
                   <Ticket size={18} className="text-muted-foreground" />
-                  <input value={discount} onChange={(e) => setDiscount(e.target.value.toUpperCase())} placeholder="Discount code (optional)" aria-label="Discount code" className="h-full min-w-0 flex-1 bg-transparent text-sm uppercase outline-none" />
+                  <input value={discount} onChange={(e) => setDiscount(e.target.value.toUpperCase())} disabled={codes.length >= MAX_CODES}
+                    placeholder={codes.length ? (codes.length >= MAX_CODES ? "3 codes added" : "Add another code") : "Discount code (optional)"} aria-label="Discount code" className="h-full min-w-0 flex-1 bg-transparent text-sm uppercase outline-none" />
                 </div>
-                <button type="button" disabled={!discount.trim()} onClick={async () => { if (await loadQuote(pick, discount.trim())) setApplied(discount.trim()); }} className="h-11 rounded-xl border px-4 text-sm font-bold disabled:opacity-50">Apply</button>
-              </div>
+                <button type="submit" disabled={!discount.trim() || codes.length >= MAX_CODES} className="h-11 rounded-xl border px-4 text-sm font-bold disabled:opacity-50">Apply</button>
+              </form>
+              {codes.length ? (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {codes.map((c) => (
+                    <motion.span key={c} layout initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="inline-flex items-center gap-1.5 rounded-full bg-[#E8F7EE] py-1 pl-3 pr-1 text-xs font-bold text-[#14532D]">
+                      {c}
+                      <button type="button" aria-label={`Remove ${c}`} onClick={() => setCodes(codes.filter((x) => x !== c))} className="grid size-6 place-items-center rounded-full hover:bg-black/10"><XCircle size={16} weight="fill" /></button>
+                    </motion.span>
+                  ))}
+                </div>
+              ) : null}
               {quote && plan ? (
                 <div className="mt-5 space-y-2 rounded-2xl bg-[#F4F6FA] p-4 text-sm dark:bg-white/5">
                   <div className="flex justify-between"><span className="text-muted-foreground">{plan.name}</span><span className="tabular-nums">{ng(quote.list_kobo)}</span></div>
-                  {quote.discount_kobo > 0 ? <div className="flex justify-between text-[#15803D]"><span>{quote.code} · {quote.label}</span><span className="tabular-nums">−{ng(quote.discount_kobo)}</span></div> : null}
+                  {quote.codes?.length
+                    ? quote.codes.map((c) => <div key={c.code} className="flex justify-between text-[#15803D]"><span>{c.code} · {c.label}</span><span className="tabular-nums">−{ng(c.off_kobo)}</span></div>)
+                    : quote.discount_kobo > 0 ? <div className="flex justify-between text-[#15803D]"><span>{quote.label}</span><span className="tabular-nums">−{ng(quote.discount_kobo)}</span></div> : null}
                   {(quote.fee_kobo ?? 0) > 0 ? <div className="flex justify-between"><span className="text-muted-foreground">Payment processing fee</span><span className="tabular-nums">+{ng(quote.fee_kobo ?? 0)}</span></div> : null}
                   <div className="flex justify-between border-t pt-2 text-base font-bold"><span>Total</span><span className="tabular-nums">{ng(quote.amount_kobo)}</span></div>
                   {quote.period_end ? <p className="text-xs text-muted-foreground">Premium until {day(quote.period_end)}. Pay once, no auto-renew.</p> : null}

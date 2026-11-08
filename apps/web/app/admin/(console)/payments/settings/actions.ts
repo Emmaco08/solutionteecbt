@@ -11,6 +11,7 @@ const num = (min: number, max: number) => z.coerce.number().min(min).max(max);
 const Settings = z.object({
   play_google: on,
   play_website: on,
+  play_codes: on,
   website_url: z.string().trim().url().startsWith("https://", "The website must start with https://").max(200),
   paystack_on: on,
   paystack_pct: num(0, 20),
@@ -40,6 +41,9 @@ export async function savePaymentSettings(form: FormData): Promise<ActionResult>
   const supabase = await createClient();
   const { error } = await supabase.from("app_settings").upsert({ key: "payments", value, is_public: true }, { onConflict: "key" });
   if (error) return { ok: false, error: friendlyError(error) };
+  // "Have a code?" in the Google Play app (D-117): free-days codes there, discount codes on the website.
+  const { error: e3 } = await supabase.from("feature_flags").update({ enabled: s.play_codes }).eq("key", "codes_in_play_build");
+  if (e3) return { ok: false, error: friendlyError(e3) };
   // The public website's Google Play button (cbt.solutiontee.com, D-114).
   const { error: e2 } = await supabase.from("app_settings").upsert({ key: "site", value: { play_url: s.play_url }, is_public: true }, { onConflict: "key" });
   if (e2) return { ok: false, error: friendlyError(e2) };

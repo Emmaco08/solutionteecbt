@@ -594,10 +594,13 @@ class PaySuccessScreen extends ConsumerWidget {
 }
 
 /// "Redeem a code" sheet on Me (prototype `#redeem`): free Premium days from a school, a teacher or SolutionTee.
-Future<void> showRedeemSheet(BuildContext context) => showSheet<void>(context, builder: (_) => const _RedeemSheet());
+/// In the Google Play app (D-117) a discount code (% or ₦ off) can be used on the payment website when the admin offers it:
+/// the code goes with the student to the website, already logged in, for [plan].
+Future<void> showRedeemSheet(BuildContext context, {String? plan}) => showSheet<void>(context, builder: (_) => _RedeemSheet(plan: plan));
 
 class _RedeemSheet extends ConsumerStatefulWidget {
-  const _RedeemSheet();
+  const _RedeemSheet({this.plan});
+  final String? plan;
   @override
   ConsumerState<_RedeemSheet> createState() => _RedeemSheetState();
 }
@@ -607,6 +610,7 @@ class _RedeemSheetState extends ConsumerState<_RedeemSheet> {
   String? _err;
   bool _busy = false;
   (int, DateTime?)? _done;
+  String? _discount; // a discount code that can be used on the payment website
 
   @override
   void dispose() {
@@ -624,7 +628,15 @@ class _RedeemSheetState extends ConsumerState<_RedeemSheet> {
       HapticFeedback.mediumImpact();
       if (mounted) setState(() => _done = r);
     } on PayFailed catch (e) {
-      if (mounted) setState(() => _err = e.message);
+      if (!mounted) return;
+      final playWeb = !usesPaystack(ref) && ref.read(paySettingsProvider).playWebsite;
+      if (e.code == 'discount_code' && playWeb) {
+        setState(() => _discount = code.toUpperCase());
+      } else if (e.code == 'discount_code' && !usesPaystack(ref)) {
+        setState(() => _err = 'This is a discount code. It cannot be used with Google Play payments.');
+      } else {
+        setState(() => _err = e.message);
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -653,6 +665,43 @@ class _RedeemSheetState extends ConsumerState<_RedeemSheet> {
           ],
           const Gap(Space.s5),
           Btn('Start practising', block: true, onPressed: () => Navigator.of(context).pop()),
+        ],
+      );
+    }
+    final discount = _discount;
+    if (discount != null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Icon(PhosphorIcons.ticket(PhosphorIconsStyle.fill), size: 44, color: c.success),
+          const Gap(Space.s3),
+          Text('$discount is a discount code', style: context.ty.h3, textAlign: TextAlign.center),
+          const Gap(Space.s2),
+          Text(
+            'Use it on our payment website: card, bank transfer, USSD or OPay. You stay logged in, and Premium shows here as soon as you pay.',
+            style: context.ty.sm.col(c.textMuted),
+            textAlign: TextAlign.center,
+          ),
+          const Gap(Space.s5),
+          Btn(
+            'Pay on the website with $discount',
+            kind: BtnKind.accent,
+            block: true,
+            loading: _busy,
+            onPressed: () async {
+              setState(() => _busy = true);
+              final ok = await openPayWebsite(ref, plan: widget.plan ?? 'three_months', code: discount);
+              if (!mounted || !context.mounted) return;
+              setState(() => _busy = false);
+              if (ok) {
+                Navigator.of(context).pop();
+              } else {
+                toast(context, 'Could not open the website. Please try again.');
+              }
+            },
+          ),
+          const Gap(Space.s2),
+          Btn('Use another code', kind: BtnKind.ghost, block: true, onPressed: () => setState(() => _discount = null)),
         ],
       );
     }

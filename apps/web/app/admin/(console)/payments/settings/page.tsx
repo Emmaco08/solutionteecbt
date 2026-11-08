@@ -20,9 +20,10 @@ export default function Page() {
 async function Settings() {
   await requireStaff(["super_admin", "admin"]);
   const supabase = await createClient();
-  const [s, plans] = await Promise.all([
+  const [s, plans, flag] = await Promise.all([
     supabase.from("app_settings").select("key, value").in("key", ["payments", "site"]),
     supabase.from("plans").select("name, price_kobo, play_product_id_fee, is_active").order("sort"),
+    supabase.from("feature_flags").select("enabled").eq("key", "codes_in_play_build").maybeSingle(),
   ]);
   if (s.error || plans.error) return <ErrorState message={(s.error ?? plans.error)!.message} />;
   const byKey = Object.fromEntries((s.data ?? []).map((r) => [r.key, r.value]));
@@ -36,7 +37,7 @@ async function Settings() {
   return (
     <>
       <PageHeader title="Payment settings" description="How students pay in the Google Play app, and whether processing fees are added. Changes reach phones the next time the app opens; no app update needed." />
-      <PaymentSettingsForm initial={initial} playUrl={playUrl} plans={(plans.data ?? []).filter((p) => p.is_active).map((p) => ({ name: p.name, price: p.price_kobo / 100, fee_id: p.play_product_id_fee }))} />
+      <PaymentSettingsForm initial={initial} playUrl={playUrl} playCodes={flag.data?.enabled === true} plans={(plans.data ?? []).filter((p) => p.is_active).map((p) => ({ name: p.name, price: p.price_kobo / 100, fee_id: p.play_product_id_fee }))} />
     </>
   );
 }
