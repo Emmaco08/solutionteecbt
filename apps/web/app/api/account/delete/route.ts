@@ -12,7 +12,7 @@ const Body = z.object({
   code: z.string().regex(/^\d{6}$/).optional(),
   reason: z.string().max(80).optional(),
   note: z.string().max(500).optional(),
-  via: z.enum(["app", "web"]).optional(),
+  via: z.enum(["app", "web", "under13"]).optional(),
 });
 
 /** The access token's sign-in methods (already verified by getUser): used to accept a fresh website email code. */
@@ -46,6 +46,25 @@ export async function POST(req: Request) {
   const uid = who.user.id;
   const { data: staff } = await svc.from("staff").select("role").eq("user_id", uid).maybeSingle();
   if (staff) return json({ error: "Staff accounts are removed by a super admin." }, 409);
+
+  // Under 13 (D-109): the account just made is deleted at once and nothing is kept (no reason, no email). Only for a
+  // birth year under 13, or a brand-new account (under 2 hours, never paid) whose year the server refused to save.
+  // Older app versions send no code and no "via" for this case, so they are checked the same way.
+  if (b.via === "under13" || (!b.code && !b.via)) {
+    const [{ data: prof }, { count: paid }] = await Promise.all([
+      svc.from("profiles").select("birth_year").eq("id", uid).maybeSingle(),
+      svc.from("payments").select("id", { count: "exact", head: true }).eq("user_id", uid).eq("status", "success"),
+    ]);
+    const age = prof?.birth_year ? new Date().getFullYear() - prof.birth_year : null;
+    const fresh = Date.now() - new Date(who.user.created_at).getTime() < 2 * 3600_000 && !paid;
+    const under13 = (age !== null && age < 13) || (age === null && fresh);
+    if (!under13 && b.via === "under13") return json({ error: "Not allowed." }, 403);
+    if (!under13) return json({ error: "Update the app to delete your account, or use cbt.solutiontee.com/delete-account." }, 400);
+    await svc.from("audit_log").insert({ action: "delete_account_under13", table_name: "auth.users", row_id: uid, after: { at: new Date().toISOString() } });
+    const gone = await svc.auth.admin.deleteUser(uid);
+    if (gone.error) return json({ error: "We could not delete the account." }, 500);
+    return json({ ok: true });
+  }
 
   let reason = b.reason ? cleanReason(b.reason) : "", note = cleanNote(b.note);
   if (b.code) {

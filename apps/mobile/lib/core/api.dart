@@ -102,6 +102,9 @@ class WebApi {
   /// Step 2: deletes the account with the emailed code.
   Future<void> deleteAccount({required String code}) => _post('/api/account/delete', {'confirm': 'DELETE', 'code': code, 'via': 'app'}, auth: true);
 
+  /// Under 13 (D-109): the account just made is deleted at once; the server checks the age or that it is brand new.
+  Future<void> deleteUnder13() => _post('/api/account/delete', {'confirm': 'DELETE', 'via': 'under13'}, auth: true);
+
   /// A one-time code (2 minutes, works once) that opens the payment website already logged in (D-115).
   Future<String?> webHandoff({String? plan}) async {
     final d = await _post('/api/web/handoff', {'plan': ?plan}, auth: true);

@@ -53,7 +53,7 @@ Future<bool> checkAge(BuildContext context, WidgetRef ref) async {
 Future<void> blockUnder13(BuildContext context, WidgetRef ref) async {
   final router = GoRouter.of(context);
   try {
-    await ref.read(apiProvider).deleteAccount();
+    await ref.read(apiProvider).deleteUnder13();
   } catch (_) {
     // Offline: the server also refuses the birth year, and the account is signed out below.
   }
