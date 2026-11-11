@@ -1382,3 +1382,9 @@ The owner asked to run the admin from Vercel instead of the laptop.
 - Tested in rolled-back transactions on real data: first run warns only (10 test accounts), a later run bans only
   warned accounts over the level with two kinds of flags (3), no staff, no single-kind bans.
 
+## D-146 — Admin password reset works with 2-step login (2026-11-11)
+- Supabase changes a password only at assurance level 2 when an authenticator is set up ("AAL2 session is required").
+  The admin reset now goes: email code → (if the account has an authenticator) the 6-digit authenticator code →
+  the new password is saved → straight into the admin. A code already used in the same browser keeps its sign-in,
+  so a second try does not need a new email code.
+

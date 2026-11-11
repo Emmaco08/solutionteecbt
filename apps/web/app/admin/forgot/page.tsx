@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: "Reset admin password" };
 
 export default function Page() {
   return (
-    <AuthFrame title="Reset your password" subtitle="We email you a code. Enter it with a new password, then confirm with your authenticator app as usual.">
+    <AuthFrame title="Reset your password" subtitle="We email you a code. Enter it with a new password, then the code from your authenticator app.">
       <ForgotForm />
     </AuthFrame>
   );
