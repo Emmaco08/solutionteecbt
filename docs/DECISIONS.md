@@ -1366,3 +1366,19 @@ The owner asked to run the admin from Vercel instead of the laptop.
 - Note: on WAEC/NECO boards, setting "Too fast" to 0 also skips the fair-play hold there (the check order of that
   rule); keep it above 0 in production.
 
+## D-145 — Automatic safety bans and admin alert emails (2026-11-11)
+- `risk_events` (one row per flag, never twice): shared phone 20, 3+ accounts on a phone 30, second account tried 15,
+  phone blocked 40, unfair test (fair-play risk 70+, not cleared by staff) 15, challenge disqualification 20, blocked
+  invite 15, refund after Premium was given 25, news comment hidden 5, AI rule broken 10. Points are set in admin and
+  fade after 90 days. Staff can clear a student's points (kept for the record).
+- Hourly job (`auto_safety_job`): at the warning level (default 40) a warning email (`safety_warning`, plain list of
+  reasons, reply to contest); at the ban level (default 80), only if warned at least 24 hours earlier and with at
+  least **two kinds** of flags, the account is suspended with the reason "Automatic safety check: …". The normal
+  ban email and in-app appeal follow. Staff are never warned or banned. **Off** until the owner switches it on in
+  Admin → Safety checks ("Check now" counts points without warning or banning while it is off).
+- Daily admin alert email (`admin_alert`) to super admins and admins at 07:05 Lagos, only when something needs a look:
+  automatic bans and warnings, second accounts tried, stuck pending payments, payouts and appeals waiting, reported
+  comments. Starts **off** because the website must be deployed first (the email template lives there).
+- Tested in rolled-back transactions on real data: first run warns only (10 test accounts), a later run bans only
+  warned accounts over the level with two kinds of flags (3), no staff, no single-kind bans.
+

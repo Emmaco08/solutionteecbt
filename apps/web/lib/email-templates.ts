@@ -482,6 +482,56 @@ export function accountDeletedEmail(name: string) {
   };
 }
 
+const REASONS: Record<string, string> = {
+  shared_phone: "More than one account used on the same phone", many_accounts: "Many accounts on the same phone",
+  second_account: "A second account was tried on your phone", phone_banned: "A phone linked to your account was blocked",
+  fair_play: "Tests that looked unfair (leaving the app, screenshots or answers too fast to read)",
+  challenge_dq: "Being disqualified in a challenge", referral_abuse: "Invites that broke the rules",
+  payment_abuse: "A payment refunded after Premium was given", reports: "Comments hidden after reports",
+  ai_strike: "Breaking the AI tutor rules",
+};
+
+/** Automatic safety check, first step (D-145): what we noticed and what to do; a ban can follow if it goes on. */
+export function safetyWarningEmail(name: string, reasons: string[]) {
+  const items = reasons.map((r) => REASONS[r] ?? r.replace(/_/g, " "));
+  return {
+    subject: "A safety warning about your SolutionTee account",
+    html: layout({
+      title: "Safety warning", preheader: "Our automatic checks noticed something on your account.", heading: "Please read: a safety warning",
+      body: p(hello(name)) + p("Our automatic safety checks noticed the following on your SolutionTee CBT account in the last 90 days:")
+        + list(items.map(esc))
+        + note("If this goes on, your account can be suspended. Please use one account per person and per phone, and practise fairly.", "warn")
+        + p("If you think this is a mistake, simply reply to this email and a person will look at it.") + signoff,
+      why: "You are receiving this because of an automatic safety check on your SolutionTee CBT account.",
+    }),
+    text: `${helloText(name)}\n\nOur automatic safety checks noticed the following on your account in the last 90 days:\n${items.map((i) => `- ${i}`).join("\n")}\n\nIf this goes on, your account can be suspended. Please use one account per person and per phone, and practise fairly.\n\nThink this is a mistake? Reply to this email.${footText()}`,
+  };
+}
+
+/** Daily note for admins (D-145): only sent when something needs a look. */
+export function adminAlertEmail(name: string, d: Record<string, unknown>) {
+  const n = (k: string) => Number(d[k] ?? 0);
+  const rows: [string, string, string][] = [
+    ["Automatic bans (24 h)", String(n("auto_bans")), "/admin/safety"],
+    ["Safety warnings sent (24 h)", String(n("warnings")), "/admin/safety"],
+    ["Second accounts tried (24 h)", String(n("second_accounts")), "/admin/fraud"],
+    ["Payments stuck as pending (24 h)", String(n("stuck_payments")), "/admin/payments"],
+    ["Payouts waiting", String(n("payouts_waiting")), "/admin/winners"],
+    ["Ban appeals waiting", String(n("appeals_waiting")), "/admin/fraud"],
+    ["News comments reported", String(n("reported_comments")), "/admin/news/comments"],
+  ].filter((r) => r[1] !== "0") as [string, string, string][];
+  const admin = "https://admin.solutiontee.com";
+  return {
+    subject: `SolutionTee admin: ${rows.length} thing${rows.length === 1 ? "" : "s"} to look at`,
+    html: layout({
+      title: "Admin alerts", preheader: "Today's admin alerts.", heading: "Today's admin alerts",
+      body: p(hello(name)) + details(rows.map(([k, v]) => [k, v])) + button("Open the admin", `${admin}${rows[0]?.[2] ?? "/admin"}`) + signoff,
+      why: "You are receiving this because you are an admin of SolutionTee CBT. Turn these off in Admin → Safety.",
+    }),
+    text: `${helloText(name)}\n\nToday's admin alerts:\n${rows.map(([k, v, u]) => `- ${k}: ${v} (${admin}${u})`).join("\n")}${footText()}`,
+  };
+}
+
 /** Builds the email for an outbox row (D-127). Unknown kinds return null and are marked failed. */
 export function outboxEmail(kind: string, name: string, data: Record<string, unknown>) {
   const s = (k: string) => (typeof data[k] === "string" ? (data[k] as string) : null);
@@ -495,6 +545,8 @@ export function outboxEmail(kind: string, name: string, data: Record<string, unk
     case "payment_receipt": return paymentReceiptEmail(name, data as Parameters<typeof paymentReceiptEmail>[1]);
     case "prize_paid": return prizePaidEmail(name, n("amount"), s("title"), s("bank"));
     case "guardian_turned_off": return guardianTurnedOffEmail(name);
+    case "safety_warning": return safetyWarningEmail(name, Array.isArray(data.reasons) ? (data.reasons as string[]) : []);
+    case "admin_alert": return adminAlertEmail(name, data);
     default: return null;
   }
 }

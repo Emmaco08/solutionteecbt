@@ -967,6 +967,33 @@ export type Database = {
         }
         Relationships: []
       }
+      auto_safety: {
+        Row: {
+          banned_at: string | null
+          kinds: number
+          score: number
+          updated_at: string
+          user_id: string
+          warned_at: string | null
+        }
+        Insert: {
+          banned_at?: string | null
+          kinds?: number
+          score?: number
+          updated_at?: string
+          user_id: string
+          warned_at?: string | null
+        }
+        Update: {
+          banned_at?: string | null
+          kinds?: number
+          score?: number
+          updated_at?: string
+          user_id?: string
+          warned_at?: string | null
+        }
+        Relationships: []
+      }
       badge_first_checks: {
         Row: {
           checked_at: string
@@ -2887,6 +2914,42 @@ export type Database = {
           },
         ]
       }
+      risk_events: {
+        Row: {
+          created_at: string
+          detail: string | null
+          dismissed_at: string | null
+          dismissed_by: string | null
+          id: number
+          kind: string
+          points: number
+          ref: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          detail?: string | null
+          dismissed_at?: string | null
+          dismissed_by?: string | null
+          id?: number
+          kind: string
+          points: number
+          ref: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          detail?: string | null
+          dismissed_at?: string | null
+          dismissed_by?: string | null
+          id?: number
+          kind?: string
+          points?: number
+          ref?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_badges: {
         Row: {
           backfill: boolean
@@ -4156,6 +4219,9 @@ export type Database = {
       }
       admin_referral_settings: { Args: { p: Json }; Returns: undefined }
       admin_referrals: { Args: never; Returns: Json }
+      admin_safety_clear: { Args: { p_user: string }; Returns: undefined }
+      admin_safety_list: { Args: { p_limit?: number }; Returns: Json }
+      admin_safety_run: { Args: never; Returns: Json }
       admin_set_ai_key: {
         Args: { p_key: string; p_provider: string }
         Returns: string
