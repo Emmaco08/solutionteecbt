@@ -36,7 +36,9 @@ export async function saveLeaderboard(form: FormData): Promise<ActionResult> {
   });
   if (!p.success) return { ok: false, error: p.error.issues[0]?.message ?? "Check the settings" };
   const supabase = await createClient();
-  const { error } = await supabase.from("app_settings").update({ value: p.data }).eq("key", "leaderboard");
+  // Keep the parts saved elsewhere (the weekly and monthly rewards, D-143).
+  const { data: cur } = await supabase.from("app_settings").select("value").eq("key", "leaderboard").maybeSingle();
+  const { error } = await supabase.from("app_settings").update({ value: { ...((cur?.value ?? {}) as Record<string, unknown>), ...p.data } }).eq("key", "leaderboard");
   if (error) return { ok: false, error: friendlyError(error) };
   revalidatePath("/admin/leaderboard");
   return { ok: true, message: p.data.on ? "Saved. Students can see the leaderboard." : "Saved. The leaderboard is off." };
@@ -51,4 +53,25 @@ export async function reviewMock(attemptId: string, decision: "ok" | "rejected")
   if (error) return { ok: false, error: friendlyError(error) };
   revalidatePath("/admin/leaderboard");
   return { ok: true, message: decision === "ok" ? "It counts now." : "Kept off the leaderboard." };
+}
+
+const Place = z.object({ xp: z.coerce.number().int().min(0).max(10000), days: z.coerce.number().int().min(0).max(90) });
+const Rewards = z.object({
+  on: z.boolean(),
+  boards: z.object({ jamb: z.boolean(), challenges: z.boolean() }),
+  week: z.array(Place).length(10),
+  month: z.array(Place).length(10),
+});
+
+/** Top-10 rewards each week and month (D-143): paid by the server two days after the period closes. */
+export async function saveLbRewards(input: unknown): Promise<ActionResult> {
+  await admins();
+  const p = Rewards.safeParse(input);
+  if (!p.success) return { ok: false, error: p.error.issues[0]?.message ?? "Check the rewards" };
+  const supabase = await createClient();
+  const { data: cur } = await supabase.from("app_settings").select("value").eq("key", "leaderboard").maybeSingle();
+  const { error } = await supabase.from("app_settings").update({ value: { ...((cur?.value ?? {}) as Record<string, unknown>), rewards: p.data } }).eq("key", "leaderboard");
+  if (error) return { ok: false, error: friendlyError(error) };
+  revalidatePath("/admin/leaderboard");
+  return { ok: true, message: p.data.on ? "Saved. Rewards are paid two days after each week and month ends." : "Saved. Rewards are off." };
 }

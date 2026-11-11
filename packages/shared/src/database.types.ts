@@ -2129,6 +2129,56 @@ export type Database = {
         }
         Relationships: []
       }
+      lb_winners: {
+        Row: {
+          board: string
+          created_at: string
+          days_given: number
+          id: number
+          label: string
+          period: string
+          period_start: string
+          rank: number
+          score: number
+          user_id: string
+          xp_given: number
+        }
+        Insert: {
+          board: string
+          created_at?: string
+          days_given?: number
+          id?: number
+          label: string
+          period: string
+          period_start: string
+          rank: number
+          score: number
+          user_id: string
+          xp_given?: number
+        }
+        Update: {
+          board?: string
+          created_at?: string
+          days_given?: number
+          id?: number
+          label?: string
+          period?: string
+          period_start?: string
+          rank?: number
+          score?: number
+          user_id?: string
+          xp_given?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lb_winners_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leaderboard_reviews: {
         Row: {
           attempt_id: string
@@ -4384,15 +4434,19 @@ export type Database = {
         Args: { p_scope?: string; p_season?: number }
         Returns: Json
       }
+      leaderboard_challenges: { Args: { p_period?: string; p_offset?: number }; Returns: Json }
       leaderboard_for: {
         Args: {
           p_exam?: string
+          p_offset?: number
+          p_period?: string
           p_scope?: string
           p_season?: number
           p_subject?: number
         }
         Returns: Json
       }
+      leaderboard_winners: { Args: never; Returns: Json }
       mark_notifications_read: { Args: { p_ids?: string[] }; Returns: number }
       mock_analytics: { Args: { p_id: string }; Returns: Json }
       mock_event: {

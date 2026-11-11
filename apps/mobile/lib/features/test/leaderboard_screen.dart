@@ -16,15 +16,36 @@ import '../profile/me_extras.dart' show MyAvatar;
 
 /// Leaderboard for a JAMB season (server `leaderboard`, milestone 4E1, D-026/D-066): best full mock per student,
 /// first name + initial only. The server decides everything, including whether it is on.
-typedef LbKey = ({String exam, int? season, String scope, int? subject});
+typedef LbKey = ({String exam, int? season, String scope, int? subject, String period, int offset});
+
+/// The Challenges board is a board like the exams, with points from challenges (D-143).
+const challengesBoard = 'CHALLENGES';
 
 final leaderboardProvider = FutureProvider.autoDispose.family<Map<String, dynamic>, LbKey>((ref, k) async {
-  final j = await ref
-      .read(supabaseProvider)
-      .rpc('leaderboard_for', params: {'p_exam': k.exam, 'p_season': k.season, 'p_scope': k.scope, 'p_subject': k.subject})
-      .timeout(const Duration(seconds: 20));
+  final sb = ref.read(supabaseProvider);
+  final j = k.exam == challengesBoard
+      ? await sb
+            .rpc('leaderboard_challenges', params: {'p_period': k.period == 'season' ? 'year' : k.period, 'p_offset': k.offset})
+            .timeout(const Duration(seconds: 20))
+      : await sb
+            .rpc(
+              'leaderboard_for',
+              params: {'p_exam': k.exam, 'p_season': k.season, 'p_scope': k.scope, 'p_subject': k.subject, 'p_period': k.period, 'p_offset': k.offset},
+            )
+            .timeout(const Duration(seconds: 20));
   return Map<String, dynamic>.from(j as Map);
 });
+
+/// The last closed week's and month's top 10 of each board, with their rewards.
+final leaderboardWinnersProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  try {
+    return rows(await ref.read(supabaseProvider).rpc('leaderboard_winners').timeout(const Duration(seconds: 15)));
+  } catch (_) {
+    return const [];
+  }
+});
+
+const _periods = [('week', 'Week'), ('month', 'Month'), ('year', 'Year'), ('all', 'All time'), ('season', 'Season')];
 
 /// Whether to show the Leaderboard entry on the Test tab (cached, so it also shows offline).
 final leaderboardOnProvider = FutureProvider<bool>((ref) async {
@@ -44,6 +65,13 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
   int? _season;
   String _scope = 'ng';
   int? _subject;
+  String _period = 'week';
+  int _offset = 0;
+
+  /// The exam boards the server allows (remembered while the Challenges board is open).
+  List<String> _exams = const ['JAMB'];
+
+  LbKey get _key => (exam: _exam, season: _season, scope: _scope, subject: _subject, period: _period, offset: _offset);
 
   void _rules(int minMocks, bool jamb) => showSheet<void>(
     context,
@@ -83,16 +111,16 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final key = (exam: _exam, season: _season, scope: _scope, subject: _subject);
+    final key = _key;
     final v = ref.watch(leaderboardProvider(key));
     final d = v.value;
     final on = d?['on'] == true;
     return Scaffold(
       appBar: TopBar(
         title: 'Leaderboard',
-        subtitle: on ? (d!['exam'] == 'JAMB' ? 'Best full JAMB mock this season' : 'Best ${d['exam']} paper this season') : null,
+        subtitle: on ? '${d!['label'] ?? ''}' : null,
         actions: [
-          if (on)
+          if (on && _exam != challengesBoard)
             IconBtn(PhosphorIcons.info(), label: 'How ranking works', onPressed: () => _rules((d!['min_mocks'] as num?)?.toInt() ?? 1, d['exam'] == 'JAMB')),
         ],
       ),
@@ -126,21 +154,28 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
 
   Widget _board(BuildContext context, Map<String, dynamic> d) {
     final c = context.c;
+    final chBoard = _exam == challengesBoard;
+    if (!chBoard && d['exams'] is List) _exams = [for (final x in d['exams'] as List) '$x'];
     final seasons = [for (final s in (d['seasons'] as List? ?? const [])) (s as num).toInt()];
-    final season = (d['season'] as num).toInt();
+    final season = (d['season'] as num?)?.toInt() ?? 0;
     final current = d['current'] == true;
     final top = rows(d['top']);
     final best = d['best'] is Map ? Map<String, dynamic>.from(d['best'] as Map) : null;
     final state = d['my_state'] as String?;
     final rm = context.reduceMotion;
-    final exam = '${d['exam'] ?? 'JAMB'}';
-    final exams = [
-      for (final x in (d['exams'] as List? ?? const ['JAMB'])) '$x',
-    ];
+    final exam = chBoard ? challengesBoard : '${d['exam'] ?? 'JAMB'}';
+    final exams = [..._exams, challengesBoard];
+    final label = '${d['label'] ?? ''}';
+    final winners = ref.watch(leaderboardWinnersProvider).value ?? const <Map<String, dynamic>>[];
+    final lastWin = winners.where((w) => w['board'] == (chBoard ? 'challenges' : 'jamb') && w['period'] == (_period == 'month' ? 'month' : 'week')).firstOrNull;
     final subjects = rows(d['subjects']);
     final subjectId = (d['subject'] as num?)?.toInt();
     final subjectName = subjects.where((x) => x['id'] == subjectId).firstOrNull?['name'];
-    final title = exam == 'JAMB' ? 'JAMB UTME $season' : '$exam ${subjectName ?? ''} $season'.replaceAll('  ', ' ');
+    final title = chBoard
+        ? 'Challenges · $label'
+        : exam == 'JAMB'
+        ? 'JAMB UTME · $label'
+        : '$exam ${subjectName ?? ''} · $label'.replaceAll('  ', ' ');
 
     final sections = <Widget>[
       if (exams.length > 1)
@@ -157,6 +192,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                     onTap: () => setState(() {
                       _exam = x;
                       _subject = null;
+                      if (x == challengesBoard && _period == 'season') _period = 'week';
                     }),
                     child: AnimatedContainer(
                       duration: Motion.fast,
@@ -170,9 +206,14 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          ExamLogo(x, size: LogoSize.sm),
+                          if (x == challengesBoard)
+                            Icon(PhosphorIcons.trophy(PhosphorIconsStyle.fill), size: 20, color: c.accent)
+                          else
+                            ExamLogo(x, size: LogoSize.sm),
                           const Gap(Space.s2),
-                          Text(x, style: context.ty.sm.bold),
+                          Flexible(
+                            child: Text(x == challengesBoard ? 'Challenges' : x, style: context.ty.sm.bold, overflow: TextOverflow.ellipsis),
+                          ),
                         ],
                       ),
                     ),
@@ -183,7 +224,34 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
             ],
           ],
         ),
-      if (exam != 'JAMB' && subjects.isNotEmpty)
+      // Week · Month · Year · All time · Season (D-143); this or the last week/month.
+      SizedBox(
+        height: 40,
+        child: ListView(
+          scrollDirection: Axis.horizontal,
+          children: [
+            for (final (p, l) in _periods)
+              if (!(chBoard && p == 'season')) ...[
+                AppChip(
+                  l,
+                  on: _period == p,
+                  onTap: () => setState(() {
+                    _period = p;
+                    _offset = 0;
+                  }),
+                ),
+                const Gap(Space.s2),
+              ],
+          ],
+        ),
+      ),
+      if (_period == 'week' || _period == 'month')
+        Seg<int>(
+          value: _offset,
+          items: [(0, _period == 'week' ? 'This week' : 'This month'), (1, _period == 'week' ? 'Last week' : 'Last month')],
+          onChanged: (o) => setState(() => _offset = o),
+        ),
+      if (exam != 'JAMB' && !chBoard && subjects.isNotEmpty)
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(
@@ -197,20 +265,27 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
         ),
       Row(
         children: [
-          ExamLogo(exam, size: LogoSize.md),
+          if (chBoard) IconTile(PhosphorIcons.trophy(PhosphorIconsStyle.fill), tone: Tone.gold, size: 44) else ExamLogo(exam, size: LogoSize.md),
           const Gap(Space.s3),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title, style: context.ty.h3),
-                Text(current ? 'This season · ${d['scope'] == 'state' ? state : 'Nigeria'}' : 'Past season', style: context.ty.cap.col(c.textMuted)),
+                Text(
+                  chBoard
+                      ? 'Points from every challenge you finish'
+                      : current
+                      ? 'Now · ${d['scope'] == 'state' ? state : 'Nigeria'}'
+                      : 'Closed board',
+                  style: context.ty.cap.col(c.textMuted),
+                ),
               ],
             ),
           ),
         ],
       ),
-      if (seasons.length > 1)
+      if (!chBoard && _period == 'season' && seasons.length > 1)
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(
@@ -222,7 +297,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
             ],
           ),
         ),
-      if (current && (state ?? '').isNotEmpty)
+      if (!chBoard && current && (state ?? '').isNotEmpty)
         Seg<String>(value: d['scope'] as String, items: [('ng', 'Nigeria'), ('state', 'My state ($state)')], onChanged: (s) => setState(() => _scope = s)),
       if (best != null)
         Container(
@@ -246,17 +321,22 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
             ],
           ),
         ),
+      if (lastWin != null) _WinnersCard(g: lastWin),
       if (top.isEmpty)
         StateBlock(
           icon: PhosphorIcons.ranking(PhosphorIconsStyle.fill),
           tone: Tone.gold,
           title: 'No one here yet',
-          text: current
+          text: chBoard
+              ? 'Finish a challenge to get points on this board.'
+              : current
               ? (exam == 'JAMB'
                     ? 'Finish a full JAMB mock to be the first on this board.'
                     : 'Finish a $exam ${subjectName ?? ''} paper to be the first on this board.')
               : 'No tests counted for this year.',
-          action: current
+          action: chBoard
+              ? Btn('See challenges', kind: BtnKind.accent, onPressed: () => context.push('/test/challenges'))
+              : current
               ? Btn(
                   exam == 'JAMB' ? 'Start a full mock' : 'Practise $exam',
                   kind: BtnKind.accent,
@@ -302,7 +382,10 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
       ),
     ];
     return RefreshIndicator(
-      onRefresh: () async => ref.invalidate(leaderboardProvider((exam: _exam, season: _season, scope: _scope, subject: _subject))),
+      onRefresh: () async {
+        ref.invalidate(leaderboardProvider(_key));
+        ref.invalidate(leaderboardWinnersProvider);
+      },
       child: ListView(
         padding: const EdgeInsets.fromLTRB(Space.s5, Space.s2, Space.s5, Space.s8),
         children: [
@@ -311,6 +394,48 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
             if (i > 0) const Gap(Space.s4),
             rm ? sections[i] : sections[i].animate(delay: Motion.stagger * i).fadeIn(duration: Motion.base).slideY(begin: .05, curve: Motion.out),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// The last closed week's or month's top 3 of this board, with what they won.
+class _WinnersCard extends StatelessWidget {
+  const _WinnersCard({required this.g});
+  final Map<String, dynamic> g;
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    final w = rows(g['winners']);
+    return Container(
+      padding: const EdgeInsets.all(Space.s4),
+      decoration: BoxDecoration(color: c.accentSoft, borderRadius: BorderRadius.circular(Radii.lg)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(PhosphorIcons.crownSimple(PhosphorIconsStyle.fill), size: 18, color: c.onAccentSoft),
+              const Gap(Space.s2),
+              Expanded(child: Text('Winners · ${g['label']}', style: context.ty.sm.bold.col(c.onAccentSoft))),
+            ],
+          ),
+          const Gap(Space.s2),
+          for (final p in w.take(3))
+            Padding(
+              padding: const EdgeInsets.only(top: Space.s1),
+              child: Row(
+                children: [
+                  SizedBox(width: 28, child: Text('#${p['rank']}', style: context.ty.sm.bold.tnum)),
+                  Expanded(child: Text(p['me'] == true ? '${p['name']} (you)' : '${p['name']}', style: context.ty.sm)),
+                  Text(
+                    [if (((p['xp'] as num?) ?? 0) > 0) '+${p['xp']} XP', if (((p['days'] as num?) ?? 0) > 0) '${p['days']} days Premium'].join(' · '),
+                    style: context.ty.cap.bold.col(c.onAccentSoft),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );
@@ -425,7 +550,9 @@ class _MeBar extends ConsumerWidget {
     } else {
       final needs = (me['needs'] as num?)?.toInt() ?? 0;
       final jamb = d['exam'] == null || d['exam'] == 'JAMB';
-      line = needs > 0
+      line = d['board'] == 'challenges'
+          ? 'Finish a challenge to get points'
+          : needs > 0
           ? (jamb
                 ? 'Finish $needs more full JAMB ${needs == 1 ? 'mock' : 'mocks'} to appear'
                 : 'Finish $needs more ${needs == 1 ? 'paper' : 'papers'} in this subject to appear')

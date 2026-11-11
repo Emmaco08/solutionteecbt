@@ -104,6 +104,7 @@ void main() {
     await t.pumpWidget(
       app(const LeaderboardScreen(), [
         profileProvider.overrideWith((_) async => {'full_name': 'Zainab Yusuf'}),
+        leaderboardWinnersProvider.overrideWith((_) async => const <Map<String, dynamic>>[]),
         leaderboardProvider.overrideWith(
           (ref, k) async => {
             'on': true,
@@ -113,6 +114,8 @@ void main() {
             'seasons': [2027, 2026],
             'season': 2027,
             'current': true,
+            'period': k.period,
+            'label': k.period == 'season' ? 'Season 2027' : 'Week of 9 Nov 2026',
             'scope': 'ng',
             'my_state': 'Lagos',
             'min_mocks': 1,
@@ -124,13 +127,19 @@ void main() {
       ]),
     );
     await t.pumpAndSettle();
-    expect(find.text('JAMB UTME 2027'), findsOneWidget);
+    expect(find.text('JAMB UTME · Week of 9 Nov 2026'), findsOneWidget);
     expect(find.text('Abdullahi M.'), findsOneWidget);
     expect(find.text('13 points to reach #3'), findsOneWidget);
     expect(find.text('My state (Lagos)'), findsOneWidget);
-    expect(find.text('JAMB 2026'), findsOneWidget);
     expect(find.text('WAEC'), findsOneWidget);
     expect(find.text('NECO'), findsOneWidget);
+    expect(find.text('Challenges'), findsOneWidget);
+    expect(find.text('Last week'), findsOneWidget);
+    // Past seasons show on the Season tab (D-143).
+    await t.tap(find.text('Season'));
+    await t.pumpAndSettle();
+    expect(find.text('JAMB UTME · Season 2027'), findsOneWidget);
+    expect(find.text('JAMB 2026'), findsOneWidget);
     await t.scrollUntilVisible(find.text('Zainab Y. (you)'), 200, scrollable: find.byType(Scrollable).first);
     expect(find.text('Zainab Y. (you)'), findsOneWidget);
   });
@@ -142,6 +151,7 @@ void main() {
     await t.pumpWidget(
       app(const LeaderboardScreen(), [
         profileProvider.overrideWith((_) async => {'full_name': 'Ada Obi'}),
+        leaderboardWinnersProvider.overrideWith((_) async => const <Map<String, dynamic>>[]),
         leaderboardProvider.overrideWith((ref, k) async {
           asked.add(k);
           return {
@@ -157,6 +167,7 @@ void main() {
             'seasons': [2027],
             'season': 2027,
             'current': true,
+            'label': 'Week of 9 Nov 2026',
             'scope': 'ng',
             'my_state': null,
             'min_mocks': 1,
@@ -173,10 +184,67 @@ void main() {
     await t.tap(find.text('WAEC'));
     await t.pumpAndSettle();
     expect(asked.last.exam, 'WAEC');
-    expect(find.text('WAEC Mathematics 2027'), findsOneWidget);
+    expect(find.text('WAEC Mathematics · Week of 9 Nov 2026'), findsOneWidget);
     await t.tap(find.text('Physics'));
     await t.pumpAndSettle();
     expect(asked.last.subject, 3);
     expect(find.text('You are first. Keep it up!'), findsOneWidget);
+  });
+
+  testWidgets('leaderboard: the Challenges board and last week\'s winners', (t) async {
+    final asked = <LbKey>[];
+    await t.pumpWidget(
+      app(const LeaderboardScreen(), [
+        profileProvider.overrideWith((_) async => {'full_name': 'Ada Obi'}),
+        leaderboardWinnersProvider.overrideWith(
+          (_) async => [
+            {
+              'board': 'challenges',
+              'period': 'week',
+              'label': 'Week of 2 Nov 2026',
+              'winners': [
+                {'rank': 1, 'name': 'Bola A.', 'score': 189, 'xp': 200, 'days': 0, 'me': false},
+              ],
+            },
+          ],
+        ),
+        leaderboardProvider.overrideWith((ref, k) async {
+          asked.add(k);
+          return k.exam == challengesBoard
+              ? {
+                  'on': true,
+                  'board': 'challenges',
+                  'label': 'Week of 9 Nov 2026',
+                  'current': true,
+                  'top': [
+                    {'rank': 1, 'name': 'Bola A.', 'score': 120, 'me': false},
+                  ],
+                  'me': {'rank': null, 'mocks': 0, 'needs': 1},
+                }
+              : {
+                  'on': true,
+                  'exam': 'JAMB',
+                  'exams': ['JAMB'],
+                  'label': 'Week of 9 Nov 2026',
+                  'seasons': [2027],
+                  'season': 2027,
+                  'current': true,
+                  'scope': 'ng',
+                  'min_mocks': 1,
+                  'top': [],
+                  'me': {'rank': null, 'mocks': 0, 'needs': 1},
+                };
+        }),
+      ]),
+    );
+    await t.pumpAndSettle();
+    await t.tap(find.text('Challenges'));
+    await t.pumpAndSettle();
+    expect(asked.last.exam, challengesBoard);
+    expect(find.text('Challenges · Week of 9 Nov 2026'), findsOneWidget);
+    expect(find.text('Winners · Week of 2 Nov 2026'), findsOneWidget);
+    expect(find.text('+200 XP'), findsOneWidget);
+    expect(find.text('Season'), findsNothing); // challenges have no JAMB season
+    expect(find.text('Finish a challenge to get points'), findsOneWidget);
   });
 }

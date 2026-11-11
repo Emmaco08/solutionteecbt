@@ -1338,3 +1338,17 @@ The owner asked to run the admin from Vercel instead of the laptop.
   badge lists the levels and rewards; a full-screen "Badge won" moment (medal pop, confetti, reward; reduce motion
   respected) shows each new level once.
 
+## D-143 — Leaderboards v2: week, month, year, all time, Challenges board, top-10 rewards (2026-11-11)
+- `leaderboard_for` takes `p_period` (week | month | year | all | season) and `p_offset` (0 now, 1 the one before);
+  without them it behaves as before (season), so older app versions keep working. Same fair rules for every period:
+  held mocks, reviews, minimum mocks, hidden, banned and staff students. Weeks run Monday to Sunday, Lagos time.
+- Challenges board (`leaderboard_challenges`): points = the scores of every finished challenge in the period, added
+  up; disqualified runs do not count.
+- Rewards (`app_settings.leaderboard.rewards`, admin → Leaderboard): on/off, which boards (JAMB, Challenges), XP and
+  free Premium days for places 1–10 each week and month. A daily job pays the last closed week/month two days after
+  it ends (time to review held mocks), once per place (`lb_winners`), and sends the winner a notification. Starts
+  **off** with sample XP; the owner sets the real amounts. No cash while cash prizes wait for approval (D-110).
+- App: Week · Month · Year · All time · Season tabs, This/Last week or month, a Challenges board next to the exams,
+  and a Winners card with the last closed period's top 3 and what they won. Saving the leaderboard settings now keeps
+  the rewards (it used to replace the whole setting).
+
