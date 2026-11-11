@@ -1237,3 +1237,12 @@ The owner asked to run the admin from Vercel instead of the laptop.
   built right after the phone app on the same machine (warm Gradle) and the emulator job only opens it. The Google
   Play preview APK and the .aab only with [play] or "Also build the Google Play versions" when run by hand. Gradle
   downloads are cached. Expected: ~3 minutes per change, ~30 per release, ~65 with the Play files.
+
+## D-135 — Exam countdown (2026-11-11)
+- Admin → Motivation → Exam countdown: a date for each exam body (UTME, WASSCE, SSCE), "Show the countdown" and
+  "Full-screen countdown once a day" (`app_settings.exam_countdown`, public). No date = no countdown for that exam.
+- App: each student counts down to the nearest future date among the exams they chose at setup (else the nearest of
+  any exam). A chip under Home's first card ("143 days to your UTME · 24 April 2027"); on the first open of each day,
+  before the daily claim, a full-screen countdown (exam logo, days counting up, today's goal ring, streak, today's
+  motivation line, "Start today's practice", "Later"). Fits small phones (scrolls if needed), still with reduce motion.
+- "Resume any test" (U5) was already in the app: every test mode is saved on the phone and continues from Home.

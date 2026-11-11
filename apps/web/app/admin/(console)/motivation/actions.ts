@@ -45,3 +45,23 @@ export async function deleteLine(id: number): Promise<ActionResult> {
   revalidatePath("/admin/motivation");
   return { ok: true, message: "Deleted." };
 }
+
+const ExamDate = z.union([z.literal(""), z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a date")]);
+const Countdown = z.object({
+  on: z.boolean(),
+  daily: z.boolean(),
+  dates: z.record(z.string().regex(/^[A-Z0-9_-]{2,20}$/), ExamDate),
+});
+
+/** Exam countdown (D-135): the date of each exam and the two switches. Admins only (app settings). */
+export async function saveCountdown(input: unknown): Promise<ActionResult> {
+  await requireStaff(["super_admin", "admin"]);
+  const p = Countdown.safeParse(input);
+  if (!p.success) return { ok: false, error: p.error.issues[0]?.message ?? "Check the dates" };
+  const dates = Object.fromEntries(Object.entries(p.data.dates).filter(([, v]) => v));
+  const supabase = await createClient();
+  const { error } = await supabase.from("app_settings").upsert({ key: "exam_countdown", value: { on: p.data.on, daily: p.data.daily, dates }, is_public: true }, { onConflict: "key" });
+  if (error) return { ok: false, error: friendlyError(error) };
+  revalidatePath("/admin/motivation");
+  return { ok: true, message: "Saved. Phones get it the next time the app opens." };
+}

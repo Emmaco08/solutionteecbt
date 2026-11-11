@@ -24,6 +24,7 @@ import '../../core/device.dart';
 import '../invite/invite_screens.dart';
 import '../xp/streak_ui.dart';
 import '../notifications/turn_on_sheet.dart';
+import '../home/countdown.dart';
 import '../premium/payments.dart';
 import '../setup/age_gate.dart';
 
@@ -84,6 +85,9 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
   Future<void> _dailyPopups() async {
     if (_popupsShown || !mounted) return;
     _popupsShown = true;
+    // The exam countdown first (once a day, D-135), then the milestone or daily claim.
+    await maybeShowDailyCountdown(context, ref);
+    if (!mounted) return;
     try {
       ref.invalidate(myStreakProvider);
       final st = await ref.read(myStreakProvider.future).timeout(const Duration(seconds: 10));

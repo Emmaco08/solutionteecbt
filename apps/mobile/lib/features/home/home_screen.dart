@@ -27,6 +27,7 @@ import '../invite/invite_screens.dart';
 import '../xp/streak_ui.dart';
 import '../xp/xp_screens.dart';
 import '../compete/compete_data.dart';
+import 'countdown.dart';
 import 'qotd_card.dart';
 import 'top_card.dart';
 import 'tour.dart';
@@ -207,6 +208,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ref.invalidate(challengesProvider);
     ref.invalidate(myXpProvider);
     ref.invalidate(myStreakProvider);
+    ref.invalidate(appSettingsProvider);
     await ref.read(examsProvider.future).catchError((_) => <Map<String, dynamic>>[]);
   }
 
@@ -229,6 +231,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final homeCards = (ref.watch(adsConfigProvider).value ?? AdsConfig.off).homeCards;
     final sections = <Widget>[
       HomeTopCard(key: _topKey, unfinished: unfinished, stats: stats),
+      const CountdownChip(),
       const AdBanner(screen: 'home'),
       const DailyClaimCard(),
       if (ref.watch(challengesProvider).value?['on'] == true) ChallengeSection(key: _challengeKey),
