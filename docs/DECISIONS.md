@@ -1246,3 +1246,12 @@ The owner asked to run the admin from Vercel instead of the laptop.
   before the daily claim, a full-screen countdown (exam logo, days counting up, today's goal ring, streak, today's
   motivation line, "Start today's practice", "Later"). Fits small phones (scrolls if needed), still with reduce motion.
 - "Resume any test" (U5) was already in the app: every test mode is saved on the phone and continues from Home.
+
+## D-136 — One search for the whole app, and navigation polish (2026-11-11)
+- Search (magnifying glass on Home and Study, `/search`): pages of the app ("streak", "premium", "delete account"),
+  past question papers by subject and year ("Physics 2015", with the lock shown), subjects, topics (opens a topic drill
+  with the subject and topic already picked), and lessons, notes, novels and documents. Every word must match, in any
+  order. It uses data the app already caches, so it also works offline. Careers join it when they are added.
+- Back button on a tab: other tabs go back to Home; on Home, "Press back again to leave" (2 seconds).
+- Tapping the tab you are on: back to that tab's first page and smoothly to the top.
+- Long-press on the app icon: Continue my test · Quick practice · Ask the AI tutor · Search (`quick_actions`).

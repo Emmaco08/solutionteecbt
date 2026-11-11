@@ -40,6 +40,7 @@ import 'features/xp/streak_ui.dart';
 import 'features/xp/xp_screens.dart';
 import 'features/test/leaderboard_screen.dart';
 import 'features/test/test_screens.dart';
+import 'features/search/search_screen.dart';
 
 /// Screens anyone can open without an account.
 const _public = {
@@ -193,7 +194,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/test/setup',
-        builder: (_, s) => TestSetupScreen(examCode: s.uri.queryParameters['exam'] ?? 'JAMB', mode: s.uri.queryParameters['mode']),
+        builder: (_, s) => TestSetupScreen(
+          examCode: s.uri.queryParameters['exam'] ?? 'JAMB',
+          mode: s.uri.queryParameters['mode'],
+          subjectId: int.tryParse(s.uri.queryParameters['subject'] ?? ''),
+          topic: s.uri.queryParameters['topic'],
+        ),
       ),
       GoRoute(
         path: '/cbt/:id',
@@ -282,7 +288,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, s) => DocScreen(id: s.pathParameters['id']!),
       ),
       GoRoute(path: '/study/bookmarks', builder: (_, _) => const BookmarksScreen()),
-      GoRoute(path: '/study/search', builder: (_, _) => const StudySearchScreen()),
+      GoRoute(path: '/study/search', builder: (_, _) => const AppSearchScreen()),
+      GoRoute(path: '/search', builder: (_, _) => const AppSearchScreen()),
       GoRoute(path: '/downloads', builder: (_, _) => const DownloadsScreen()),
       GoRoute(path: '/ai/history', builder: (_, _) => const AiHistoryScreen()),
       // Payments (milestone 4C). The server sets the price and gives Premium only after checking the payment.

@@ -13,6 +13,7 @@ import '../../core/ads.dart';
 import '../../core/nav.dart';
 import '../../core/config.dart';
 import '../../core/providers.dart';
+import '../../core/tab_scroll.dart';
 import '../../core/updater.dart';
 import '../../core/push.dart';
 import '../../data/ai_repo.dart';
@@ -169,6 +170,7 @@ class ProfileScreen extends ConsumerWidget {
             ref.invalidate(historyProvider);
           },
           child: ListView(
+            controller: ref.watch(tabScrollProvider(4)),
             padding: const EdgeInsets.only(bottom: Space.s8),
             children: [
               const AdBanner(screen: 'me'),
@@ -1176,7 +1178,9 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
             children: [
               Icon(on ? PhosphorIcons.checkCircle(PhosphorIconsStyle.fill) : PhosphorIcons.circle(), size: 22, color: on ? c.secondary : c.textMuted),
               const Gap(Space.s3),
-              Expanded(child: Text(r, style: context.ty.body.copyWith(fontSize: 15, height: 20 / 15))),
+              Expanded(
+                child: Text(r, style: context.ty.body.copyWith(fontSize: 15, height: 20 / 15)),
+              ),
             ],
           ),
         ),
@@ -1203,11 +1207,10 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
                 const Gap(Space.s2),
                 Text('We sent a 6-digit code to $_sentTo. Type it here to delete your account for good.', style: context.ty.body.col(c.textMuted)),
                 const Gap(Space.s5),
-                Center(child: CodeBoxes(controller: _code, focus: _focus, length: 6, bad: _error != null)),
-                if (_error != null) ...[
-                  const Gap(Space.s3),
-                  Text(_error!, style: context.ty.sm.col(c.error), textAlign: TextAlign.center),
-                ],
+                Center(
+                  child: CodeBoxes(controller: _code, focus: _focus, length: 6, bad: _error != null),
+                ),
+                if (_error != null) ...[const Gap(Space.s3), Text(_error!, style: context.ty.sm.col(c.error), textAlign: TextAlign.center)],
                 const Gap(Space.s4),
                 Center(
                   child: Btn('Send a new code', kind: BtnKind.ghost, onPressed: _busy ? null : _sendCode),
@@ -1234,7 +1237,9 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
                     children: [
                       Icon(PhosphorIcons.xCircle(PhosphorIconsStyle.fill), size: 20, color: c.error),
                       const Gap(Space.s3),
-                      Expanded(child: Text(t, style: context.ty.body.copyWith(fontSize: 14, height: 20 / 14))),
+                      Expanded(
+                        child: Text(t, style: context.ty.body.copyWith(fontSize: 14, height: 20 / 14)),
+                      ),
                     ],
                   ),
                   const Gap(Space.s2),
@@ -1249,10 +1254,7 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
                 for (final r in deleteReasons) _reasonTile(r),
                 const Gap(Space.s2),
                 Field(label: 'Anything else you would like to tell us? (optional)', controller: _note, maxLength: 500),
-                if (_error != null) ...[
-                  const Gap(Space.s3),
-                  Text(_error!, style: context.ty.sm.col(c.error)),
-                ],
+                if (_error != null) ...[const Gap(Space.s3), Text(_error!, style: context.ty.sm.col(c.error))],
               ],
       ),
       bottomNavigationBar: FooterCta(
@@ -1263,13 +1265,8 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
             codeStep
                 ? ValueListenableBuilder<TextEditingValue>(
                     valueListenable: _code,
-                    builder: (context, v, _) => Btn(
-                      'Delete my account',
-                      kind: BtnKind.danger,
-                      block: true,
-                      loading: _busy,
-                      onPressed: v.text.trim().length == 6 ? _delete : null,
-                    ),
+                    builder: (context, v, _) =>
+                        Btn('Delete my account', kind: BtnKind.danger, block: true, loading: _busy, onPressed: v.text.trim().length == 6 ? _delete : null),
                   )
                 : Btn('Email me a code', kind: BtnKind.danger, block: true, loading: _busy, onPressed: _reason == null ? null : _sendCode),
             const Gap(Space.s2),

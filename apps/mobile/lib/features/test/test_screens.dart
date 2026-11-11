@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/nav.dart';
 import '../../core/api.dart';
 import '../../core/providers.dart';
+import '../../core/tab_scroll.dart';
 import '../../data/tests_repo.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
@@ -217,6 +218,7 @@ class TestHubScreen extends ConsumerWidget {
         actions: [IconBtn(PhosphorIcons.clockCounterClockwise(), label: 'Test history', onPressed: () => context.push('/history'))],
       ),
       body: ListView(
+        controller: ref.watch(tabScrollProvider(2)),
         padding: const EdgeInsets.fromLTRB(Space.s5, Space.s2, Space.s5, Space.s8),
         children: [
           for (var i = 0; i < sections.length; i++) ...[
@@ -233,9 +235,13 @@ class TestHubScreen extends ConsumerWidget {
 /// Every mode starts a FRESH test. If one is unfinished, the student chooses: start new (the old one is
 /// submitted as it is, so its score counts) or continue it.
 class TestSetupScreen extends ConsumerStatefulWidget {
-  const TestSetupScreen({super.key, required this.examCode, this.mode});
+  const TestSetupScreen({super.key, required this.examCode, this.mode, this.subjectId, this.topic});
   final String examCode;
   final String? mode;
+
+  /// From search (D-136): a subject and topic already picked for a topic drill.
+  final int? subjectId;
+  final String? topic;
   @override
   ConsumerState<TestSetupScreen> createState() => _TestSetupScreenState();
 }
@@ -259,6 +265,8 @@ class _TestSetupScreenState extends ConsumerState<TestSetupScreen> {
     super.initState();
     final want = TestMode.values.where((m) => m.name == widget.mode).firstOrNull;
     _mode = _modes.any((m) => m.$1 == want) ? want! : _modes.first.$1;
+    _subjectId = widget.subjectId;
+    if (widget.topic != null && widget.topic!.isNotEmpty) _topics.add(widget.topic!);
   }
 
   String get _help => switch (_mode) {

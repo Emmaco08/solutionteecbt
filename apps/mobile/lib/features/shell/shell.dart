@@ -14,6 +14,10 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/nav.dart';
 import '../../core/config.dart';
 import '../../core/providers.dart';
+import '../../core/tab_scroll.dart';
+
+import 'package:quick_actions/quick_actions.dart';
+
 import '../../core/push.dart';
 import '../../core/secure_screen.dart';
 import '../../data/tests_repo.dart';
@@ -74,12 +78,62 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
     }
     Future.microtask(_startPush);
     Future.microtask(_checkAccount);
+    Future.microtask(_startShortcuts);
     // Screenshots are blocked in the whole app (D-076); on Android 14+ we can say why.
     _secure = SecureScreen.watch(onScreenshot: _screenshotTried);
   }
 
   StreamSubscription<MethodCall>? _secure;
   bool _popupsShown = false;
+  DateTime? _lastBack;
+
+  /// Long-press on the app icon (D-136): Continue test, Practise now, Ask the AI tutor, Search.
+  Future<void> _startShortcuts() async {
+    try {
+      const qa = QuickActions();
+      await qa.initialize((type) async {
+        if (!mounted) return;
+        final router = GoRouter.of(context);
+        switch (type) {
+          case 'continue':
+            final a = await ref.read(dbProvider).unfinishedAttempt();
+            if (!mounted) return;
+            a != null ? router.push('/cbt/${a.id}') : router.go('/test');
+          case 'practice':
+            router.push('/test/setup?exam=JAMB&mode=quick');
+          case 'ai':
+            router.go('/ai');
+          case 'search':
+            router.push('/search');
+        }
+      });
+      await qa.setShortcutItems(const [
+        ShortcutItem(type: 'continue', localizedTitle: 'Continue my test', icon: 'ic_shortcut_continue'),
+        ShortcutItem(type: 'practice', localizedTitle: 'Quick practice', icon: 'ic_shortcut_practice'),
+        ShortcutItem(type: 'ai', localizedTitle: 'Ask the AI tutor', icon: 'ic_shortcut_ai'),
+        ShortcutItem(type: 'search', localizedTitle: 'Search', icon: 'ic_shortcut_search'),
+      ]);
+    } catch (_) {}
+  }
+
+  /// The phone's back button on a tab (D-136): another tab goes back to Home; on Home, press twice to leave.
+  void _onBack() {
+    if (widget.shell.currentIndex != 0) {
+      widget.shell.goBranch(0);
+      return;
+    }
+    final now = DateTime.now();
+    if (_lastBack != null && now.difference(_lastBack!) < const Duration(seconds: 2)) {
+      SystemNavigator.pop();
+      return;
+    }
+    _lastBack = now;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(content: Text('Press back again to leave SolutionTee'), duration: Duration(seconds: 2), behavior: SnackBarBehavior.floating),
+      );
+  }
 
   /// D-082: a milestone celebration (once), else the daily claim pop-up on the first open of the day.
   Future<void> _dailyPopups() async {
@@ -224,20 +278,28 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
     final current = items.indexWhere((t) => _branchOf[t['type']] == widget.shell.currentIndex);
 
     // The sticky banner floats just above the tab bar, over the screen, and stays while scrolling (owner, 2026-11-07).
-    return Scaffold(
-      body: Stack(
-        children: [
-          Positioned.fill(child: widget.shell),
-          Positioned(left: 0, right: 0, bottom: 0, child: ShellStickyBanner(hidden: widget.shell.currentIndex == _branchOf['ai_chat'])),
-        ],
-      ),
-      bottomNavigationBar: _BottomNav(
-        items: [for (final t in items) (type: t['type'] as String, title: t['title'] as String)],
-        current: current < 0 ? 0 : current,
-        onTap: (i) {
-          final b = _branchOf[items[i]['type']]!;
-          widget.shell.goBranch(b, initialLocation: b == widget.shell.currentIndex);
-        },
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _onBack();
+      },
+      child: Scaffold(
+        body: Stack(
+          children: [
+            Positioned.fill(child: widget.shell),
+            Positioned(left: 0, right: 0, bottom: 0, child: ShellStickyBanner(hidden: widget.shell.currentIndex == _branchOf['ai_chat'])),
+          ],
+        ),
+        bottomNavigationBar: _BottomNav(
+          items: [for (final t in items) (type: t['type'] as String, title: t['title'] as String)],
+          current: current < 0 ? 0 : current,
+          onTap: (i) {
+            final b = _branchOf[items[i]['type']]!;
+            // Tapping the tab you are on: back to its first page and up to the top (D-136).
+            if (b == widget.shell.currentIndex) scrollTabToTop(ref, b);
+            widget.shell.goBranch(b, initialLocation: b == widget.shell.currentIndex);
+          },
+        ),
       ),
     );
   }

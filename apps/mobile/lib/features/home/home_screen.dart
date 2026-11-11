@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/ads.dart';
 import '../../core/nav.dart';
 import '../../core/providers.dart';
+import '../../core/tab_scroll.dart';
 import '../../data/db.dart';
 import '../../data/notifications_repo.dart';
 import '../../theme/theme.dart';
@@ -96,7 +97,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   final _startKey = GlobalKey(), _upgradeKey = GlobalKey(), _topKey = GlobalKey(), _challengeKey = GlobalKey(), _chipsKey = GlobalKey();
-  final _scroll = ScrollController();
+  late final _scroll = ref.read(tabScrollProvider(0));
   OverlayEntry? _tour;
 
   @override
@@ -113,7 +114,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   void dispose() {
-    _scroll.dispose();
     _tour?.remove();
     super.dispose();
   }
@@ -350,7 +350,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                       ],
                     ),
-                    const Gap(Space.s2),
+                    const Gap(Space.s1),
+                    IconBtn(PhosphorIcons.magnifyingGlass(), label: 'Search', onPressed: () => context.push('/search')),
                     Consumer(
                       builder: (context, ref, _) {
                         final unread = ref.watch(unreadCountProvider);

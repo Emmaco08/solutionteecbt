@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/ads.dart';
 import '../../core/providers.dart';
+import '../../core/tab_scroll.dart';
 import '../../data/study_repo.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
@@ -91,6 +92,7 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
       body: RefreshIndicator(
         onRefresh: _refresh,
         child: ListView(
+          controller: ref.watch(tabScrollProvider(1)),
           padding: const EdgeInsets.fromLTRB(Space.s5, Space.s2, Space.s5, Space.s8),
           children: [
             const AdBanner(screen: 'study'),
@@ -365,105 +367,6 @@ class _BookmarksScreenState extends ConsumerState<BookmarksScreen> {
           ),
         ],
       ),
-    );
-  }
-}
-
-/// Search across study content the student can see in the lists (titles, topics, subjects).
-class StudySearchScreen extends ConsumerStatefulWidget {
-  const StudySearchScreen({super.key});
-  @override
-  ConsumerState<StudySearchScreen> createState() => _StudySearchScreenState();
-}
-
-class _StudySearchScreenState extends ConsumerState<StudySearchScreen> {
-  final _q = TextEditingController();
-  static const _kinds = ['video_solution', 'lesson', 'note', 'novel', 'doc'];
-
-  @override
-  void dispose() {
-    _q.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final q = _q.text.trim().toLowerCase();
-    final all = <Map<String, dynamic>>[for (final k in _kinds) ...?ref.watch(studyCatalogProvider(k)).value];
-    final hits = q.length < 2
-        ? const <Map<String, dynamic>>[]
-        : [
-            for (final i in all)
-              if ('${i['title']} ${i['subtitle'] ?? ''} ${i['topic'] ?? ''} ${subjectName(ref, i['subject_id'])} ${i['year'] ?? ''}'.toLowerCase().contains(q))
-                i,
-          ];
-    final subjects = q.length < 2
-        ? const <Map<String, dynamic>>[]
-        : [
-            for (final s in ref.watch(subjectsProvider).value ?? const <Map<String, dynamic>>[])
-              if ('${s['name']}'.toLowerCase().contains(q)) s,
-          ];
-    return Scaffold(
-      appBar: TopBar(
-        center: Padding(
-          padding: const EdgeInsets.only(right: Space.s4),
-          child: TextField(
-            controller: _q,
-            autofocus: true,
-            onChanged: (_) => setState(() {}),
-            textInputAction: TextInputAction.search,
-            style: context.ty.body,
-            decoration: InputDecoration(
-              hintText: 'Search questions, topics, notes',
-              border: InputBorder.none,
-              hintStyle: context.ty.body.col(context.c.textSubtle),
-            ),
-          ),
-        ),
-      ),
-      body: q.length < 2
-          ? Center(
-              child: StateBlock(
-                icon: PhosphorIcons.magnifyingGlass(PhosphorIconsStyle.fill),
-                tone: Tone.blue,
-                title: 'What do you want to learn?',
-                text: 'Type a topic, subject or year, for example "logarithms" or "Physics".',
-              ),
-            )
-          : hits.isEmpty && subjects.isEmpty
-          ? Center(
-              child: StateBlock(
-                icon: PhosphorIcons.magnifyingGlass(PhosphorIconsStyle.fill),
-                tone: Tone.neutral,
-                title: 'No results',
-                text: 'Try another word. Past questions are under Past questions by exam, subject and year.',
-                action: Btn('Browse past questions', kind: BtnKind.outline, onPressed: () => context.push('/study/pq')),
-              ),
-            )
-          : ListView(
-              padding: const EdgeInsets.all(Space.s4),
-              children: [
-                ListCard(
-                  children: [
-                    for (final s in subjects)
-                      ListRow(
-                        icon: PhosphorIcons.exam(PhosphorIconsStyle.fill),
-                        title: 'Past questions: ${s['name']}',
-                        caption: 'Study mode with answers',
-                        onTap: () => context.push('/study/pq?subject=${s['id']}'),
-                      ),
-                    for (final i in hits.take(40))
-                      ListRow(
-                        lead: IconTile(kindIcon(i['kind'] as String), tone: i['kind'] == 'note' ? Tone.gold : Tone.blue),
-                        title: plainTitle(i['title']),
-                        caption: [subjectName(ref, i['subject_id']), i['subtitle'] ?? ''].where((x) => '$x'.isNotEmpty).join(' · '),
-                        trailing: i['locked'] == true ? const PremiumPill() : null,
-                        onTap: () => openStudyItem(context, i),
-                      ),
-                  ],
-                ),
-              ],
-            ),
     );
   }
 }
