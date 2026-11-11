@@ -3,9 +3,10 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ArrowRight, CheckCircle, Crown, EnvelopeSimple, LockSimple, ShieldCheck, SignOut, SpinnerGap, Ticket, XCircle } from "@phosphor-icons/react";
+import { ArrowLeft, ArrowRight, ArrowSquareOut, CalendarCheck, CheckCircle, Crown, EnvelopeSimple, LockSimple, Plus, ShieldCheck, SignOut, SpinnerGap, Ticket, XCircle } from "@phosphor-icons/react";
 import type { Session } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
+import { payStatus } from "./done/status";
 
 type Plan = { code: string; name: string; description: string | null; price_kobo: number; duration_days: number | null; ends_on: string | null };
 type Quote = {
@@ -16,6 +17,10 @@ const MAX_CODES = 3;
 
 const ng = (kobo: number) => `₦${(kobo / 100).toLocaleString("en-NG")}`;
 const day = (s: string) => new Date(s).toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" });
+const daysLeft = (s: string) => {
+  const n = Math.max(0, Math.ceil((new Date(s).getTime() - Date.now()) / 86_400_000));
+  return n <= 1 ? "Ends within a day" : `${n.toLocaleString("en-NG")} days left`;
+};
 const ease = [0.22, 1, 0.36, 1] as const;
 const PENDING = "st-pay-pending"; // the payment opened in Paystack (this tab only)
 const REF = /^st_[0-9a-f]{20}$/;
@@ -28,6 +33,10 @@ function backPages() {
 }
 
 type Left = { kind: "checking" | "cancelled"; ref: string } | null;
+type Mine = { tier: "premium" | "free"; expires_at: string | null; plan: string | null };
+
+/** Opens the app's home screen (Android needs the intent: form). */
+const APP_HOME = "intent://app/home#Intent;scheme=solutiontee;package=com.solutiontee.cbt;end";
 
 const QUOTE_ERRORS: Record<string, string> = {
   not_found: "We could not find that code. Check the spelling.", expired: "This code has expired.", used_up: "This code has been used up.",
@@ -61,6 +70,8 @@ export function PayFlow() {
   const [note, setNote] = useState<string | null>(null);
   const [left, setLeft] = useState<Left>(null);
   const [handoff, setHandoff] = useState(Boolean(sp.get("h")));
+  const [mine, setMine] = useState<Mine | null>(null);
+  const [extend, setExtend] = useState(false);
 
   /** Calls the Paystack Edge Function as the signed-in student. */
   const edge = useCallback(async (s: Session, body: Record<string, unknown>) => {
@@ -127,7 +138,17 @@ export function PayFlow() {
         try { sessionStorage.removeItem(PENDING); } catch {}
         setLeft({ kind: "cancelled", ref });
       })
-      .catch(() => { if (live) setLeft(null); });
+      .catch(async () => {
+        // The session could not be used (expired, or logged out elsewhere): ask by reference instead, never spin.
+        const r = await payStatus(ref).catch(() => null);
+        if (!live) return;
+        if (r?.status === "success" || r?.status === "needs_review") {
+          try { sessionStorage.removeItem(PENDING); } catch {}
+          router.replace(`/pay/done?reference=${ref}`);
+          return;
+        }
+        setLeft(r && (r.status === "abandoned" || pressedCancel) ? { kind: "cancelled", ref } : null);
+      });
     if (pressedCancel) window.history.replaceState(null, "", window.location.pathname);
     return () => { live = false; };
   }, [session, sp, edge, router]);
@@ -139,11 +160,12 @@ export function PayFlow() {
     return () => window.removeEventListener("pageshow", show);
   }, []);
 
-  // Logged out after 15 minutes without activity (shared phones and cafés).
+  // Logged out after 15 minutes without activity (shared phones and cafés). Always this browser only ("local"): a
+  // global sign-out would also log the student out of the app on their phone (D-129).
   useEffect(() => {
     if (!session) return;
-    let t = setTimeout(() => sb.auth.signOut(), IDLE_MS);
-    const poke = () => { clearTimeout(t); t = setTimeout(() => sb.auth.signOut(), IDLE_MS); };
+    let t = setTimeout(() => sb.auth.signOut({ scope: "local" }), IDLE_MS);
+    const poke = () => { clearTimeout(t); t = setTimeout(() => sb.auth.signOut({ scope: "local" }), IDLE_MS); };
     const evs = ["pointerdown", "keydown", "scroll"] as const;
     evs.forEach((e) => window.addEventListener(e, poke, { passive: true }));
     return () => { clearTimeout(t); evs.forEach((e) => window.removeEventListener(e, poke)); };
@@ -154,6 +176,14 @@ export function PayFlow() {
     const { data } = sb.auth.onAuthStateChange((_e, s) => setSession(s));
     return () => data.subscription.unsubscribe();
   }, [sb]);
+
+  // Already on Premium? Show that first (with the end date), not the plans (D-129).
+  useEffect(() => {
+    if (!session) { queueMicrotask(() => { setMine(null); setExtend(false); }); return; }
+    let live = true;
+    sb.rpc("my_plan").then(({ data }) => { if (live) setMine((data as Mine | null) ?? { tier: "free", expires_at: null, plan: null }); });
+    return () => { live = false; };
+  }, [session, sb]);
 
   useEffect(() => {
     if (!session) return;
@@ -229,7 +259,8 @@ export function PayFlow() {
   }
 
   const plan = plans.find((p) => p.code === pick);
-  const step = !ready || handoff ? "load" : !session ? (codeLen ? "code" : "email") : "plan";
+  const premium = mine?.tier === "premium" && mine.expires_at ? mine : null;
+  const step = !ready || handoff || (session && !mine) ? "load" : !session ? (codeLen ? "code" : "email") : premium && !extend && !left ? "premium" : "plan";
   const anim = { initial: still ? false : { opacity: 0, x: 24 }, animate: { opacity: 1, x: 0 }, exit: still ? undefined : { opacity: 0, x: -24 }, transition: { duration: 0.35, ease } } as const;
 
   return (
@@ -242,7 +273,7 @@ export function PayFlow() {
           <span className="text-[17px] font-bold">SolutionTee <span className="text-[#C88A12] dark:text-[#F2B233]">CBT</span></span>
         </Link>
         {session ? (
-          <button type="button" onClick={() => sb.auth.signOut()} className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground">
+          <button type="button" onClick={() => sb.auth.signOut({ scope: "local" })} className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground">
             <SignOut size={16} /> Log out
           </button>
         ) : null}
@@ -280,10 +311,19 @@ export function PayFlow() {
               </button>
               <button type="button" onClick={() => sendCode()} disabled={busy} className="mt-3 w-full text-sm font-bold text-muted-foreground hover:text-foreground">Send a new code</button>
             </motion.form>
+          ) : step === "premium" && premium ? (
+            <motion.div key="premium" {...anim}>
+              <p className="text-sm text-muted-foreground">Logged in as <b className="text-foreground">{session?.user.email}</b></p>
+              <PremiumNow plan={premium.plan} until={premium.expires_at!} onMore={() => setExtend(true)} />
+            </motion.div>
           ) : (
             <motion.div key="plan" {...anim}>
               <p className="text-sm text-muted-foreground">Logged in as <b className="text-foreground">{session?.user.email}</b></p>
-              <h1 className="mt-1 text-2xl font-bold tracking-tight">Choose your plan</h1>
+              {premium ? (
+                <button type="button" onClick={() => setExtend(false)} className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"><ArrowLeft size={14} /> Back to my Premium</button>
+              ) : null}
+              <h1 className="mt-1 text-2xl font-bold tracking-tight">{premium ? "Add more time" : "Choose your plan"}</h1>
+              {premium ? <p className="mt-1 text-sm text-muted-foreground">Your Premium runs until {day(premium.expires_at!)}. New time is added after that.</p> : null}
               <AnimatePresence>
                 {left ? (
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
@@ -357,5 +397,32 @@ export function PayFlow() {
       </section>
       <p className="mt-6 text-center text-xs leading-5 text-muted-foreground">SolutionTee CBT is an independent exam-practice platform and is not affiliated with or endorsed by JAMB, WAEC or NECO.</p>
     </div>
+  );
+}
+
+/** Already on Premium (D-129): the plan and its end date first; buying more time is one tap away. */
+export function PremiumNow({ plan, until, onMore }: { plan: string | null; until: string; onMore: () => void }) {
+  return (
+    <>
+      <div className="mt-4 rounded-2xl bg-[#0B1F44] p-5 text-white dark:bg-[#132B55] dark:ring-1 dark:ring-white/10">
+        <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#F2B233] px-2.5 py-1 text-xs font-bold text-[#0B1F44]"><Crown size={14} weight="fill" /> Premium</span>
+        <h1 className="mt-3 text-[24px] font-bold leading-tight tracking-tight">You are already on Premium</h1>
+        <p className="mt-1.5 text-[15px] text-white/75">{plan ? `${plan} plan` : "Your plan"} is active on this account.</p>
+        <div className="mt-4 flex items-center gap-3 rounded-xl bg-white/10 px-4 py-3">
+          <CalendarCheck size={22} weight="fill" className="shrink-0 text-[#F2B233]" />
+          <div className="text-sm">
+            <b className="block text-[15px]">Until {day(until)}</b>
+            <span className="text-white/70">{daysLeft(until)}</span>
+          </div>
+        </div>
+      </div>
+      <a href={APP_HOME} className="mt-5 inline-flex h-13 w-full items-center justify-center gap-2 rounded-2xl bg-[#F2B233] text-[16px] font-bold text-[#0B1F44] transition-transform active:scale-[.98]">
+        <ArrowSquareOut size={19} weight="bold" /> Open the SolutionTee app
+      </a>
+      <button type="button" onClick={onMore} className="mt-3 inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl border text-sm font-bold hover:bg-muted">
+        <Plus size={16} weight="bold" /> Add more time
+      </button>
+      <p className="mt-4 text-center text-xs leading-5 text-muted-foreground">Premium works on every phone where you log in with this email. Extra time starts after {day(until)}.</p>
+    </>
   );
 }

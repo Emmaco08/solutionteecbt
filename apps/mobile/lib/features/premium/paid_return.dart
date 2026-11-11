@@ -50,12 +50,13 @@ class _PaidReturnScreenState extends ConsumerState<PaidReturnScreen> {
       case PaySuccess(:final expiresAt):
         refreshPlan(ref);
         context.go('/pay-success', extra: {'plan': widget.plan ?? 'Premium', 'expires_at': expiresAt});
-      case PayFailed(:final message):
+      case PayFailed(:final message, :final code) when code == 'failed' || code == 'review' || code == 'refunded':
         setState(() => _err = message);
       case PayCancelled():
         setState(() => _err = 'This payment was cancelled. You were not charged.');
       default:
-        // Still on its way (bank transfer can take a few minutes): ask again for about 2 minutes.
+        // Still on its way (bank transfer can take a few minutes), or a slow connection: ask again for about 2 minutes.
+        // A login problem is never shown here: the server is asked by the payment reference instead (D-129).
         if (++_tries < 24) {
           _t = Timer(const Duration(seconds: 5), _check);
         } else {
@@ -80,7 +81,11 @@ class _PaidReturnScreenState extends ConsumerState<PaidReturnScreen> {
                     const Gap(Space.s5),
                     Text('Confirming your payment…', style: context.ty.h3, textAlign: TextAlign.center),
                     const Gap(Space.s2),
-                    Text('This takes a few seconds.', style: context.ty.sm.col(c.textMuted), textAlign: TextAlign.center),
+                    Text(
+                      _tries < 3 ? 'This takes a few seconds.' : 'Still checking with Paystack. Bank transfers can take a few minutes.',
+                      style: context.ty.sm.col(c.textMuted),
+                      textAlign: TextAlign.center,
+                    ),
                   ],
                 )
               : StateBlock(

@@ -4,7 +4,7 @@ import { payStatus } from "./status";
 import { PayResult } from "./result";
 
 export const metadata: Metadata = {
-  title: "Payment received",
+  title: "Payment",
   robots: { index: false, follow: false },
 };
 
@@ -15,15 +15,21 @@ export const metadata: Metadata = {
  */
 export default function Page({ searchParams }: { searchParams: Promise<{ reference?: string; trxref?: string }> }) {
   return (
-    <main className="grid min-h-dvh place-items-center bg-[var(--c-bg)] px-4 py-10">
-      <section className="w-full max-w-md rounded-3xl border bg-card p-6 shadow-sm sm:p-8">
-        {/* Real brand mark from /brand (never redrawn) */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/brand/favicon.svg" alt="" className="mx-auto mb-5 size-14 rounded-2xl" />
-        <Suspense fallback={<div className="h-48 animate-pulse rounded-2xl bg-muted" />}>
-          <Body searchParams={searchParams} />
-        </Suspense>
-      </section>
+    <main className="grid min-h-dvh place-items-center bg-[radial-gradient(ellipse_at_top,#E8EEF8,transparent_60%)] bg-background px-4 py-10 dark:bg-[radial-gradient(ellipse_at_top,#0E2348,transparent_60%)]">
+      <div className="w-full max-w-md">
+        <div className="mb-5 flex items-center justify-center gap-2.5">
+          {/* Real brand mark from /brand (never redrawn) */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brand/favicon.svg" alt="" className="size-8 rounded-xl" />
+          <span className="text-[16px] font-bold">SolutionTee <span className="text-[#C88A12] dark:text-[#F2B233]">CBT</span></span>
+        </div>
+        <section className="rounded-3xl border bg-card p-6 shadow-[var(--shadow-2,0_10px_30px_rgba(6,19,43,.08))] sm:p-8">
+          <Suspense fallback={<div className="h-72 animate-pulse rounded-2xl bg-muted" />}>
+            <Body searchParams={searchParams} />
+          </Suspense>
+        </section>
+        <p className="mt-5 text-center text-xs text-muted-foreground">Payments are processed securely by Paystack.</p>
+      </div>
     </main>
   );
 }

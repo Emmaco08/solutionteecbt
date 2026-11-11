@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useState } from "react";
-import { ArrowSquareOut, CheckCircle, Clock, SpinnerGap, WarningCircle } from "@phosphor-icons/react";
+import { ArrowRight, ArrowSquareOut, Check, Copy, EnvelopeSimple, ShieldCheck, WarningCircle } from "@phosphor-icons/react";
 import { createClient } from "@/lib/supabase/client";
 import { payStatus, type PayStatus } from "./status";
 
@@ -13,14 +13,20 @@ function appLink(reference: string, plan?: string) {
   return android ? `intent://app/paid?${q}#Intent;scheme=solutiontee;package=com.solutiontee.cbt;end` : `solutiontee://app/paid?${q}`;
 }
 
-/** Checks the payment every 4 s for up to 3 minutes (the Paystack webhook usually arrives within seconds). */
+const ng = (kobo: number) => `₦${(kobo / 100).toLocaleString("en-NG")}`;
+const longDay = (s: string) => new Date(s).toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" });
+const ease = [0.22, 1, 0.36, 1] as const;
+
+/** Checks every 3 s for up to 3 minutes. Each check asks Paystack itself (D-129), so it never waits for the webhook. */
 export function PayResult({ reference, initial }: { reference: string; initial: PayStatus }) {
   const [s, setS] = useState(initial);
   const [tries, setTries] = useState(0);
   const still = useReducedMotion();
   const [fromApp, setFromApp] = useState(false);
-  // Paid: the payment tab is cleared and the website logs out (Premium lives on the account, in the app). Opened from the
-  // app: straight back into the app, which shows its own "Premium is on" screen after checking with the server.
+  const [copied, setCopied] = useState(false);
+
+  // Paid: the payment tab is cleared and this browser logs out (this browser only: the app stays logged in). Opened from
+  // the app: straight back into the app, which shows its own "Premium is on" screen after checking with the server.
   useEffect(() => {
     if (s.status !== "success") return;
     let app = false;
@@ -28,59 +34,139 @@ export function PayResult({ reference, initial }: { reference: string; initial: 
     void createClient().auth.signOut({ scope: "local" });
     if (!app) return;
     queueMicrotask(() => setFromApp(true));
-    const t = setTimeout(() => window.location.assign(appLink(reference, s.plan)), 900);
+    const t = setTimeout(() => window.location.assign(appLink(reference, s.plan)), 2200);
     return () => clearTimeout(t);
   }, [s.status, s.plan, reference]);
+
   useEffect(() => {
-    if (s.status !== "pending" && s.status !== "abandoned") return;
-    if (tries > 45) return;
-    const t = setTimeout(async () => { setS(await payStatus(reference)); setTries((n) => n + 1); }, 4000);
+    if (s.status !== "pending" && s.status !== "abandoned" && s.status !== "unknown") return;
+    if (tries > 60) return;
+    const t = setTimeout(async () => { setS(await payStatus(reference)); setTries((n) => n + 1); }, tries < 10 ? 3000 : 5000);
     return () => clearTimeout(t);
   }, [s, tries, reference]);
 
-  const until = s.until ? new Date(s.until).toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" }) : null;
+  const rise = (d = 0) => (still ? {} : { initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.4, delay: d, ease } });
+
   if (s.status === "success") {
+    const what = s.kind === "xp" ? "Your XP has been added" : s.kind === "item" ? "Unlocked on your account" : "Premium is now on";
+    const rows: [string, React.ReactNode][] = [
+      ...(s.plan ? [["Plan", s.plan] as [string, React.ReactNode]] : []),
+      ...(s.until ? [["Premium until", longDay(s.until)] as [string, React.ReactNode]] : []),
+      ...(s.amount_kobo !== undefined ? [["Amount paid", s.amount_kobo > 0 ? ng(s.amount_kobo) : "Free (discount code)"] as [string, React.ReactNode]] : []),
+      ["Reference", (
+        <button key="ref" type="button" title="Copy" onClick={() => { navigator.clipboard?.writeText(reference).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); }).catch(() => {}); }}
+          className="inline-flex items-center gap-1.5 font-mono text-[13px] hover:text-foreground">
+          {reference}{copied ? <Check size={14} weight="bold" className="text-success" /> : <Copy size={14} />}
+        </button>
+      )],
+    ];
     return (
-      <div className="text-center">
-        <motion.span initial={still ? false : { scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 260, damping: 16 }}
-          className="mx-auto grid size-20 place-items-center rounded-full bg-[#E8F7EE] text-[#16A34A]"><CheckCircle size={48} weight="fill" /></motion.span>
-        <h1 className="mt-5 text-2xl font-bold">Premium is on! 🎉</h1>
-        <p className="mt-2 text-[15px] text-muted-foreground">{s.plan ? `${s.plan} plan` : "Your plan"}{until ? `, until ${until}` : ""}. {fromApp ? "Taking you back to the app…" : "Premium is already in the SolutionTee app (log in with the same email)."}</p>
-        <a href={appLink(reference, s.plan)} className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#F2B233] px-6 font-bold text-[#0B1F44]">
-          <ArrowSquareOut size={18} weight="bold" /> Back to the app
-        </a>
-        <Link href="/" className="mt-3 inline-flex h-11 items-center justify-center rounded-2xl px-6 text-sm font-bold text-muted-foreground">Back to the website</Link>
+      <div>
+        <div className="flex flex-col items-center text-center">
+          <SuccessMark still={Boolean(still)} />
+          <motion.p {...rise(0.15)} className="mt-5 text-sm font-bold text-success">Payment successful</motion.p>
+          <motion.h1 {...rise(0.2)} className="mt-1 text-[26px] font-bold leading-tight tracking-tight">{what}</motion.h1>
+          <motion.p {...rise(0.25)} className="mt-2 max-w-sm text-[15px] leading-6 text-muted-foreground">
+            {fromApp ? "Taking you back to the app…" : "Open the SolutionTee app and log in with the same email. Premium is already there."}
+          </motion.p>
+        </div>
+
+        <motion.dl {...rise(0.3)} className="mt-6 divide-y rounded-2xl border bg-muted/40 px-4 text-sm">
+          {rows.map(([k, v]) => (
+            <div key={k} className="flex items-center justify-between gap-4 py-3">
+              <dt className="text-muted-foreground">{k}</dt>
+              <dd className="min-w-0 truncate text-right font-bold">{v}</dd>
+            </div>
+          ))}
+        </motion.dl>
+
+        <motion.div {...rise(0.35)}>
+          <a href={appLink(reference, s.plan)} className="relative mt-6 inline-flex h-13 w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-[#F2B233] px-6 text-[16px] font-bold text-[#0B1F44] transition-transform active:scale-[.98]">
+            {fromApp && !still ? <motion.span aria-hidden className="absolute inset-y-0 left-0 bg-black/10" initial={{ width: "0%" }} animate={{ width: "100%" }} transition={{ duration: 2.2, ease: "linear" }} /> : null}
+            <ArrowSquareOut size={19} weight="bold" className="relative" /> <span className="relative">Open the SolutionTee app</span>
+          </a>
+          <Link href="/" className="mt-2 inline-flex h-12 w-full items-center justify-center rounded-2xl text-sm font-bold text-muted-foreground hover:text-foreground">Back to the website</Link>
+        </motion.div>
+
+        <motion.p {...rise(0.4)} className="mt-3 border-t pt-4 text-center text-xs leading-5 text-muted-foreground">
+          <EnvelopeSimple size={15} className="mr-1 inline align-[-3px]" />We emailed you a receipt. Questions? support@mail.solutiontee.com
+        </motion.p>
       </div>
     );
   }
+
   if (s.status === "failed") {
     return (
-      <div className="text-center">
-        <span className="mx-auto grid size-20 place-items-center rounded-full bg-error-soft text-on-error-soft"><WarningCircle size={44} weight="fill" /></span>
-        <h1 className="mt-5 text-2xl font-bold">The payment did not go through</h1>
-        <p className="mt-2 text-[15px] text-muted-foreground">No money was taken for Premium. You can try again with another way to pay.</p>
-        <Link href="/pay" className="mt-6 inline-flex h-12 items-center justify-center rounded-2xl bg-[#F2B233] px-6 font-bold text-[#0B1F44]">Try again</Link>
-      </div>
+      <Notice tone="error" title="The payment did not go through" text="No money was taken. You can try again, or choose another way to pay on Paystack.">
+        <Link href="/pay" className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#F2B233] px-6 font-bold text-[#0B1F44]">Try again <ArrowRight size={16} weight="bold" /></Link>
+      </Notice>
     );
   }
   if (s.status === "needs_review" || s.status === "refunded") {
     return (
-      <div className="text-center">
-        <span className="mx-auto grid size-20 place-items-center rounded-full bg-warning-soft text-on-warning-soft"><Clock size={44} weight="fill" /></span>
-        <h1 className="mt-5 text-2xl font-bold">{s.status === "refunded" ? "This payment was refunded" : "We are checking this payment"}</h1>
-        <p className="mt-2 text-[15px] text-muted-foreground">{s.status === "refunded" ? "The money went back to you." : "Our team will look at it and email you. You do not need to pay again."} Questions? Write to support@mail.solutiontee.com.</p>
-      </div>
+      <Notice tone="warning" title={s.status === "refunded" ? "This payment was refunded" : "We are checking this payment"}
+        text={s.status === "refunded" ? "The money went back to you." : "Our team will look at it and email you within one working day. You do not need to pay again."}>
+        <p className="mt-4 text-center text-sm text-muted-foreground">Questions? support@mail.solutiontee.com</p>
+      </Notice>
     );
   }
+
+  // Waiting: three plain steps, so the student can see something is happening.
+  const late = tries > 60;
   return (
     <div className="text-center">
-      <span className="mx-auto grid size-20 place-items-center rounded-full bg-info-soft text-on-info-soft"><SpinnerGap size={40} className="animate-spin" /></span>
-      <h1 className="mt-5 text-2xl font-bold">Confirming your payment…</h1>
-      <p className="mt-2 text-[15px] text-muted-foreground">{s.status === "unknown" ? "We could not find this payment yet." : "This usually takes a few seconds."} Paid by bank transfer? It can take a few minutes. You do not need to pay again.</p>
-      {tries > 45 ? <p className="mt-4 text-sm">Still waiting. Open the app later: Premium turns on by itself when the payment arrives.</p> : null}
-      {tries >= 5 ? (
-        <Link href="/pay" className="mt-5 inline-flex h-11 items-center justify-center rounded-2xl border px-5 text-sm font-bold">Cancelled or want another way to pay? Go back</Link>
+      <div className="relative mx-auto grid size-20 place-items-center">
+        <span className="absolute inset-0 rounded-full border-4 border-[#2563B3]/15" />
+        <span className={`absolute inset-0 rounded-full border-4 border-transparent border-t-[#2563B3] ${still ? "" : "animate-spin"}`} />
+        <ShieldCheck size={32} weight="fill" className="text-[#2563B3] dark:text-[#5B8DEF]" />
+      </div>
+      <h1 className="mt-5 text-2xl font-bold tracking-tight">{late ? "Still waiting for your bank" : "Confirming your payment"}</h1>
+      <p className="mx-auto mt-2 max-w-sm text-[15px] leading-6 text-muted-foreground">
+        {late ? "Premium turns on by itself as soon as the money arrives, even if you close this page. You do not need to pay again."
+          : "We are checking with Paystack. This usually takes a few seconds. Paid by bank transfer? It can take a few minutes."}
+      </p>
+      <ol className="mx-auto mt-6 max-w-xs space-y-3 text-left text-sm">
+        {["Payment sent to Paystack", "Checking with Paystack", "Turning on Premium"].map((t, i) => (
+          <li key={t} className="flex items-center gap-3">
+            <span className={`grid size-6 shrink-0 place-items-center rounded-full text-[11px] font-bold ${i === 0 ? "bg-success text-white" : i === 1 ? "bg-[#2563B3] text-white" : "bg-muted text-muted-foreground"}`}>
+              {i === 0 ? <Check size={13} weight="bold" /> : i + 1}
+            </span>
+            <span className={i === 2 ? "text-muted-foreground" : "font-bold"}>{t}</span>
+          </li>
+        ))}
+      </ol>
+      {tries >= 8 ? (
+        <Link href="/pay" className="mt-7 inline-flex h-11 items-center justify-center rounded-2xl border px-5 text-sm font-bold">Cancelled on Paystack? Go back</Link>
       ) : null}
+    </div>
+  );
+}
+
+/** A green ring that draws itself, then the tick (a plain fade when the phone asks for less motion). */
+function SuccessMark({ still }: { still: boolean }) {
+  return (
+    <span className="relative grid size-[88px] place-items-center rounded-full bg-success-soft">
+      <svg viewBox="0 0 88 88" className="absolute inset-0 size-full -rotate-90 text-success" aria-hidden>
+        <motion.circle cx="44" cy="44" r="41" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"
+          initial={still ? false : { pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.6, ease }} />
+      </svg>
+      <motion.span initial={still ? false : { scale: 0.3, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.35, type: "spring", stiffness: 320, damping: 18 }}
+        className="grid size-14 place-items-center rounded-full bg-success text-white">
+        <Check size={30} weight="bold" />
+      </motion.span>
+    </span>
+  );
+}
+
+function Notice({ tone, title, text, children }: { tone: "error" | "warning"; title: string; text: string; children?: React.ReactNode }) {
+  return (
+    <div className="text-center">
+      <span className={`mx-auto grid size-20 place-items-center rounded-full ${tone === "error" ? "bg-error-soft text-on-error-soft" : "bg-warning-soft text-on-warning-soft"}`}>
+        <WarningCircle size={40} weight="fill" />
+      </span>
+      <h1 className="mt-5 text-2xl font-bold tracking-tight">{title}</h1>
+      <p className="mx-auto mt-2 max-w-sm text-[15px] leading-6 text-muted-foreground">{text}</p>
+      {children}
     </div>
   );
 }

@@ -1169,3 +1169,27 @@ The owner asked to run the admin from Vercel instead of the laptop.
   Shared phones (plain statuses: first on this phone / allowed by an admin / paused / banned), Banned (accounts, phones,
   decided appeals) and Activity (events + phones with warning signs). Ban reasons are typed in a dialog with ready
   reasons instead of browser pop-ups. Every decision emails the student.
+
+## D-129 — Payments are confirmed without waiting for the webhook or the student's login (2026-11-11)
+- Cause of "paid but still says not paid": the Paystack live webhook was not set (owner fixed it), and the result page
+  only read our database. Now three independent ways confirm a payment, all through Paystack's own verify answer
+  (amount + currency checked by `pay_paystack_result`, idempotent): (1) the webhook; (2) the result page and the app
+  ask the payment server with the reference alone (`paystack` action `status`, no login, 60 checks per reference and
+  150 per IP per 10 minutes, only the status comes back); (3) a scheduler (`paystack-sweep`, every 2 minutes, only
+  when something is waiting) checks every unfinished Paystack payment of the last 2 days.
+- Cause of "Please log in again" in the app after paying on the website: the website's Log out button, its 15-minute
+  idle log-out and two admin pages used Supabase's default sign-out, which is global (it ends every session of the
+  account, the app included). All sign-outs on the website are now `scope: "local"` (this browser only). The app also
+  renews an expired login once and, if that fails, asks by reference, so a paid student is never told to log in.
+- "Not paid yet" answers from repeated checks are no longer written to the payment log (it filled with copies).
+- /pay shows "You are already on Premium" (plan, end date, days left, Open the app, Add more time) to a logged-in
+  Premium student; extra time starts after the current end date. `my_plan()` now also returns the plan name.
+- New result page: a receipt (plan, Premium until, amount, reference with copy), one main action (Open the app),
+  a three-step waiting state, no emoji.
+
+## D-130 — Dedicated virtual accounts: not now (2026-11-11)
+- With the registered business, Paystack offers Dedicated Virtual Accounts (one permanent account number per student).
+  Not needed: "Bank transfer" already gives a fresh account number for each payment and confirms it automatically
+  (Paystack Pay with Transfer), and a DVA needs each student's full name and phone number, and in Nigeria often a BVN
+  check, which is more personal data than we want from teenagers. Revisit if students ask to top up a wallet by
+  transfer without opening the app.

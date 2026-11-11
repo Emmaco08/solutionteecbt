@@ -1,5 +1,6 @@
 // Paystack payments for the direct APK and the website (milestone 4C, docs/plans/phase-4c.md, D-061).
-// POST /functions/v1/paystack   Authorization: Bearer <access token>
+// POST /functions/v1/paystack   Authorization: Bearer <access token>   (deployed with verify_jwt = false: every action
+//   checks the student itself, except "status" (reference only, Paystack decides) and "sweep" (cron token), D-129)
 //   {action:"start", plan, code?, source?: "app"|"web", method?, bank?, callback?, cancel?}
 //      callback / cancel (website, D-115): where Paystack sends the student after paying, or when they press Cancel on
 //      Paystack's page. Only our own /pay/done and /pay pages are accepted; the reference is added to the cancel page.
@@ -26,6 +27,8 @@
 //   {action:"payout_send", claim_id}    admins with 2-step: sends the prize by Paystack Transfer (needs transfer OTP off)
 //   {action:"payout_verify", claim_id}  admins with 2-step: asks Paystack again how the transfer went
 //   (payout_check / payout_send need the paystack_payouts flag on; GET ?health=1 says whether the keys are set, never the keys)
+//   {action:"status", reference}   no login needed (D-129): asks Paystack and applies its answer → {status, expires_at?}
+//   {action:"sweep"}   the scheduler only (x-cron-token): confirms recent unfinished payments with Paystack
 //   {action:"refund", reference}   admins with 2-step only
 //      → {requested:true}; Premium is removed when Paystack's refund.processed webhook arrives.
 // The app never sends an amount: the price comes from pay_start() on the server.
@@ -150,9 +153,11 @@ async function premiumUntil(uid: string): Promise<string | null> {
   return data?.[0]?.expires_at ?? null;
 }
 
-/** Asks Paystack about a reference and applies the answer (idempotent). */
-async function verifyAndApply(reference: string, kind: "verify" | "admin_check") {
+/** Asks Paystack about a reference and applies the answer (idempotent). [quiet] (status checks and the sweep, D-129):
+ *  "not paid yet" answers are not written to the payment log, so repeated checks do not fill it. */
+async function verifyAndApply(reference: string, kind: "verify" | "admin_check", quiet = false) {
   const v = await paystack(`/transaction/verify/${encodeURIComponent(reference)}`);
+  if (!v.ok && quiet) return { status: "pending" };
   if (!v.ok) {
     // 400 "Transaction reference not found": the student has not opened or finished checkout yet.
     await rpc("pay_note", { p_reference: reference, p_provider: "paystack", p_kind: kind, p_ok: false,
@@ -161,6 +166,7 @@ async function verifyAndApply(reference: string, kind: "verify" | "admin_check")
   }
   const d = (v.body.data ?? {}) as Record<string, unknown>;
   if (d.reference !== reference) return { status: "pending" };
+  if (quiet && d.status !== "success" && d.status !== "failed") return { status: "pending" };
   return await rpc<{ status: string }>("pay_paystack_result", {
     p_reference: reference, p_status: String(d.status ?? ""), p_amount_kobo: Number(d.amount ?? -1),
     p_currency: String(d.currency ?? ""), p_channel: (d.channel as string) ?? null, p_data: trimPaystack(d), p_kind: kind, p_event_key: null,
@@ -227,11 +233,58 @@ Deno.serve(async (req) => {
     return json({ secret_key: mode(sk), public_key: mode(pk), public_key_usable: publicKey() !== null, payouts_on: await payoutsOn(), pay_with_bank: list });
   }
   if (req.method !== "POST") return json({ error: "POST only" }, 405);
-  const user = await userFrom(req);
-  if (!user) return json({ error: "Please log in again.", code: "auth" }, 401);
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return json({ error: "Bad request" }, 400); }
   const action = String(body.action ?? "");
+
+  // D-129: confirming a payment never depends on the student still being logged in or on Paystack's webhook.
+  // "status": anyone holding the (long, random) reference may ask; only the status is returned, and only Paystack's
+  // own verify answer is applied (amount and currency are checked by pay_paystack_result, as always).
+  if (action === "status") {
+    const reference = String(body.reference ?? "");
+    if (!/^st_[0-9a-f]{20}$/.test(reference)) return json({ error: "Bad reference" }, 400);
+    const ip = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || "?";
+    if (!allowed(`status:${reference}`, 60) || !allowed(`status-ip:${ip}`, 150)) return json({ error: "Too many checks. Wait a moment." }, 429);
+    try {
+      const { data: pay } = await admin.from("payments").select("user_id, status, provider").eq("reference", reference).maybeSingle();
+      if (!pay) return json({ status: "unknown" });
+      let status = String(pay.status);
+      if (pay.provider === "paystack" && (status === "pending" || status === "abandoned" || status === "failed")) {
+        const r = await verifyAndApply(reference, "verify", true);
+        status = r.status === "pending" ? status : String(r.status);
+      }
+      return json({ status, expires_at: status === "success" && pay.user_id ? await premiumUntil(String(pay.user_id)) : null });
+    } catch (e) {
+      console.error(e);
+      return json({ error: "Could not check the payment. Try again.", code: "server" }, 500);
+    }
+  }
+  // "sweep": the database scheduler (secret cron token) confirms recent unfinished payments with Paystack every 2 minutes.
+  if (action === "sweep") {
+    const token = req.headers.get("x-cron-token") ?? "";
+    const ok = token ? (await admin.rpc("push_cron_ok", { p_token: token })).data === true : false;
+    if (!ok) return json({ error: "forbidden" }, 403);
+    const since = new Date(Date.now() - 48 * 3600_000).toISOString(), recent = Date.now() - 2 * 3600_000;
+    const { data: rows } = await admin.from("payments").select("reference, created_at, status").eq("provider", "paystack")
+      .in("status", ["pending", "abandoned"]).gte("created_at", since).order("created_at", { ascending: false }).limit(60);
+    // Payments from the last 2 hours every run; older ones (up to 2 days) about every 30 minutes.
+    const halfHour = new Date().getUTCMinutes() % 30 < 2;
+    const due = (rows ?? []).filter((r) => new Date(String(r.created_at)).getTime() > recent || halfHour).slice(0, 40);
+    const out: Record<string, number> = {};
+    for (const r of due) {
+      try {
+        const v = await verifyAndApply(String(r.reference), "verify", true);
+        out[String(v.status)] = (out[String(v.status)] ?? 0) + 1;
+      } catch (e) {
+        console.error(e);
+        out.error = (out.error ?? 0) + 1;
+      }
+    }
+    return json({ ok: true, checked: due.length, results: out });
+  }
+
+  const user = await userFrom(req);
+  if (!user) return json({ error: "Please log in again.", code: "auth" }, 401);
   const method = ["card", "transfer", "ussd", "bank", "page"].includes(String(body.method)) ? String(body.method) : "card";
   const bank = String(body.bank ?? "737");
   if (method === "ussd" && !USSD_BANKS[bank]) return json({ error: "Choose your bank for USSD." }, 400);
@@ -404,10 +457,10 @@ Deno.serve(async (req) => {
       if (pay.user_id !== user.id && !isAdmin) return json({ error: "Payment not found" }, 404);
 
       if (action === "check") {
-        const r = pay.status === "pending" || pay.status === "failed" || pay.status === "abandoned" ? await verifyAndApply(reference, isAdmin && pay.user_id !== user.id ? "admin_check" : "verify")
+        const r = pay.status === "pending" || pay.status === "failed" || pay.status === "abandoned" ? await (isAdmin && pay.user_id !== user.id ? verifyAndApply(reference, "admin_check") : verifyAndApply(reference, "verify", true))
           : { status: pay.status };
-        // A cancelled (abandoned) payment stays cancelled unless Paystack now says it was paid.
-        const status = pay.status === "abandoned" && r.status === "pending" ? "abandoned" : r.status;
+        // A cancelled (abandoned) or failed payment keeps that status unless Paystack now gives a final answer.
+        const status = r.status === "pending" ? String(pay.status) : String(r.status);
         return json({ status, expires_at: status === "success" && pay.user_id ? await premiumUntil(pay.user_id) : null });
       }
 

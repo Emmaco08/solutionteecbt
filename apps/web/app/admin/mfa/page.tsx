@@ -26,7 +26,7 @@ async function Gate({ searchParams }: { searchParams: PageProps<"/admin/mfa">["s
   // Only staff may continue (students who find this page are signed out).
   const { data: staff } = await supabase.from("staff").select("role").eq("user_id", uid).maybeSingle();
   if (!staff) {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: "local" }); // this browser only, never the app (D-129)
     redirect("/admin/login?e=not_staff");
   }
   if (data?.claims?.aal === "aal2") redirect(next);

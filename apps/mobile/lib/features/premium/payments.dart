@@ -249,11 +249,20 @@ class PaystackProvider implements PaymentProvider {
   @override
   bool get takesCodes => true;
 
-  Future<Map<String, dynamic>> _call(Map<String, Object?> body) async {
+  Future<Map<String, dynamic>> _call(Map<String, Object?> body, {bool retried = false}) async {
     try {
       final r = await _sb.functions.invoke('paystack', body: body).timeout(const Duration(seconds: 30));
       return Map<String, dynamic>.from(r.data as Map);
     } on FunctionException catch (e) {
+      // The login ran out while the student was away paying (D-129): renew it once and ask again.
+      if (e.status == 401 && !retried) {
+        var renewed = false;
+        try {
+          await _sb.auth.refreshSession().timeout(const Duration(seconds: 10));
+          renewed = true;
+        } catch (_) {}
+        if (renewed) return _call(body, retried: true);
+      }
       throw PayFailed(_fnError(e, 'Something went wrong. Please try again.'), code: _fnCode(e));
     } on TimeoutException {
       throw const PayFailed('The connection is slow. Check your data and try again.');
@@ -363,7 +372,29 @@ class PaystackProvider implements PaymentProvider {
         _ => PayPending(reference),
       };
     } on PayFailed catch (e) {
+      // Still not logged in: ask by the payment reference alone, so a paid student is never told to log in (D-129).
+      if (e.code == 'auth') return statusByReference(reference);
       return e;
+    }
+  }
+
+  /// The payment's status without a login (the server asks Paystack; only the status comes back, D-129).
+  Future<PayResult> statusByReference(String reference) async {
+    try {
+      final r = await _call({'action': 'status', 'reference': reference}, retried: true);
+      return switch (r['status']) {
+        'success' => PaySuccess(_date(r['expires_at'])),
+        'failed' => const PayFailed('The payment did not go through. You were not charged. Try again or use another way to pay.', code: 'failed'),
+        'needs_review' => const PayFailed(
+          'We are checking this payment. If you were charged, Premium turns on after our check, or contact support.',
+          code: 'review',
+        ),
+        'refunded' => const PayFailed('This payment was refunded.', code: 'refunded'),
+        'abandoned' => const PayCancelled(),
+        _ => PayPending(reference),
+      };
+    } on PayFailed {
+      return PayPending(reference);
     }
   }
 
