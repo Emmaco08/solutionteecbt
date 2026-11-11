@@ -12,6 +12,7 @@ import '../../theme/tokens.g.dart';
 import '../../ui/kit.dart';
 import '../../widgets/phosphor.g.dart';
 import '../../widgets/states.dart';
+import '../careers/careers.dart';
 import '../premium/paywall.dart';
 import 'study_widgets.dart';
 
@@ -51,6 +52,7 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
     ref.invalidate(studyProgressProvider);
     ref.invalidate(bookmarksProvider);
     ref.invalidate(contentKindsProvider);
+    ref.invalidate(careersProvider);
     await ref.read(studyProgressProvider.future).catchError((_) => const <Map<String, dynamic>>[]);
   }
 
@@ -143,6 +145,8 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
                   ),
               ],
             ),
+            const Gap(Space.s4),
+            const CareerCard(),
             const Gap(Space.s6),
             const SectTitle('Continue learning'),
             if (progress.isNotEmpty) ...[

@@ -1255,3 +1255,20 @@ The owner asked to run the admin from Vercel instead of the laptop.
 - Back button on a tab: other tabs go back to Home; on Home, "Press back again to leave" (2 seconds).
 - Tapping the tab you are on: back to that tab's first page and smoothly to the top.
 - Long-press on the app icon: Continue my test · Quick practice · Ask the AI tutor · Search (`quick_actions`).
+
+## D-137 — Careers and JAMB subject combinations (2026-11-11)
+- New `careers` table (public read, editors manage it, audit-logged): name, group, university course and years, what
+  the job is, the three JAMB subjects besides English (subject codes), a note on alternatives, O'level credits, after
+  school (internship, NYSC, licence), skills, good universities and a rough pay guide. `profiles.career_id` (the
+  student may change only that column; deleting a career clears it).
+- 44 sample careers across Health, Engineering and Tech, Science and Agriculture, Business, Law and Social Sciences,
+  Arts and Education. They are a starting point, not checked facts: each row has a **checked** flag and Admin →
+  Careers shows "Not checked" until the owner ticks it after checking this year's JAMB brochure (IBASS). The app always
+  says to confirm the combination in the brochure and that pay is a rough guide.
+- App: Study card (my career and its combination, or "Careers and subject combinations"); Careers list (my career
+  first, search, group chips); career page (what the job is, JAMB subjects, path: secondary → JAMB → university → after
+  school, skills, where to study, pay) with "This is my dream career", then "Use these as my JAMB subjects" when they
+  differ; "Not sure? Pick by the career you want" on setup's JAMB subjects step fills in the subjects (only ones the
+  JAMB exam offers; the student picks any missing one); Settings → My dream career; careers in app search.
+- Kept optional (no extra setup step), so sign-up stays as short as before.
+

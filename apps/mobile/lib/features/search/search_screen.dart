@@ -9,6 +9,7 @@ import '../../theme/tokens.g.dart';
 import '../../ui/kit.dart';
 import '../../widgets/exam_logo.dart';
 import '../../widgets/phosphor.g.dart';
+import '../careers/careers.dart';
 import '../study/study_widgets.dart';
 
 /// A place in the app a student can jump to from search (D-136).
@@ -58,6 +59,13 @@ final List<QuickLink> quickLinks = [
     words: 'bookmarks saved questions',
     icon: PhosphorIcons.bookmarkSimple(PhosphorIconsStyle.fill),
     route: '/study/bookmarks',
+    tone: Tone.gold,
+  ),
+  (
+    title: 'Careers and subject combinations',
+    words: 'career careers job course university subject combination jamb dream',
+    icon: PhosphorIcons.graduationCap(PhosphorIconsStyle.fill),
+    route: '/careers',
     tone: Tone.gold,
   ),
   (title: 'Downloads', words: 'downloads offline saved', icon: PhosphorIcons.downloadSimple(PhosphorIconsStyle.fill), route: '/downloads', tone: Tone.navy),
@@ -181,6 +189,8 @@ class _AppSearchScreenState extends ConsumerState<AppSearchScreen> {
     final paperHits = !ready || !RegExp(r'\b(19|20)\d\d\b').hasMatch(q)
         ? const <Map<String, dynamic>>[]
         : years.where((y) => searchMatch(q, '${examCode(y['exam_id'])} ${subj(y['subject_id'])} ${y['year']} past questions paper')).take(12).toList();
+    final careers = ref.watch(careersProvider).value ?? const <Map<String, dynamic>>[];
+    final careerHits = ready ? careers.where((x) => careerMatch(q, x)).take(5).toList() : const <Map<String, dynamic>>[];
     final topicHits = ready ? topics.where((t) => searchMatch(q, '${t['name']} ${subj(t['subject_id'])}')).take(8).toList() : const <Map<String, dynamic>>[];
     final itemHits = ready
         ? items
@@ -188,7 +198,7 @@ class _AppSearchScreenState extends ConsumerState<AppSearchScreen> {
               .take(30)
               .toList()
         : const <Map<String, dynamic>>[];
-    final nothing = links.isEmpty && subjectHits.isEmpty && paperHits.isEmpty && topicHits.isEmpty && itemHits.isEmpty;
+    final nothing = links.isEmpty && careerHits.isEmpty && subjectHits.isEmpty && paperHits.isEmpty && topicHits.isEmpty && itemHits.isEmpty;
 
     Widget section(String title, List<Widget> rows) => rows.isEmpty
         ? const SizedBox.shrink()
@@ -291,6 +301,15 @@ class _AppSearchScreenState extends ConsumerState<AppSearchScreen> {
                       title: '${s['name']}',
                       caption: 'Past questions, by year',
                       onTap: () => context.push('/study/pq?subject=${s['id']}'),
+                    ),
+                ]),
+                section('Careers', [
+                  for (final x in careerHits)
+                    ListRow(
+                      lead: IconTile(fieldIcon(x['field'] as String?), tone: fieldTone(x['field'] as String?)),
+                      title: '${x['name']}',
+                      caption: 'JAMB: ${combination(x, subjectNamer(ref))}',
+                      onTap: () => context.push('/careers/${x['id']}'),
                     ),
                 ]),
                 section('Practise a topic', [

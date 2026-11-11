@@ -12,6 +12,7 @@ import '../../ui/kit.dart';
 import '../../ui/subject_icons.dart';
 import '../../widgets/exam_logo.dart';
 import '../../widgets/phosphor.g.dart';
+import '../careers/careers.dart';
 import '../../widgets/states.dart';
 import 'age_gate.dart';
 
@@ -68,6 +69,10 @@ class SetupScreen extends ConsumerStatefulWidget {
 
 class _SetupScreenState extends ConsumerState<SetupScreen> {
   int _step = 1;
+
+  /// Picked from "Pick by career" on the JAMB subjects step (optional, D-137).
+  int? _careerId;
+  String? _careerName;
   final _guardianKey = GlobalKey<GuardianStepState>();
   bool _guardianDone = false, _birthLocked = false;
   final _name = TextEditingController(), _phone = TextEditingController(), _school = TextEditingController();
@@ -134,6 +139,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
             .update({
               'jamb_subjects': ['eng', ..._subjects],
               'target_exams': exams.toList(),
+              if (_careerId != null) 'career_id': _careerId,
             })
             .eq('id', uid);
         ref.invalidate(profileProvider);
@@ -152,6 +158,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
             'target_exams': _exams.toList(),
             'jamb_subjects': _jamb ? ['eng', ..._subjects] : <String>[],
             'target_score': _jamb ? _target.round() : null,
+            if (_careerId != null) 'career_id': _careerId,
           })
           .eq('id', uid);
       ref.invalidate(profileProvider);
@@ -465,6 +472,24 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
             ],
           ),
           const Gap(Space.s2),
+          _CareerHint(
+            career: _careerName,
+            onTap: () async {
+              final c = await pickCareer(context);
+              if (c == null || !mounted) return;
+              final allowedCodes = shown.map((s) => s['code']).toSet();
+              final picked = careerSubjects(c).where(allowedCodes.contains).take(3).toList();
+              setState(() {
+                _careerId = c['id'] as int?;
+                _careerName = '${c['name']}';
+                _subjects
+                  ..clear()
+                  ..addAll(picked);
+              });
+              if (mounted && picked.length < 3) toast(context, 'Pick the last subject yourself. Check the brochure for your school.');
+            },
+          ),
+          const Gap(Space.s2),
           SubjTile(
             on: true,
             locked: true,
@@ -506,6 +531,38 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
         ],
       );
     }, onRetry: () => ref.invalidate(subjectsProvider));
+  }
+}
+
+/// "Not sure? Pick by career": opens the career list and fills in that course's JAMB subjects.
+class _CareerHint extends StatelessWidget {
+  const _CareerHint({required this.career, required this.onTap});
+  final String? career;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    return Pressable(
+      onTap: onTap,
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 48),
+        padding: const EdgeInsets.symmetric(horizontal: Space.s3, vertical: Space.s2),
+        decoration: BoxDecoration(color: c.accentSoft, borderRadius: BorderRadius.circular(Radii.md)),
+        child: Row(
+          children: [
+            Icon(PhosphorIcons.graduationCap(PhosphorIconsStyle.fill), size: 20, color: c.onAccentSoft),
+            const Gap(Space.s2),
+            Expanded(
+              child: Text(
+                career == null ? 'Not sure? Pick by the career you want' : 'For $career. Tap to change',
+                style: context.ty.sm.bold.col(c.onAccentSoft),
+              ),
+            ),
+            Icon(PhosphorIcons.caretRight(), size: 16, color: c.onAccentSoft),
+          ],
+        ),
+      ),
+    );
   }
 }
 

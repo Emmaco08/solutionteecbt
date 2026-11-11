@@ -1,13 +1,13 @@
 "use client";
 import {
-  Article, BellRinging, Books, Circle, Coins, Database, EnvelopeSimple, DeviceMobile, Exam, FileCsv, Gift, IdentificationBadge, Layout, Lightbulb, ListChecks,
+  Article, BellRinging, Books, Briefcase, Circle, Coins, Database, EnvelopeSimple, DeviceMobile, Exam, FileCsv, Gift, IdentificationBadge, Layout, Lightbulb, ListChecks,
   MagnifyingGlass, Megaphone, Newspaper, PlusCircle, Quotes, Ranking, Receipt, Robot, Scales, ShieldWarning, SlidersHorizontal, Sparkle, SquaresFour, Storefront, Strategy,
   Ticket, ToggleRight, Trophy, Users, Wrench, type IconWeight,
 } from "@phosphor-icons/react";
 
 // Only the icons the admin uses, so the bundle stays small.
 const ICONS = {
-  Article, BellRinging, Books, Coins, Database, EnvelopeSimple, DeviceMobile, Exam, FileCsv, Gift, IdentificationBadge, Layout, Lightbulb, ListChecks, MagnifyingGlass,
+  Article, BellRinging, Books, Briefcase, Coins, Database, EnvelopeSimple, DeviceMobile, Exam, FileCsv, Gift, IdentificationBadge, Layout, Lightbulb, ListChecks, MagnifyingGlass,
   Megaphone, Newspaper, PlusCircle, Quotes, Ranking, Receipt, Robot, Scales, ShieldWarning, SlidersHorizontal, Sparkle, SquaresFour, Storefront, Strategy, Ticket, ToggleRight,
   Trophy, Users, Wrench,
 };

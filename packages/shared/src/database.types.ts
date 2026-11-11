@@ -1056,6 +1056,66 @@ export type Database = {
         }
         Relationships: []
       }
+      careers: {
+        Row: {
+          active: boolean
+          after_school: string | null
+          checked: boolean
+          course: string
+          earnings: string | null
+          field: string
+          id: number
+          jamb_note: string | null
+          jamb_subjects: string[]
+          name: string
+          olevel: string | null
+          skills: string[]
+          sort: number
+          summary: string
+          universities: string[]
+          updated_at: string
+          years: number
+        }
+        Insert: {
+          active?: boolean
+          after_school?: string | null
+          checked?: boolean
+          course: string
+          earnings?: string | null
+          field: string
+          id?: never
+          jamb_note?: string | null
+          jamb_subjects?: string[]
+          name: string
+          olevel?: string | null
+          skills?: string[]
+          sort?: number
+          summary: string
+          universities?: string[]
+          updated_at?: string
+          years?: number
+        }
+        Update: {
+          active?: boolean
+          after_school?: string | null
+          checked?: boolean
+          course?: string
+          earnings?: string | null
+          field?: string
+          id?: never
+          jamb_note?: string | null
+          jamb_subjects?: string[]
+          name?: string
+          olevel?: string | null
+          skills?: string[]
+          sort?: number
+          summary?: string
+          universities?: string[]
+          updated_at?: string
+          years?: number
+        }
+        Relationships: []
+      }
       challenge_access: {
         Row: {
           at: string
@@ -2665,6 +2725,7 @@ export type Database = {
           ads_consent: boolean
           ads_consent_at: string | null
           birth_year: number | null
+          career_id: number | null
           paused_at: string | null
           paused_reason: string | null
           created_at: string
@@ -2692,6 +2753,7 @@ export type Database = {
           ads_consent?: boolean
           ads_consent_at?: string | null
           birth_year?: number | null
+          career_id?: number | null
           paused_at?: string | null
           paused_reason?: string | null
           created_at?: string
@@ -2719,6 +2781,7 @@ export type Database = {
           ads_consent?: boolean
           ads_consent_at?: string | null
           birth_year?: number | null
+          career_id?: number | null
           paused_at?: string | null
           paused_reason?: string | null
           created_at?: string
@@ -2739,7 +2802,15 @@ export type Database = {
           xp_bought?: number
           xp_earned?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_career_id_fkey"
+            columns: ["career_id"]
+            isOneToOne: false
+            referencedRelation: "careers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       promo_codes: {
         Row: {

@@ -41,6 +41,7 @@ import 'features/xp/xp_screens.dart';
 import 'features/test/leaderboard_screen.dart';
 import 'features/test/test_screens.dart';
 import 'features/search/search_screen.dart';
+import 'features/careers/careers.dart';
 
 /// Screens anyone can open without an account.
 const _public = {
@@ -290,6 +291,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/study/bookmarks', builder: (_, _) => const BookmarksScreen()),
       GoRoute(path: '/study/search', builder: (_, _) => const AppSearchScreen()),
       GoRoute(path: '/search', builder: (_, _) => const AppSearchScreen()),
+      GoRoute(path: '/careers', builder: (_, _) => const CareersScreen()),
+      GoRoute(
+        path: '/careers/:id',
+        builder: (_, s) => CareerScreen(id: int.tryParse(s.pathParameters['id'] ?? '') ?? 0),
+      ),
       GoRoute(path: '/downloads', builder: (_, _) => const DownloadsScreen()),
       GoRoute(path: '/ai/history', builder: (_, _) => const AiHistoryScreen()),
       // Payments (milestone 4C). The server sets the price and gives Premium only after checking the payment.

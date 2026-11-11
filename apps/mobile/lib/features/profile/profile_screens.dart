@@ -814,6 +814,12 @@ class SettingsScreen extends ConsumerWidget {
               children: [
                 ListRow(icon: PhosphorIcons.books(PhosphorIconsStyle.fill), title: 'Change JAMB subjects', onTap: () => context.push('/subjects')),
                 ListRow(
+                  icon: PhosphorIcons.graduationCap(PhosphorIconsStyle.fill),
+                  title: 'My dream career',
+                  caption: 'Jobs, courses and JAMB subject combinations',
+                  onTap: () => context.push('/careers'),
+                ),
+                ListRow(
                   icon: PhosphorIcons.trash(PhosphorIconsStyle.fill),
                   title: 'Delete account',
                   danger: true,

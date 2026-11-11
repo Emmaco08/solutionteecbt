@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:solutiontee_cbt/core/providers.dart';
 import 'package:solutiontee_cbt/data/study_repo.dart';
+import 'package:solutiontee_cbt/features/careers/careers.dart';
 import 'package:solutiontee_cbt/features/search/search_screen.dart';
 import 'package:solutiontee_cbt/theme/theme.dart';
 
@@ -17,25 +18,46 @@ void main() {
     await t.pumpWidget(
       ProviderScope(
         overrides: [
-          subjectsProvider.overrideWith((_) async => [
-            {'id': 3, 'name': 'Physics'},
-            {'id': 2, 'name': 'Mathematics'},
-          ]),
-          examsProvider.overrideWith((_) async => [
-            {'id': 1, 'code': 'JAMB', 'name': 'JAMB UTME'},
-          ]),
-          openYearsProvider.overrideWith((_) async => [
-            {'exam_id': 1, 'subject_id': 3, 'year': 2015, 'pq_open': true},
-            {'exam_id': 1, 'subject_id': 3, 'year': 2016, 'pq_open': false},
-          ]),
-          topicsProvider.overrideWith((_) async => [
-            {'id': 9, 'subject_id': 2, 'name': 'Logarithms'},
-          ]),
-          studyCatalogProvider.overrideWith((ref, kind) async => kind == 'note'
-              ? [
-                  {'id': 'n1', 'kind': 'note', 'title': 'Logarithms made easy', 'subject_id': 2},
-                ]
-              : const <Map<String, dynamic>>[]),
+          subjectsProvider.overrideWith(
+            (_) async => [
+              {'id': 3, 'name': 'Physics'},
+              {'id': 2, 'name': 'Mathematics'},
+            ],
+          ),
+          examsProvider.overrideWith(
+            (_) async => [
+              {'id': 1, 'code': 'JAMB', 'name': 'JAMB UTME'},
+            ],
+          ),
+          openYearsProvider.overrideWith(
+            (_) async => [
+              {'exam_id': 1, 'subject_id': 3, 'year': 2015, 'pq_open': true},
+              {'exam_id': 1, 'subject_id': 3, 'year': 2016, 'pq_open': false},
+            ],
+          ),
+          topicsProvider.overrideWith(
+            (_) async => [
+              {'id': 9, 'subject_id': 2, 'name': 'Logarithms'},
+            ],
+          ),
+          careersProvider.overrideWith(
+            (_) async => [
+              {
+                'id': 5,
+                'name': 'Medical Doctor',
+                'field': 'Health',
+                'course': 'Medicine and Surgery',
+                'jamb_subjects': ['bio', 'chm', 'phy'],
+              },
+            ],
+          ),
+          studyCatalogProvider.overrideWith(
+            (ref, kind) async => kind == 'note'
+                ? [
+                    {'id': 'n1', 'kind': 'note', 'title': 'Logarithms made easy', 'subject_id': 2},
+                  ]
+                : const <Map<String, dynamic>>[],
+          ),
         ],
         child: MaterialApp(theme: buildTheme(Brightness.light), home: const AppSearchScreen()),
       ),
@@ -50,6 +72,10 @@ void main() {
     await t.pumpAndSettle();
     expect(find.text('Logarithms'), findsOneWidget); // topic drill
     expect(find.text('Logarithms made easy'), findsOneWidget); // note
+
+    await t.enterText(find.byType(TextField), 'doctor');
+    await t.pumpAndSettle();
+    expect(find.text('Medical Doctor'), findsOneWidget); // career
 
     await t.enterText(find.byType(TextField), 'streak');
     await t.pumpAndSettle();
