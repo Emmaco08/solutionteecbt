@@ -1,31 +1,36 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { requireStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { ErrorState, PageHeader, PageSkeleton } from "@/components/admin/ui";
-import { TutorAdmin, type TRequest } from "./tutors-ui";
+import { PageHeader, PageSkeleton } from "@/components/admin/ui";
+import { ChatApp } from "@/components/tutor-chat/chat-app";
+import type { Chat, TutorOpt } from "@/components/tutor-chat/lib";
+import { TutorAdmin } from "./tutors-ui";
 
 export const metadata: Metadata = { title: "Tutor requests" };
 
-export default function Page({ searchParams }: { searchParams: Promise<{ show?: string }> }) {
-  return <Suspense fallback={<PageSkeleton rows={8} />}><Tutors searchParams={searchParams} /></Suspense>;
+export default function Page() {
+  return <Suspense fallback={<PageSkeleton rows={8} />}><Tutors /></Suspense>;
 }
 
-async function Tutors({ searchParams }: { searchParams: Promise<{ show?: string }> }) {
+async function Tutors() {
   await requireStaff(["super_admin", "admin"]);
-  const { show } = await searchParams;
-  const status = ["open", "all", "new", "replied", "matched", "closed"].includes(show ?? "") ? show! : "open";
   const supabase = await createClient();
-  const [reqs, tutors, plans] = await Promise.all([
-    supabase.rpc("admin_tutor_requests", { p_status: status }),
+  const [chats, tutors, plans] = await Promise.all([
+    supabase.rpc("tutor_chats", { p_scope: "all" }),
     supabase.from("tutors").select("*").order("name"),
     supabase.from("tutor_plans").select("*").order("sort").order("price_kobo"),
   ]);
-  if (reqs.error) return <ErrorState message={reqs.error.message} />;
   return (
     <>
-      <PageHeader title="Tutor requests" description="Students ask for a tutor in the app (Study → Request a tutor). Reply here: the student sees it in the app chat and gets an email. Assign a tutor once they have a plan; the tutor's WhatsApp and phone show to the student only while the plan is active." />
-      <TutorAdmin status={status} requests={(reqs.data ?? []) as TRequest[]} tutors={tutors.data ?? []} plans={plans.data ?? []} />
+      <PageHeader title="Tutor requests"
+        description="Students pick a plan (or ask for a custom one) and pay; you get a push and an email. Assign a tutor within 24 hours: the tutor gets an email and chats with the student from their own dashboard. You can read and join any chat here." />
+      <div className="mb-4 overflow-hidden rounded-2xl border shadow-[var(--shadow-1)]">
+        <ChatApp mode="admin" initialChats={(chats.data ?? []) as unknown as Chat[]} tutors={(tutors.data ?? []) as TutorOpt[]} className="h-[calc(100dvh-12rem)] min-h-[560px]" />
+      </div>
+      <p className="mb-4 text-sm text-muted-foreground">Tutors sign in at <Link className="underline" href="/admin/tutor">admin.solutiontee.com/admin/tutor</Link>. Invite a tutor in <Link className="underline" href="/admin/staff">Staff</Link> with the Tutor role.</p>
+      <TutorAdmin tutors={tutors.data ?? []} plans={plans.data ?? []} />
     </>
   );
 }

@@ -12,6 +12,7 @@ export const ROLE_LABEL: Record<StaffRole, string> = {
   admin: "Admin",
   editor: "Editor",
   teacher: "Teacher",
+  tutor: "Tutor",
 };
 
 /**
@@ -27,7 +28,9 @@ export const requireStaff = cache(async (allowed?: StaffRole[]): Promise<Staff> 
   const { data: row } = await supabase.from("staff").select("role").eq("user_id", claims.sub).maybeSingle();
   if (!row) redirect("/admin/login?e=not_staff");
   if (claims.aal !== "aal2") redirect("/admin/mfa");
-  if (allowed && !allowed.includes(row.role)) redirect("/admin?e=no_access");
+  // Tutors (D-152) only use their own dashboard: every other admin page sends them there.
+  if (row.role === "tutor" && !allowed?.includes("tutor")) redirect("/admin/tutor");
+  if (allowed && !allowed.includes(row.role)) redirect(row.role === "tutor" ? "/admin/tutor" : "/admin?e=no_access");
 
   const { data: profile } = await supabase.from("profiles").select("full_name").eq("id", claims.sub).maybeSingle();
   const email = String(claims.email ?? "");
@@ -46,5 +49,5 @@ export async function isStaffRequest(): Promise<boolean> {
   const claims = data?.claims;
   if (!claims?.sub || claims.aal !== "aal2") return false;
   const { data: row } = await supabase.from("staff").select("role").eq("user_id", claims.sub).maybeSingle();
-  return Boolean(row);
+  return Boolean(row) && row?.role !== "tutor";
 }

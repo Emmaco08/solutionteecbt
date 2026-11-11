@@ -138,6 +138,7 @@ Plan: `docs/plans/phase-4.md`.
   - [x] **Smaller features, part 1** (D-135, D-136, D-137): exam countdown (admin dates, daily full-screen, Home chip); resume any test; one search for the whole app, back button, tab re-tap, app-icon shortcuts; **careers and JAMB subject combinations** (44 sample careers, admin Careers page, Study card, career page with the path, "Not sure? Pick by career" in setup, Settings → My dream career, careers in search); **more exams added by the admin** (D-138: Add exam, details, logo upload, Free vs Premium for every exam, dynamic Test tab and setup). **save videos and PDFs for offline** (D-139). App tests 201/201. **Waiting:** "deploy" (admin pages), owner checks each career against this year's brochure, owner tests on the phone.
   - [x] **B. Engagement** (plan: docs/plans/engagement.md): [x] B7 News v2 (D-141) · [x] B8 Badges v2 (D-142) · [x] B9 Leaderboards v2 (D-143) · [x] B10 Fair-play tracking (D-144) · [x] B11 Automatic safety bans (D-145)
   - [x] **C. Big new products** (plan: docs/plans/big-products.md; 16 later): [x] C13 Online classes (D-147) · [x] C17 JAMB classes on the website (D-148) · [x] C12 Request a tutor (D-149) · [x] C14 Games (D-150) · [x] C15 Community (D-151)
+  - [ ] **Big updates 2** (plan: docs/plans/big-updates-2.md): [x] 1 Tutor v2 (D-152, waiting for owner approval) · [ ] 2 Community v2 · [ ] 3 Game Zone v2
 
 ## Phase 5 — Website, classes, community  (approval: `WEBSITE APPROVED`)
 - [ ] Not started

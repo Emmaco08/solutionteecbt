@@ -8,7 +8,7 @@ import { sendEmail } from "@/lib/email";
 import { inviteEmail } from "@/lib/email-templates";
 import { friendlyError, type ActionResult } from "@/lib/result";
 
-const Role = z.enum(["super_admin", "admin", "editor", "teacher"]);
+const Role = z.enum(["super_admin", "admin", "editor", "teacher", "tutor"]);
 const Invite = z.object({ email: z.string().trim().toLowerCase().email("Enter a valid email"), role: Role });
 
 /** Super admin only. Creates (or reuses) the account, adds the staff role through RLS, and emails a one-time link. */
@@ -29,6 +29,12 @@ export async function inviteStaff(form: FormData): Promise<ActionResult<{ link?:
   const supabase = await createClient();
   const { error } = await supabase.from("staff").upsert({ user_id: gen.data.user.id, role: p.data.role, created_by: me.id });
   if (error) return { ok: false, error: friendlyError(error) };
+  // A tutor login gets its tutor profile at once (name from the account; the admin adds subjects, bio and photo).
+  if (p.data.role === "tutor") {
+    const { data: prof } = await svc.from("profiles").select("full_name").eq("id", gen.data.user.id).maybeSingle();
+    const { data: existing } = await svc.from("tutors").select("id").eq("user_id", gen.data.user.id).maybeSingle();
+    if (!existing) await svc.from("tutors").insert({ user_id: gen.data.user.id, name: prof?.full_name || p.data.email.split("@")[0], active: true });
+  }
 
   const type = gen.data.properties.verification_type === "recovery" ? "recovery" : "invite";
   const link = `${env.siteUrl}/admin/accept?token_hash=${encodeURIComponent(gen.data.properties.hashed_token)}&type=${type}`;
@@ -47,6 +53,14 @@ export async function changeRole(userId: string, role: string): Promise<ActionRe
   const supabase = await createClient();
   const { error } = await supabase.from("staff").update({ role: r.data }).eq("user_id", userId);
   if (error) return { ok: false, error: friendlyError(error) };
+  if (r.data === "tutor" && hasServiceKey()) {
+    const svc = await createServiceClient();
+    const { data: existing } = await svc.from("tutors").select("id").eq("user_id", userId).maybeSingle();
+    if (!existing) {
+      const { data: prof } = await svc.from("profiles").select("full_name").eq("id", userId).maybeSingle();
+      await svc.from("tutors").insert({ user_id: userId, name: prof?.full_name || "Tutor", active: true });
+    }
+  }
   revalidatePath("/admin", "layout");
   return { ok: true };
 }

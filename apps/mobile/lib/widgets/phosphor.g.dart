@@ -92,6 +92,8 @@ abstract final class PhosphorIcons {
       s == PhosphorIconsStyle.regular ? const IconData(0xe184, fontFamily: 'PhosphorRegular') : const IconData(0xe184, fontFamily: 'PhosphorFill');
   static IconData checkFat([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xeba6, fontFamily: 'PhosphorRegular') : const IconData(0xeba6, fontFamily: 'PhosphorFill');
+  static IconData checks([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
+      s == PhosphorIconsStyle.regular ? const IconData(0xe53a, fontFamily: 'PhosphorRegular') : const IconData(0xe53a, fontFamily: 'PhosphorFill');
   static IconData circle([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe18a, fontFamily: 'PhosphorRegular') : const IconData(0xe18a, fontFamily: 'PhosphorFill');
   static IconData clipboardText([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
@@ -130,6 +132,8 @@ abstract final class PhosphorIcons {
       s == PhosphorIconsStyle.regular ? const IconData(0xe1e0, fontFamily: 'PhosphorRegular') : const IconData(0xe1e0, fontFamily: 'PhosphorFill');
   static IconData dna([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe924, fontFamily: 'PhosphorRegular') : const IconData(0xe924, fontFamily: 'PhosphorFill');
+  static IconData dotOutline([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
+      s == PhosphorIconsStyle.regular ? const IconData(0xece0, fontFamily: 'PhosphorRegular') : const IconData(0xece0, fontFamily: 'PhosphorFill');
   static IconData dotsThree([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe1fe, fontFamily: 'PhosphorRegular') : const IconData(0xe1fe, fontFamily: 'PhosphorFill');
   static IconData dotsThreeVertical([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>

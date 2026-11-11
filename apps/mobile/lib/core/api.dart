@@ -80,6 +80,12 @@ class WebApi {
     return (d['key'] as String, d['url'] as String);
   }
 
+  /// Upload link for a photo or voice note in a tutor chat (D-152), saved under `t/<request id>/`.
+  Future<(String, String)> tutorUploadLink(String request, String contentType, int size) async {
+    final d = await _post('/api/tutor/upload', {'request': request, 'contentType': contentType, 'size': size}, auth: true);
+    return (d['key'] as String, d['url'] as String);
+  }
+
   /// Upload link for a community post picture (D-151), saved under `c/<id>/`; others see it only after the check.
   Future<(String, String)> communityUploadLink(int size) async {
     final d = await _post('/api/account/avatar', {'contentType': 'image/jpeg', 'size': size, 'purpose': 'post'}, auth: true);

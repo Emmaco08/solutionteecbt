@@ -48,7 +48,7 @@ export function PayResult({ reference, initial }: { reference: string; initial: 
   const rise = (d = 0) => (still ? {} : { initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.4, delay: d, ease } });
 
   if (s.status === "success") {
-    const what = s.kind === "xp" ? "Your XP has been added" : s.kind === "class" ? "You are in the class" : s.kind === "item" ? "Unlocked on your account" : "Premium is now on";
+    const what = s.kind === "xp" ? "Your XP has been added" : s.kind === "class" ? "You are in the class" : s.kind === "tutor" ? "Your tutor plan is on" : s.kind === "item" ? "Unlocked on your account" : "Premium is now on";
     const rows: [string, React.ReactNode][] = [
       ...(s.plan ? [["Plan", s.plan] as [string, React.ReactNode]] : []),
       ...(s.until ? [["Premium until", longDay(s.until)] as [string, React.ReactNode]] : []),
@@ -67,7 +67,7 @@ export function PayResult({ reference, initial }: { reference: string; initial: 
           <motion.p {...rise(0.15)} className="mt-5 text-sm font-bold text-success">Payment successful</motion.p>
           <motion.h1 {...rise(0.2)} className="mt-1 text-[26px] font-bold leading-tight tracking-tight">{what}</motion.h1>
           <motion.p {...rise(0.25)} className="mt-2 max-w-sm text-[15px] leading-6 text-muted-foreground">
-            {fromApp ? "Taking you back to the app…" : s.kind === "class" ? "We will remind you in the app before it starts. Join from My classes or the app." : "Open the SolutionTee app and log in with the same email. Premium is already there."}
+            {fromApp ? "Taking you back to the app…" : s.kind === "class" ? "We will remind you in the app before it starts. Join from My classes or the app." : s.kind === "tutor" ? "A tutor will be assigned to you within 24 hours. Chat with them in the SolutionTee app: Study → My tutor." : "Open the SolutionTee app and log in with the same email. Premium is already there."}
           </motion.p>
         </div>
 

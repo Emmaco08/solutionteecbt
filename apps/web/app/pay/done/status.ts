@@ -4,7 +4,7 @@ import { env, hasServiceKey } from "@/lib/env";
 
 export type PayStatus = {
   status: "pending" | "success" | "failed" | "needs_review" | "refunded" | "abandoned" | "unknown";
-  plan?: string; until?: string | null; amount_kobo?: number; paid_at?: string | null; kind?: "plan" | "xp" | "item" | "class";
+  plan?: string; until?: string | null; amount_kobo?: number; paid_at?: string | null; kind?: "plan" | "xp" | "item" | "class" | "tutor";
 };
 
 const REF = /^st_[0-9a-f]{20}$/;
@@ -39,7 +39,7 @@ export async function payStatus(reference: string): Promise<PayStatus> {
     p.plan_id ? svc.from("plans").select("name").eq("id", p.plan_id).maybeSingle() : Promise.resolve({ data: null }),
     p.entitlement_id ? svc.from("entitlements").select("expires_at").eq("id", p.entitlement_id).maybeSingle() : Promise.resolve({ data: null }),
   ]);
-  const kind = p.xp_pack ? "xp" : p.item_kind === "class" ? "class" : p.item_kind ? "item" : "plan";
+  const kind = p.xp_pack ? "xp" : p.item_kind === "class" ? "class" : p.item_kind === "tutor" ? "tutor" : p.item_kind ? "item" : "plan";
   return {
     status: p.status as PayStatus["status"], plan: plan.data?.name ?? undefined, until: ent.data?.expires_at ?? null,
     amount_kobo: Number(p.amount_kobo ?? 0), paid_at: p.status === "success" ? (p.verified_at ?? null) : null, kind,

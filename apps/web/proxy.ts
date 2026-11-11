@@ -7,7 +7,7 @@ const PUBLIC_ADMIN = ["/admin/login", "/admin/accept", "/admin/forgot"];
 /** Refreshes the Supabase session cookie on every admin request and sends signed-out visitors to the login page.
     This is only the first gate: the admin layout re-checks staff role and 2-step login, and RLS checks every query. */
 // Pages for students and parents: they live only on the public website (D-125).
-const PUBLIC_PAGES = ["/guardian", "/delete-account", "/pay", "/classes", "/privacy", "/terms", "/refunds", "/site", "/store-kit"];
+const PUBLIC_PAGES = ["/guardian", "/delete-account", "/pay", "/classes", "/tutor", "/privacy", "/terms", "/refunds", "/site", "/store-kit"];
 const isPublicPage = (p: string) => PUBLIC_PAGES.some((x) => p === x || p.startsWith(`${x}/`));
 
 export async function proxy(request: NextRequest) {
@@ -63,5 +63,5 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: ["/", "/admin/:path*", "/download", "/download/aab", "/guardian/:path*", "/delete-account", "/pay", "/pay/:path*", "/privacy", "/terms",
-    "/refunds", "/site", "/store-kit/:path*", "/classes", "/classes/:path*"],
+    "/refunds", "/site", "/store-kit/:path*", "/classes", "/classes/:path*", "/tutor"],
 };

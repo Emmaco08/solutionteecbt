@@ -1,6 +1,6 @@
 // Admin navigation (same groups as the approved prototype, design-spec §7).
 // `soon` items belong to later phases and are shown greyed out so the map is honest about what exists.
-export type NavItem = { href: string; label: string; icon: string; soon?: string; roles?: ("super_admin" | "admin" | "editor" | "teacher")[] };
+export type NavItem = { href: string; label: string; icon: string; soon?: string; roles?: ("super_admin" | "admin" | "editor" | "teacher" | "tutor")[] };
 export type NavGroup = { label: string; items: NavItem[] };
 
 const ADMINS = ["super_admin", "admin"] as NavItem["roles"];

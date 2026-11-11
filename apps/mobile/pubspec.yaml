@@ -32,6 +32,7 @@ dependencies:
   path_provider: ^2.1.6
   pdfx: ^2.11.0
   quick_actions: ^1.1.1
+  record: ^7.2.0
   speech_to_text: ^7.5.0
   supabase_flutter: ^2.18.3
   url_launcher: ^6.3.3

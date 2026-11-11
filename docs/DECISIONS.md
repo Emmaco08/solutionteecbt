@@ -1481,3 +1481,31 @@ The owner asked to run the admin from Vercel instead of the laptop.
   (`can_view_community_image`). Removed with the account (nightly account clean-up).
 - Admin → Community (super admins and admins): Waiting, Hidden after reports, Rejected, Shown; Show, Reject with
   a reason (the student is told), Hide, Delete (audit-logged); settings.
+
+## D-152 — Tutor v2 (update 1 of 3, 2026-11-11)
+- Flow: request → plans (or **Custom**: the student describes it, an admin sends a price and days) → pay → admins get a
+  push and an email → an admin assigns a tutor (only after payment) → the tutor gets an email → the student and the
+  tutor chat. A plan that runs out ends the chat (read-only, "Renew"); buying again adds days.
+- **Tutor role**: new staff role `tutor`, invited in Admin → Staff (its tutor profile is created at once). Tutors use
+  2-step login like all staff but are walled off: `private.is_staff()` without roles excludes them, staff push
+  broadcasts skip them, every admin page sends them to `/admin/tutor`, and tested: a tutor reads 0 questions and sees
+  a request only once assigned to it.
+- **Chat**: Realtime (`tutor_messages` in the publication with RLS for the student, their tutor and admins; typing and
+  online on private broadcast/presence channels `tutor:<request>` with RLS on `realtime.messages`). Kinds: text,
+  photo, voice note (app: AAC m4a via the `record` package; web: MediaRecorder webm/mp4), PDF (tutors), call link
+  (Meet / WhatsApp / Zoom / other, shown as a call card), reference (past question → the paper in the app; lesson →
+  the item in the app, under the student's plan rules). Read ticks via `tutor_mark_read`. Files are private in R2
+  under `t/<request>/`, uploaded and signed only for the chat's members.
+- **Notifications**: tutor/admin → student: push only (no email). Student → tutor: dashboard (live) + email at most
+  once every 15 minutes per student. Tutor assigned: email to the tutor, push to the student.
+- **Student details for the tutor**: name, age, school, state, email, phone, exams, JAMB subjects, target score,
+  dream career, strong and weak topics, recent tests, leaderboard rank, streak, XP, plan and days left, goals.
+- **Payments**: Paystack item flow (`tutor_offer(ref, uid)` accepts a plan id or the student's own request id for a
+  custom price); Google Play: `tutor_plans.play_product_id` handled in `pay_play_confirm` (token-once, like Premium);
+  the Play app pays on Google Play when the plan has a product and the admin allows Google, otherwise on
+  cbt.solutiontee.com/tutor (one-time login from the app). The website page also lets students request and pay.
+- **Admin**: Tutor requests is the same chat app (filters, assign, custom price, close, read any chat); plans have a
+  Google Play product id; tutors show whether they have a login.
+- **Owner / legal**: tutors see students' contacts (asked by the owner) — the Privacy Policy needs a line saying a paid
+  tutor sees the student's name, contacts and practice results (draft for the lawyer). Admins can read every chat
+  (safeguarding for 13–17). Create Play products for tutor plans in Play Console when ready.

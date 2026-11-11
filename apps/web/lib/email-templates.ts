@@ -498,6 +498,56 @@ export function tutorReplyEmail(name: string, body: string) {
   };
 }
 
+const ADMIN_SITE = "https://admin.solutiontee.com";
+
+/** To a tutor: a student has been assigned to them (D-152). */
+export function tutorAssignedEmail(name: string, d: Record<string, unknown>) {
+  const student = String(d.student ?? "A student"), link = `${ADMIN_SITE}/admin/tutor?c=${encodeURIComponent(String(d.request ?? ""))}`;
+  const what = [d.level ? String(d.level).toUpperCase() : "", d.subject ? String(d.subject) : ""].filter(Boolean).join(" · ");
+  return {
+    subject: `New student: ${student}`,
+    html: layout({
+      title: "New student", preheader: `${student} has been assigned to you.`, heading: `${esc(student)} is your new student`,
+      body: p(hello(name)) + p(`${esc(student)} has paid for tutoring and has been assigned to you${what ? ` (${esc(what)})` : ""}.`)
+        + (d.goals ? note(esc(String(d.goals))) : "")
+        + p("Open your tutor dashboard to see their details and say hello. Please reply within a few hours.")
+        + button("Open the chat", link) + signoff,
+      why: "You are receiving this because you are a SolutionTee tutor.",
+    }),
+    text: `${helloText(name)}\n\n${student} has been assigned to you${what ? ` (${what})` : ""}.\n${d.goals ? `\n"${String(d.goals)}"\n` : ""}\nOpen the chat: ${link}${footText()}`,
+  };
+}
+
+/** To a tutor: their student wrote (at most one every 15 minutes per student). */
+export function tutorStudentMessageEmail(name: string, d: Record<string, unknown>) {
+  const student = String(d.student ?? "Your student"), link = `${ADMIN_SITE}/admin/tutor?c=${encodeURIComponent(String(d.request ?? ""))}`;
+  return {
+    subject: `${student} sent you a message`,
+    html: layout({
+      title: "New message", preheader: String(d.body ?? "").slice(0, 90), heading: `New message from ${esc(student)}`,
+      body: p(hello(name)) + note(esc(String(d.body ?? "")).replace(/\n/g, "<br>")) + button("Reply", link) + signoff,
+      why: "You are receiving this because you are a SolutionTee tutor.",
+    }),
+    text: `${helloText(name)}\n\n${student}: ${String(d.body ?? "")}\n\nReply: ${link}${footText()}`,
+  };
+}
+
+/** To super admins and admins: a student paid and needs a tutor, or asked for a custom plan. */
+export function tutorAdminEmail(name: string, kind: "paid" | "custom", d: Record<string, unknown>) {
+  const student = String(d.student ?? "A student"), link = `${ADMIN_SITE}/admin/tutors`;
+  const heading = kind === "paid" ? `Assign a tutor to ${esc(student)}` : `${esc(student)} asked for a custom tutor plan`;
+  const line = kind === "paid" ? `${student} paid for the ${String(d.plan ?? "")} plan. Please assign a tutor within 24 hours.` : String(d.note ?? "");
+  return {
+    subject: kind === "paid" ? `Assign a tutor: ${student} paid` : `Custom tutor plan: ${student}`,
+    html: layout({
+      title: "Tutor request", preheader: line.slice(0, 90), heading,
+      body: p(hello(name)) + note(esc(line)) + button(kind === "paid" ? "Assign a tutor" : "Set a price", link) + signoff,
+      why: "You are receiving this because you are a SolutionTee admin.",
+    }),
+    text: `${helloText(name)}\n\n${line}\n\n${link}${footText()}`,
+  };
+}
+
 const REASONS: Record<string, string> = {
   shared_phone: "More than one account used on the same phone", many_accounts: "Many accounts on the same phone",
   second_account: "A second account was tried on your phone", phone_banned: "A phone linked to your account was blocked",
@@ -564,6 +614,10 @@ export function outboxEmail(kind: string, name: string, data: Record<string, unk
     case "safety_warning": return safetyWarningEmail(name, Array.isArray(data.reasons) ? (data.reasons as string[]) : []);
     case "admin_alert": return adminAlertEmail(name, data);
     case "tutor_reply": return tutorReplyEmail(name, s("body") ?? "");
+    case "tutor_assigned": return tutorAssignedEmail(name, data);
+    case "tutor_student_message": return tutorStudentMessageEmail(name, data);
+    case "tutor_paid_admin": return tutorAdminEmail(name, "paid", data);
+    case "tutor_custom_admin": return tutorAdminEmail(name, "custom", data);
     default: return null;
   }
 }

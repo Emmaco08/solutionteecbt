@@ -6,7 +6,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { signOut } from "@/app/admin/actions";
 
-const ROLE: Record<string, string> = { super_admin: "Super admin", admin: "Admin", editor: "Editor", teacher: "Teacher" };
+const ROLE: Record<string, string> = { super_admin: "Super admin", admin: "Admin", editor: "Editor", teacher: "Teacher", tutor: "Tutor" };
 
 export function AccountMenu({ name, email, role }: { name: string; email: string; role: string }) {
   const initials = name.split(/\s+/).map((p) => p[0]).join("").slice(0, 2).toUpperCase();
@@ -25,7 +25,7 @@ export function AccountMenu({ name, email, role }: { name: string; email: string
           </DropdownMenuLabel>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem render={<Link href="/admin/audit" />}><ListChecks size={18} /> Activity log</DropdownMenuItem>
+        {role !== "tutor" ? <DropdownMenuItem render={<Link href="/admin/audit" />}><ListChecks size={18} /> Activity log</DropdownMenuItem> : null}
         <DropdownMenuItem disabled><ShieldCheck size={18} /> 2-step login is on</DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => signOut()} variant="destructive"><SignOut size={18} /> Sign out</DropdownMenuItem>

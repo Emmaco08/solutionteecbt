@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -15,10 +16,10 @@ import '../../widgets/states.dart';
 import '../premium/item_pay.dart';
 import '../premium/payments.dart';
 import '../premium/paywall.dart';
+import 'tutor_chat.dart';
 
-// Request a tutor (C12, D-149): the student asks, the SolutionTee team replies in this chat (and by email), the
-// student buys a tutor plan, and the assigned tutor's WhatsApp / phone show only while the plan is active. All of it
-// comes from the server (tutor_overview); prices are never set in the app.
+// Request a tutor, v2 (D-152): request → choose a plan (or a custom price) → pay (Paystack in the app, Google Play in
+// the Play build, or the website as the admin chooses) → "a tutor within 24 hours" → chat with the tutor like WhatsApp.
 
 final tutorProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   final uid = currentSession(ref)?.user.id;
@@ -28,8 +29,19 @@ final tutorProvider = FutureProvider<Map<String, dynamic>>((ref) async {
 
 const tutorLevels = [('jamb', 'JAMB'), ('waec', 'WAEC'), ('neco', 'NECO'), ('post_utme', 'Post-UTME'), ('other', 'Other')];
 
-/// Open request = new, replied or matched (one at a time).
-bool tutorOpen(Map<String, dynamic>? req) => req != null && req['status'] != 'closed';
+/// Where the student is in the flow.
+enum TutorStage { request, plans, waiting, chat, ended }
+
+TutorStage tutorStage(Map<String, dynamic>? req, {bool hasTutor = false}) => switch ('${req?['status'] ?? 'closed'}') {
+  'new' || 'quoted' => TutorStage.plans,
+  'paid' => TutorStage.waiting,
+  'matched' => hasTutor ? TutorStage.chat : TutorStage.waiting,
+  'ended' => TutorStage.ended,
+  _ => TutorStage.request,
+};
+
+/// Open request = choosing, paid or with a tutor (one at a time).
+bool tutorOpen(Map<String, dynamic>? req) => req != null && const {'new', 'quoted', 'paid', 'matched'}.contains(req['status']);
 
 /// "12 Dec 2026".
 String tutorDate(Object? iso) {
@@ -46,36 +58,51 @@ Uri whatsappUri(String number) {
   return Uri.parse('https://wa.me/$n');
 }
 
-/// Study card: the way in.
+/// Study card: the way in (shows the tutor's name and unread messages once matched).
 class TutorCard extends ConsumerWidget {
   const TutorCard({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final c = context.c;
-    final req = ref.watch(tutorProvider).value?['request'] as Map?;
-    final open = tutorOpen(req == null ? null : Map<String, dynamic>.from(req));
+    final d = ref.watch(tutorProvider).value ?? const {};
+    final req = d['request'] == null ? null : Map<String, dynamic>.from(d['request'] as Map);
+    final tutor = d['tutor'] as Map?;
+    final unread = (d['unread'] as num?)?.toInt() ?? 0;
+    final stage = tutorStage(req, hasTutor: tutor != null);
+    final (title, caption) = switch (stage) {
+      TutorStage.chat => (
+        'My tutor: ${tutor?['name']}',
+        unread > 0 ? '$unread new message${unread == 1 ? '' : 's'}' : 'Chat, send photos and voice notes, join calls.',
+      ),
+      TutorStage.waiting => ('My tutor', 'Payment received. Your tutor is coming within 24 hours.'),
+      TutorStage.plans => ('Request a tutor', 'Choose a plan to get your tutor.'),
+      TutorStage.ended => ('My tutor', 'Your plan has ended. Renew to keep learning.'),
+      _ => ('Get a real tutor', 'A real teacher for the subjects you find hard.'),
+    };
     return AppCard(
       onTap: () => context.push('/tutor'),
       child: Row(
         children: [
-          IconTile(PhosphorIcons.chatsCircle(PhosphorIconsStyle.fill), tone: Tone.green, size: 48),
+          IconTile(PhosphorIcons.chalkboardTeacher(PhosphorIconsStyle.fill), tone: Tone.green, size: 48),
           const Gap(Space.s3),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(open ? 'My tutor request' : 'Request a tutor', style: context.ty.body.bold),
+                Text(title, style: context.ty.body.bold, maxLines: 1, overflow: TextOverflow.ellipsis),
                 const Gap(2),
-                Text(
-                  open ? 'See replies from SolutionTee and your tutor plan.' : 'Get a real teacher for the subjects you find hard.',
-                  style: context.ty.cap.col(c.textMuted),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                Text(caption, style: context.ty.cap.col(unread > 0 ? c.success : c.textMuted), maxLines: 2, overflow: TextOverflow.ellipsis),
               ],
             ),
           ),
-          Icon(PhosphorIcons.caretRight(), size: 18, color: c.textSubtle),
+          if (unread > 0)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(color: c.success, borderRadius: BorderRadius.circular(12)),
+              child: Text('$unread', style: context.ty.cap.bold.col(Colors.white)),
+            )
+          else
+            Icon(PhosphorIcons.caretRight(), size: 18, color: c.textSubtle),
         ],
       ),
     );
@@ -89,15 +116,16 @@ class TutorScreen extends ConsumerStatefulWidget {
 }
 
 class _TutorScreenState extends ConsumerState<TutorScreen> {
+  bool _support = false; // chat with the SolutionTee team before a tutor is assigned
   Timer? _poll;
-  bool _newForm = false;
 
   @override
   void initState() {
     super.initState();
-    // New replies show without leaving the screen (every 20 s, only while it is open; data-light).
-    _poll = Timer.periodic(const Duration(seconds: 20), (_) {
-      if (mounted && tutorOpen(ref.read(tutorProvider).value?['request'] as Map<String, dynamic>?)) ref.invalidate(tutorProvider);
+    // While waiting for a tutor, check now and then so the chat opens by itself when one is assigned.
+    _poll = Timer.periodic(const Duration(seconds: 30), (_) {
+      final req = ref.read(tutorProvider).value?['request'] as Map?;
+      if (mounted && req?['status'] == 'paid') ref.invalidate(tutorProvider);
     });
   }
 
@@ -115,63 +143,126 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
   @override
   Widget build(BuildContext context) {
     final v = ref.watch(tutorProvider);
+    final d = v.value;
+    final req = d?['request'] == null ? null : Map<String, dynamic>.from(d!['request'] as Map);
+    final tutor = d?['tutor'] == null ? null : Map<String, dynamic>.from(d!['tutor'] as Map);
+    final stage = tutorStage(req, hasTutor: tutor != null);
+    final msgs = [for (final m in (d?['messages'] as List? ?? const [])) Map<String, dynamic>.from(m as Map)];
+
+    if (d != null && req != null && (stage == TutorStage.chat || stage == TutorStage.ended || _support)) {
+      return TutorChatView(
+        key: ValueKey('chat-${req['id']}'),
+        requestId: '${req['id']}',
+        initial: msgs,
+        tutor: stage == TutorStage.chat || stage == TutorStage.ended ? tutor : null,
+        readOnly: stage == TutorStage.ended ? 'Your tutor plan has ended. Renew it to keep chatting.' : null,
+        footer: stage == TutorStage.ended ? _RenewBar(onTap: () => _openPlans(context, d)) : null,
+        onBack: _support ? () => setState(() => _support = false) : null,
+      );
+    }
     return Scaffold(
-      appBar: TopBar(title: 'Request a tutor'),
+      appBar: TopBar(title: stage == TutorStage.waiting ? 'My tutor' : 'Request a tutor'),
       body: asyncView(v, onRetry: _refresh, (d) {
-        final req = d['request'] == null ? null : Map<String, dynamic>.from(d['request'] as Map);
-        final showForm = req == null || (req['status'] == 'closed' && _newForm);
         return RefreshIndicator(
           onRefresh: _refresh,
-          child: showForm
-              ? ListView(
-                  padding: const EdgeInsets.fromLTRB(Space.s5, Space.s4, Space.s5, Space.s8),
-                  children: [
-                    const _Intro(),
-                    const Gap(Space.s5),
-                    TutorRequestForm(onSent: () => setState(() => _newForm = false)),
-                  ],
-                )
-              : _Conversation(data: d, request: req, onNew: () => setState(() => _newForm = true)),
+          child: switch (stage) {
+            TutorStage.request => ListView(
+              padding: const EdgeInsets.fromLTRB(Space.s5, Space.s4, Space.s5, Space.s8),
+              children: const [_Hero(), Gap(Space.s5), TutorRequestForm()],
+            ),
+            TutorStage.waiting => _Waiting(data: d, onChat: () => setState(() => _support = true)),
+            _ => _Plans(data: d, onChat: () => setState(() => _support = true)),
+          },
         );
       }),
     );
   }
+
+  void _openPlans(BuildContext context, Map<String, dynamic> d) => showSheet<void>(context, scroll: true, builder: (ctx) => _PlanList(data: d, inSheet: true));
 }
 
-class _Intro extends StatelessWidget {
-  const _Intro();
+class _RenewBar extends StatelessWidget {
+  const _RenewBar({required this.onTap});
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => Container(
+    color: context.c.accentSoft,
+    padding: const EdgeInsets.fromLTRB(Space.s4, Space.s2, Space.s2, Space.s2),
+    child: Row(
+      children: [
+        Expanded(child: Text('Keep learning with your tutor', style: context.ty.sm.bold.col(context.c.onAccentSoft))),
+        Btn('Renew', sm: true, kind: BtnKind.accent, onPressed: onTap),
+      ],
+    ),
+  );
+}
+
+class _Hero extends StatelessWidget {
+  const _Hero();
   @override
   Widget build(BuildContext context) {
     final c = context.c;
-    Widget step(IconData i, String t) => Padding(
-      padding: const EdgeInsets.only(top: Space.s2),
+    final rm = context.reduceMotion;
+    Widget step(int i, IconData icon, String t, String s) {
+      final w = Padding(
+        padding: const EdgeInsets.only(top: Space.s3),
+        child: Row(
+          children: [
+            IconTile(icon, tone: Tone.blue, size: 40),
+            const Gap(Space.s3),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(t, style: context.ty.sm.bold),
+                  Text(s, style: context.ty.cap.col(c.textMuted)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+      return rm ? w : w.animate().fadeIn(delay: (120 + 80 * i).ms, duration: Motion.base).slideX(begin: .08, end: 0, curve: Curves.easeOut);
+    }
+
+    final head = Container(
+      padding: const EdgeInsets.all(Space.s5),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: [c.primary, c.secondary], begin: Alignment.topLeft, end: Alignment.bottomRight),
+        borderRadius: BorderRadius.circular(Radii.lg),
+      ),
       child: Row(
         children: [
-          IconTile(i, tone: Tone.blue, size: 32),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Learn with a real teacher', style: context.ty.h2.col(Colors.white)),
+                const Gap(Space.s1),
+                Text('Chat, voice notes, photos of your questions and live calls.', style: context.ty.sm.col(Colors.white.withValues(alpha: .85))),
+              ],
+            ),
+          ),
           const Gap(Space.s3),
-          Expanded(child: Text(t, style: context.ty.sm)),
+          Icon(PhosphorIcons.chalkboardTeacher(PhosphorIconsStyle.fill), size: 56, color: c.accent),
         ],
       ),
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Get help from a real teacher', style: context.ty.h2),
-        const Gap(Space.s1),
-        Text('Tell us what you need. We reply here and by email, usually within a day.', style: context.ty.sm.col(c.textMuted)),
-        const Gap(Space.s3),
-        step(PhosphorIcons.notePencil(PhosphorIconsStyle.fill), 'Send your request: subject, exam and what you want to improve.'),
-        step(PhosphorIcons.chatsCircle(PhosphorIconsStyle.fill), 'Chat with the SolutionTee team and pick a tutor plan.'),
-        step(PhosphorIcons.whatsappLogo(PhosphorIconsStyle.fill), 'Meet your tutor on WhatsApp or by phone while your plan is on.'),
+        rm ? head : head.animate().fadeIn(duration: Motion.base).scaleXY(begin: .96, end: 1, curve: Curves.easeOut),
+        step(0, PhosphorIcons.notePencil(PhosphorIconsStyle.fill), 'Tell us what you need', 'Subject, exam and what you want to improve.'),
+        step(1, PhosphorIcons.creditCard(PhosphorIconsStyle.fill), 'Choose a plan and pay', 'Or ask for a custom plan and we send a price.'),
+        step(2, PhosphorIcons.chatsCircle(PhosphorIconsStyle.fill), 'Meet your tutor within 24 hours', 'Chat like WhatsApp and join calls from the chat.'),
       ],
     );
   }
 }
 
-/// Subject, exam, goals and free times.
+/// Subject (from the student's combination first), exam, goals and free times.
 class TutorRequestForm extends ConsumerStatefulWidget {
-  const TutorRequestForm({super.key, this.onSent});
-  final VoidCallback? onSent;
+  const TutorRequestForm({super.key});
   @override
   ConsumerState<TutorRequestForm> createState() => _TutorRequestFormState();
 }
@@ -204,12 +295,10 @@ class _TutorRequestFormState extends ConsumerState<TutorRequestForm> {
       if (!mounted) return;
       if (r['ok'] == true) {
         ref.invalidate(tutorProvider);
-        widget.onSent?.call();
-        toast(context, 'Request sent. We will reply soon.', icon: PhosphorIcons.checkCircle(PhosphorIconsStyle.fill));
       } else {
         setState(
           () => _error = switch ('${r['error']}') {
-            'open' => 'You already have an open request. Reply in that chat.',
+            'open' => 'You already have an open request.',
             'too_many' => 'You have sent a few requests today. Please try again tomorrow.',
             _ => 'Tell us a little about what you need.',
           },
@@ -224,8 +313,14 @@ class _TutorRequestFormState extends ConsumerState<TutorRequestForm> {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.c;
     final subjects = ref.watch(subjectsProvider).value ?? const <Map<String, dynamic>>[];
+    final mine = {for (final s in (ref.watch(profileProvider).value?['jamb_subjects'] as List? ?? const [])) '$s'.toLowerCase()};
+    final sorted = [...subjects]
+      ..sort(
+        (a, b) => (mine.contains('${b['code']}'.toLowerCase()) || mine.contains('${b['name']}'.toLowerCase()) ? 1 : 0).compareTo(
+          mine.contains('${a['code']}'.toLowerCase()) || mine.contains('${a['name']}'.toLowerCase()) ? 1 : 0,
+        ),
+      );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -245,7 +340,7 @@ class _TutorRequestFormState extends ConsumerState<TutorRequestForm> {
           decoration: const InputDecoration(hintText: 'Choose a subject'),
           items: [
             const DropdownMenuItem<int?>(value: null, child: Text('Several subjects / not sure')),
-            for (final s in subjects) DropdownMenuItem<int?>(value: (s['id'] as num).toInt(), child: Text('${s['name']}')),
+            for (final s in sorted) DropdownMenuItem<int?>(value: (s['id'] as num).toInt(), child: Text('${s['name']}')),
           ],
           onChanged: (v) => setState(() => _subject = v),
         ),
@@ -273,83 +368,89 @@ class _TutorRequestFormState extends ConsumerState<TutorRequestForm> {
         ),
         if (_error != null) ...[const Gap(Space.s3), ErrText(_error!)],
         const Gap(Space.s5),
-        Btn('Send request', block: true, loading: _busy, onPressed: _busy ? null : _send),
-        const Gap(Space.s2),
-        Text(
-          'Keep your chats safe: never share passwords or pay anyone outside SolutionTee.',
-          style: context.ty.cap.col(c.textMuted),
-          textAlign: TextAlign.center,
-        ),
+        Btn('See tutor plans', block: true, loading: _busy, icon: PhosphorIcons.arrowRight(), onPressed: _busy ? null : _send),
       ],
     );
   }
 }
 
-class _Conversation extends ConsumerStatefulWidget {
-  const _Conversation({required this.data, required this.request, required this.onNew});
+class _Plans extends StatelessWidget {
+  const _Plans({required this.data, required this.onChat});
   final Map<String, dynamic> data;
-  final Map<String, dynamic>? request;
-  final VoidCallback onNew;
+  final VoidCallback onChat;
   @override
-  ConsumerState<_Conversation> createState() => _ConversationState();
+  Widget build(BuildContext context) => ListView(
+    padding: const EdgeInsets.fromLTRB(Space.s5, Space.s4, Space.s5, Space.s8),
+    children: [
+      _PlanList(data: data),
+      const Gap(Space.s4),
+      Center(
+        child: TextButton.icon(onPressed: onChat, icon: Icon(PhosphorIcons.chatsCircle(), size: 18), label: const Text('Questions? Chat with SolutionTee')),
+      ),
+    ],
+  );
 }
 
-class _ConversationState extends ConsumerState<_Conversation> {
-  final _text = TextEditingController();
-  bool _sending = false;
+/// The plans, the custom price (when sent) and "Ask for a custom plan".
+class _PlanList extends ConsumerStatefulWidget {
+  const _PlanList({required this.data, this.inSheet = false});
+  final Map<String, dynamic> data;
+  final bool inSheet;
+  @override
+  ConsumerState<_PlanList> createState() => _PlanListState();
+}
+
+class _PlanListState extends ConsumerState<_PlanList> {
   String? _paying;
+  final _custom = TextEditingController();
+  bool _asking = false;
 
   @override
   void dispose() {
-    _text.dispose();
+    _custom.dispose();
     super.dispose();
   }
 
   void _say(String m, [IconData? i]) => toast(context, m, icon: i ?? PhosphorIcons.info(PhosphorIconsStyle.fill));
 
-  Future<void> _send([String? preset]) async {
-    final body = (preset ?? _text.text).trim();
-    if (body.isEmpty || _sending) return;
-    setState(() => _sending = true);
-    try {
-      final r = Map<String, dynamic>.from(
-        await Supabase.instance.client
-                .rpc('tutor_message_send', params: {'p_request': widget.request!['id'], 'p_body': body})
-                .timeout(const Duration(seconds: 15))
-            as Map,
-      );
-      if (!mounted) return;
-      if (r['ok'] == true) {
-        if (preset == null) _text.clear();
-        ref.invalidate(tutorProvider);
-      } else {
-        _say(r['error'] == 'too_many' ? 'You have sent many messages. Please wait a little.' : 'Could not send. Try again.');
-      }
-    } catch (_) {
-      if (mounted) _say('Could not reach SolutionTee. Check your internet and try again.', PhosphorIcons.wifiSlash(PhosphorIconsStyle.fill));
-    } finally {
-      if (mounted) setState(() => _sending = false);
-    }
-  }
-
-  Future<void> _buy(Map<String, dynamic> plan) async {
+  Future<void> _pay({required String ref_, required String title, required int price, String? playId}) async {
     if (_paying != null) return;
-    // The Play Store build has no Paystack: the student asks in the chat and the team helps (D-149).
-    if (!usesPaystackNow(ref)) return _send('I would like the ${plan['name']} plan. How do I pay?');
-    setState(() => _paying = '${plan['id']}');
+    setState(() => _paying = ref_);
     try {
-      final r = await payForItem(context, ref, itemRef: '${plan['id']}', title: 'Tutor plan: ${plan['name']}', priceKobo: (plan['price_kobo'] as num).toInt());
+      PayResult r;
+      if (usesPaystackNow(ref)) {
+        r = await payForItem(context, ref, itemRef: ref_, title: title, priceKobo: price);
+      } else {
+        final s = ref.read(paySettingsProvider);
+        if (playId != null && playId.isNotEmpty && s.playGoogle) {
+          r = await ref.read(paymentProvider(false)).buy({'play_product_id': playId});
+        } else {
+          // No Google Play product (custom prices, or the admin offers the website): pay on cbt.solutiontee.com/tutor.
+          String? h;
+          try {
+            h = await ref.read(apiProvider).webHandoff().timeout(const Duration(seconds: 8));
+          } catch (_) {}
+          final ok = await launchUrl(
+            Uri.https('cbt.solutiontee.com', '/tutor', {'h': ?h, 'from': 'app'}),
+            mode: LaunchMode.externalApplication,
+          ).catchError((_) => false);
+          if (!ok && mounted) _say('Open cbt.solutiontee.com/tutor in your browser to pay.');
+          return;
+        }
+      }
       if (!mounted) return;
       switch (r) {
         case PaySuccess():
           ref.invalidate(tutorProvider);
-          _say('Your tutor plan is on!', PhosphorIcons.checkCircle(PhosphorIconsStyle.fill));
+          if (widget.inSheet) Navigator.of(context).maybePop();
+          _say('Payment received! Your tutor is coming within 24 hours.', PhosphorIcons.checkCircle(PhosphorIconsStyle.fill));
         case PayFailed(:final message):
           _say(message, PhosphorIcons.warningCircle(PhosphorIconsStyle.fill));
         case PayCancelled():
           _say('Payment cancelled. You were not charged.');
         case PayPending():
-          _say('We are waiting for Paystack. Your plan starts as soon as the payment is confirmed.', PhosphorIcons.clock(PhosphorIconsStyle.fill));
+          _say('We are waiting for the payment to be confirmed. This page updates by itself.', PhosphorIcons.clock(PhosphorIconsStyle.fill));
+          ref.invalidate(tutorProvider);
         default:
           break;
       }
@@ -358,148 +459,184 @@ class _ConversationState extends ConsumerState<_Conversation> {
     }
   }
 
+  Future<void> _askCustom(String requestId) async {
+    if (_custom.text.trim().length < 5) return _say('Tell us a little more about what you need.');
+    setState(() => _asking = true);
+    try {
+      final r = await Supabase.instance.client.rpc('tutor_custom_request', params: {'p_request': requestId, 'p_note': _custom.text.trim()});
+      if (!mounted) return;
+      if ((r as Map?)?['ok'] == true) {
+        _custom.clear();
+        ref.invalidate(tutorProvider);
+        _say('Sent. We will send you a price, usually within a day.', PhosphorIcons.checkCircle(PhosphorIconsStyle.fill));
+      } else {
+        _say('Could not send. Try again.');
+      }
+    } catch (_) {
+      if (mounted) _say('Could not reach SolutionTee. Check your internet.');
+    } finally {
+      if (mounted) setState(() => _asking = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.c;
-    final d = widget.data;
-    final req = widget.request!;
-    final closed = req['status'] == 'closed';
-    final msgs = [for (final m in (d['messages'] as List? ?? const [])) Map<String, dynamic>.from(m as Map)];
-    final plans = [for (final p in (d['plans'] as List? ?? const [])) Map<String, dynamic>.from(p as Map)];
-    final sub = d['subscription'] == null ? null : Map<String, dynamic>.from(d['subscription'] as Map);
-    final tutor = d['tutor'] == null ? null : Map<String, dynamic>.from(d['tutor'] as Map);
-    final level = tutorLevels.where((l) => l.$1 == req['level']).firstOrNull?.$2 ?? 'Other';
-    final subject = (ref.watch(subjectsProvider).value ?? const []).where((s) => s['id'] == req['subject_id']).firstOrNull?['name'];
+    final rm = context.reduceMotion;
+    final req = Map<String, dynamic>.from(widget.data['request'] as Map? ?? const {});
+    final plans = [for (final p in (widget.data['plans'] as List? ?? const [])) Map<String, dynamic>.from(p as Map)];
+    final customPrice = (req['custom_price_kobo'] as num?)?.toInt();
+    final best = plans.length >= 3 ? 1 : -1;
+    Widget anim(Widget w, int i) => rm ? w : w.animate().fadeIn(delay: (70 * i).ms, duration: Motion.base).slideY(begin: .1, end: 0, curve: Curves.easeOut);
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Expanded(
-          child: ListView(
-            reverse: false,
-            padding: const EdgeInsets.fromLTRB(Space.s5, Space.s4, Space.s5, Space.s4),
-            children: [
-              AppCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(child: Text('$level${subject != null ? ' · $subject' : ''}', style: context.ty.body.bold)),
-                        Pill(
-                          switch ('${req['status']}') {
-                            'new' => 'Waiting for reply',
-                            'replied' => 'Replied',
-                            'matched' => 'Tutor assigned',
-                            _ => 'Closed',
-                          },
-                          kind: switch ('${req['status']}') {
-                            'new' => BadgeKind.warning,
-                            'matched' => BadgeKind.success,
-                            'closed' => BadgeKind.neutral,
-                            _ => BadgeKind.soft,
-                          },
-                        ),
-                      ],
-                    ),
-                    const Gap(Space.s1),
-                    Text('${req['goals']}', style: context.ty.sm.col(c.textMuted), maxLines: 3, overflow: TextOverflow.ellipsis),
-                  ],
-                ),
-              ),
-              if (tutor != null) ...[const Gap(Space.s3), _TutorContact(tutor: tutor)],
-              const Gap(Space.s3),
-              if (sub != null)
-                InfoBanner(
-                  kind: BannerKind.ok,
-                  child: Text(
-                    'Your ${sub['plan']} plan is on until ${tutorDate(sub['ends_at'])}.${tutor == null ? ' We will assign your tutor here soon.' : ''}',
-                    style: context.ty.sm,
-                  ),
-                )
-              else if (plans.isNotEmpty && !closed) ...[
-                const SectTitle('Tutor plans'),
-                for (final p in plans) ...[
-                  _PlanTile(plan: p, busy: _paying == '${p['id']}', onBuy: () => _buy(p), playBuild: !usesPaystackNow(ref)),
-                  const Gap(Space.s2),
-                ],
-              ],
-              const Gap(Space.s4),
-              const SectTitle('Messages'),
-              for (final m in msgs) _Bubble(m: m),
-              if (closed) ...[
-                const Gap(Space.s4),
-                Text('This request is closed.', style: context.ty.sm.col(c.textMuted), textAlign: TextAlign.center),
-                const Gap(Space.s2),
-                Btn('Ask for a tutor again', kind: BtnKind.secondary, block: true, onPressed: widget.onNew),
-              ],
-            ],
+        Text(req['status'] == 'ended' ? 'Renew your tutor plan' : 'Choose your tutor plan', style: context.ty.h2),
+        const Gap(Space.s1),
+        Text('A tutor is assigned within 24 hours of payment.', style: context.ty.sm.col(c.textMuted)),
+        const Gap(Space.s4),
+        if (customPrice != null)
+          anim(
+            _PlanCard(
+              title: 'Your custom plan',
+              price: customPrice,
+              line: '${req['custom_days'] ?? 30} days',
+              desc: '${req['custom_note'] ?? ''}',
+              highlight: true,
+              badge: 'For you',
+              busy: _paying == '${req['id']}',
+              onPay: () => _pay(ref_: '${req['id']}', title: 'Custom tutor plan', price: customPrice),
+            ),
+            0,
           ),
-        ),
-        if (!closed)
-          SafeArea(
-            top: false,
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(Space.s4, Space.s2, Space.s2, Space.s2),
-              decoration: BoxDecoration(
-                color: c.surface,
-                border: Border(top: BorderSide(color: c.border)),
-              ),
-              child: Row(
+        for (final (i, p) in plans.indexed)
+          anim(
+            _PlanCard(
+              title: '${p['name']}',
+              price: (p['price_kobo'] as num).toInt(),
+              line: '${p['days']} days${p['sessions'] != null ? ' · ${p['sessions']} lessons' : ''}',
+              desc: '${p['description'] ?? ''}',
+              highlight: i == best,
+              badge: i == best ? 'Most popular' : null,
+              busy: _paying == '${p['id']}',
+              onPay: () =>
+                  _pay(ref_: '${p['id']}', title: 'Tutor plan: ${p['name']}', price: (p['price_kobo'] as num).toInt(), playId: p['play_product_id'] as String?),
+            ),
+            i + 1,
+          ),
+        if (req['id'] != null)
+          anim(
+            AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _text,
-                      minLines: 1,
+                  Row(
+                    children: [
+                      IconTile(PhosphorIcons.sparkle(PhosphorIconsStyle.fill), tone: Tone.gold, size: 36),
+                      const Gap(Space.s3),
+                      Expanded(child: Text('Custom plan', style: context.ty.body.bold)),
+                    ],
+                  ),
+                  const Gap(Space.s2),
+                  Text(
+                    req['custom_note'] != null && customPrice == null
+                        ? 'We got your request: "${req['custom_note']}". We will send you a price soon.'
+                        : 'Need something different (more lessons, weekends, a group)? Tell us and we send you a price.',
+                    style: context.ty.sm.col(c.textMuted),
+                  ),
+                  if (req['custom_note'] == null || customPrice != null) ...[
+                    const Gap(Space.s3),
+                    TextField(
+                      controller: _custom,
+                      minLines: 2,
                       maxLines: 4,
-                      maxLength: 2000,
+                      maxLength: 1000,
                       textCapitalization: TextCapitalization.sentences,
                       style: context.ty.body,
-                      decoration: const InputDecoration(hintText: 'Write a message…', counterText: ''),
-                      onChanged: (_) => setState(() {}),
+                      decoration: const InputDecoration(hintText: 'I need weekend classes for 2 months', counterText: ''),
                     ),
-                  ),
-                  const Gap(Space.s2),
-                  IconBtn(
-                    PhosphorIcons.paperPlaneRight(PhosphorIconsStyle.fill),
-                    label: 'Send message',
-                    onPressed: _sending || _text.text.trim().isEmpty ? null : _send,
-                  ),
+                    const Gap(Space.s3),
+                    Btn('Ask for a price', kind: BtnKind.outline, loading: _asking, onPressed: _asking ? null : () => _askCustom('${req['id']}')),
+                  ],
                 ],
               ),
             ),
+            plans.length + 1,
           ),
+        const Gap(Space.s3),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(PhosphorIcons.lockSimple(PhosphorIconsStyle.fill), size: 14, color: c.textSubtle),
+            const Gap(Space.s1),
+            Text(usesPaystack(ref) ? 'Safe payment with Paystack' : 'Safe payment with Google Play or our website', style: context.ty.cap.col(c.textSubtle)),
+          ],
+        ),
       ],
     );
   }
 }
 
-class _Bubble extends StatelessWidget {
-  const _Bubble({required this.m});
-  final Map<String, dynamic> m;
+class _PlanCard extends StatelessWidget {
+  const _PlanCard({
+    required this.title,
+    required this.price,
+    required this.line,
+    required this.desc,
+    required this.busy,
+    required this.onPay,
+    this.highlight = false,
+    this.badge,
+  });
+  final String title, line, desc;
+  final int price;
+  final bool busy, highlight;
+  final String? badge;
+  final VoidCallback onPay;
   @override
   Widget build(BuildContext context) {
     final c = context.c;
-    final staff = m['from_staff'] == true;
-    final t = DateTime.tryParse('${m['at']}')?.toLocal();
-    final time = t == null ? '' : '${tutorDate(m['at'])}, ${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
-    return Align(
-      alignment: staff ? Alignment.centerLeft : Alignment.centerRight,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Space.s3),
       child: Container(
-        constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * .78),
-        margin: const EdgeInsets.only(bottom: Space.s2),
-        padding: const EdgeInsets.symmetric(horizontal: Space.s3, vertical: Space.s2),
         decoration: BoxDecoration(
-          color: staff ? c.surface : c.primary,
-          border: staff ? Border.all(color: c.border) : null,
           borderRadius: BorderRadius.circular(Radii.lg),
+          border: Border.all(color: highlight ? c.accent : c.border, width: highlight ? 2 : 1),
+          color: c.surface,
+          boxShadow: context.shadow(highlight ? 2 : 1),
         ),
+        padding: const EdgeInsets.all(Space.s4),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (staff) Text('SolutionTee', style: context.ty.cap.bold.col(c.secondary)),
-            Text('${m['body']}', style: context.ty.sm.col(staff ? c.text : c.onPrimary)),
-            const Gap(2),
-            Text(time, style: context.ty.cap.col(staff ? c.textSubtle : c.onPrimary.withValues(alpha: .7))),
+            Row(
+              children: [
+                Expanded(child: Text(title, style: context.ty.body.bold)),
+                if (badge != null) Pill(badge!, kind: BadgeKind.gold),
+              ],
+            ),
+            const Gap(Space.s1),
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.end,
+              spacing: Space.s2,
+              children: [
+                Text(naira(price), style: context.ty.h1.tnum),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Text(line, style: context.ty.sm.col(c.textMuted)),
+                ),
+              ],
+            ),
+            if (desc.isNotEmpty) ...[const Gap(Space.s1), Text(desc, style: context.ty.sm)],
+            const Gap(Space.s3),
+            Btn(
+              busy ? 'Opening payment…' : 'Choose this plan',
+              block: true,
+              kind: highlight ? BtnKind.accent : BtnKind.primary,
+              loading: busy,
+              onPressed: busy ? null : onPay,
+            ),
           ],
         ),
       ),
@@ -507,87 +644,116 @@ class _Bubble extends StatelessWidget {
   }
 }
 
-class _PlanTile extends StatelessWidget {
-  const _PlanTile({required this.plan, required this.busy, required this.onBuy, required this.playBuild});
-  final Map<String, dynamic> plan;
-  final bool busy, playBuild;
-  final VoidCallback onBuy;
+/// Paid: a calm animated "we are finding your tutor" screen with what happens next.
+class _Waiting extends StatelessWidget {
+  const _Waiting({required this.data, required this.onChat});
+  final Map<String, dynamic> data;
+  final VoidCallback onChat;
   @override
   Widget build(BuildContext context) {
     final c = context.c;
-    final days = (plan['days'] as num?)?.toInt() ?? 30;
-    final sessions = (plan['sessions'] as num?)?.toInt();
-    return AppCard(
-      child: Column(
+    final rm = context.reduceMotion;
+    final sub = data['subscription'] as Map?;
+    Widget ring(double size, int delay) {
+      final w = Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: c.secondary.withValues(alpha: .35), width: 2),
+        ),
+      );
+      return rm
+          ? w
+          : w
+                .animate(onPlay: (a) => a.repeat())
+                .scaleXY(begin: .6, end: 1.15, delay: delay.ms, duration: 2400.ms, curve: Curves.easeOut)
+                .fadeOut(duration: 2400.ms);
+    }
+
+    Widget step(String t, String s, {required bool done, bool active = false}) => Padding(
+      padding: const EdgeInsets.only(bottom: Space.s3),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(child: Text('${plan['name']}', style: context.ty.body.bold)),
-              Text(naira((plan['price_kobo'] as num).toInt()), style: context.ty.body.bold.tnum),
-            ],
+          Container(
+            width: 28,
+            height: 28,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: done
+                  ? c.success
+                  : active
+                  ? c.secondary
+                  : c.surfaceSunken,
+            ),
+            child: Icon(
+              done ? PhosphorIcons.check(PhosphorIconsStyle.bold) : PhosphorIcons.dotOutline(PhosphorIconsStyle.fill),
+              size: 16,
+              color: done || active ? Colors.white : c.textSubtle,
+            ),
           ),
-          Text('$days days${sessions != null ? ' · $sessions lessons' : ''}', style: context.ty.cap.col(c.textMuted)),
-          if ('${plan['description'] ?? ''}'.isNotEmpty) ...[const Gap(Space.s1), Text('${plan['description']}', style: context.ty.sm)],
           const Gap(Space.s3),
-          Btn(playBuild ? 'Ask about this plan' : 'Choose this plan', sm: true, loading: busy, onPressed: busy ? null : onBuy),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(t, style: context.ty.sm.bold),
+                Text(s, style: context.ty.cap.col(c.textMuted)),
+              ],
+            ),
+          ),
         ],
       ),
     );
-  }
-}
 
-class _TutorContact extends StatelessWidget {
-  const _TutorContact({required this.tutor});
-  final Map<String, dynamic> tutor;
-  @override
-  Widget build(BuildContext context) {
-    final c = context.c;
-    final wa = '${tutor['whatsapp'] ?? ''}', phone = '${tutor['phone'] ?? ''}';
-    Future<void> open(Uri u) async {
-      final ok = await launchUrl(u, mode: LaunchMode.externalApplication).catchError((_) => false);
-      if (!ok && context.mounted) toast(context, 'Could not open it on this phone.');
-    }
-
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(Space.s5, Space.s6, Space.s5, Space.s8),
+      children: [
+        SizedBox(
+          height: 200,
+          child: Stack(
+            alignment: Alignment.center,
             children: [
-              IconTile(PhosphorIcons.userCircle(PhosphorIconsStyle.fill), tone: Tone.green, size: 44),
-              const Gap(Space.s3),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Your tutor: ${tutor['name']}', style: context.ty.body.bold),
-                    if ('${tutor['subjects'] ?? ''}'.isNotEmpty) Text('${tutor['subjects']}', style: context.ty.cap.col(c.textMuted)),
-                  ],
+              ring(180, 0),
+              ring(180, 800),
+              ring(180, 1600),
+              Container(
+                width: 96,
+                height: 96,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(colors: [c.secondary, c.primary]),
+                  boxShadow: context.shadow(3),
                 ),
+                child: Icon(PhosphorIcons.chalkboardTeacher(PhosphorIconsStyle.fill), size: 48, color: c.accent),
               ),
             ],
           ),
-          if ('${tutor['bio'] ?? ''}'.isNotEmpty) ...[const Gap(Space.s2), Text('${tutor['bio']}', style: context.ty.sm)],
-          const Gap(Space.s3),
-          Wrap(
-            spacing: Space.s2,
-            runSpacing: Space.s2,
+        ),
+        const Gap(Space.s4),
+        Text('Finding your tutor', style: context.ty.h1, textAlign: TextAlign.center),
+        const Gap(Space.s1),
+        Text(
+          'Payment received. A tutor will be assigned to you within 24 hours. We will notify you and the chat opens here.',
+          style: context.ty.body.col(c.textMuted),
+          textAlign: TextAlign.center,
+        ),
+        const Gap(Space.s6),
+        AppCard(
+          child: Column(
             children: [
-              if (wa.isNotEmpty)
-                Btn('WhatsApp', sm: true, leading: PhosphorIcons.whatsappLogo(PhosphorIconsStyle.fill), onPressed: () => open(whatsappUri(wa))),
-              if (phone.isNotEmpty)
-                Btn(
-                  'Call',
-                  sm: true,
-                  kind: BtnKind.secondary,
-                  leading: PhosphorIcons.phone(PhosphorIconsStyle.fill),
-                  onPressed: () => open(Uri.parse('tel:$phone')),
-                ),
+              step('Payment received', sub != null ? '${sub['plan']} plan until ${tutorDate(sub['ends_at'])}' : 'Thank you!', done: true),
+              step('Matching you with a tutor', 'We pick a tutor for your subject and goals.', done: false, active: true),
+              step('Start learning', 'Chat, send photos and voice notes, join calls.', done: false),
             ],
           ),
-        ],
-      ),
+        ),
+        const Gap(Space.s4),
+        Btn('Chat with SolutionTee', kind: BtnKind.outline, block: true, leading: PhosphorIcons.chatsCircle(), onPressed: onChat),
+      ],
     );
   }
 }

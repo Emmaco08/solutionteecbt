@@ -10,7 +10,7 @@ import { inputCls } from "@/components/admin/row-form";
 import { changeRole, inviteStaff, removeStaff } from "./actions";
 
 type Row = { user_id: string; email: string; full_name: string | null; role: string; created_at: string; last_sign_in_at: string | null; has_2fa: boolean };
-const ROLES = [["super_admin", "Super admin"], ["admin", "Admin"], ["editor", "Editor"], ["teacher", "Teacher"]] as const;
+const ROLES = [["super_admin", "Super admin"], ["admin", "Admin"], ["editor", "Editor"], ["teacher", "Teacher"], ["tutor", "Tutor (chats with their students only)"]] as const;
 
 export function StaffList({ rows, meId, canEdit }: { rows: Row[]; meId: string; canEdit: boolean }) {
   const router = useRouter();

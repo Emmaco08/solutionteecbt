@@ -3528,31 +3528,46 @@ export type Database = {
       }
       tutor_messages: {
         Row: {
+          attachment_path: string | null
           body: string
           created_at: string
           from_staff: boolean
           id: number
+          kind: string
+          meta: Json | null
           read_at: string | null
+          ref: Json | null
           request_id: string
           sender_id: string | null
+          sender_role: string
         }
         Insert: {
+          attachment_path?: string | null
           body: string
           created_at?: string
           from_staff?: boolean
           id?: number
+          kind?: string
+          meta?: Json | null
           read_at?: string | null
+          ref?: Json | null
           request_id: string
           sender_id?: string | null
+          sender_role?: string
         }
         Update: {
+          attachment_path?: string | null
           body?: string
           created_at?: string
           from_staff?: boolean
           id?: number
+          kind?: string
+          meta?: Json | null
           read_at?: string | null
+          ref?: Json | null
           request_id?: string
           sender_id?: string | null
+          sender_role?: string
         }
         Relationships: []
       }
@@ -3564,6 +3579,7 @@ export type Database = {
           description: string | null
           id: string
           name: string
+          play_product_id: string | null
           price_kobo: number
           sessions: number | null
           sort: number
@@ -3575,6 +3591,7 @@ export type Database = {
           description?: string | null
           id?: string
           name: string
+          play_product_id?: string | null
           price_kobo: number
           sessions?: number | null
           sort?: number
@@ -3586,6 +3603,7 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
+          play_product_id?: string | null
           price_kobo?: number
           sessions?: number | null
           sort?: number
@@ -3594,37 +3612,58 @@ export type Database = {
       }
       tutor_requests: {
         Row: {
+          assigned_at: string | null
           created_at: string
+          custom_days: number | null
+          custom_note: string | null
+          custom_price_kobo: number | null
           goals: string
           id: string
           level: string
+          paid_at: string | null
+          plan_id: string | null
           status: string
           subject_id: number | null
           times: string | null
+          tutor_emailed_at: string | null
           tutor_id: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          assigned_at?: string | null
           created_at?: string
+          custom_days?: number | null
+          custom_note?: string | null
+          custom_price_kobo?: number | null
           goals: string
           id?: string
           level: string
+          paid_at?: string | null
+          plan_id?: string | null
           status?: string
           subject_id?: number | null
           times?: string | null
+          tutor_emailed_at?: string | null
           tutor_id?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          assigned_at?: string | null
           created_at?: string
+          custom_days?: number | null
+          custom_note?: string | null
+          custom_price_kobo?: number | null
           goals?: string
           id?: string
           level?: string
+          paid_at?: string | null
+          plan_id?: string | null
           status?: string
           subject_id?: number | null
           times?: string | null
+          tutor_emailed_at?: string | null
           tutor_id?: string | null
           updated_at?: string
           user_id?: string
@@ -3636,7 +3675,7 @@ export type Database = {
           ends_at: string
           id: string
           payment_id: string | null
-          plan_id: string
+          plan_id: string | null
           request_id: string | null
           starts_at: string
           user_id: string
@@ -3645,7 +3684,7 @@ export type Database = {
           ends_at: string
           id?: string
           payment_id?: string | null
-          plan_id: string
+          plan_id?: string | null
           request_id?: string | null
           starts_at?: string
           user_id: string
@@ -3667,9 +3706,12 @@ export type Database = {
           bio: string | null
           created_at: string
           id: string
+          last_seen_at: string | null
           name: string
           phone: string | null
+          photo_path: string | null
           subjects: string | null
+          user_id: string | null
           whatsapp: string | null
         }
         Insert: {
@@ -3677,9 +3719,12 @@ export type Database = {
           bio?: string | null
           created_at?: string
           id?: string
+          last_seen_at?: string | null
           name: string
           phone?: string | null
+          photo_path?: string | null
           subjects?: string | null
+          user_id?: string | null
           whatsapp?: string | null
         }
         Update: {
@@ -3687,9 +3732,12 @@ export type Database = {
           bio?: string | null
           created_at?: string
           id?: string
+          last_seen_at?: string | null
           name?: string
           phone?: string | null
+          photo_path?: string | null
           subjects?: string | null
+          user_id?: string | null
           whatsapp?: string | null
         }
         Relationships: []
@@ -4978,6 +5026,9 @@ export type Database = {
         Args: { p_banned: boolean; p_reason?: string; p_user: string }
         Returns: undefined
       }
+      admin_tutor_assign: { Args: { p_request: string; p_tutor: string }; Returns: Json }
+      admin_tutor_close: { Args: { p_request: string }; Returns: Json }
+      admin_tutor_quote: { Args: { p_request: string; p_price_kobo: number; p_days: number }; Returns: Json }
       admin_tutor_requests: { Args: { p_status?: string }; Returns: Json }
       admin_unban_device: { Args: { p_hash: string }; Returns: Json }
       admin_update_codes: {
@@ -5134,6 +5185,7 @@ export type Database = {
       can_view_note_image: { Args: { p_key: string }; Returns: boolean }
       can_view_question_image: { Args: { p_key: string }; Returns: boolean }
       can_view_study_file: { Args: { p_key: string }; Returns: boolean }
+      can_view_tutor_file: { Args: { p_key: string }; Returns: boolean }
       cbt_paper: {
         Args: {
           p_count?: number
@@ -5539,9 +5591,17 @@ export type Database = {
       study_item: { Args: { p_id: string }; Returns: Json }
       submit_attempt: { Args: { p: Json }; Returns: Json }
       today_motivation: { Args: never; Returns: Json }
-      tutor_message_send: { Args: { p_request: string; p_body: string }; Returns: Json }
+      tutor_chats: { Args: { p_scope?: string }; Returns: Json }
+      tutor_custom_request: { Args: { p_request: string; p_note: string }; Returns: Json }
+      tutor_file_ok: { Args: { p_request: string }; Returns: boolean }
+      tutor_mark_read: { Args: { p_request: string }; Returns: number }
+      tutor_message_send: { Args: { p_request: string; p_body: string; p_kind?: string; p_attachment?: string; p_meta?: Json; p_ref?: Json }; Returns: Json }
+      tutor_messages_before: { Args: { p_request: string; p_before: number; p_limit?: number }; Returns: Json }
       tutor_overview: { Args: never; Returns: Json }
+      tutor_profile_save: { Args: { p_name: string; p_subjects: string; p_bio: string }; Returns: Json }
+      tutor_ref_search: { Args: { p_kind: string; p_q?: string; p_subject?: number }; Returns: Json }
       tutor_request_create: { Args: { p_subject: number; p_level: string; p_goals: string; p_times: string }; Returns: Json }
+      tutor_student_profile: { Args: { p_request: string }; Returns: Json }
       undo_import: { Args: { p_batch: string }; Returns: number }
       winners_wall_list: { Args: never; Returns: Json }
       xp_buy_premium: { Args: { p_plan: string }; Returns: Json }
@@ -5644,7 +5704,7 @@ export type Database = {
         | "needs_review"
         | "refunded"
       promo_kind: "pct" | "amt" | "days"
-      staff_role: "super_admin" | "admin" | "editor" | "teacher"
+      staff_role: "super_admin" | "admin" | "editor" | "teacher" | "tutor"
       year_status: "draft" | "published"
     }
     CompositeTypes: {
@@ -5802,7 +5862,7 @@ export const Constants = {
         "refunded",
       ],
       promo_kind: ["pct", "amt", "days"],
-      staff_role: ["super_admin", "admin", "editor", "teacher"],
+      staff_role: ["super_admin", "admin", "editor", "teacher", "tutor"],
       year_status: ["draft", "published"],
     },
   },
