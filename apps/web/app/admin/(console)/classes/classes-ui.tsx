@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { inputCls } from "@/components/admin/row-form";
 import { EmptyState, Panel, Pill, when } from "@/components/admin/ui";
 import { classStudents, deleteClass, saveClass } from "./actions";
+import { ClassWork } from "./class-work";
 
 export type AdminClass = {
   id: string; title: string; about: string | null; subject_id: number | null; exam: string | null; teacher: string; starts_at: string;
@@ -118,7 +119,7 @@ export function ClassList({ classes, subjects, exams }: { classes: AdminClass[];
             <p className="font-bold">{c.title} <span className="font-normal text-muted-foreground">· {c.teacher}</span></p>
             <p className="text-sm text-muted-foreground">{when(c.starts_at)} · {c.minutes} min · {ACCESS[c.access]}{c.price_kobo ? ` ₦${(c.price_kobo / 100).toLocaleString("en-NG")}` : ""}{c.seats ? ` · ${c.seats} seats` : ""}</p>
             <p className="text-xs text-muted-foreground">{c.counts.reg} registered{c.counts.paid ? ` (${c.counts.paid} paid)` : ""} · {c.counts.joined} joined · {c.join_url ? "link set" : "no link yet"}{c.recording_url ? " · recording set" : ""}</p>
-            <Students id={c.id} />
+            <div className="flex flex-wrap gap-2"><Students id={c.id} /><ClassWork classId={c.id} /></div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Pill tone={c.status === "published" ? "ok" : c.status === "cancelled" ? "error" : "neutral"}>{c.status === "published" ? "Published" : c.status === "cancelled" ? "Cancelled" : "Draft"}</Pill>

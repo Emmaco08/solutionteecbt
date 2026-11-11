@@ -1409,3 +1409,18 @@ The owner asked to run the admin from Vercel instead of the laptop.
 - Fixed during testing: a change to finish_payment briefly broke finishing paid study items (wrong notification
   type) for about two minutes; no real payment was affected (checked).
 
+## D-148 — JAMB classes on the website (2026-11-11)
+- cbt.solutiontee.com/classes (public, no login): heading, introduction, price note, teachers and questions written
+  in Admin → Online classes → Website page, and the timetable of upcoming published classes (JAMB, any exam, or
+  "website only"), with time in Lagos, length, seats left and price. Class links are never on this page
+  (`public_classes()` has none). Cached for minutes; admin changes refresh it at once.
+- cbt.solutiontee.com/classes/me: log in with the email code (same as /pay); the student's classes (Coming up, Past),
+  Join (opens 15 minutes before, link from `class_join()`), recordings, materials and assignments; other classes to
+  register for; Register or Register and pay. Paying uses the same Paystack checkout as /pay and returns to
+  /pay/done, which says "You are in the class" with a link back to My classes.
+- Materials (title + https link, e.g. a Google Drive PDF) and assignments (instructions, due date, marks) per class,
+  added in Admin → Online classes → Materials and assignments; students hand in a written answer (until a day after
+  the due date, changeable until it is marked); teachers mark with a score and feedback. Teachers (staff role
+  teacher) can manage these too. Students read materials and assignments only through `my_class_dashboard()`.
+- Fixed in passing: the website footer's support email made phone screens scroll sideways (all pages).
+

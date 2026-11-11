@@ -1717,6 +1717,36 @@ export type Database = {
           },
         ]
       }
+      class_assignments: {
+        Row: {
+          class_id: string
+          created_at: string
+          due_at: string | null
+          id: string
+          instructions: string | null
+          max_score: number
+          title: string
+        }
+        Insert: {
+          class_id: string
+          created_at?: string
+          due_at?: string | null
+          id?: string
+          instructions?: string | null
+          max_score?: number
+          title: string
+        }
+        Update: {
+          class_id?: string
+          created_at?: string
+          due_at?: string | null
+          id?: string
+          instructions?: string | null
+          max_score?: number
+          title?: string
+        }
+        Relationships: []
+      }
       class_links: {
         Row: {
           class_id: string
@@ -1735,6 +1765,30 @@ export type Database = {
           join_url?: string | null
           recording_url?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      class_materials: {
+        Row: {
+          class_id: string
+          created_at: string
+          id: string
+          title: string
+          url: string
+        }
+        Insert: {
+          class_id: string
+          created_at?: string
+          id?: string
+          title: string
+          url: string
+        }
+        Update: {
+          class_id?: string
+          created_at?: string
+          id?: string
+          title?: string
+          url?: string
         }
         Relationships: []
       }
@@ -1758,6 +1812,39 @@ export type Database = {
           created_at?: string
           joined_at?: string | null
           payment_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      class_submissions: {
+        Row: {
+          answer: string
+          assignment_id: string
+          feedback: string | null
+          marked_at: string | null
+          marked_by: string | null
+          score: number | null
+          submitted_at: string
+          user_id: string
+        }
+        Insert: {
+          answer: string
+          assignment_id: string
+          feedback?: string | null
+          marked_at?: string | null
+          marked_by?: string | null
+          score?: number | null
+          submitted_at?: string
+          user_id: string
+        }
+        Update: {
+          answer?: string
+          assignment_id?: string
+          feedback?: string | null
+          marked_at?: string | null
+          marked_by?: string | null
+          score?: number | null
+          submitted_at?: string
           user_id?: string
         }
         Relationships: []
@@ -4233,6 +4320,7 @@ export type Database = {
         Returns: undefined
       }
       admin_class_students: { Args: { p_class: string }; Returns: Json }
+      admin_class_submissions: { Args: { p_class: string }; Returns: Json }
       admin_codes: { Args: never; Returns: Json }
       admin_content_access: { Args: never; Returns: Json }
       admin_content_access_save: { Args: { p_defaults: Json }; Returns: Json }
@@ -4531,6 +4619,7 @@ export type Database = {
       class_join: { Args: { p_class: string }; Returns: Json }
       class_recording: { Args: { p_class: string }; Returns: Json }
       class_register: { Args: { p_class: string }; Returns: Json }
+      class_submit: { Args: { p_assignment: string; p_answer: string }; Returns: Json }
       classes_list: { Args: never; Returns: Json }
       content_offer: { Args: { p_kind: string; p_ref: string }; Returns: Json }
       content_pay_start: {
@@ -4655,6 +4744,7 @@ export type Database = {
       mock_timeline: { Args: { p_entry: string }; Returns: Json }
       my_badges: { Args: never; Returns: Json }
       my_best_jamb: { Args: never; Returns: Json }
+      my_class_dashboard: { Args: never; Returns: Json }
       my_dashboard: { Args: never; Returns: Json }
       my_notifications: {
         Args: { p_limit?: number }
@@ -4803,6 +4893,7 @@ export type Database = {
         }
         Returns: Json
       }
+      public_classes: { Args: never; Returns: Json }
       push_cron_ok: { Args: { p_token: string }; Returns: boolean }
       push_done: {
         Args: { p_error: string; p_id: string; p_sent: number }

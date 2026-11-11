@@ -327,7 +327,7 @@ export function SiteFooter({ tagline = "Learn. Think. Solve." }: { tagline?: str
           </div>
           <div className="flex flex-col gap-2">
             <b className="text-white">Help</b>
-            <a href="mailto:support@mail.solutiontee.com" className="hover:text-white">support@mail.solutiontee.com</a>
+            <a href="mailto:support@mail.solutiontee.com" className="break-all hover:text-white">support@mail.solutiontee.com</a>
             <a href="https://wa.me/2348122445948" className="hover:text-white">WhatsApp +234 812 244 5948</a>
           </div>
         </div>
