@@ -11,7 +11,7 @@ import { ImageUpload } from "@/components/admin/image-upload";
 import { inputCls } from "@/components/admin/row-form";
 import { deleteNews, saveNews, type NewsState } from "./actions";
 
-export type NewsPost = { id?: string; title?: string; summary?: string | null; body?: string | null; category?: string; link_type?: string | null; link_target?: string | null; image_path?: string | null; is_pinned?: boolean; notify?: boolean; status?: string; publish_at?: string };
+export type NewsPost = { id?: string; title?: string; summary?: string | null; body?: string | null; category?: string; link_type?: string | null; link_target?: string | null; image_path?: string | null; is_pinned?: boolean; notify?: boolean; comments_on?: boolean; status?: string; publish_at?: string };
 const local = (iso?: string) => { const d = iso ? new Date(iso) : new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16); };
 
 export function NewsForm({ post: n }: { post: NewsPost }) {
@@ -45,6 +45,7 @@ export function NewsForm({ post: n }: { post: NewsPost }) {
           </select></div>
         <label className="flex items-center justify-between text-sm"><span>Pin to the top</span><Switch name="is_pinned" defaultChecked={n.is_pinned} /></label>
         <label className="flex items-center justify-between gap-3 text-sm"><span>Send as a notification when it is published<span className="block text-xs text-muted-foreground">Goes to students who keep Announcements on. Sent once.</span></span><Switch name="notify" defaultChecked={n.notify} /></label>
+        <label className="flex items-center justify-between gap-3 text-sm"><span>Allow comments<span className="block text-xs text-muted-foreground">Students can comment and like. Reported comments go to News → Comments.</span></span><Switch name="comments_on" defaultChecked={n.comments_on !== false} /></label>
         {state.error ? <p role="alert" className="rounded-xl bg-error-soft px-3 py-2 text-sm text-on-error-soft">{state.error}</p> : null}
         <div className="flex gap-2">
           <Button type="submit" disabled={saving} className="grow">{saving ? <SpinnerGap size={16} className="animate-spin" /> : null} Save</Button>

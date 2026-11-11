@@ -11,6 +11,7 @@ import '../../ui/kit.dart';
 import '../../widgets/phosphor.g.dart';
 import '../../widgets/r2_image.dart';
 import '../../widgets/states.dart';
+import 'news_social.dart';
 
 /// Category → cover gradient + icon (prototype `news-cover c-navy|c-blue|c-gold|c-green`).
 /// Categories are the admin's: update, exam, app, tips.
@@ -123,13 +124,64 @@ class NewsTile extends StatelessWidget {
 }
 
 /// News list (prototype: news): featured first item, then a list.
-class NewsListScreen extends ConsumerWidget {
+class NewsListScreen extends ConsumerStatefulWidget {
   const NewsListScreen({super.key});
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<NewsListScreen> createState() => _NewsListScreenState();
+}
+
+class _NewsListScreenState extends ConsumerState<NewsListScreen> {
+  /// null = all; a category key; or 'saved' (D-141).
+  String? _filter;
+
+  @override
+  Widget build(BuildContext context) {
+    final meta = ref.watch(newsMetaProvider).value ?? const <String, NewsMeta>{};
     return Scaffold(
       appBar: const TopBar(title: 'News'),
-      body: asyncView(ref.watch(newsProvider), (list) {
+      body: asyncView(ref.watch(newsProvider), (all) {
+        final cats = {for (final n in all) '${n['category'] ?? 'update'}'}.toList();
+        final list = [
+          for (final n in all)
+            if (_filter == null || (_filter == 'saved' ? meta['${n['id']}']?.saved == true : '${n['category'] ?? 'update'}' == _filter)) n,
+        ];
+        final chips = SizedBox(
+          height: 40,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            children: [
+              AppChip('All', on: _filter == null, onTap: () => setState(() => _filter = null)),
+              for (final k in cats) ...[
+                const Gap(Space.s2),
+                AppChip(newsLook(k).label, on: _filter == k, onTap: () => setState(() => _filter = _filter == k ? null : k)),
+              ],
+              const Gap(Space.s2),
+              AppChip(
+                'Saved',
+                on: _filter == 'saved',
+                icon: PhosphorIcons.bookmarkSimple(PhosphorIconsStyle.fill),
+                onTap: () => setState(() => _filter = _filter == 'saved' ? null : 'saved'),
+              ),
+            ],
+          ),
+        );
+        if (all.isNotEmpty && list.isEmpty) {
+          return ListView(
+            padding: const EdgeInsets.only(top: Space.s2),
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Space.s5),
+                child: chips,
+              ),
+              StateBlock(
+                icon: _filter == 'saved' ? PhosphorIcons.bookmarkSimple(PhosphorIconsStyle.fill) : PhosphorIcons.newspaper(PhosphorIconsStyle.fill),
+                tone: Tone.blue,
+                title: _filter == 'saved' ? 'Nothing saved yet' : 'No news in this group yet',
+                text: _filter == 'saved' ? 'Tap Save on a news post to keep it here.' : 'Try another group.',
+              ),
+            ],
+          );
+        }
         if (list.isEmpty) {
           return StateBlock(
             icon: PhosphorIcons.newspaper(PhosphorIconsStyle.fill),
@@ -141,69 +193,99 @@ class NewsListScreen extends ConsumerWidget {
         final top = list.first, rest = list.skip(1).toList();
         final ads = ref.watch(adsConfigProvider).value ?? AdsConfig.off;
         final every = ads.nativeEvery > 0 ? ads.nativeEvery : (rest.isEmpty ? 1 : rest.length);
-        return ListView(
-          padding: const EdgeInsets.fromLTRB(Space.s5, Space.s2, Space.s5, Space.s8),
-          children: [
-            const AdBanner(screen: 'news'),
-            AppCard(
-              pad: false,
-              clip: true,
-              onTap: () => context.push('/news/${top['id']}'),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  NewsCover(n: top, aspect: 16 / 9, iconSize: 84),
-                  Padding(
-                    padding: const EdgeInsets.all(Space.s4),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Pill(newsLook(top['category'] as String?).label),
-                        const Gap(Space.s2),
-                        Text(top['title'] as String, style: context.ty.h3),
-                        if ((top['summary'] as String?)?.isNotEmpty == true) ...[
+        return RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(newsProvider);
+            ref.invalidate(newsMetaProvider);
+            await ref.read(newsProvider.future).catchError((_) => const <Map<String, dynamic>>[]);
+          },
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(Space.s5, Space.s2, Space.s5, Space.s8),
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: Space.s3),
+                child: chips,
+              ),
+              const AdBanner(screen: 'news'),
+              AppCard(
+                pad: false,
+                clip: true,
+                onTap: () => context.push('/news/${top['id']}'),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    NewsCover(n: top, aspect: 16 / 9, iconSize: 84),
+                    Padding(
+                      padding: const EdgeInsets.all(Space.s4),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Pill(newsLook(top['category'] as String?).label),
                           const Gap(Space.s2),
-                          Text(top['summary'] as String, style: context.ty.sm.col(context.c.textMuted)),
+                          Text(top['title'] as String, style: context.ty.h3),
+                          if ((top['summary'] as String?)?.isNotEmpty == true) ...[
+                            const Gap(Space.s2),
+                            Text(top['summary'] as String, style: context.ty.sm.col(context.c.textMuted)),
+                          ],
+                          const Gap(Space.s2),
+                          Text(_line(top, meta), style: context.ty.cap.col(context.c.textMuted)),
                         ],
-                        const Gap(Space.s2),
-                        Text('${newsDate(top)} · ${readMins(top)} min read', style: context.ty.cap.col(context.c.textMuted)),
-                      ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            if (rest.isNotEmpty && (ads.newsCard || ads.nativeEvery > 0)) const AdNativeCard(placement: 'news'),
-            // The other stories in groups, with a card ad between groups as the level says (every N stories).
-            for (var g = 0; g < rest.length; g += every) ...[
-              if (g > 0) AdNativeCard(key: ValueKey('ad-news-$g'), placement: 'news'),
-              const Gap(Space.s4),
-              ListCard(
-                children: [
-                  for (final n in rest.skip(g).take(every))
-                    ListRow(
-                      lead: NewsCover(n: n, thumb: true),
-                      title: n['title'] as String,
-                      caption: '${newsLook(n['category'] as String?).label} · ${newsDate(n)}',
-                      caret: false,
-                      onTap: () => context.push('/news/${n['id']}'),
-                    ),
-                ],
-              ),
+              if (rest.isNotEmpty && (ads.newsCard || ads.nativeEvery > 0)) const AdNativeCard(placement: 'news'),
+              // The other stories in groups, with a card ad between groups as the level says (every N stories).
+              for (var g = 0; g < rest.length; g += every) ...[
+                if (g > 0) AdNativeCard(key: ValueKey('ad-news-$g'), placement: 'news'),
+                const Gap(Space.s4),
+                ListCard(
+                  children: [
+                    for (final n in rest.skip(g).take(every))
+                      ListRow(
+                        lead: NewsCover(n: n, thumb: true),
+                        title: n['title'] as String,
+                        caption: '${newsLook(n['category'] as String?).label} · ${_line(n, meta)}',
+                        caret: false,
+                        onTap: () => context.push('/news/${n['id']}'),
+                      ),
+                  ],
+                ),
+              ],
             ],
-          ],
+          ),
         );
       }, onRetry: () => ref.invalidate(newsProvider)),
     );
   }
 }
 
+/// "12 Nov 2026 · 3 min read · 5 likes · 2 comments".
+String _line(Map<String, dynamic> n, Map<String, NewsMeta> meta) {
+  final m = meta['${n['id']}'];
+  return [
+    newsDate(n),
+    '${readMins(n)} min read',
+    if ((m?.likes ?? 0) > 0) '${m!.likes} like${m.likes == 1 ? '' : 's'}',
+    if ((m?.comments ?? 0) > 0) '${m!.comments} comment${m.comments == 1 ? '' : 's'}',
+  ].join(' · ');
+}
+
 /// News article (prototype: news-detail): hero cover with glass back button, badge + date, title, summary, body, link.
-class NewsDetailScreen extends ConsumerWidget {
+class NewsDetailScreen extends ConsumerStatefulWidget {
   const NewsDetailScreen({super.key, required this.id});
   final String id;
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<NewsDetailScreen> createState() => _NewsDetailScreenState();
+}
+
+class _NewsDetailScreenState extends ConsumerState<NewsDetailScreen> {
+  final _commentsKey = GlobalKey();
+  String get id => widget.id;
+
+  @override
+  Widget build(BuildContext context) {
     final list = ref.watch(newsProvider).value ?? const [];
     final n = list.where((x) => '${x['id']}' == id).firstOrNull;
     if (n == null) {
@@ -215,7 +297,11 @@ class NewsDetailScreen extends ConsumerWidget {
     final c = context.c;
     final body = ((n['body'] as String?) ?? '').trim();
     final linkType = n['link_type'] as String?, target = n['link_target'] as String?;
-    final more = list.where((x) => x['id'] != n['id']).take(2).toList();
+    // Related: the same group first, then the newest others (D-141).
+    final more = [
+      ...list.where((x) => x['id'] != n['id'] && x['category'] == n['category']),
+      ...list.where((x) => x['id'] != n['id'] && x['category'] != n['category']),
+    ].take(3).toList();
     return Scaffold(
       body: ListView(
         padding: EdgeInsets.only(bottom: Space.s8 + MediaQuery.paddingOf(context).bottom),
@@ -235,10 +321,12 @@ class NewsDetailScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(
+                Wrap(
+                  spacing: Space.s2,
+                  runSpacing: Space.s1,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Pill(newsLook(n['category'] as String?).label),
-                    const Gap(Space.s2),
                     Text('${newsDate(n)} · ${readMins(n)} min read', style: context.ty.cap.col(c.textMuted)),
                   ],
                 ),
@@ -248,6 +336,14 @@ class NewsDetailScreen extends ConsumerWidget {
                   const Gap(Space.s3),
                   Text(n['summary'] as String, style: context.ty.lg.col(c.textMuted)),
                 ],
+                const Gap(Space.s4),
+                NewsActions(
+                  n: n,
+                  onComments: () {
+                    final ctx = _commentsKey.currentContext;
+                    if (ctx != null) Scrollable.ensureVisible(ctx, duration: const Duration(milliseconds: 350), curve: Curves.easeOut);
+                  },
+                ),
                 const AdBanner(screen: 'news'),
                 const Gap(Space.s3),
                 for (final para in body.split(RegExp(r'\n\s*\n')))
@@ -265,11 +361,20 @@ class NewsDetailScreen extends ConsumerWidget {
                     icon: PhosphorIcons.arrowSquareOut(),
                     onPressed: () => launchUrl(Uri.parse(target), mode: LaunchMode.externalApplication),
                   ),
+                const Gap(Space.s4),
+                NewsActions(n: n, onComments: () {}),
                 const Gap(Space.s5),
                 const AdNativeCard(placement: 'news_article'),
+                if (n['comments_on'] != false) ...[
+                  const Gap(Space.s6),
+                  KeyedSubtree(
+                    key: _commentsKey,
+                    child: NewsComments(postId: '${n['id']}'),
+                  ),
+                ],
                 if (more.isNotEmpty) ...[
                   const Gap(Space.s6),
-                  Text('More news', style: context.ty.h3),
+                  Text('Related news', style: context.ty.h3),
                   const Gap(Space.s3),
                   for (final m in more) ...[NewsTile(n: m), const Gap(Space.s3)],
                 ],

@@ -2128,10 +2128,89 @@ export type Database = {
         }
         Relationships: []
       }
+      news_comment_reports: {
+        Row: {
+          comment_id: string
+          created_at: string
+          reason: string
+          user_id: string
+        }
+        Insert: {
+          comment_id: string
+          created_at?: string
+          reason: string
+          user_id?: string
+        }
+        Update: {
+          comment_id?: string
+          created_at?: string
+          reason?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      news_comments: {
+        Row: {
+          body: string
+          created_at: string
+          hidden_at: string | null
+          hidden_by: string | null
+          hidden_reason: string | null
+          id: string
+          post_id: string
+          reports: number
+          reviewed_at: string | null
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          hidden_at?: string | null
+          hidden_by?: string | null
+          hidden_reason?: string | null
+          id?: string
+          post_id: string
+          reports?: number
+          reviewed_at?: string | null
+          user_id?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          hidden_at?: string | null
+          hidden_by?: string | null
+          hidden_reason?: string | null
+          id?: string
+          post_id?: string
+          reports?: number
+          reviewed_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      news_likes: {
+        Row: {
+          created_at: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          post_id: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       news_posts: {
         Row: {
           body: string | null
           category: string
+          comments_on: boolean
           created_at: string
           created_by: string | null
           id: string
@@ -2149,6 +2228,7 @@ export type Database = {
         Insert: {
           body?: string | null
           category?: string
+          comments_on?: boolean
           created_at?: string
           created_by?: string | null
           id?: string
@@ -2166,6 +2246,7 @@ export type Database = {
         Update: {
           body?: string | null
           category?: string
+          comments_on?: boolean
           created_at?: string
           created_by?: string | null
           id?: string
@@ -2179,6 +2260,24 @@ export type Database = {
           summary?: string | null
           title?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      news_saves: {
+        Row: {
+          created_at: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          post_id: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          post_id?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -3876,6 +3975,7 @@ export type Database = {
           total: number
         }[]
       }
+      admin_news_comments: { Args: { p_filter?: string }; Returns: { id: string; post_id: string; post_title: string; user_id: string; name: string; body: string; created_at: string; reports: number; hidden_at: string | null; hidden_reason: string | null; reviewed_at: string | null }[] }
       admin_notifications: { Args: { p_limit?: number }; Returns: Json }
       admin_pause_codes: {
         Args: { p_id: string; p_paused: boolean }
@@ -4258,6 +4358,8 @@ export type Database = {
       my_today_plan: { Args: never; Returns: Json }
       my_winnings: { Args: never; Returns: Json }
       my_xp: { Args: never; Returns: Json }
+      news_comments_list: { Args: { p_post: string }; Returns: { id: string; name: string; body: string; created_at: string; mine: boolean; hidden: boolean }[] }
+      news_meta: { Args: { p_ids: string[] }; Returns: { post_id: string; likes: number; comments: number; liked: boolean; saved: boolean }[] }
       pay_cancel: {
         Args: { p_note?: string; p_reference: string; p_uid: string }
         Returns: Json

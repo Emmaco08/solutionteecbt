@@ -1309,3 +1309,16 @@ The owner asked to run the admin from Vercel instead of the laptop.
   builds the Google Play preview APK (/download?channel=play) and the .aab. `[play]` on its own still works. The
   quick check on other pushes is unchanged. Costs more GitHub minutes per release; fine while the repository is public.
 
+## D-141 — News v2: likes, comments, saved posts, sharing (2026-11-11)
+- Plan for all of B: docs/plans/engagement.md. The push per post (with its switch) and reading time already existed.
+- Likes and saves are each student's own rows; counts come from `news_meta()`. Comments: 2–500 letters, no links
+  (blocked on the server), 5 a minute and 30 a day, banned students cannot comment or like, one Comments switch per
+  post (on by default). Other students see only the first name and initial (`news_comments_list()`); nobody can
+  read the comments table directly except their own rows and staff.
+- Reports (rude, spam, wrong, other), one per student per comment; 3 reports hide a comment until staff look.
+  Admin → News → Comments: Reported / Hidden / All; Keep (shows it and stops new reports hiding it again), Hide,
+  Delete. The News list shows likes, comments and how many reports wait.
+- App: like (heart pops, haptic), comments count (jumps to comments), Save, Share (WhatsApp, copy if WhatsApp is not
+  there; the link points to cbt.solutiontee.com because the website has no news pages yet). News list: group chips
+  and Saved, likes and comments under each post, pull to refresh. Related news: same group first.
+
