@@ -134,6 +134,7 @@ Plan: `docs/plans/phase-4.md`.
   - [ ] Step C JAMB countdown · [ ] D Request a tutor · [ ] E Online classes · [ ] F Games · [ ] G Community
   - [x] **Payments fixed for good** (D-129, D-130): payments confirmed by the webhook, the result page/app (by reference, no login needed) and a 2-minute scheduler; the website never logs the app out (local sign-out only); "You are already on Premium" on /pay; new receipt page. Server parts live 2026-11-11. **Waiting:** "deploy" (website) and the app build on /download.
   - [x] **Website exam logos + smooth landing page** (D-131): logos follow the admin switch; landing page 47 → 58 fps on a slowed phone, 0 janky frames. **Waiting:** "deploy".
+  - [x] **Paystack fee choice + Test/Live switch + /pay redesign** (D-132, D-133): who pays Paystack's fee (matched with the Paystack dashboard, with a live check), keys typed in admin and kept in Vault, Test/Live switch (test = staff only), test payments left out of revenue; new /pay with steps, code boxes, plan cards, benefits. Server parts live 2026-11-11. **Waiting:** "deploy" (website), owner saves live keys and chooses Live.
 
 ## Phase 5 — Website, classes, community  (approval: `WEBSITE APPROVED`)
 - [ ] Not started

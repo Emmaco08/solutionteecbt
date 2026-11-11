@@ -32,6 +32,12 @@ export async function paystackSignatureOk(secret: string, rawBody: string, heade
   return safeEqual(await hmacSha512Hex(secret, rawBody), header.trim().toLowerCase());
 }
 
+/** What we asked Paystack to charge, from its verify answer (null when Paystack does not say). D-132. */
+export function requestedKobo(d: Record<string, unknown>): number | null {
+  const n = Number(d.requested_amount);
+  return Number.isInteger(n) && n > 0 ? n : null;
+}
+
 /** The Play account id the app sends with a purchase: sha256 of the user id (no personal data goes to Google). */
 export function playAccountId(userId: string): Promise<string> {
   return sha256Hex("solutiontee:" + userId);
@@ -45,6 +51,8 @@ export function trimPaystack(d: Record<string, unknown> | null | undefined): Rec
     id: d.id ?? null,
     status: d.status ?? null,
     amount: d.amount ?? null,
+    // What we asked Paystack to charge; "amount" is higher when Paystack charges the customer its fee (D-132).
+    requested_amount: d.requested_amount ?? null,
     currency: d.currency ?? null,
     channel: d.channel ?? null,
     gateway_response: d.gateway_response ?? null,

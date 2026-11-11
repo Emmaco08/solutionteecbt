@@ -54,6 +54,9 @@ class PaySettings {
   String get websiteUrl => '${j['website_url'] ?? ''}'.startsWith('https://') ? '${j['website_url']}' : 'https://cbt.solutiontee.com/pay';
   bool get googleFee => _m(_fees['google'])['on'] == true;
 
+  /// Paystack adds its own fee on its checkout (admin: "Students pay it — added by Paystack", D-132).
+  bool get paystackAddsFee => _m(_fees['paystack'])['mode'] == 'paystack';
+
   /// The Paystack processing fee for an amount, the same sum as the server's `private.paystack_fee` (display only:
   /// the server always works out what is charged).
   int paystackFeeKobo(int amountKobo) {

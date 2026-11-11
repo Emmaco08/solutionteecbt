@@ -1204,3 +1204,27 @@ The owner asked to run the admin from Vercel instead of the laptop.
   graphics chip), parallax and tilt only on computers with a mouse, a solid menu on phones, demo phones paused off
   screen. Measured on an emulated phone with the CPU slowed 4×, scrolling the whole page: 47 → 58 frames a second,
   janky frames 4% → 0%, blocking work 441 ms → 0 ms; idle 41 → 60 frames a second.
+
+## D-132 — Who pays the Paystack fee, matched with the Paystack dashboard (2026-11-11)
+- Admin → Payment settings → "Who pays Paystack’s fee?": SolutionTee pays it (Paystack: Charge me) · students pay it,
+  added by SolutionTee (our own line before paying; Paystack: Charge me) · students pay it, added by Paystack
+  (Paystack: Charge my customers; we only say "+ Paystack fee at checkout"). Our own fee is never added when Paystack
+  adds its fee (no double fee). `fees.paystack.mode`; `on` stays for older apps (true only for "ours").
+- The server accepts both ways safely: Paystack's `requested_amount` must equal our price exactly and the charged
+  `amount` may only be equal or higher (the difference is logged as the student's Paystack fee). A smaller amount or a
+  smaller requested amount goes to review. Tested in a rolled-back transaction (4 cases).
+- The settings page shows what Paystack did on the latest payment and warns when it does not match the choice.
+- Transfer/USSD show Paystack's own figure to send when it is higher than our price (its fee added).
+
+## D-133 — Paystack Test / Live switch and keys in the admin (2026-11-11)
+- The four keys (live/test, secret/public) are typed by a super admin with 2-step login in admin → Payment settings and
+  saved in Supabase Vault (`admin_set_paystack_key`, shape checked, audit-logged masked). Never shown again, never in
+  the app, a browser or chat. The payment server reads them with `paystack_config()` (service role only), cached 30 s.
+- `paystack_env.mode` (Test/Live, super admin only). Each payment remembers its mode (`payments.live`) and is always
+  verified, refunded and webhook-checked with that mode's key; the webhook accepts either key's signature.
+- Test mode: only staff can start a payment (students: "payments are paused for a few minutes"). Test payments are
+  marked Test in admin → Payments and left out of revenue (analytics, payments totals, content sales).
+- Found: the only key on the server was a Paystack TEST key, so every Paystack payment so far was a test payment (no
+  real money; anyone could have got Premium with Paystack's public test cards). All 69 earlier Paystack payments are
+  now marked Test, and test mode is staff-only from now on. Until live keys are saved and Live is chosen, students
+  cannot pay on the website or in the direct app.

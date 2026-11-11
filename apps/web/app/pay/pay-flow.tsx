@@ -3,7 +3,10 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, ArrowSquareOut, CalendarCheck, CheckCircle, Crown, EnvelopeSimple, LockSimple, Plus, ShieldCheck, SignOut, SpinnerGap, Ticket, XCircle } from "@phosphor-icons/react";
+import {
+  ArrowLeft, ArrowRight, ArrowSquareOut, Bank, CalendarCheck, Check, CheckCircle, CreditCard, Crown, DeviceMobile, EnvelopeSimple, Hash,
+  LockSimple, Plus, ShieldCheck, SignOut, SpinnerGap, Ticket, Wallet, XCircle,
+} from "@phosphor-icons/react";
 import type { Session } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { payStatus } from "./done/status";
@@ -47,6 +50,38 @@ const QUOTE_ERRORS: Record<string, string> = {
   too_many_codes: "You can use up to 3 codes on one payment.", paused: "This code is paused right now.", not_started: "This code does not work yet.",
 };
 
+const FALLBACK_BENEFITS = [
+  "No ads at all: no banners, no video breaks", "Every past question year for JAMB, WAEC and NECO", "Video solutions, lessons and notes",
+  "More AI tutor help every day", "Download and practise offline, without data",
+];
+
+/** What Premium gives, written from the admin's Free vs Premium rules (same words as the app's paywall). */
+function premiumBenefits(a: Record<string, Record<string, unknown>>): string[] {
+  const f = a.free ?? {}, p = a.premium ?? {};
+  if (!a.premium) return [];
+  const y = (v: unknown) => (v === "all" ? "every year" : `${v} years`);
+  const out = ["No ads at all: no banners, no video breaks"];
+  for (const k of ["jamb", "waec", "neco"]) {
+    if (p[k] !== undefined && p[k] !== f[k]) out.push(`${k.toUpperCase()} CBT: ${y(p[k])}${typeof f[k] === "number" && (f[k] as number) > 0 ? ` (Free: ${y(f[k])})` : " (not on Free)"}`);
+  }
+  if (p.pq !== undefined && p.pq !== f.pq) out.push(`Past questions with answers: ${y(p.pq)} (Free: ${y(f.pq)})`);
+  const feats = ([["videos", "Video solutions"], ["lessons", "Topic video lessons"], ["notes", "Lesson notes"], ["novels", "Novel summaries"]] as const)
+    .filter(([k]) => p[k] === true && f[k] !== true).map(([, n]) => n);
+  if (feats.length) out.push(feats.join(", "));
+  if (p.ai !== undefined && p.ai !== f.ai) out.push(`${p.ai} AI tutor prompts a day (Free: ${f.ai})`);
+  if (p.offline === true && f.offline !== true) out.push("Download lessons and practise offline, without data");
+  return out.slice(0, 7);
+}
+
+/** About how much a plan costs per month (for comparing plans; the price paid is the plan price). */
+function perMonth(p: Plan): number | null {
+  const days = p.duration_days ?? (p.ends_on ? Math.ceil((new Date(p.ends_on).getTime() - Date.now()) / 86_400_000) : null);
+  // Whole naira, to the nearest ₦10; not for plans of a month or less.
+  return days && days > 31 ? Math.round(p.price_kobo / (days / 30) / 1000) * 1000 : null;
+}
+
+const STEPS = ["Email", "Code", "Plan", "Pay"] as const;
+
 /** The payment website (D-114): log in with an email code, pick a plan, pay with Paystack (every method Paystack offers). */
 export function PayFlow() {
   const sp = useSearchParams();
@@ -72,6 +107,34 @@ export function PayFlow() {
   const [handoff, setHandoff] = useState(Boolean(sp.get("h")));
   const [mine, setMine] = useState<Mine | null>(null);
   const [extend, setExtend] = useState(false);
+  const [benefits, setBenefits] = useState<string[]>(FALLBACK_BENEFITS);
+  const [feeByPaystack, setFeeByPaystack] = useState(false);
+  const [codeOpen, setCodeOpen] = useState(codes.length > 0);
+  const [resendAt, setResendAt] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
+
+  // Public settings (no login): what Premium gives (the admin's Free vs Premium rules, same words as the app) and
+  // whether Paystack adds its fee at checkout (D-132).
+  useEffect(() => {
+    let live = true;
+    Promise.all([sb.from("access_rules").select("tier, rules"), sb.from("app_settings").select("value").eq("key", "payments").maybeSingle()])
+      .then(([r, s]) => {
+        if (!live) return;
+        const rules = Object.fromEntries(((r.data ?? []) as { tier: string; rules: Record<string, unknown> }[]).map((x) => [x.tier, x.rules]));
+        const list = premiumBenefits(rules);
+        if (list.length > 1) setBenefits(list);
+        const v = s.data?.value as { fees?: { paystack?: { mode?: string } } } | null;
+        setFeeByPaystack(v?.fees?.paystack?.mode === "paystack");
+      }, () => {});
+    return () => { live = false; };
+  }, [sb]);
+
+  // "Send a new code" waits 45 seconds.
+  useEffect(() => {
+    if (resendAt <= now) return;
+    const t = setTimeout(() => setNow(Date.now()), 1000);
+    return () => clearTimeout(t);
+  }, [resendAt, now]);
 
   /** Calls the Paystack Edge Function as the signed-in student. */
   const edge = useCallback(async (s: Session, body: Record<string, unknown>) => {
@@ -239,14 +302,16 @@ export function PayFlow() {
       const r = await fetch("/api/web/login-code", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email }) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error ?? "Something went wrong. Try again.");
-      setCodeLen(Number(j.codeLength ?? 6)); setNote(j.message ?? null);
+      setCodeLen(Number(j.codeLength ?? 6)); setNote(j.message ?? null); setOtp("");
+      const t = Date.now(); setNow(t); setResendAt(t + 45_000);
     } catch (x) { setErr(x instanceof Error ? x.message : "No internet connection."); } finally { setBusy(false); }
   }
 
-  async function verify(e?: React.FormEvent) {
+  async function verify(e?: React.FormEvent, value = otp) {
     e?.preventDefault();
+    if (busy) return;
     setBusy(true); setErr(null);
-    const { error } = await sb.auth.verifyOtp({ email: email.trim().toLowerCase(), token: otp.trim(), type: "recovery" });
+    const { error } = await sb.auth.verifyOtp({ email: email.trim().toLowerCase(), token: value.trim(), type: "recovery" });
     setBusy(false);
     if (error) setErr("That code is wrong or has expired. Check it, or ask for a new one.");
   }
@@ -268,141 +333,264 @@ export function PayFlow() {
   const plan = plans.find((p) => p.code === pick);
   const premium = mine?.tier === "premium" && mine.expires_at ? mine : null;
   const step = !ready || handoff || (session && !mine) ? "load" : !session ? (codeLen ? "code" : "email") : premium && !extend && !left ? "premium" : "plan";
-  const anim = { initial: still ? false : { opacity: 0, x: 24 }, animate: { opacity: 1, x: 0 }, exit: still ? undefined : { opacity: 0, x: -24 }, transition: { duration: 0.35, ease } } as const;
+  const anim = { initial: still ? false : { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, exit: still ? undefined : { opacity: 0, y: -8 }, transition: { duration: 0.3, ease } } as const;
+  const stepNo = step === "email" ? 0 : step === "code" ? 1 : 2;
+  const monthly = plans.map(perMonth);
+  const best = plans.length > 1 ? monthly.indexOf(Math.min(...monthly.filter((m): m is number => m !== null))) : -1;
+  const wait = Math.max(0, Math.ceil((resendAt - now) / 1000));
 
   return (
-    <div className="w-full max-w-lg">
-      <div className="mb-6 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2.5" aria-label="SolutionTee CBT home">
+    <div className="grid w-full max-w-5xl items-start gap-6 lg:grid-cols-[minmax(0,1fr)_460px] lg:gap-10">
+      {/* Left on computers, below on phones: what Premium gives */}
+      <aside className="order-2 lg:order-1 lg:sticky lg:top-10">
+        <Link href="/" className="hidden items-center gap-2.5 lg:flex" aria-label="SolutionTee CBT home">
           {/* Real brand mark from /brand (never redrawn) */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/brand/favicon.svg" alt="" className="size-9 rounded-xl" />
-          <span className="text-[17px] font-bold">SolutionTee <span className="text-[#C88A12] dark:text-[#F2B233]">CBT</span></span>
+          <img src="/brand/favicon.svg" alt="" className="size-10 rounded-xl" />
+          <span className="text-lg font-bold">SolutionTee <span className="text-[#C88A12] dark:text-[#F2B233]">CBT</span></span>
         </Link>
-        {session ? (
-          <button type="button" onClick={() => sb.auth.signOut({ scope: "local" })} className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground">
-            <SignOut size={16} /> Log out
-          </button>
-        ) : null}
-      </div>
-      <section className="overflow-hidden rounded-3xl border bg-card p-6 shadow-[var(--shadow-2,0_10px_30px_rgba(6,19,43,.08))] sm:p-8">
-        <AnimatePresence mode="wait">
-          {step === "load" ? (
-            <motion.div key="load" className="grid h-48 place-items-center"><SpinnerGap size={28} className="animate-spin text-muted-foreground" /></motion.div>
-          ) : step === "email" ? (
-            <motion.form key="email" {...anim} onSubmit={sendCode}>
-              <span className="grid size-12 place-items-center rounded-2xl bg-[#F2B233] text-[#0B1F44]"><Crown size={24} weight="fill" /></span>
-              <h1 className="mt-5 text-2xl font-bold tracking-tight">Get SolutionTee Premium</h1>
-              <p className="mt-2 text-[15px] leading-6 text-muted-foreground">Log in with the email you use in the app. We will send you a code. Premium shows in the app as soon as you pay.</p>
-              <label htmlFor="email" className="mt-6 block text-sm font-bold">Email</label>
-              <div className="mt-2 flex h-12 items-center gap-2 rounded-2xl border bg-background px-3 focus-within:ring-2 focus-within:ring-ring">
-                <EnvelopeSimple size={20} className="text-muted-foreground" />
-                <input id="email" type="email" required autoComplete="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tolu@gmail.com" className="h-full min-w-0 flex-1 bg-transparent outline-none" />
-              </div>
-              {err ? <p className="mt-3 rounded-xl bg-error-soft px-3 py-2 text-sm text-on-error-soft">{err}</p> : null}
-              <button type="submit" disabled={busy || !email} className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#0B1F44] font-bold text-white disabled:opacity-60 dark:bg-white dark:text-[#0B1F44]">
-                {busy ? <SpinnerGap size={18} className="animate-spin" /> : null} Send my code <ArrowRight size={16} weight="bold" />
-              </button>
-              <p className="mt-4 text-center text-sm text-muted-foreground">No account yet? <a href="/download/apk" className="font-bold text-foreground underline-offset-4 hover:underline">Get the app</a> and create one first.</p>
-            </motion.form>
-          ) : step === "code" ? (
-            <motion.form key="code" {...anim} onSubmit={verify}>
-              <button type="button" onClick={() => { setCodeLen(null); setOtp(""); setErr(null); }} className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"><ArrowLeft size={14} /> Change email</button>
-              <h1 className="text-2xl font-bold tracking-tight">Enter your code</h1>
-              <p className="mt-2 text-[15px] leading-6 text-muted-foreground">{note ?? `We sent a code to ${email}.`} Check your inbox and spam folder.</p>
-              <input autoFocus inputMode="numeric" autoComplete="one-time-code" maxLength={codeLen ?? 8} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
-                aria-label="Code" placeholder={"•".repeat(codeLen ?? 6)} className="mt-6 h-16 w-full rounded-2xl border bg-background text-center text-3xl font-bold tracking-[0.4em] tabular-nums outline-none focus:ring-2 focus:ring-ring" />
-              {err ? <p className="mt-3 rounded-xl bg-error-soft px-3 py-2 text-sm text-on-error-soft">{err}</p> : null}
-              <button type="submit" disabled={busy || otp.length < (codeLen ?? 6)} className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#0B1F44] font-bold text-white disabled:opacity-60 dark:bg-white dark:text-[#0B1F44]">
-                {busy ? <SpinnerGap size={18} className="animate-spin" /> : null} Log in
-              </button>
-              <button type="button" onClick={() => sendCode()} disabled={busy} className="mt-3 w-full text-sm font-bold text-muted-foreground hover:text-foreground">Send a new code</button>
-            </motion.form>
-          ) : step === "premium" && premium ? (
-            <motion.div key="premium" {...anim}>
-              <p className="text-sm text-muted-foreground">Logged in as <b className="text-foreground">{session?.user.email}</b></p>
-              <PremiumNow plan={premium.plan} until={premium.expires_at!} onMore={() => setExtend(true)} />
-            </motion.div>
-          ) : (
-            <motion.div key="plan" {...anim}>
-              <p className="text-sm text-muted-foreground">Logged in as <b className="text-foreground">{session?.user.email}</b></p>
-              {premium ? (
-                <button type="button" onClick={() => setExtend(false)} className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"><ArrowLeft size={14} /> Back to my Premium</button>
-              ) : null}
-              <h1 className="mt-1 text-2xl font-bold tracking-tight">{premium ? "Add more time" : "Choose your plan"}</h1>
-              {premium ? <p className="mt-1 text-sm text-muted-foreground">Your Premium runs until {day(premium.expires_at!)}. New time is added after that.</p> : null}
-              <AnimatePresence>
-                {left ? (
-                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                    <div className={`mt-4 flex items-start gap-3 rounded-2xl p-4 text-sm ${left.kind === "cancelled" ? "bg-warning-soft text-on-warning-soft" : "bg-info-soft text-on-info-soft"}`}>
-                      {left.kind === "checking" ? <SpinnerGap size={20} className="mt-0.5 shrink-0 animate-spin" /> : <XCircle size={20} weight="fill" className="mt-0.5 shrink-0" />}
-                      <div>
-                        <b className="block">{left.kind === "checking" ? "Checking your last payment…" : "Payment cancelled"}</b>
-                        {left.kind === "cancelled" ? <span>Nothing was charged. Choose a plan and try again, or pick another way to pay on Paystack.</span> : null}
-                      </div>
+        <div className="rounded-3xl bg-[#0B1F44] p-6 text-white sm:p-8 lg:mt-8 dark:bg-[#0F2650] dark:ring-1 dark:ring-white/10">
+          <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#F2B233] px-2.5 py-1 text-xs font-bold text-[#0B1F44]"><Crown size={14} weight="fill" /> Premium</span>
+          <h2 className="mt-4 text-[26px] font-bold leading-tight tracking-tight sm:text-[30px]">Everything you need to pass, in one plan</h2>
+          <ul className="mt-6 space-y-3.5">
+            {benefits.map((b) => (
+              <li key={b} className="flex gap-3 text-[15px] leading-6 text-white/90">
+                <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-[#F2B233]/20 text-[#F2B233]"><Check size={12} weight="bold" /></span>{b}
+              </li>
+            ))}
+          </ul>
+          <div className="mt-7 grid grid-cols-3 gap-2 border-t border-white/10 pt-5 text-center text-xs text-white/70">
+            <span><ShieldCheck size={20} weight="fill" className="mx-auto mb-1 text-[#4ADE80]" />Secured by Paystack</span>
+            <span><CalendarCheck size={20} weight="fill" className="mx-auto mb-1 text-[#F2B233]" />Pay once, no auto-renew</span>
+            <span><DeviceMobile size={20} weight="fill" className="mx-auto mb-1 text-[#8FB6EE]" />Works on any phone you log in</span>
+          </div>
+        </div>
+        <p className="mt-5 text-center text-xs leading-5 text-muted-foreground lg:text-left">SolutionTee CBT is an independent exam-practice platform and is not affiliated with or endorsed by JAMB, WAEC or NECO.</p>
+      </aside>
+
+      <div className="order-1 lg:order-2">
+        <div className="mb-5 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2.5 lg:invisible" aria-label="SolutionTee CBT home">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/brand/favicon.svg" alt="" className="size-9 rounded-xl" />
+            <span className="text-[17px] font-bold">SolutionTee <span className="text-[#C88A12] dark:text-[#F2B233]">CBT</span></span>
+          </Link>
+          {session ? (
+            <button type="button" onClick={() => sb.auth.signOut({ scope: "local" })} className="inline-flex h-10 items-center gap-1.5 rounded-xl px-3 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground">
+              <SignOut size={16} /> Log out
+            </button>
+          ) : null}
+        </div>
+
+        <section className="rounded-3xl border bg-card shadow-[var(--shadow-2,0_10px_30px_rgba(6,19,43,.08))]">
+          {step !== "load" && step !== "premium" ? (
+            <ol className="flex items-center gap-2 border-b px-6 py-4 sm:px-8" aria-label="Steps">
+              {STEPS.map((t, i) => {
+                const done = i < stepNo, on = i === stepNo;
+                return (
+                  <li key={t} className="flex flex-1 items-center gap-2 last:flex-none">
+                    <span className={`grid size-6 shrink-0 place-items-center rounded-full text-[11px] font-bold ${done ? "bg-success text-white" : on ? "bg-[#2563B3] text-white" : "bg-muted text-muted-foreground"}`}>
+                      {done ? <Check size={12} weight="bold" /> : i + 1}
+                    </span>
+                    <span className={`text-xs font-bold ${on ? "text-foreground" : "text-muted-foreground"} ${on ? "" : "hidden sm:inline"}`}>{t}</span>
+                    {i < STEPS.length - 1 ? <span className={`h-px flex-1 ${done ? "bg-success" : "bg-border"}`} /> : null}
+                  </li>
+                );
+              })}
+            </ol>
+          ) : null}
+
+          <div className="p-6 sm:p-8">
+            <AnimatePresence mode="wait" initial={false}>
+              {step === "load" ? (
+                <motion.div key="load" className="grid h-56 place-items-center"><SpinnerGap size={28} className="animate-spin text-muted-foreground" /></motion.div>
+              ) : step === "email" ? (
+                <motion.form key="email" {...anim} onSubmit={sendCode}>
+                  <h1 className="text-[26px] font-bold leading-tight tracking-tight">Get SolutionTee Premium</h1>
+                  <p className="mt-2 text-[15px] leading-6 text-muted-foreground">Log in with the email you use in the app. We’ll send you a 6-digit code.</p>
+                  <label htmlFor="email" className="mt-6 block text-sm font-bold">Email</label>
+                  <div className="mt-2 flex h-13 items-center gap-2.5 rounded-2xl border bg-background px-4 transition-shadow focus-within:border-[#2563B3] focus-within:ring-4 focus-within:ring-[#2563B3]/15">
+                    <EnvelopeSimple size={20} className="text-muted-foreground" />
+                    <input id="email" type="email" required autoComplete="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tolu@gmail.com" className="h-full min-w-0 flex-1 bg-transparent text-[16px] outline-none" />
+                  </div>
+                  {err ? <Alert>{err}</Alert> : null}
+                  <PrimaryButton busy={busy} disabled={!email}>Send my code <ArrowRight size={16} weight="bold" /></PrimaryButton>
+                  <p className="mt-5 text-center text-sm text-muted-foreground">No account yet? <a href="/download/apk" className="font-bold text-foreground underline-offset-4 hover:underline">Get the app</a> and sign up first.</p>
+                </motion.form>
+              ) : step === "code" ? (
+                <motion.form key="code" {...anim} onSubmit={(e) => verify(e)}>
+                  <button type="button" onClick={() => { setCodeLen(null); setOtp(""); setErr(null); }} className="-ml-1 mb-4 inline-flex h-9 items-center gap-1 rounded-lg px-1 text-sm font-medium text-muted-foreground hover:text-foreground"><ArrowLeft size={14} /> Change email</button>
+                  <h1 className="text-[26px] font-bold leading-tight tracking-tight">Check your email</h1>
+                  <p className="mt-2 text-[15px] leading-6 text-muted-foreground">{note ?? <>We sent a code to <b className="text-foreground">{email}</b>.</>} It can take a minute; check spam too.</p>
+                  <CodeBoxes length={codeLen ?? 6} value={otp} disabled={busy}
+                    onChange={(v) => { setOtp(v); setErr(null); if (v.length === (codeLen ?? 6)) void verify(undefined, v); }} />
+                  {err ? <Alert>{err}</Alert> : null}
+                  <PrimaryButton busy={busy} disabled={otp.length < (codeLen ?? 6)}>Log in</PrimaryButton>
+                  <button type="button" onClick={() => sendCode()} disabled={busy || wait > 0} className="mt-3 h-11 w-full rounded-2xl text-sm font-bold text-muted-foreground hover:text-foreground disabled:opacity-60">
+                    {wait > 0 ? `Send a new code in ${wait}s` : "Send a new code"}
+                  </button>
+                </motion.form>
+              ) : step === "premium" && premium ? (
+                <motion.div key="premium" {...anim}>
+                  <p className="text-sm text-muted-foreground">Logged in as <b className="text-foreground">{session?.user.email}</b></p>
+                  <PremiumNow plan={premium.plan} until={premium.expires_at!} onMore={() => setExtend(true)} />
+                </motion.div>
+              ) : (
+                <motion.div key="plan" {...anim}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      {premium ? (
+                        <button type="button" onClick={() => setExtend(false)} className="-ml-1 mb-2 inline-flex h-8 items-center gap-1 rounded-lg px-1 text-sm font-medium text-muted-foreground hover:text-foreground"><ArrowLeft size={14} /> Back to my Premium</button>
+                      ) : null}
+                      <h1 className="text-[26px] font-bold leading-tight tracking-tight">{premium ? "Add more time" : "Choose your plan"}</h1>
+                      <p className="mt-1 truncate text-sm text-muted-foreground">{premium ? `New time starts after ${day(premium.expires_at!)}.` : <>For <b className="text-foreground">{session?.user.email}</b></>}</p>
                     </div>
-                  </motion.div>
-                ) : null}
-              </AnimatePresence>
-              <div className="mt-5 space-y-3" role="radiogroup" aria-label="Plans">
-                {plans.map((p) => {
-                  const on = p.code === pick;
-                  return (
-                    <button key={p.code} type="button" role="radio" aria-checked={on} onClick={() => setPick(p.code)}
-                      className={`flex w-full items-center gap-4 rounded-2xl border-2 p-4 text-left transition-colors ${on ? "border-[#2563B3] bg-[#EEF4FC] dark:bg-[#16284A]" : "border-border hover:border-[#2563B3]/50"}`}>
-                      <span className={`grid size-6 shrink-0 place-items-center rounded-full border-2 ${on ? "border-[#2563B3] bg-[#2563B3] text-white" : "border-border"}`}>{on ? <CheckCircle size={16} weight="fill" /> : null}</span>
-                      <span className="grow"><b className="block">{p.name}</b><small className="text-muted-foreground">{p.duration_days ? `${p.duration_days} days` : p.ends_on ? `Until ${day(p.ends_on)}` : ""}</small></span>
-                      <b className="tabular-nums">{ng(p.price_kobo)}</b>
+                  </div>
+
+                  <AnimatePresence>
+                    {left ? (
+                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                        <div className={`mt-4 flex items-start gap-3 rounded-2xl p-4 text-sm ${left.kind === "cancelled" ? "bg-warning-soft text-on-warning-soft" : "bg-info-soft text-on-info-soft"}`}>
+                          {left.kind === "checking" ? <SpinnerGap size={20} className="mt-0.5 shrink-0 animate-spin" /> : <XCircle size={20} weight="fill" className="mt-0.5 shrink-0" />}
+                          <div>
+                            <b className="block">{left.kind === "checking" ? "Checking your last payment…" : "Payment cancelled"}</b>
+                            {left.kind === "cancelled" ? <span>Nothing was charged. Choose a plan and try again, or pick another way to pay on Paystack.</span> : null}
+                          </div>
+                        </div>
+                      </motion.div>
+                    ) : null}
+                  </AnimatePresence>
+
+                  <div className="mt-5 space-y-3" role="radiogroup" aria-label="Plans">
+                    {plans.length === 0 ? [0, 1, 2].map((i) => <div key={i} className="h-[76px] animate-pulse rounded-2xl bg-muted" />) : null}
+                    {plans.map((p, i) => {
+                      const on = p.code === pick, m = monthly[i];
+                      return (
+                        <button key={p.code} type="button" role="radio" aria-checked={on} onClick={() => setPick(p.code)}
+                          className={`relative flex w-full items-center gap-4 rounded-2xl border-2 px-4 py-4 text-left transition-[border-color,background-color,box-shadow] ${on ? "border-[#2563B3] bg-[#F3F7FD] shadow-[0_0_0_4px_rgba(37,99,179,.12)] dark:bg-[#132B55]" : "border-border hover:border-[#2563B3]/50"}`}>
+                          {i === best ? <span className="absolute -top-2.5 right-4 rounded-full bg-[#F2B233] px-2.5 py-0.5 text-[11px] font-bold text-[#0B1F44]">Best value</span> : null}
+                          <span className={`grid size-6 shrink-0 place-items-center rounded-full border-2 transition-colors ${on ? "border-[#2563B3] bg-[#2563B3] text-white" : "border-border"}`}>{on ? <Check size={13} weight="bold" /> : null}</span>
+                          <span className="min-w-0 grow">
+                            <b className="block text-[16px]">{p.name}</b>
+                            <small className="text-[13px] text-muted-foreground">{p.duration_days ? `${p.duration_days} days` : p.ends_on ? `Until ${day(p.ends_on)}` : ""}</small>
+                          </span>
+                          <span className="text-right">
+                            <b className="block text-[18px] tabular-nums">{ng(p.price_kobo)}</b>
+                            {m ? <small className="text-[12px] text-muted-foreground tabular-nums">≈ {ng(m)}/month</small> : null}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Discount codes: up to 3 (D-117) */}
+                  {!codeOpen ? (
+                    <button type="button" onClick={() => setCodeOpen(true)} className="mt-4 inline-flex h-10 items-center gap-2 rounded-xl px-1 text-sm font-bold text-[#2563B3] hover:underline dark:text-[#8FB6EE]">
+                      <Ticket size={18} /> Have a discount code?
                     </button>
-                  );
-                })}
-              </div>
-              <form className="mt-4 flex gap-2" onSubmit={async (e) => {
-                e.preventDefault();
-                const d = discount.trim().toUpperCase();
-                if (!d || codes.includes(d)) { setDiscount(""); return; }
-                if (codes.length >= MAX_CODES) { setErr(QUOTE_ERRORS.too_many_codes); return; }
-                const next = [...codes, d];
-                if (await loadQuote(pick, next.join(","))) { setCodes(next); setDiscount(""); }
-              }}>
-                <div className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-xl border bg-background px-3">
-                  <Ticket size={18} className="text-muted-foreground" />
-                  <input value={discount} onChange={(e) => setDiscount(e.target.value.toUpperCase())} disabled={codes.length >= MAX_CODES}
-                    placeholder={codes.length ? (codes.length >= MAX_CODES ? "3 codes added" : "Add another code") : "Discount code (optional)"} aria-label="Discount code" className="h-full min-w-0 flex-1 bg-transparent text-sm uppercase outline-none" />
-                </div>
-                <button type="submit" disabled={!discount.trim() || codes.length >= MAX_CODES} className="h-11 rounded-xl border px-4 text-sm font-bold disabled:opacity-50">Apply</button>
-              </form>
-              {codes.length ? (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {codes.map((c) => (
-                    <motion.span key={c} layout initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="inline-flex items-center gap-1.5 rounded-full bg-[#E8F7EE] py-1 pl-3 pr-1 text-xs font-bold text-[#14532D]">
-                      {c}
-                      <button type="button" aria-label={`Remove ${c}`} onClick={() => setCodes(codes.filter((x) => x !== c))} className="grid size-6 place-items-center rounded-full hover:bg-black/10"><XCircle size={16} weight="fill" /></button>
-                    </motion.span>
-                  ))}
-                </div>
-              ) : null}
-              {quote && plan ? (
-                <div className="mt-5 space-y-2 rounded-2xl bg-[#F4F6FA] p-4 text-sm dark:bg-white/5">
-                  <div className="flex justify-between"><span className="text-muted-foreground">{plan.name}</span><span className="tabular-nums">{ng(quote.list_kobo)}</span></div>
-                  {quote.codes?.length
-                    ? quote.codes.map((c) => <div key={c.code} className="flex justify-between text-[#15803D]"><span>{c.code} · {c.label}</span><span className="tabular-nums">−{ng(c.off_kobo)}</span></div>)
-                    : quote.discount_kobo > 0 ? <div className="flex justify-between text-[#15803D]"><span>{quote.label}</span><span className="tabular-nums">−{ng(quote.discount_kobo)}</span></div> : null}
-                  {(quote.fee_kobo ?? 0) > 0 ? <div className="flex justify-between"><span className="text-muted-foreground">Payment processing fee</span><span className="tabular-nums">+{ng(quote.fee_kobo ?? 0)}</span></div> : null}
-                  <div className="flex justify-between border-t pt-2 text-base font-bold"><span>Total</span><span className="tabular-nums">{ng(quote.amount_kobo)}</span></div>
-                  {quote.period_end ? <p className="text-xs text-muted-foreground">Premium until {day(quote.period_end)}. Pay once, no auto-renew.</p> : null}
-                </div>
-              ) : null}
-              {err ? <p className="mt-3 rounded-xl bg-error-soft px-3 py-2 text-sm text-on-error-soft">{err}</p> : null}
-              <button type="button" onClick={pay} disabled={busy || !quote} className="mt-5 inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#F2B233] text-[17px] font-bold text-[#0B1F44] transition-transform hover:-translate-y-0.5 disabled:opacity-60">
-                {busy ? <SpinnerGap size={20} className="animate-spin" /> : <LockSimple size={20} weight="fill" />} Pay {quote ? ng(quote.amount_kobo) : ""} securely
-              </button>
-              <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground"><ShieldCheck size={16} weight="fill" className="text-[#16A34A]" /> Paystack · card, bank transfer, USSD, OPay and other bank apps</p>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </section>
-      <p className="mt-6 text-center text-xs leading-5 text-muted-foreground">SolutionTee CBT is an independent exam-practice platform and is not affiliated with or endorsed by JAMB, WAEC or NECO.</p>
+                  ) : (
+                    <div className="mt-4">
+                      <form className="flex gap-2" onSubmit={async (e) => {
+                        e.preventDefault();
+                        const d = discount.trim().toUpperCase();
+                        if (!d || codes.includes(d)) { setDiscount(""); return; }
+                        if (codes.length >= MAX_CODES) { setErr(QUOTE_ERRORS.too_many_codes); return; }
+                        const next = [...codes, d];
+                        if (await loadQuote(pick, next.join(","))) { setCodes(next); setDiscount(""); }
+                      }}>
+                        <div className="flex h-12 min-w-0 flex-1 items-center gap-2 rounded-xl border bg-background px-3 focus-within:border-[#2563B3] focus-within:ring-4 focus-within:ring-[#2563B3]/15">
+                          <Ticket size={18} className="text-muted-foreground" />
+                          <input autoFocus value={discount} onChange={(e) => setDiscount(e.target.value.toUpperCase())} disabled={codes.length >= MAX_CODES}
+                            placeholder={codes.length ? (codes.length >= MAX_CODES ? "3 codes added" : "Add another code") : "Enter code"} aria-label="Discount code" className="h-full min-w-0 flex-1 bg-transparent text-sm font-bold uppercase tracking-wide outline-none placeholder:font-normal placeholder:normal-case placeholder:tracking-normal" />
+                        </div>
+                        <button type="submit" disabled={!discount.trim() || codes.length >= MAX_CODES} className="h-12 rounded-xl bg-[#0B1F44] px-5 text-sm font-bold text-white disabled:opacity-40 dark:bg-white dark:text-[#0B1F44]">Apply</button>
+                      </form>
+                      {codes.length ? (
+                        <div className="mt-2.5 flex flex-wrap gap-2">
+                          {codes.map((c) => (
+                            <motion.span key={c} layout initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="inline-flex items-center gap-1.5 rounded-full bg-success-soft py-1 pl-3 pr-1 text-xs font-bold text-on-success-soft">
+                              <CheckCircle size={14} weight="fill" /> {c}
+                              <button type="button" aria-label={`Remove ${c}`} onClick={() => setCodes(codes.filter((x) => x !== c))} className="grid size-6 place-items-center rounded-full hover:bg-black/10"><XCircle size={16} weight="fill" /></button>
+                            </motion.span>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
+
+                  {quote && plan ? (
+                    <div className="mt-5 space-y-2.5 rounded-2xl bg-muted/50 p-4 text-sm">
+                      <Line k={plan.name} v={ng(quote.list_kobo)} />
+                      {quote.codes?.length
+                        ? quote.codes.map((c) => <Line key={c.code} k={`${c.code} · ${c.label}`} v={`−${ng(c.off_kobo)}`} good />)
+                        : quote.discount_kobo > 0 ? <Line k={quote.label ?? "Discount"} v={`−${ng(quote.discount_kobo)}`} good /> : null}
+                      {(quote.fee_kobo ?? 0) > 0 ? <Line k="Payment processing fee" v={`+${ng(quote.fee_kobo ?? 0)}`} /> : null}
+                      <div className="flex items-baseline justify-between border-t pt-3">
+                        <b className="text-base">Total</b>
+                        <b className="text-[22px] tabular-nums">{ng(quote.amount_kobo)}</b>
+                      </div>
+                      {feeByPaystack && quote.amount_kobo > 0 ? <p className="text-xs text-muted-foreground">+ Paystack’s processing fee, shown on Paystack’s page before you pay.</p> : null}
+                      {quote.period_end ? <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><CalendarCheck size={14} weight="fill" className="text-success" /> Premium until {day(quote.period_end)}. Pay once, no auto-renew.</p> : null}
+                    </div>
+                  ) : null}
+
+                  {err ? <Alert>{err}</Alert> : null}
+
+                  {/* On phones the pay button stays in reach while scrolling the plans */}
+                  <div className="sticky bottom-0 -mx-6 mt-5 border-t bg-card/95 px-6 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0">
+                    <button type="button" onClick={pay} disabled={busy || !quote} className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#F2B233] text-[17px] font-bold text-[#0B1F44] shadow-[0_8px_20px_-8px_rgba(242,178,51,.7)] transition-transform hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-60 disabled:shadow-none">
+                      {busy ? <SpinnerGap size={20} className="animate-spin" /> : <LockSimple size={20} weight="fill" />} {quote && quote.amount_kobo === 0 ? "Get Premium free" : `Pay ${quote ? ng(quote.amount_kobo) : ""} securely`}
+                    </button>
+                    <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-[12px] text-muted-foreground">
+                      {([[CreditCard, "Card"], [Bank, "Transfer"], [Hash, "USSD"], [Wallet, "OPay"], [DeviceMobile, "Bank apps"]] as const).map(([I, t]) => (
+                        <span key={t} className="inline-flex items-center gap-1"><I size={14} weight="fill" />{t}</span>
+                      ))}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function Line({ k, v, good }: { k: string; v: string; good?: boolean }) {
+  return <div className={`flex justify-between gap-3 ${good ? "text-[#15803D] dark:text-[#4ADE80]" : ""}`}><span className={good ? "" : "text-muted-foreground"}>{k}</span><span className="shrink-0 tabular-nums">{v}</span></div>;
+}
+
+function Alert({ children }: { children: React.ReactNode }) {
+  return <p role="alert" className="mt-3 rounded-xl bg-error-soft px-3 py-2.5 text-sm text-on-error-soft">{children}</p>;
+}
+
+function PrimaryButton({ busy, disabled, children }: { busy: boolean; disabled?: boolean; children: React.ReactNode }) {
+  return (
+    <button type="submit" disabled={busy || disabled} className="mt-5 inline-flex h-13 w-full items-center justify-center gap-2 rounded-2xl bg-[#0B1F44] text-[16px] font-bold text-white transition-transform active:scale-[.99] disabled:opacity-50 dark:bg-white dark:text-[#0B1F44]">
+      {busy ? <SpinnerGap size={18} className="animate-spin" /> : null} {children}
+    </button>
+  );
+}
+
+/** One box per digit over a single real input (keeps paste, SMS/email autofill and the phone keyboard working). */
+function CodeBoxes({ length, value, onChange, disabled }: { length: number; value: string; onChange: (v: string) => void; disabled?: boolean }) {
+  const [focus, setFocus] = useState(false);
+  return (
+    <div className="relative mt-6">
+      <input autoFocus inputMode="numeric" autoComplete="one-time-code" maxLength={length} value={value} disabled={disabled} aria-label="Code"
+        onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, length))} onFocus={() => setFocus(true)} onBlur={() => setFocus(false)}
+        className="absolute inset-0 z-10 h-full w-full cursor-text opacity-0" />
+      <div className="flex justify-between gap-2" aria-hidden>
+        {Array.from({ length }, (_, i) => {
+          const ch = value[i] ?? "", active = focus && (i === value.length || (i === length - 1 && value.length === length));
+          return (
+            <span key={i} className={`grid h-14 flex-1 place-items-center rounded-xl border-2 bg-background text-[24px] font-bold tabular-nums transition-colors sm:h-16 ${active ? "border-[#2563B3] ring-4 ring-[#2563B3]/15" : ch ? "border-foreground/25" : "border-border"}`}>
+              {ch || (active ? <span className="h-6 w-0.5 animate-pulse bg-[#2563B3]" /> : null)}
+            </span>
+          );
+        })}
+      </div>
     </div>
   );
 }

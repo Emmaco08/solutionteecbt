@@ -45,6 +45,7 @@ test("trimPaystack keeps no customer or card numbers", () => {
   for (const bad of ["a@b.c", "408408", "4081", "AUTH_x", "080"]) assert.ok(!s.includes(bad), bad);
   assert.equal(t.amount, 150000);
   assert.equal(t.bank, "TEST BANK");
+  assert.equal(pc.trimPaystack({ amount: 152300, requested_amount: 150000 }).requested_amount, 150000);
 });
 
 test("Google service-account JWT is RS256 and verifies with the public key", async () => {

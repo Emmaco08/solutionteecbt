@@ -8,8 +8,27 @@ import { savePaymentSettings } from "./actions";
 export type PaySettings = {
   play: { google: boolean; website: boolean };
   website_url: string;
-  fees: { paystack: { on: boolean; pct: number; flat: number; flat_from: number; cap: number }; google: { on: boolean; pct: number } };
+  fees: { paystack: { on: boolean; mode: FeeMode; pct: number; flat: number; flat_from: number; cap: number }; google: { on: boolean; pct: number } };
 };
+
+/** Who pays Paystack's fee (D-132). Must match Paystack → Settings → Preferences → "Who should be charged transaction fees?". */
+export type FeeMode = "none" | "ours" | "paystack";
+/** One recent successful payment, as Paystack reported it (admin_paystack_fee_check). */
+export type FeeCheck = { at: string | null; price_kobo: number; paid_kobo: number | null; requested_kobo: number | null; fees_kobo: number | null };
+
+const MODES: { mode: FeeMode; title: string; text: string; paystack: string }[] = [
+  { mode: "none", title: "SolutionTee pays it", text: "Students pay the plan price. Paystack takes its fee from what you receive.", paystack: "Charge me" },
+  { mode: "ours", title: "Students pay it — added by SolutionTee", text: "The fee is added to the price as its own line before paying (website and direct app), using the numbers below.", paystack: "Charge me" },
+  { mode: "paystack", title: "Students pay it — added by Paystack", text: "Paystack adds its exact fee on its own checkout page. We show “+ Paystack fee at checkout” before paying.", paystack: "Charge my customers" },
+];
+
+/** What the latest payments say about the Paystack dashboard setting. */
+function detect(rows: FeeCheck[]): "customers" | "merchant" | "unknown" {
+  const known = rows.filter((r) => r.paid_kobo !== null);
+  if (!known.length) return "unknown";
+  const r = known[0];
+  return r.paid_kobo! > (r.requested_kobo ?? r.price_kobo) ? "customers" : "merchant";
+}
 
 /** Same sum as the server's private.paystack_fee (naira here, for the example only). */
 function paystackFee(price: number, f: PaySettings["fees"]["paystack"]) {
@@ -24,12 +43,14 @@ function paystackFee(price: number, f: PaySettings["fees"]["paystack"]) {
 
 const ng = (n: number) => `₦${n.toLocaleString("en-NG")}`;
 
-export function PaymentSettingsForm({ initial, plans, playUrl, playCodes }: { initial: PaySettings; plans: { name: string; price: number; fee_id: string | null }[]; playUrl: string; playCodes: boolean }) {
+export function PaymentSettingsForm({ initial, plans, playUrl, playCodes, checks }: { initial: PaySettings; plans: { name: string; price: number; fee_id: string | null }[]; playUrl: string; playCodes: boolean; checks: FeeCheck[] }) {
   const [s, setS] = useState(initial);
   const [play, setPlay] = useState(playUrl);
   const [codes, setCodes] = useState(playCodes);
   const ps = s.fees.paystack, gs = s.fees.google;
-  const setPay = (k: keyof typeof ps, v: number | boolean) => setS({ ...s, fees: { ...s.fees, paystack: { ...ps, [k]: v } } });
+  const seen = detect(checks);
+  const clash = (seen === "customers" && ps.mode !== "paystack") || (seen === "merchant" && ps.mode === "paystack");
+  const setPay = (k: keyof typeof ps, v: number | boolean | FeeMode) => setS({ ...s, fees: { ...s.fees, paystack: { ...ps, [k]: v } } });
   const setGoogle = (k: keyof typeof gs, v: number | boolean) => setS({ ...s, fees: { ...s.fees, google: { ...gs, [k]: v } } });
   const field = (id: string, label: string, v: number, set: (n: number) => void, step = "0.1") => (
     <div className="space-y-1.5"><Label htmlFor={id}>{label}</Label>
@@ -69,23 +90,64 @@ export function PaymentSettingsForm({ initial, plans, playUrl, playCodes }: { in
       </section>
 
       <section className="rounded-2xl border bg-card p-5 shadow-[var(--shadow-1)]">
-        <label className="flex items-center gap-4">
-          <span className="grow"><b className="block text-[17px]">Add the Paystack processing fee</b><small className="block text-[13px] text-muted-foreground">The student pays the price plus the fee, shown as its own line before paying, so you receive the full price. Used in the direct app and on the website.</small></span>
-          <Switch name="paystack_on" checked={ps.on} onCheckedChange={(v) => setPay("on", v)} />
-        </label>
-        <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-          {field("paystack_pct", "Percent (%)", ps.pct, (n) => setPay("pct", n))}
-          {field("paystack_flat", "Flat fee (₦)", ps.flat, (n) => setPay("flat", n), "1")}
-          {field("paystack_flat_from", "Flat fee from (₦)", ps.flat_from, (n) => setPay("flat_from", n), "1")}
-          {field("paystack_cap", "Fee cap (₦)", ps.cap, (n) => setPay("cap", n), "1")}
-        </div>
-        <p className="mt-2 text-xs text-muted-foreground">Paystack Nigeria today: 1.5% + ₦100 (no ₦100 under ₦2,500), capped at ₦2,000. Check your Paystack dashboard.</p>
-        <ul className="mt-3 space-y-1 text-sm">
-          {plans.map((p) => {
-            const fee = paystackFee(p.price, { ...ps, on: true });
-            return <li key={p.name} className="tnum">{p.name}: {ng(p.price)} {ps.on ? <>+ {ng(fee)} fee = <b>{ng(p.price + fee)}</b></> : <span className="text-muted-foreground">(fee off; with fee it would be {ng(p.price + fee)})</span>}</li>;
+        <h2 className="text-[17px] font-bold">Who pays Paystack’s fee?</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Used on the website and in the direct app. Pick the same choice as in your Paystack dashboard
+          (Settings → Preferences → <i>Who should be charged transaction fees?</i>). Payments are accepted either way.
+        </p>
+        <input type="hidden" name="paystack_mode" value={ps.mode} />
+        <div className="mt-4 grid gap-3 lg:grid-cols-3" role="radiogroup" aria-label="Who pays Paystack’s fee">
+          {MODES.map((m) => {
+            const on = ps.mode === m.mode;
+            return (
+              <button key={m.mode} type="button" role="radio" aria-checked={on} onClick={() => setPay("mode", m.mode)}
+                className={`flex h-full flex-col rounded-2xl border-2 p-4 text-left transition-colors ${on ? "border-[#2563B3] bg-[#EEF4FC] dark:bg-[#16284A]" : "border-border hover:border-[#2563B3]/50"}`}>
+                <span className="flex items-center gap-2">
+                  <span className={`grid size-5 shrink-0 place-items-center rounded-full border-2 ${on ? "border-[#2563B3]" : "border-border"}`}>{on ? <span className="size-2.5 rounded-full bg-[#2563B3]" /> : null}</span>
+                  <b className="text-sm">{m.title}</b>
+                </span>
+                <span className="mt-2 text-[13px] leading-5 text-muted-foreground">{m.text}</span>
+                <span className="mt-auto pt-3 text-xs">Paystack dashboard: <b>{m.paystack}</b></span>
+              </button>
+            );
           })}
-        </ul>
+        </div>
+
+        <div className={`mt-4 rounded-xl px-4 py-3 text-sm ${clash ? "bg-warning-soft text-on-warning-soft" : "bg-muted/60"}`}>
+          <b className="block">What Paystack did on your latest payment</b>
+          {seen === "unknown" ? (
+            <span className="text-muted-foreground">No paid Paystack payment checked yet. After the next one, this shows whether Paystack charged the student its fee.</span>
+          ) : (
+            <span>
+              {(() => { const r = checks.find((x) => x.paid_kobo !== null)!; const asked = r.requested_kobo ?? r.price_kobo;
+                return <>Price {ng(asked / 100)}, the student paid {ng(r.paid_kobo! / 100)}{r.fees_kobo !== null ? <>, Paystack’s fee {ng(r.fees_kobo / 100)}</> : null}. </>; })()}
+              {seen === "customers" ? "Your Paystack dashboard charges customers the fee." : "Your Paystack dashboard charges you the fee."}
+              {clash ? <b className="mt-1 block">This does not match the choice above. Change one of them so students are not charged twice or shown the wrong total.</b> : null}
+            </span>
+          )}
+        </div>
+
+        {ps.mode === "ours" ? (
+          <>
+            <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+              {field("paystack_pct", "Percent (%)", ps.pct, (n) => setPay("pct", n))}
+              {field("paystack_flat", "Flat fee (₦)", ps.flat, (n) => setPay("flat", n), "1")}
+              {field("paystack_flat_from", "Flat fee from (₦)", ps.flat_from, (n) => setPay("flat_from", n), "1")}
+              {field("paystack_cap", "Fee cap (₦)", ps.cap, (n) => setPay("cap", n), "1")}
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">Paystack Nigeria today: 1.5% + ₦100 (no ₦100 under ₦2,500), capped at ₦2,000. Check your Paystack dashboard.</p>
+            <ul className="mt-3 space-y-1 text-sm">
+              {plans.map((p) => { const fee = paystackFee(p.price, { ...ps, on: true });
+                return <li key={p.name} className="tnum">{p.name}: {ng(p.price)} + {ng(fee)} fee = <b>{ng(p.price + fee)}</b></li>; })}
+            </ul>
+          </>
+        ) : (
+          <>
+            {/* Keep the numbers for when "added by SolutionTee" is picked again */}
+            <input type="hidden" name="paystack_pct" value={ps.pct} /><input type="hidden" name="paystack_flat" value={ps.flat} />
+            <input type="hidden" name="paystack_flat_from" value={ps.flat_from} /><input type="hidden" name="paystack_cap" value={ps.cap} />
+          </>
+        )}
       </section>
 
       <section className="rounded-2xl border bg-card p-5 shadow-[var(--shadow-1)]">

@@ -2383,6 +2383,7 @@ export type Database = {
           item_kind: string | null
           item_ref: string | null
           list_kobo: number
+          live: boolean
           plan_id: number | null
           provider: string
           provider_data: Json
@@ -2410,6 +2411,7 @@ export type Database = {
           item_kind?: string | null
           item_ref?: string | null
           list_kobo: number
+          live: boolean
           plan_id?: number | null
           provider: string
           provider_data?: Json
@@ -2437,6 +2439,7 @@ export type Database = {
           item_kind?: string | null
           item_ref?: string | null
           list_kobo?: number
+          live?: boolean
           plan_id?: number | null
           provider?: string
           provider_data?: Json
@@ -4205,6 +4208,7 @@ export type Database = {
           p_event_key?: string
           p_kind: string
           p_reference: string
+          p_requested_kobo?: number
           p_status: string
         }
         Returns: Json
@@ -4413,6 +4417,22 @@ export type Database = {
       }
       admin_question_sources: {
         Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      admin_paystack_fee_check: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      admin_paystack_keys: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      admin_set_paystack_key: {
+        Args: { p_name: string; p_value: string }
+        Returns: Json
+      }
+      admin_set_paystack_mode: {
+        Args: { p_mode: string }
         Returns: Json
       }
     }

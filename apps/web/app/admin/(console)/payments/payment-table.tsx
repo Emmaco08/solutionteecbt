@@ -11,6 +11,8 @@ import { checkPayment, getPayment, refundPayment, type PaymentDetail } from "./a
 export type PaymentRow = {
   id: string; reference: string; provider: string; status: string; amount_kobo: number; list_kobo: number; discount_kobo: number;
   channel: string | null; source: string; created_at: string; verified_at: string | null; plan: string; email: string | null; promo: string | null;
+  /** false = made with Paystack test keys (no real money, D-133) */
+  live?: boolean;
 };
 
 const STATUS: Record<string, [string, Tone]> = {
@@ -61,7 +63,7 @@ export function PaymentTable({ rows, q, page, hasNext, tab }: { rows: PaymentRow
                       <td className="max-w-[220px] truncate px-3 py-3">{r.email ?? <span className="text-muted-foreground">Deleted account</span>}</td>
                       <td className="px-3 py-3">{r.plan}{r.promo ? <span className="block text-xs text-muted-foreground">{r.promo}</span> : null}</td>
                       <td className="tnum px-3 py-3 text-right font-bold">{naira(r.amount_kobo)}</td>
-                      <td className="px-3 py-3 text-muted-foreground">{PROVIDER[r.provider] ?? r.provider}{r.channel ? ` · ${r.channel}` : ""}</td>
+                      <td className="px-3 py-3 text-muted-foreground">{PROVIDER[r.provider] ?? r.provider}{r.channel ? ` · ${r.channel}` : ""}{r.live === false ? <span className="ml-1.5 rounded-md bg-warning-soft px-1.5 py-0.5 text-[11px] font-bold text-on-warning-soft">Test</span> : null}</td>
                       <td className="px-3 py-3"><Pill tone={tone}>{label}</Pill></td>
                       <td className="whitespace-nowrap px-3 py-3 text-muted-foreground">{when(r.created_at)}</td>
                     </tr>

@@ -297,6 +297,12 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> with WidgetsBin
                     ),
                   ],
                 ),
+                // Paystack adds its exact fee on its own page (D-132): said before paying, never a surprise.
+                if (paystack && ref.watch(paySettingsProvider).paystackAddsFee)
+                  Padding(
+                    padding: const EdgeInsets.only(top: Space.s2),
+                    child: Text('+ Paystack’s processing fee, shown on the next screen before you pay.', style: context.ty.cap.col(c.textMuted)),
+                  ),
               ],
             ),
           ),

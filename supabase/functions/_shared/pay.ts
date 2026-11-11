@@ -1,4 +1,6 @@
 // Shared server code for the payment Edge Functions (milestone 4C, D-061).
+// Paystack keys (D-133): typed by a super admin in admin → Payment settings and kept in Supabase Vault (Test and Live),
+// read with paystack_config(). The old Edge Function secrets below still fill any key that is not in Vault.
 // Secrets (Edge Function secrets, never in the app):
 //   PAYSTACK_SECRET_KEY            sk_test_… / sk_live_…
 //   PAYSTACK_CALLBACK_URL          optional page Paystack returns to after paying
@@ -50,16 +52,44 @@ export async function rpc<T = Record<string, unknown>>(fn: string, args: Record<
 // ---------------------------------------------------------------- Paystack
 const PAYSTACK = "https://api.paystack.co";
 
-export function paystackKey(): string {
-  const k = Deno.env.get("PAYSTACK_SECRET_KEY") ?? "";
-  if (!k) throw new Error("PAYSTACK_SECRET_KEY is not set");
+export type PaystackMode = "live" | "test";
+/** legacy: no key saved in admin → Payment settings yet; the old Edge Function secrets are used exactly as before. */
+export type PaystackConfig = { mode: PaystackMode; legacy: boolean; sk: Record<PaystackMode, string>; pk: Record<PaystackMode, string> };
+let cfgCache: { at: number; c: PaystackConfig } | null = null;
+
+/** The current mode (admin's Test / Live switch) and the keys for both modes. Cached for 30 seconds. */
+export async function paystackConfig(): Promise<PaystackConfig> {
+  if (cfgCache && Date.now() - cfgCache.at < 30_000) return cfgCache.c;
+  const { data, error } = await admin.rpc("paystack_config");
+  const d = (error ? {} : (data ?? {})) as Record<string, string | null>;
+  const envSk = Deno.env.get("PAYSTACK_SECRET_KEY") ?? "", envPk = Deno.env.get("PAYSTACK_PUBLIC_KEY") ?? "";
+  // The old secrets count for Live unless they are clearly test keys, and for Test only when they are test keys.
+  const isTest = (k: string) => k.trim().startsWith("sk_test_") || k.trim().startsWith("pk_test_");
+  const legacy = !d.sk_live && !d.sk_test;
+  const c: PaystackConfig = {
+    mode: legacy ? (isTest(envSk) ? "test" : "live") : d.mode === "test" ? "test" : "live",
+    legacy,
+    sk: { live: d.sk_live || (isTest(envSk) ? "" : envSk.trim()), test: d.sk_test || (isTest(envSk) ? envSk.trim() : "") },
+    pk: { live: d.pk_live || (isTest(envPk) ? "" : envPk.trim()), test: d.pk_test || (isTest(envPk) ? envPk.trim() : "") },
+  };
+  if (!error) cfgCache = { at: Date.now(), c };
+  return c;
+}
+
+/** The secret key for [mode] (default: the current mode). */
+export async function paystackKey(mode?: PaystackMode): Promise<string> {
+  const c = await paystackConfig();
+  const k = c.sk[mode ?? c.mode];
+  if (!k) throw new Error(`The Paystack ${mode ?? c.mode} secret key is not set (admin → Payment settings)`);
   return k;
 }
 
-export async function paystack(path: string, init: RequestInit = {}): Promise<{ ok: boolean; status: number; body: Record<string, unknown> }> {
+/** A Paystack API call with the key of [mode] (default: the current mode). A payment is always checked in the mode it
+ *  was made in (payments.live). */
+export async function paystack(path: string, init: RequestInit = {}, mode?: PaystackMode): Promise<{ ok: boolean; status: number; body: Record<string, unknown> }> {
   const res = await fetch(PAYSTACK + path, {
     ...init,
-    headers: { authorization: `Bearer ${paystackKey()}`, "content-type": "application/json", ...(init.headers ?? {}) },
+    headers: { authorization: `Bearer ${await paystackKey(mode)}`, "content-type": "application/json", ...(init.headers ?? {}) },
     signal: AbortSignal.timeout(20_000),
   });
   const body = await res.json().catch(() => ({}));

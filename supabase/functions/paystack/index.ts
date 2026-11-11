@@ -32,8 +32,10 @@
 //   {action:"refund", reference}   admins with 2-step only
 //      → {requested:true}; Premium is removed when Paystack's refund.processed webhook arrives.
 // The app never sends an amount: the price comes from pay_start() on the server.
-import { admin, asUser, cors, json, paystack, rpc, userFrom } from "../_shared/pay.ts";
-import { trimPaystack } from "../_shared/paycrypto.ts";
+// Test / Live (D-133): admin → Payment settings. Keys live in Supabase Vault; each payment is checked with the key of the
+// mode it was made in (payments.live). In Test mode only staff can start a payment (students get code "paused").
+import { admin, asUser, cors, json, paystack, paystackConfig, rpc, userFrom, type PaystackMode } from "../_shared/pay.ts";
+import { requestedKobo, trimPaystack } from "../_shared/paycrypto.ts";
 
 const ERR: Record<string, [number, string]> = {
   banned: [403, "This account cannot make payments. Contact support."],
@@ -51,18 +53,28 @@ const CANCEL = /^https:\/\/(cbt|admin)\.solutiontee\.com\/pay$/;
 
 const USSD_BANKS: Record<string, string> = { "737": "GTBank", "919": "UBA", "822": "Sterling Bank", "966": "Zenith Bank" };
 
-/** Paystack's public key for the in-app sheet, only when it matches the secret key's mode (test with test, live with live). */
-function publicKey(): string | null {
-  const pk = Deno.env.get("PAYSTACK_PUBLIC_KEY") ?? "";
-  const sk = Deno.env.get("PAYSTACK_SECRET_KEY") ?? "";
-  const mode = (k: string) => (k.includes("_live_") ? "live" : k.includes("_test_") ? "test" : "");
-  return /^pk_(test|live)_[A-Za-z0-9]{20,80}$/.test(pk) && mode(pk) === mode(sk) ? pk : null;
+/** Paystack's public key for the in-app sheet, for [mode] (Test or Live, D-133), only when it is a real key of that mode. */
+async function publicKey(mode: PaystackMode): Promise<string | null> {
+  const pk = (await paystackConfig()).pk[mode] ?? "";
+  return new RegExp(`^pk_${mode}_[A-Za-z0-9]{20,80}$`).test(pk) ? pk : null;
+}
+
+/** The mode a payment was made in (payments.live), so it is always checked with the right key. */
+async function payMode(reference: string): Promise<PaystackMode> {
+  // Before any key is saved in admin → Payment settings there is one key for everything, exactly as before.
+  const cfg = await paystackConfig();
+  if (cfg.legacy) return cfg.mode;
+  const { data } = await admin.from("payments").select("live").eq("reference", reference).maybeSingle();
+  return data?.live === false ? "test" : "live";
 }
 
 /** Opens the payment with Paystack for a reference made by pay_start / xp_pack_start (the server's price). */
 async function openPayment(r: Record<string, unknown>, method: string, bank: string, meta: Record<string, unknown>, label: string,
-  bankAcct: { code: string; account_number: string } = { code: "", account_number: "" }, back?: { callback?: string; cancel?: string }) {
+  bankAcct: { code: string; account_number: string } = { code: "", account_number: "" }, back?: { callback?: string; cancel?: string },
+  mode: PaystackMode = "live") {
   const reference = String(r.reference), amount = Number(r.amount_kobo);
+  // Remember the mode before Paystack sees the payment (D-133).
+  if (mode === "test") await admin.from("payments").update({ live: false }).eq("reference", reference);
   const fail = async (status: number, body: Record<string, unknown> | undefined, kind: string) => {
     await rpc("pay_note", { p_reference: reference, p_provider: "paystack", p_kind: kind, p_ok: false,
       p_note: `Paystack answered ${status}: ${String(body?.message ?? "").slice(0, 200)}` });
@@ -72,7 +84,7 @@ async function openPayment(r: Record<string, unknown>, method: string, bank: str
   const metadata = { ...meta, cancel_action: Deno.env.get("PAYSTACK_CALLBACK_URL") || undefined };
 
   if (method === "bank") {
-    const ch = await paystack("/charge", { method: "POST", body: JSON.stringify({ email: r.email, amount, reference, metadata, bank: bankAcct }) });
+    const ch = await paystack("/charge", { method: "POST", body: JSON.stringify({ email: r.email, amount, reference, metadata, bank: bankAcct }) }, mode);
     if (!ch.ok && !(ch.body?.data && (ch.body.data as Record<string, unknown>).status)) {
       await fail(ch.status, ch.body, "charge");
       return json({ error: `Your bank could not start this payment: ${String(ch.body?.message ?? "try again")}. Try another way.`, code: "paystack" }, 502);
@@ -85,7 +97,7 @@ async function openPayment(r: Record<string, unknown>, method: string, bank: str
     const body: Record<string, unknown> = { email: r.email, amount, reference, metadata };
     if (method === "transfer") body.bank_transfer = { account_expires_at: new Date(Date.now() + 30 * 60_000).toISOString() };
     else body.ussd = { type: bank };
-    const ch = await paystack("/charge", { method: "POST", body: JSON.stringify(body) });
+    const ch = await paystack("/charge", { method: "POST", body: JSON.stringify(body) }, mode);
     const d = (ch.body?.data ?? {}) as Record<string, unknown>;
     if (!ch.ok || !d) {
       await fail(ch.status, ch.body, "charge");
@@ -95,14 +107,14 @@ async function openPayment(r: Record<string, unknown>, method: string, bank: str
     if (method === "transfer") {
       const b = (d.bank ?? {}) as Record<string, unknown>;
       if (!d.account_number) { await fail(ch.status, { message: "no account number" }, "charge"); return json({ error: "Bank transfer is not available right now. Try card or USSD.", code: "paystack" }, 502); }
-      return json({ reference, amount_kobo: amount, transfer: {
+      return json({ reference, amount_kobo: toSend(d, amount), transfer: {
         account_number: String(d.account_number), account_name: String(d.account_name ?? ""), bank: String(b.name ?? ""),
         expires_at: d.account_expires_at ?? null,
       } });
     }
     const code = String(d.ussd_code ?? "");
     if (!code) { await fail(ch.status, { message: "no USSD code" }, "charge"); return json({ error: "USSD is not available right now. Try card or bank transfer.", code: "paystack" }, 502); }
-    return json({ reference, amount_kobo: amount, ussd: { code, bank: USSD_BANKS[bank] ?? bank } });
+    return json({ reference, amount_kobo: toSend(d, amount), ussd: { code, bank: USSD_BANKS[bank] ?? bank } });
   }
 
   const init = await paystack("/transaction/initialize", {
@@ -114,14 +126,21 @@ async function openPayment(r: Record<string, unknown>, method: string, bank: str
       ...(back?.callback ? { callback_url: back.callback } : Deno.env.get("PAYSTACK_CALLBACK_URL") ? { callback_url: Deno.env.get("PAYSTACK_CALLBACK_URL") } : {}),
       metadata: back?.cancel ? { ...metadata, cancel_action: `${back.cancel}?cancelled=${reference}` } : metadata,
     }),
-  });
+  }, mode);
   if (!init.ok) {
     await fail(init.status, init.body, "initialize");
     return json({ error: "Paystack is not answering right now. Please try again in a moment.", code: "paystack" }, 502);
   }
   const d = init.body.data as Record<string, unknown>;
   await rpc("pay_note", { p_reference: reference, p_provider: "paystack", p_kind: "initialize", p_ok: true, p_note: `Paystack checkout opened (${label})` });
-  return json({ reference, url: d.authorization_url, access_code: d.access_code, public_key: publicKey(), amount_kobo: amount });
+  return json({ reference, url: d.authorization_url, access_code: d.access_code, public_key: await publicKey(mode), amount_kobo: amount, test: mode === "test" || undefined });
+}
+
+/** What the student must send for a transfer or USSD payment: Paystack's own figure when it is higher than our price
+ *  (Paystack: Charge my customers adds its fee, D-132), never lower. */
+function toSend(d: Record<string, unknown>, amount: number) {
+  const n = Number(d.amount);
+  return Number.isInteger(n) && n > amount && n < amount * 1.2 ? n : amount;
 }
 
 /** What the student must do next in a Pay with Bank charge (D-092). */
@@ -156,7 +175,7 @@ async function premiumUntil(uid: string): Promise<string | null> {
 /** Asks Paystack about a reference and applies the answer (idempotent). [quiet] (status checks and the sweep, D-129):
  *  "not paid yet" answers are not written to the payment log, so repeated checks do not fill it. */
 async function verifyAndApply(reference: string, kind: "verify" | "admin_check", quiet = false) {
-  const v = await paystack(`/transaction/verify/${encodeURIComponent(reference)}`);
+  const v = await paystack(`/transaction/verify/${encodeURIComponent(reference)}`, {}, await payMode(reference));
   if (!v.ok && quiet) return { status: "pending" };
   if (!v.ok) {
     // 400 "Transaction reference not found": the student has not opened or finished checkout yet.
@@ -170,6 +189,7 @@ async function verifyAndApply(reference: string, kind: "verify" | "admin_check",
   return await rpc<{ status: string }>("pay_paystack_result", {
     p_reference: reference, p_status: String(d.status ?? ""), p_amount_kobo: Number(d.amount ?? -1),
     p_currency: String(d.currency ?? ""), p_channel: (d.channel as string) ?? null, p_data: trimPaystack(d), p_kind: kind, p_event_key: null,
+    p_requested_kobo: requestedKobo(d),
   });
 }
 
@@ -226,11 +246,12 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   // Setup check for the owner (GET ?health=1): says only whether the keys are set and in the same mode, never the keys.
   if (req.method === "GET" && new URL(req.url).searchParams.get("health") === "1") {
-    const sk = Deno.env.get("PAYSTACK_SECRET_KEY") ?? "", pk = Deno.env.get("PAYSTACK_PUBLIC_KEY") ?? "";
+    const cfg = await paystackConfig();
+    const sk = cfg.sk[cfg.mode], pk = cfg.pk[cfg.mode];
     const mode = (k: string) => (k.includes("_live_") ? "live" : k.includes("_test_") ? "test" : k ? "unknown" : "missing");
     // ?banks=1 also lists the public names of the banks and apps Paystack offers for Pay with Bank on this account.
     const list = new URL(req.url).searchParams.get("banks") === "1" ? (await payBanks().catch(() => [])).map((b) => b.name) : undefined;
-    return json({ secret_key: mode(sk), public_key: mode(pk), public_key_usable: publicKey() !== null, payouts_on: await payoutsOn(), pay_with_bank: list });
+    return json({ mode: cfg.mode, keys_from: cfg.legacy ? "old Edge Function secrets" : "admin → Payment settings", secret_key: mode(sk), public_key: mode(pk), public_key_usable: (await publicKey(cfg.mode)) !== null, payouts_on: await payoutsOn(), pay_with_bank: list });
   }
   if (req.method !== "POST") return json({ error: "POST only" }, 405);
   let body: Record<string, unknown>;
@@ -298,6 +319,16 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Test mode (D-133): only staff can pay, with Paystack's test cards; students are asked to try again shortly, so
+    // nobody gets Premium from a test payment by mistake.
+    const startAction = action === "start" || action === "start_xp" || action === "start_item";
+    const cfg = startAction ? await paystackConfig() : null;
+    const mode: PaystackMode = cfg?.mode ?? "live";
+    if (cfg && cfg.mode === "test") {
+      const { data: st } = await admin.from("staff").select("user_id").eq("user_id", user.id).maybeSingle();
+      if (!st) return json({ error: "Payments are paused for a few minutes while we check them. Please try again soon.", code: "paused" }, 503);
+    }
+
     if (action === "start") {
       const plan = String(body.plan ?? "");
       const code = typeof body.code === "string" ? body.code.slice(0, 40) : null;
@@ -308,7 +339,7 @@ Deno.serve(async (req) => {
         return json({ error: message, code: e, plans: r.plans ?? null }, status);
       }
       if (r.free) return json({ free: true, reference: r.reference, expires_at: r.expires_at });
-      return await openPayment(r, method, bank, { payment_id: r.payment_id, plan }, "plan", bankAcct, back);
+      return await openPayment(r, method, bank, { payment_id: r.payment_id, plan }, "plan", bankAcct, back, mode);
     }
 
     if (action === "start_xp") {
@@ -319,7 +350,7 @@ Deno.serve(async (req) => {
         const [status, message] = ERR[String(r.error ?? "")] ?? [400, "This XP pack cannot be bought right now."];
         return json({ error: message, code: r.error }, status);
       }
-      return await openPayment(r, method, bank, { payment_id: r.payment_id, xp_pack: xp }, "XP pack", bankAcct);
+      return await openPayment(r, method, bank, { payment_id: r.payment_id, xp_pack: xp }, "XP pack", bankAcct, undefined, mode);
     }
 
     if (action === "start_item") {
@@ -332,7 +363,7 @@ Deno.serve(async (req) => {
         const [status, message] = ERR[e] ?? (e === "bought" ? [409, "You already own this."] : [400, "This cannot be bought right now."]);
         return json({ error: message, code: e }, status);
       }
-      return await openPayment(r, method, bank, { payment_id: r.payment_id, item: `${kind}:${ref}` }, String(r.title ?? "Study item"), bankAcct, back);
+      return await openPayment(r, method, bank, { payment_id: r.payment_id, item: `${kind}:${ref}` }, String(r.title ?? "Study item"), bankAcct, back, mode);
     }
 
     if (action === "pay_banks") {
@@ -351,7 +382,7 @@ Deno.serve(async (req) => {
       if (!pay || pay.provider !== "paystack" || pay.user_id !== user.id) return json({ error: "Payment not found" }, 404);
       if (pay.status !== "pending") return json({ bank_charge: { status: pay.status === "success" ? "success" : "failed", text: "", url: null } });
       if (!allowed("submit:" + user.id, 12)) return json({ error: "Too many tries. Please wait a few minutes.", code: "too_many" }, 429);
-      const sub = await paystack(`/charge/submit_${step}`, { method: "POST", body: JSON.stringify({ [step]: value, reference }) });
+      const sub = await paystack(`/charge/submit_${step}`, { method: "POST", body: JSON.stringify({ [step]: value, reference }) }, await payMode(reference));
       const d = (sub.body?.data ?? {}) as Record<string, unknown>;
       if (!sub.ok && !d.status) return json({ error: String(sub.body?.message ?? "Your bank did not accept that. Try again.") }, 400);
       const next = nextStep(d);
@@ -466,7 +497,7 @@ Deno.serve(async (req) => {
 
       if (!isAdmin) return json({ error: "Only admins with 2-step login can refund." }, 403);
       if (pay.status !== "success") return json({ error: "Only successful payments can be refunded." }, 409);
-      const ref = await paystack("/refund", { method: "POST", body: JSON.stringify({ transaction: reference }) });
+      const ref = await paystack("/refund", { method: "POST", body: JSON.stringify({ transaction: reference }) }, await payMode(reference));
       await rpc("pay_note", { p_reference: reference, p_provider: "paystack", p_kind: "refund_requested", p_ok: ref.ok,
         p_note: ref.ok ? "Refund asked for by an admin; Premium is removed when Paystack finishes it" : `Paystack refused: ${String(ref.body?.message ?? ref.status).slice(0, 200)}` });
       if (!ref.ok) return json({ error: String(ref.body?.message ?? "Paystack refused the refund.") }, 502);
