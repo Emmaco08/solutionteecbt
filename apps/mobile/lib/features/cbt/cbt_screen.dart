@@ -25,6 +25,7 @@ import '../home/home_screen.dart';
 import '../compete/mock_exam.dart' show MockResultView, mockApiProvider;
 import 'calculator.dart';
 import 'exam_clock.dart';
+import '../../core/fair_play.dart';
 
 class _Q {
   _Q(this.row) : options = Map<String, String>.from(jsonDecode(row.optionsJson) as Map);
@@ -74,6 +75,9 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
 
   AppDb get _db => ref.read(dbProvider);
 
+  /// Leaving the app and screenshot attempts during this test (D-144).
+  late final FairPlay _fair = FairPlay(ref.read(dbProvider), widget.attemptId);
+
   Future<void> _loadSources() async {
     try {
       final ids = [for (final q in _qs) q.row.id];
@@ -110,7 +114,10 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
     SecureScreen.on();
     AdsGate.enter(); // never an ad here (big update 2, step B)
     _secure = SecureScreen.watch(
-      onScreenshot: () => _warnCapture('Screenshots are not allowed during a test.'),
+      onScreenshot: () {
+        _fair.screenshot();
+        _warnCapture('Screenshots are not allowed during a test.');
+      },
       onRecording: () => _warnCapture('Screen recording is not allowed during a test. The screen will look black.'),
     );
     _load();
@@ -216,8 +223,10 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
     if (_a == null) return;
     if (_mockId != null) return _mockLifecycle(s);
     if (s == AppLifecycleState.paused || s == AppLifecycleState.hidden || s == AppLifecycleState.detached) {
+      _fair.left();
       _saveProgress(pause: true);
     } else if (s == AppLifecycleState.resumed) {
+      _fair.back();
       _clock.start();
     }
   }

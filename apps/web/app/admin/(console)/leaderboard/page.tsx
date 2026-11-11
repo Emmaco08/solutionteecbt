@@ -37,6 +37,7 @@ async function Leaderboard() {
     min_questions: v.min_questions ?? 100, fast_minutes: v.fast_minutes ?? 15, include_staff: v.include_staff ?? false,
     exams: { JAMB: v.exams?.JAMB ?? true, WAEC: v.exams?.WAEC ?? true, NECO: v.exams?.NECO ?? true },
     subject_min_questions: v.subject_min_questions ?? 40, subject_fast_minutes: v.subject_fast_minutes ?? 5,
+    fair_hold: v.fair_hold ?? 50,
   };
   const rows = (recent.data ?? []) as unknown as Recent[];
   return (

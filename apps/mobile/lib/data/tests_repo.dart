@@ -12,6 +12,7 @@ import '../core/providers.dart';
 import '../features/cbt/scoring.dart';
 import 'db.dart';
 import 'paper_sections.dart';
+import '../core/fair_play.dart';
 
 enum TestMode { full, subject, year, quick, topic, custom }
 
@@ -486,6 +487,7 @@ class TestsRepo {
     var done = 0;
     for (final a in await _db.unsyncedAttempts()) {
       final answers = await _db.answersFor(a.id);
+      final fair = await FairPlay.report(_db, a.id);
       try {
         final server = await _sb
             .rpc(
@@ -501,6 +503,7 @@ class TestsRepo {
                   'submitted_at': a.submittedAt!.toUtc().toIso8601String(),
                   'time_used_s': (a.usedMs / 1000).round(),
                   'client_score': a.clientScoreJson == null ? null : jsonDecode(a.clientScoreJson!),
+                  'fair': ?fair,
                   'answers': [
                     for (final x in answers) {'q': x.questionId, 'c': x.choice, 'f': x.flagged, 't': x.timeMs},
                   ],
@@ -511,6 +514,7 @@ class TestsRepo {
         await (_db.update(
           _db.localAttempts,
         )..where((x) => x.id.equals(a.id))).write(LocalAttemptsCompanion(synced: const Value(true), serverScoreJson: Value(jsonEncode(server))));
+        await FairPlay.clear(_db, a.id);
         done++;
       } catch (_) {
         // Offline or temporarily failing: try again later.

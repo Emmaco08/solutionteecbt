@@ -13,6 +13,7 @@ export type LbSettings = {
   on: boolean; past_seasons: number[]; min_mocks: number; names: "first-initial" | "first";
   min_questions: number; fast_minutes: number; include_staff: boolean;
   exams: { JAMB: boolean; WAEC: boolean; NECO: boolean }; subject_min_questions: number; subject_fast_minutes: number;
+  fair_hold: number;
 };
 export type Recent = {
   attempt_id: string; exam: string; subject: string | null; max: number; name: string | null; state: string | null; score: number; questions: number; time_s: number;
@@ -54,6 +55,9 @@ export function SettingsForm({ settings, seasonNow }: { settings: LbSettings; se
       </div>
       <b className="block text-sm">All boards</b>
       <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1.5"><Label htmlFor="lbFair">Fair play: hold a run with a risk of at least (0–100)</Label>
+          <input id="lbFair" name="fair_hold" type="number" min={0} max={100} defaultValue={settings.fair_hold} className={inputCls} />
+          <span className="text-xs text-muted-foreground">From leaving the app, time away, screenshot tries and answers under 3 s. 0 = off. Practice is never blocked.</span></div>
         <div className="space-y-1.5"><Label htmlFor="lbMin">Tests needed to appear (full mocks, or papers in that subject)</Label>
           <input id="lbMin" name="min_mocks" type="number" min={1} max={20} defaultValue={settings.min_mocks} className={inputCls} /></div>
         <div className="space-y-1.5"><Label htmlFor="lbNames">Names shown</Label>

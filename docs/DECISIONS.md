@@ -1352,3 +1352,17 @@ The owner asked to run the admin from Vercel instead of the laptop.
   and a Winners card with the last closed period's top 3 and what they won. Saving the leaderboard settings now keeps
   the rewards (it used to replace the whole setting).
 
+## D-144 — Fair-play tracking on leaderboard exams (2026-11-11)
+- The app keeps, per test, the times it left the app (a glance under 1.5 s does not count), the time away and
+  screenshot attempts, and sends them with the test (`fair`). Times per question already arrive with the answers.
+- The server works out a risk score (0–100, `attempts.risk`) with the reasons in plain words: share of answers under
+  3 s (up to 60), a very short median time with 80%+ right (20), each time away (6, up to 10 times) plus the time
+  away (up to 20), each screenshot attempt (15, up to 5).
+- A leaderboard run whose risk reaches the admin's level (Leaderboard → "Fair play: hold a run with a risk of at
+  least", default 50, 0 = off) is held off every board (week, month, year, all time, season) and listed under
+  "Latest tests that can count" with the reasons, for Let it count / Keep off. The existing "too fast" reason comes
+  first when both apply. Practice and results are never blocked or changed. JAMB mock challenges keep their own
+  leave rules.
+- Note: on WAEC/NECO boards, setting "Too fast" to 0 also skips the fair-play hold there (the check order of that
+  rule); keep it above 0 in production.
+

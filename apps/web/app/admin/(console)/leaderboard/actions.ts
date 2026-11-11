@@ -18,6 +18,7 @@ const Settings = z.object({
   exams: z.object({ JAMB: z.boolean(), WAEC: z.boolean(), NECO: z.boolean() }),
   subject_min_questions: z.number().int().min(4).max(200),
   subject_fast_minutes: z.number().int().min(0).max(120),
+  fair_hold: z.number().int().min(0).max(100),
 });
 
 export async function saveLeaderboard(form: FormData): Promise<ActionResult> {
@@ -33,6 +34,7 @@ export async function saveLeaderboard(form: FormData): Promise<ActionResult> {
     exams: { JAMB: form.get("exam_JAMB") === "on", WAEC: form.get("exam_WAEC") === "on", NECO: form.get("exam_NECO") === "on" },
     subject_min_questions: Number(form.get("subject_min_questions")),
     subject_fast_minutes: Number(form.get("subject_fast_minutes")),
+    fair_hold: Number(form.get("fair_hold") ?? 50),
   });
   if (!p.success) return { ok: false, error: p.error.issues[0]?.message ?? "Check the settings" };
   const supabase = await createClient();

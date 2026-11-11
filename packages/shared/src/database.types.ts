@@ -877,9 +877,11 @@ export type Database = {
           client_score: Json | null
           config: Json
           exam_id: number
+          fair: Json | null
           id: string
           mode: string
           question_ids: string[]
+          risk: number | null
           server_score: Json
           started_at: string
           status: Database["public"]["Enums"]["attempt_status"]
@@ -892,9 +894,11 @@ export type Database = {
           client_score?: Json | null
           config?: Json
           exam_id: number
+          fair?: Json | null
           id: string
           mode: string
           question_ids: string[]
+          risk?: number | null
           server_score: Json
           started_at: string
           status?: Database["public"]["Enums"]["attempt_status"]
@@ -907,9 +911,11 @@ export type Database = {
           client_score?: Json | null
           config?: Json
           exam_id?: number
+          fair?: Json | null
           id?: string
           mode?: string
           question_ids?: string[]
+          risk?: number | null
           server_score?: Json
           started_at?: string
           status?: Database["public"]["Enums"]["attempt_status"]
