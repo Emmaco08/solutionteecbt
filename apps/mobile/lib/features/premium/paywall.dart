@@ -27,6 +27,7 @@ const _reasons = {
   'offline': 'Downloads are Premium',
   'ai': 'Get more AI prompts',
   'years': 'More years are Premium',
+  'classes': 'This class is for Premium students',
 };
 
 /// Opens the Premium paywall bottom sheet (prototype `paywall`).

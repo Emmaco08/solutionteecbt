@@ -1388,3 +1388,24 @@ The owner asked to run the admin from Vercel instead of the laptop.
   the new password is saved → straight into the admin. A code already used in the same browser keeps its sign-in,
   so a second try does not need a new email code.
 
+## D-147 — Online classes (2026-11-11)
+- Plan for all of C: docs/plans/big-products.md (16, the student web app, is for later).
+- `classes` (title, what it covers, subject, exam, teacher, start, minutes, Free / Premium / Paid with a price, seats,
+  Draft / Published / Cancelled, "website only" for the JAMB classes of C17). The class and recording links are in
+  `class_links`, which only staff can read; `class_join()` gives the join link only to a student who may come in and
+  only from 15 minutes before the start to the end (and records that they joined); `class_recording()` gives the
+  recording to the same students afterwards.
+- Who may come in: Free = anyone who registers; Premium = Premium students; Paid = after payment. Payment uses the
+  existing Paystack item flow: the app starts an "item" payment with the class id, the server recognises the class,
+  takes the price from the class and records kind `class`; when Paystack confirms, the student is registered and
+  told "You are in the class". The Paystack Edge Function did not change. In the Google Play build (no Paystack) a
+  paid class opens the website instead.
+- Reminders (job every minute): 2 h, 1 h, 30, 10 and 3 minutes before, at the start, and 10 minutes in for students
+  who have not joined; each once per student, sent as push notifications that open the class.
+- Admin → Online classes: add, edit, publish, cancel, links, seats, students (registered, paid, joined). A class with
+  paid students cannot be deleted: cancel it and refund in Payments.
+- App: Live classes screen (Live now, Coming up, Past with recordings), class page with one action (Register, Pay,
+  Go Premium, Join, Watch the recording), next-class card on Home and Study, search.
+- Fixed during testing: a change to finish_payment briefly broke finishing paid study items (wrong notification
+  type) for about two minutes; no real payment was affected (checked).
+

@@ -32,6 +32,7 @@ import 'countdown.dart';
 import 'qotd_card.dart';
 import 'top_card.dart';
 import 'tour.dart';
+import '../classes/classes.dart';
 
 /// The unfinished test on this phone (if any), for the "Continue your test" card.
 final unfinishedProvider = FutureProvider<LocalAttempt?>((ref) => ref.watch(dbProvider).unfinishedAttempt());
@@ -209,6 +210,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ref.invalidate(myXpProvider);
     ref.invalidate(myStreakProvider);
     ref.invalidate(appSettingsProvider);
+    ref.invalidate(classesProvider);
     await ref.read(examsProvider.future).catchError((_) => <Map<String, dynamic>>[]);
   }
 
@@ -232,6 +234,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final sections = <Widget>[
       HomeTopCard(key: _topKey, unfinished: unfinished, stats: stats),
       const CountdownChip(),
+      const NextClassCard(),
       const AdBanner(screen: 'home'),
       const DailyClaimCard(),
       if (ref.watch(challengesProvider).value?['on'] == true) ChallengeSection(key: _challengeKey),

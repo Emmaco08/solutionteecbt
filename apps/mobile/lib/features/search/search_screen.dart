@@ -68,6 +68,13 @@ final List<QuickLink> quickLinks = [
     route: '/careers',
     tone: Tone.gold,
   ),
+  (
+    title: 'Live classes',
+    words: 'class classes live teacher lesson zoom meet online',
+    icon: PhosphorIcons.chalkboardTeacher(PhosphorIconsStyle.fill),
+    route: '/classes',
+    tone: Tone.blue,
+  ),
   (title: 'Downloads', words: 'downloads offline saved', icon: PhosphorIcons.downloadSimple(PhosphorIconsStyle.fill), route: '/downloads', tone: Tone.navy),
   (
     title: 'Challenges',

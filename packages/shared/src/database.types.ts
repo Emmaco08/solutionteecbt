@@ -1717,6 +1717,108 @@ export type Database = {
           },
         ]
       }
+      class_links: {
+        Row: {
+          class_id: string
+          join_url: string | null
+          recording_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          class_id: string
+          join_url?: string | null
+          recording_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          class_id?: string
+          join_url?: string | null
+          recording_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      class_registrations: {
+        Row: {
+          class_id: string
+          created_at: string
+          joined_at: string | null
+          payment_id: string | null
+          user_id: string
+        }
+        Insert: {
+          class_id: string
+          created_at?: string
+          joined_at?: string | null
+          payment_id?: string | null
+          user_id: string
+        }
+        Update: {
+          class_id?: string
+          created_at?: string
+          joined_at?: string | null
+          payment_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      classes: {
+        Row: {
+          about: string | null
+          access: string
+          created_at: string
+          created_by: string | null
+          exam: string | null
+          id: string
+          minutes: number
+          price_kobo: number | null
+          seats: number | null
+          starts_at: string
+          status: string
+          subject_id: number | null
+          teacher: string
+          title: string
+          updated_at: string
+          web_only: boolean
+        }
+        Insert: {
+          about?: string | null
+          access?: string
+          created_at?: string
+          created_by?: string | null
+          exam?: string | null
+          id?: string
+          minutes?: number
+          price_kobo?: number | null
+          seats?: number | null
+          starts_at: string
+          status?: string
+          subject_id?: number | null
+          teacher: string
+          title: string
+          updated_at?: string
+          web_only?: boolean
+        }
+        Update: {
+          about?: string | null
+          access?: string
+          created_at?: string
+          created_by?: string | null
+          exam?: string | null
+          id?: string
+          minutes?: number
+          price_kobo?: number | null
+          seats?: number | null
+          starts_at?: string
+          status?: string
+          subject_id?: number | null
+          teacher?: string
+          title?: string
+          updated_at?: string
+          web_only?: boolean
+        }
+        Relationships: []
+      }
       content_purchases: {
         Row: {
           created_at: string
@@ -4130,6 +4232,7 @@ export type Database = {
         Args: { p_id: string; p_on: boolean }
         Returns: undefined
       }
+      admin_class_students: { Args: { p_class: string }; Returns: Json }
       admin_codes: { Args: never; Returns: Json }
       admin_content_access: { Args: never; Returns: Json }
       admin_content_access_save: { Args: { p_defaults: Json }; Returns: Json }
@@ -4425,6 +4528,10 @@ export type Database = {
         Returns: Json
       }
       challenges_list: { Args: never; Returns: Json }
+      class_join: { Args: { p_class: string }; Returns: Json }
+      class_recording: { Args: { p_class: string }; Returns: Json }
+      class_register: { Args: { p_class: string }; Returns: Json }
+      classes_list: { Args: never; Returns: Json }
       content_offer: { Args: { p_kind: string; p_ref: string }; Returns: Json }
       content_pay_start: {
         Args: {
