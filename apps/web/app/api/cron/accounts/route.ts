@@ -77,7 +77,7 @@ export async function POST(req: Request) {
     else report.deleted++;
   }
 
-  // 3. Photos of deleted accounts (profile photo, appeal screenshots).
+  // 3. Photos of deleted accounts (profile photo, appeal screenshots, community pictures).
   if (hasR2()) {
     const { data: ids } = await svc.rpc("deleted_users_pending", { p_what: "r2", p_limit: 200 });
     const done: string[] = [];
@@ -85,6 +85,7 @@ export async function POST(req: Request) {
       if (Date.now() - started > 55_000) break;
       try {
         report.files_removed += await deletePrefix(`a/${id}/`);
+        report.files_removed += await deletePrefix(`c/${id}/`);
         done.push(id);
       } catch {
         report.files_failed++;

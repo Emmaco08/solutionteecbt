@@ -1457,3 +1457,27 @@ The owner asked to run the admin from Vercel instead of the laptop.
 - XP (never money; admin can change): finish a duel 5, win 15, beat the AI Tutor 25, play an arena 5, arena top 3:
   30 / 20 / 10 (only with points above 0 and at least 5 players). Game XP is capped at 100 a day and also counts
   toward the normal daily XP cap. A student can start 40 games a day.
+
+## D-151 — Community (C15, 2026-11-11)
+- Study → Community (and search): learning posts (text with $maths$, one picture, optional subject), comments, likes,
+  follows, block, report. Tabs: For you (people I follow and my JAMB subjects first, then likes, comments and how
+  new), Following, My posts; subject chips.
+- **Checked before anyone else sees it.** Posts and comments start as "being checked" (only the author sees them).
+  The app asks the new Edge Function `community` to check at once; a 2-minute job (`community-sweep`, only when
+  something waits) catches anything missed. The AI (models from the admin AI settings, key only on the server)
+  allows learning content and rejects off-topic posts, phone numbers or links, insults, adult content, scams or
+  selling, exam malpractice ("expo") and politics or religion arguments; the student sees the reason. Pictures are
+  checked by a vision model, which reads the picture through the website with the student's own login. Until the
+  website is deployed with the new `c/` picture route, posts with pictures wait for staff. When the AI cannot
+  decide, the item waits in Admin → Community. Tested live: a maths question was shown; an off-topic post with a
+  phone number was rejected with a reason (test posts removed).
+- **@solutiontee** in a post: after it passes the check, the AI answers as a "SolutionTee AI" comment, at most 5 a
+  day per student, once per post.
+- Limits (admin can change): 10 posts and 60 comments a day; 3 reports hide a post or comment until staff look.
+  Blocking hides both students from each other and removes follows. Students see each other's first name and
+  initials only, never profile photos, emails or phone numbers. Banned students cannot post, comment or like.
+- Pictures: private R2 under `c/<user id>/`, uploaded through the existing upload route (purpose "post", up to
+  3 MB); signed only for the author, staff, or anyone once the post is shown and not blocked
+  (`can_view_community_image`). Removed with the account (nightly account clean-up).
+- Admin → Community (super admins and admins): Waiting, Hidden after reports, Rejected, Shown; Show, Reject with
+  a reason (the student is told), Hide, Delete (audit-logged); settings.

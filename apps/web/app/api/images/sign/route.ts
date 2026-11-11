@@ -4,7 +4,7 @@ import { env, hasR2 } from "@/lib/env";
 import { presignGet } from "@/lib/r2";
 import { json } from "@/lib/auth-email";
 
-const Body = z.object({ key: z.string().min(3).max(300).regex(/^(q|n|a|public\/news|public\/winners|public\/challenges|public\/ads|public\/exams)\/[A-Za-z0-9/_.-]+$/) });
+const Body = z.object({ key: z.string().min(3).max(300).regex(/^(q|n|a|c|public\/news|public\/winners|public\/challenges|public\/ads|public\/exams)\/[A-Za-z0-9/_.-]+$/) });
 
 /**
  * POST /api/images/sign  { key: "q/jamb/2001/mth/7.webp" | "public/news/…" }   Authorization: Bearer <access token>
@@ -18,6 +18,7 @@ const Body = z.object({ key: z.string().min(3).max(300).regex(/^(q|n|a|public\/n
  * Note pictures (n/…) are signed when a study item the student can open uses that key (can_view_note_image).
  * Profile photos (a/<user id>/…): the owner's own (D-063), or another student's shown on a leaderboard with their
  * permission (can_view_avatar, D-069).
+ * Community pictures (c/<user id>/…): the author, staff, or anyone once the post passed the check (D-151).
  */
 export async function POST(req: Request) {
   if (!hasR2()) return json({ error: "Images are not available right now." }, 503);
@@ -44,6 +45,8 @@ export async function POST(req: Request) {
     ? await asUser.from("winners_wall").select("id").eq("receipt_path", key).eq("published", true).limit(1).then((r) => ({ data: Boolean(r.data?.length), error: r.error }))
     : key.startsWith("public/ads/")
     ? await asUser.rpc("can_view_ad_file", { p_key: key })
+    : key.startsWith("c/")
+    ? await asUser.rpc("can_view_community_image", { p_key: key })
     : key.startsWith("public/challenges/")
     ? await asUser.rpc("can_view_challenge_image", { p_key: key })
     : key.startsWith("public/exams/")

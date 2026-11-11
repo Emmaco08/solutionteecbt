@@ -48,6 +48,7 @@ import 'features/tutor/tutor.dart';
 import 'features/games/games.dart';
 import 'features/games/game_play.dart';
 import 'features/games/arena.dart';
+import 'features/community/community.dart';
 
 /// Screens anyone can open without an account.
 const _public = {
@@ -302,6 +303,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/classes', builder: (_, _) => const ClassesScreen()),
       GoRoute(path: '/tutor', builder: (_, _) => const TutorScreen()),
       GoRoute(path: '/games', builder: (_, _) => const GamesScreen()),
+      GoRoute(path: '/community', builder: (_, _) => const CommunityScreen()),
+      GoRoute(
+        path: '/community/post/:id',
+        builder: (_, s) => PostScreen(id: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/community/user/:id',
+        builder: (_, s) => CommunityUserScreen(id: s.pathParameters['id']!),
+      ),
       GoRoute(
         path: '/games/play/:id',
         builder: (_, s) => GamePlayScreen(id: s.pathParameters['id']!),

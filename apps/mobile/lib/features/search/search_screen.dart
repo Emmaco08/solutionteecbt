@@ -76,6 +76,13 @@ final List<QuickLink> quickLinks = [
     tone: Tone.blue,
   ),
   (
+    title: 'Community',
+    words: 'community students post ask question forum friends follow share tip discuss',
+    icon: PhosphorIcons.chatsTeardrop(PhosphorIconsStyle.fill),
+    route: '/community',
+    tone: Tone.blue,
+  ),
+  (
     title: 'Games',
     words: 'games game duel quiz arena play friend ai bot compete fun xp',
     icon: PhosphorIcons.gameController(PhosphorIconsStyle.fill),

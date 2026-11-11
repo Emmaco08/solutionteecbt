@@ -7,7 +7,7 @@ import { json } from "@/lib/auth-email";
 const Body = z.object({
   contentType: z.enum(["image/jpeg", "image/webp", "image/png"]),
   size: z.number().int().min(100).max(3 * 1024 * 1024),
-  purpose: z.enum(["avatar", "appeal"]).default("avatar"),
+  purpose: z.enum(["avatar", "appeal", "post"]).default("avatar"),
 });
 
 /**
@@ -16,6 +16,7 @@ const Body = z.object({
  * R2 bucket. The app shrinks the photo first (512 px), uploads it, then saves the key in profiles.avatar_path.
  * Photos are shown through /api/images/sign, which only signs a student's own a/<id>/ keys.
  * purpose "appeal" (D-073): a screenshot for a challenge appeal (up to 3 MB, PNG allowed), seen by the student and staff.
+ * purpose "post" (D-151): a community post picture at c/<user id>/…, shown to others only after the AI check (can_view_community_image).
  */
 export async function POST(req: Request) {
   if (!hasR2()) return json({ error: "Photos are not available right now." }, 503);
@@ -31,6 +32,8 @@ export async function POST(req: Request) {
   const { data: who, error } = await sb.auth.getUser(token);
   if (error || !who.user) return json({ error: "Please log in again." }, 401);
   const ext = parsed.data.contentType === "image/webp" ? "webp" : parsed.data.contentType === "image/png" ? "png" : "jpg";
-  const key = `a/${who.user.id}/${parsed.data.purpose === "appeal" ? "appeal-" : ""}${crypto.randomUUID().slice(0, 8)}.${ext}`;
+  const key = parsed.data.purpose === "post"
+    ? `c/${who.user.id}/${crypto.randomUUID().slice(0, 12)}.${ext}`
+    : `a/${who.user.id}/${parsed.data.purpose === "appeal" ? "appeal-" : ""}${crypto.randomUUID().slice(0, 8)}.${ext}`;
   return json({ key, url: await presignPut(key, parsed.data.contentType) });
 }

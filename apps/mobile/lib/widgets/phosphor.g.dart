@@ -78,10 +78,14 @@ abstract final class PhosphorIcons {
       s == PhosphorIconsStyle.regular ? const IconData(0xe600, fontFamily: 'PhosphorRegular') : const IconData(0xe600, fontFamily: 'PhosphorFill');
   static IconData chartLineUp([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe156, fontFamily: 'PhosphorRegular') : const IconData(0xe156, fontFamily: 'PhosphorFill');
+  static IconData chatCircle([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
+      s == PhosphorIconsStyle.regular ? const IconData(0xe168, fontFamily: 'PhosphorRegular') : const IconData(0xe168, fontFamily: 'PhosphorFill');
   static IconData chatCircleText([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe16e, fontFamily: 'PhosphorRegular') : const IconData(0xe16e, fontFamily: 'PhosphorFill');
   static IconData chatsCircle([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe17e, fontFamily: 'PhosphorRegular') : const IconData(0xe17e, fontFamily: 'PhosphorFill');
+  static IconData chatsTeardrop([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
+      s == PhosphorIconsStyle.regular ? const IconData(0xe180, fontFamily: 'PhosphorRegular') : const IconData(0xe180, fontFamily: 'PhosphorFill');
   static IconData check([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe182, fontFamily: 'PhosphorRegular') : const IconData(0xe182, fontFamily: 'PhosphorFill');
   static IconData checkCircle([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
@@ -126,6 +130,8 @@ abstract final class PhosphorIcons {
       s == PhosphorIconsStyle.regular ? const IconData(0xe1e0, fontFamily: 'PhosphorRegular') : const IconData(0xe1e0, fontFamily: 'PhosphorFill');
   static IconData dna([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe924, fontFamily: 'PhosphorRegular') : const IconData(0xe924, fontFamily: 'PhosphorFill');
+  static IconData dotsThree([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
+      s == PhosphorIconsStyle.regular ? const IconData(0xe1fe, fontFamily: 'PhosphorRegular') : const IconData(0xe1fe, fontFamily: 'PhosphorFill');
   static IconData dotsThreeVertical([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>
       s == PhosphorIconsStyle.regular ? const IconData(0xe208, fontFamily: 'PhosphorRegular') : const IconData(0xe208, fontFamily: 'PhosphorFill');
   static IconData downloadSimple([PhosphorIconsStyle s = PhosphorIconsStyle.regular]) =>

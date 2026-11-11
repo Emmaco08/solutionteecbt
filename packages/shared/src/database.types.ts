@@ -2017,6 +2017,171 @@ export type Database = {
         }
         Relationships: []
       }
+      community_blocks: {
+        Row: {
+          blocked: string
+          blocker: string
+          created_at: string
+        }
+        Insert: {
+          blocked: string
+          blocker: string
+          created_at?: string
+        }
+        Update: {
+          blocked?: string
+          blocker?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      community_comments: {
+        Row: {
+          body: string
+          checked_at: string | null
+          created_at: string
+          from_ai: boolean
+          id: number
+          post_id: string
+          reason: string | null
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          body: string
+          checked_at?: string | null
+          created_at?: string
+          from_ai?: boolean
+          id?: number
+          post_id: string
+          reason?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          body?: string
+          checked_at?: string | null
+          created_at?: string
+          from_ai?: boolean
+          id?: number
+          post_id?: string
+          reason?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      community_follows: {
+        Row: {
+          created_at: string
+          followee: string
+          follower: string
+        }
+        Insert: {
+          created_at?: string
+          followee: string
+          follower: string
+        }
+        Update: {
+          created_at?: string
+          followee?: string
+          follower?: string
+        }
+        Relationships: []
+      }
+      community_likes: {
+        Row: {
+          created_at: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      community_posts: {
+        Row: {
+          ai_answered: boolean
+          ask_ai: boolean
+          body: string
+          checked_at: string | null
+          comments_count: number
+          created_at: string
+          id: string
+          image_path: string | null
+          likes_count: number
+          reason: string | null
+          status: string
+          subject_id: number | null
+          user_id: string
+        }
+        Insert: {
+          ai_answered?: boolean
+          ask_ai?: boolean
+          body: string
+          checked_at?: string | null
+          comments_count?: number
+          created_at?: string
+          id?: string
+          image_path?: string | null
+          likes_count?: number
+          reason?: string | null
+          status?: string
+          subject_id?: number | null
+          user_id: string
+        }
+        Update: {
+          ai_answered?: boolean
+          ask_ai?: boolean
+          body?: string
+          checked_at?: string | null
+          comments_count?: number
+          created_at?: string
+          id?: string
+          image_path?: string | null
+          likes_count?: number
+          reason?: string | null
+          status?: string
+          subject_id?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      community_reports: {
+        Row: {
+          created_at: string
+          id: number
+          kind: string
+          reason: string | null
+          ref: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          kind: string
+          reason?: string | null
+          ref: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          kind?: string
+          reason?: string | null
+          ref?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       content_purchases: {
         Row: {
           created_at: string
@@ -4712,6 +4877,7 @@ export type Database = {
       admin_class_students: { Args: { p_class: string }; Returns: Json }
       admin_class_submissions: { Args: { p_class: string }; Returns: Json }
       admin_codes: { Args: never; Returns: Json }
+      admin_community_counts: { Args: never; Returns: Json }
       admin_content_access: { Args: never; Returns: Json }
       admin_content_access_save: { Args: { p_defaults: Json }; Returns: Json }
       admin_create_code_batch: {
@@ -4964,6 +5130,7 @@ export type Database = {
       can_view_ad_file: { Args: { p_key: string }; Returns: boolean }
       can_view_avatar: { Args: { p_key: string }; Returns: boolean }
       can_view_challenge_image: { Args: { p_key: string }; Returns: boolean }
+      can_view_community_image: { Args: { p_key: string }; Returns: boolean }
       can_view_note_image: { Args: { p_key: string }; Returns: boolean }
       can_view_question_image: { Args: { p_key: string }; Returns: boolean }
       can_view_study_file: { Args: { p_key: string }; Returns: boolean }
@@ -5017,6 +5184,20 @@ export type Database = {
       class_register: { Args: { p_class: string }; Returns: Json }
       class_submit: { Args: { p_assignment: string; p_answer: string }; Returns: Json }
       classes_list: { Args: never; Returns: Json }
+      community_ai_answer: { Args: { p_post: string; p_body: string }; Returns: Json }
+      community_block: { Args: { p_user: string }; Returns: Json }
+      community_comment_add: { Args: { p_post: string; p_body: string }; Returns: Json }
+      community_comment_delete: { Args: { p_id: number }; Returns: Json }
+      community_decide: { Args: { p_kind: string; p_id: string; p_ok: boolean; p_reason: string }; Returns: Json }
+      community_feed: { Args: { p_tab?: string; p_subject?: number; p_offset?: number }; Returns: Json }
+      community_follow: { Args: { p_user: string }; Returns: Json }
+      community_like: { Args: { p_id: string }; Returns: Json }
+      community_pending: { Args: { p_limit?: number }; Returns: Json }
+      community_post_create: { Args: { p_body: string; p_image?: string; p_subject?: number }; Returns: Json }
+      community_post_delete: { Args: { p_id: string }; Returns: Json }
+      community_post_get: { Args: { p_id: string }; Returns: Json }
+      community_profile: { Args: { p_user: string }; Returns: Json }
+      community_report: { Args: { p_kind: string; p_ref: string; p_reason: string }; Returns: Json }
       content_offer: { Args: { p_kind: string; p_ref: string }; Returns: Json }
       content_pay_start: {
         Args: {
