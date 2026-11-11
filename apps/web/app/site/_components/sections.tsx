@@ -10,21 +10,30 @@ import { CountUp, Reveal, ease } from "./motion";
 
 /* ------------------------------------------------------------------ exam strip */
 const EXAMS = [
-  ["JAMB", "UTME", "#0B1F44", "#F2B233"],
-  ["WAEC", "WASSCE", "#14532D", "#BBF7D0"],
-  ["NECO", "SSCE", "#2563B3", "#FFFFFF"],
+  ["JAMB", "UTME", "#0B1F44", "#F2B233", "jamb", 246, 144],
+  ["WAEC", "WASSCE", "#14532D", "#BBF7D0", "waec", 554, 361],
+  ["NECO", "SSCE", "#2563B3", "#FFFFFF", "neco", 494, 404],
 ] as const;
 
-export function ExamStrip({ subjects, studyItems }: { subjects: number; studyItems: number }) {
+/** [logos] follows the admin switch "Show the JAMB, WAEC and NECO logos" (D-111, D-131). On: each body's own logo file
+ *  from /brand/exam-bodies (never redrawn). Off: our plain text badges. */
+export function ExamStrip({ subjects, studyItems, logos = false }: { subjects: number; studyItems: number; logos?: boolean }) {
   return (
     <section className="border-b bg-card py-10">
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-8 px-4 sm:px-6 lg:flex-row lg:justify-between">
         <div className="flex flex-wrap justify-center gap-3">
-          {EXAMS.map(([code, exam, bg, fg], i) => (
+          {EXAMS.map(([code, exam, bg, fg, file, w, h], i) => (
             <Reveal key={code} delay={0.08 * i}>
-              {/* Our own exam badges: plain text names, never the exam bodies' logos */}
               <div className="flex items-center gap-3 rounded-2xl border bg-background px-4 py-3">
-                <span className="grid size-11 place-items-center rounded-xl text-xs font-extrabold" style={{ background: bg, color: fg }}>{code}</span>
+                {logos ? (
+                  <span className="grid size-11 place-items-center rounded-xl bg-white p-1 ring-1 ring-black/5">
+                    {/* The exam body's own logo file (/brand/exam-bodies), shown as is */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={`/brand/exam-bodies/${file}.png`} alt={`${code} logo`} width={w} height={h} loading="lazy" decoding="async" className="max-h-full max-w-full object-contain" />
+                  </span>
+                ) : (
+                  <span className="grid size-11 place-items-center rounded-xl text-xs font-extrabold" style={{ background: bg, color: fg }}>{code}</span>
+                )}
                 <span className="text-sm font-bold">{code} <span className="font-medium text-muted-foreground">{exam}</span></span>
               </div>
             </Reveal>
@@ -79,15 +88,15 @@ export function Features() {
 const SUBJECTS = ["Use of English", "Mathematics", "Physics", "Chemistry", "Biology", "Government", "Economics", "Literature in English",
   "Commerce", "Accounting", "Geography", "CRS", "IRS", "Agricultural Science", "History"];
 
+/** Two rows of subjects sliding past: a CSS loop (D-131), so it costs nothing while the visitor scrolls. */
 export function SubjectMarquee() {
-  const still = useReducedMotion();
   const row = (dir: 1 | -1, list: string[]) => (
     <div className="flex overflow-hidden [mask-image:linear-gradient(90deg,transparent,black_10%,black_90%,transparent)]">
-      <motion.div className="flex shrink-0 gap-3 pr-3" animate={still ? undefined : { x: dir === 1 ? ["0%", "-50%"] : ["-50%", "0%"] }} transition={{ duration: 40, repeat: Infinity, ease: "linear" }}>
+      <div className={`st-marquee flex shrink-0 gap-3 pr-3 ${dir === -1 ? "st-marquee-rev" : ""}`}>
         {[...list, ...list].map((t, i) => (
           <span key={i} className="whitespace-nowrap rounded-full border bg-card px-4 py-2 text-sm font-bold shadow-[var(--shadow-1)]">{t}</span>
         ))}
-      </motion.div>
+      </div>
     </div>
   );
   return (

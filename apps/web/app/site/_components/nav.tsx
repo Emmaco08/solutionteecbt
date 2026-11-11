@@ -18,7 +18,7 @@ export function SiteNav({ links: LINKS = DEFAULT_LINKS }: { links?: [string, str
   const [open, setOpen] = useState(false);
   useMotionValueEvent(scrollY, "change", (y) => setSolid(y > 24));
   return (
-    <header className={`fixed inset-x-0 top-0 z-50 transition-colors duration-300 ${solid || open ? "bg-[#06132B]/85 shadow-[0_1px_0_rgba(255,255,255,.08)] backdrop-blur-md" : "bg-transparent"}`}>
+    <header className={`fixed inset-x-0 top-0 z-50 transition-colors duration-300 ${solid || open ? "bg-[#06132B]/95 shadow-[0_1px_0_rgba(255,255,255,.08)] md:bg-[#06132B]/85 md:backdrop-blur-md" : "bg-transparent"}`}>
       <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6" aria-label="Main">
         <Link href="/" className="flex items-center gap-2.5 text-white" aria-label="SolutionTee CBT home">
           {/* Real brand mark from /brand (never redrawn) */}

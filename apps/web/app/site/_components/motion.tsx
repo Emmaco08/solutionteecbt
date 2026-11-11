@@ -1,6 +1,6 @@
 "use client";
 import { animate, motion, useInView, useReducedMotion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -33,5 +33,15 @@ export function CountUp({ to, suffix = "", className }: { to: number; suffix?: s
   }, [seen, still, to]);
   return <span ref={ref} className={className}>{v.toLocaleString("en-NG")}{suffix}</span>;
 }
+
+/** True on computers with a mouse and a wide screen: the only place for scroll parallax and 3D tilt (D-131). */
+export function useDesktopMotion() {
+  return useSyncExternalStore(
+    (cb) => { const m = window.matchMedia(DESKTOP); m.addEventListener("change", cb); return () => m.removeEventListener("change", cb); },
+    () => window.matchMedia(DESKTOP).matches,
+    () => false,
+  );
+}
+const DESKTOP = "(min-width: 1024px) and (pointer: fine)";
 
 export { ease };

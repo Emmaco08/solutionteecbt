@@ -1193,3 +1193,14 @@ The owner asked to run the admin from Vercel instead of the laptop.
   (Paystack Pay with Transfer), and a DVA needs each student's full name and phone number, and in Nigeria often a BVN
   check, which is more personal data than we want from teenagers. Revisit if students ask to top up a wallet by
   transfer without opening the app.
+
+## D-131 — Exam logos on the website follow the app switch; the landing page made smooth (2026-11-11)
+- Admin → Settings → "Show the JAMB, WAEC and NECO logos" now changes the app and the website together. On: the exam
+  strip shows each body's own logo file from /brand/exam-bodies (never redrawn); off: our text badges. The switch
+  refreshes the website at once (cache tag "site"); the cash prize switch now does too.
+- Landing page lag: animated blur glows, text revealed through a blur filter, endless JavaScript-driven floats and
+  marquee, a see-through blurred menu over scrolling content, scroll parallax and finger-triggered 3D tilt on phones,
+  and demo phones that kept animating off screen. Now: gradient glows (same look, no blur), CSS loops (run on the
+  graphics chip), parallax and tilt only on computers with a mouse, a solid menu on phones, demo phones paused off
+  screen. Measured on an emulated phone with the CPU slowed 4×, scrolling the whole page: 47 → 58 frames a second,
+  janky frames 4% → 0%, blocking work 441 ms → 0 ms; idle 41 → 60 frames a second.

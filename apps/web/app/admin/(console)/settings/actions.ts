@@ -72,6 +72,8 @@ export async function setAppSwitch(key: string, field: string, on: boolean): Pro
   const value = { ...((data.value as Record<string, boolean | string | number | null>) ?? {}), [field]: on };
   const { error } = await supabase.from("app_settings").update({ value }).eq("key", key);
   if (error) return { ok: false, error: friendlyError(error) };
+  // The website follows these at once: cash prizes (pages, Privacy, Terms; D-122) and the exam logos (D-131).
+  if (key === "cash_prizes" || key === "exam_logos") updateTag("site");
   revalidatePath("/admin", "layout");
   return { ok: true };
 }

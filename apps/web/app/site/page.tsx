@@ -35,7 +35,7 @@ export default async function SitePage() {
       <SiteNav links={links} />
       <main>
         <Hero badge={f(cms.hero.badge)} title={f(cms.hero.title)} highlight={f(cms.hero.highlight)} subtitle={f(cms.hero.subtitle)} playUrl={d.playUrl} />
-        {on.exams ? <ExamStrip subjects={d.subjects} studyItems={d.studyItems} /> : null}
+        {on.exams ? <ExamStrip subjects={d.subjects} studyItems={d.studyItems} logos={d.examLogos} /> : null}
         {on.subjects ? <SubjectMarquee /> : null}
         {on.tour ? <FeatureTour /> : null}
         {on.features ? <Features /> : null}

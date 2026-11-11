@@ -423,7 +423,7 @@ export function InviteScreen({ play = true, cash = false }: { play?: boolean; ca
       </div>
       <div className="space-y-3 px-4 pt-3">
         <div className="relative overflow-hidden rounded-3xl p-5 text-white" style={{ background: `linear-gradient(135deg, ${NAVY}, #183A78)` }}>
-          <span className="absolute -right-10 -top-10 size-36 rounded-full blur-2xl" style={{ background: "rgba(242,178,51,.45)" }} />
+          <span className="absolute -right-16 -top-16 size-48" style={{ background: "radial-gradient(closest-side, rgba(242,178,51,.45), transparent)" }} />
           <Gift size={30} weight="fill" style={{ color: GOLD }} />
           <p className="mt-2 text-[22px] font-bold">{cash ? "Invite friends, earn rewards" : "Get Premium cheaper"}</p>
           <p className="text-[13px] text-[#C9D5EA]">Every friend who joins with your code gives you 5% off Premium{cash ? " and counts toward cash" : " and 50 XP"}.</p>
@@ -495,7 +495,7 @@ export function ChallengeScreen({ play = true, cash = false }: { play?: boolean;
       </div>
       <div className="space-y-3 px-4 pt-3">
         <div className="relative overflow-hidden rounded-3xl p-5 text-white" style={{ background: `linear-gradient(135deg, ${NAVY}, #183A78)` }}>
-          <span className="absolute -right-10 -top-10 size-36 rounded-full blur-2xl" style={{ background: "rgba(242,178,51,.45)" }} />
+          <span className="absolute -right-16 -top-16 size-48" style={{ background: "radial-gradient(closest-side, rgba(242,178,51,.45), transparent)" }} />
           <div className="flex items-center gap-2 text-[12px] font-bold">
             <motion.span animate={play ? { opacity: [1, 0.3, 1] } : undefined} transition={{ duration: 1.4, repeat: Infinity }} className="size-2.5 rounded-full" style={{ background: "#22C55E" }} />
             LIVE NOW · 1,248 playing

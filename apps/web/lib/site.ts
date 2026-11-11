@@ -17,6 +17,8 @@ export type SiteData = {
   playUrl: string;
   cms: SiteCms;
   facts: RewardFacts;
+  /** Admin → Settings → "Show the JAMB, WAEC and NECO logos" (D-111): the website follows the app (D-131). */
+  examLogos: boolean;
 };
 
 /** Live numbers and prices for the public website (cbt.solutiontee.com), cached for an hour. Never personal data. */
@@ -27,7 +29,7 @@ export async function siteData(): Promise<SiteData> {
   const facts: RewardFacts = { cash: false, teens: false, pct: 5, maxPct: 100, xp: 50, finishXp: 20, cashEvery: 20, cashNaira: 5000, questions: 30000, firstYear: 1978, lastYear: 2025 };
   const fallback: SiteData = {
     plans: [], questions: 30000, subjects: 15, firstYear: 1978, lastYear: 2025, studyItems: 300,
-    fee: { on: false, pct: 1.5, flat: 100, flat_from: 2500, cap: 2000 }, playUrl: "", cms: mergeCms(null), facts,
+    fee: { on: false, pct: 1.5, flat: 100, flat_from: 2500, cap: 2000 }, playUrl: "", cms: mergeCms(null), facts, examLogos: false,
   };
   if (!env.supabaseSecretKey) return fallback;
   const sb = createClient<Database>(env.supabaseUrl, env.supabaseSecretKey, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -37,7 +39,7 @@ export async function siteData(): Promise<SiteData> {
     sb.from("questions").select("year").eq("status", "published").not("year", "is", null).order("year").limit(1).maybeSingle(),
     sb.from("questions").select("year").eq("status", "published").not("year", "is", null).order("year", { ascending: false }).limit(1).maybeSingle(),
     sb.from("study_items").select("id", { count: "exact", head: true }),
-    sb.from("app_settings").select("key, value").in("key", ["payments", "site", "site_cms", "cash_prizes", "referrals", "xp"]),
+    sb.from("app_settings").select("key, value").in("key", ["payments", "site", "site_cms", "cash_prizes", "referrals", "xp", "exam_logos"]),
   ]);
   const s = Object.fromEntries((settings.data ?? []).map((r) => [r.key, r.value as Record<string, unknown>]));
   const fees = (s.payments?.fees ?? {}) as { paystack?: Partial<SiteData["fee"]> };
@@ -47,6 +49,7 @@ export async function siteData(): Promise<SiteData> {
   const firstYear = Number(first.data?.year ?? fallback.firstYear), lastYear = Number(last.data?.year ?? fallback.lastYear);
   return {
     cms: mergeCms(s.site_cms),
+    examLogos: s.exam_logos?.on === true,
     facts: {
       cash: cp.on === true, teens: cp.on === true && cp.teens === true,
       pct: num(rf.pct_per_friend, facts.pct), maxPct: num(rf.max_pct, facts.maxPct), xp: num(xp.referral, facts.xp),

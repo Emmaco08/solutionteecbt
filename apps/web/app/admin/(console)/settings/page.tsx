@@ -45,7 +45,7 @@ async function Settings() {
             <AppSwitch k="cash_prizes" field="teens" on={sw("cash_prizes", "teens", false)} title="Students aged 13 to 17 can win cash too"
               text="Only works while cash prizes are on. A student aged 13 to 17 can enter and win; within 10 minutes of the win we email their parent or guardian, and the prize can only be claimed after that email has gone out. It is paid to the parent's or guardian's account. The Privacy Policy and Terms change to say this automatically." />
             <AppSwitch k="exam_logos" field="on" on={sw("exam_logos", "on", false)} title="Show the JAMB, WAEC and NECO logos"
-              text="Off (now): the app shows our own exam badges with the exam name in plain text. Turn on only after each exam body gives written permission to use its logo." />
+              text="Changes the app and the website (cbt.solutiontee.com) together. Off: our own exam badges with the exam name in plain text. Turn on only after each exam body gives written permission to use its logo." />
           </Panel>
           <Panel title="Sign in with Google" bodyClassName="divide-y py-1">
             <AppSwitch k="google_auth" field="enabled" on={sw("google_auth", "enabled", false)} title="Show “Continue with Google”"

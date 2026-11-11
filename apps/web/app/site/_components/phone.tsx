@@ -8,7 +8,8 @@ export const SCREEN_H = 844;
 
 /**
  * A realistic phone: titanium-style frame with side buttons, black bezel, camera island, glass reflection that moves
- * with the tilt, and a soft floor shadow. Tilts in 3D towards the pointer and floats gently (still with reduce motion).
+ * with the tilt, and a soft floor shadow. Tilts in 3D towards a mouse and floats gently with a CSS loop (still with
+ * reduce motion). No blur filters: they are slow to draw on phones (D-131).
  */
 export function Phone3D({ children, width = 300, tilt = true, float = true, rotate = 0, className }: {
   children: React.ReactNode; width?: number; tilt?: boolean; float?: boolean; rotate?: number; className?: string;
@@ -26,18 +27,17 @@ export function Phone3D({ children, width = 300, tilt = true, float = true, rota
   const radius = Math.round(width * 0.155);
 
   return (
-    <div className={className} style={{ perspective: 1600 }}>
+    <div className={`${className ?? ""} ${float && !still ? "st-float" : ""}`} style={{ perspective: 1600 }}>
       <motion.div
         ref={ref}
         onPointerMove={(e) => {
-          if (!tilt || still || !ref.current) return;
+          // Mouse only: on phones a finger moving over the phone while scrolling must not start the tilt (D-131).
+          if (!tilt || still || !ref.current || e.pointerType !== "mouse") return;
           const r = ref.current.getBoundingClientRect();
           mx.set((e.clientX - r.left) / r.width - 0.5);
           my.set((e.clientY - r.top) / r.height - 0.5);
         }}
         onPointerLeave={() => { mx.set(0); my.set(0); }}
-        animate={float && !still ? { y: [0, -12, 0] } : undefined}
-        transition={float && !still ? { duration: 6, repeat: Infinity, ease: "easeInOut" } : undefined}
         style={{ rotateX: still ? 0 : rx, rotateY: still ? rotate : ry, rotateZ: 0, transformStyle: "preserve-3d", width }}
         className="relative mx-auto"
       >
@@ -68,7 +68,7 @@ export function Phone3D({ children, width = 300, tilt = true, float = true, rota
           </div>
         </div>
         {/* Floor shadow */}
-        <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 rounded-[50%] bg-black/35 blur-2xl" style={{ bottom: -36, width: width * 0.8, height: 40, transform: "translateZ(-80px)" }} />
+        <div className="pointer-events-none absolute left-1/2 -translate-x-1/2" style={{ bottom: -36, width: width * 0.9, height: 48, transform: "translateZ(-80px)", background: "radial-gradient(closest-side, rgba(0,0,0,.35), transparent)" }} />
       </motion.div>
     </div>
   );

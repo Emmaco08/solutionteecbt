@@ -123,7 +123,18 @@
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; }
+  .st-float, .st-float-sm, .st-marquee { animation: none !important; }
 }
+
+/* Website loops (D-131): plain CSS transforms run on the phone's graphics chip, not in JavaScript, so they never
+   compete with scrolling. Paused while the tab is hidden by the browser itself. */
+@keyframes st-float { 0%, 100% { transform: translate3d(0, 0, 0); } 50% { transform: translate3d(0, -12px, 0); } }
+@keyframes st-float-sm { 0%, 100% { transform: translate3d(0, 0, 0); } 50% { transform: translate3d(0, -8px, 0); } }
+@keyframes st-marquee { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-50%, 0, 0); } }
+.st-float { animation: st-float 6s ease-in-out infinite; }
+.st-float-sm { animation: st-float-sm 4s ease-in-out infinite; }
+.st-marquee { animation: st-marquee 40s linear infinite; }
+.st-marquee-rev { animation-direction: reverse; }
 
 /* Lesson-note preview in the admin (matches the app's note reader: 16/27 body, 19/26 headings, gold tip box). */
 .note-preview { font-size: 16px; line-height: 27px; }

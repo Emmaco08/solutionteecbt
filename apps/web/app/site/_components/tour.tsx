@@ -108,8 +108,10 @@ function MobilePhone({ s }: { s: Step }) {
 export function FeatureTour() {
   const [active, setActive] = useState(0);
   const still = useReducedMotion();
+  const box = useRef<HTMLElement>(null);
+  const tourOn = useInView(box); // the sticky phone stops when the tour is off screen (D-131)
   return (
-    <section id="features" className="relative scroll-mt-20 bg-background py-20 sm:py-28">
+    <section ref={box} id="features" className="relative scroll-mt-20 bg-background py-20 sm:py-28">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-[#EEF2F9] to-transparent dark:from-[#0A1730]" aria-hidden />
       <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
         <motion.div initial={still ? false : { opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, ease }} className="mx-auto max-w-2xl text-center">
@@ -121,12 +123,12 @@ export function FeatureTour() {
           <div>{STEPS.map((s, i) => <StepText key={s.key} s={s} i={i} onSeen={setActive} />)}</div>
           <div className="hidden lg:block">
             <div className="sticky top-[12vh] flex h-[76vh] items-center justify-center">
-              <div className="absolute size-[420px] rounded-full bg-[radial-gradient(circle,rgba(37,99,179,.25),transparent_65%)] blur-2xl" aria-hidden />
+              <div className="absolute size-[520px] bg-[radial-gradient(closest-side,rgba(37,99,179,.25),transparent)]" aria-hidden />
               <Phone3D width={330}>
                 <AnimatePresence mode="wait">
                   <motion.div key={STEPS[active].key} className="h-full w-full"
-                    initial={still ? false : { opacity: 0, scale: 1.04, filter: "blur(6px)" }} animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }} exit={{ opacity: 0, scale: 0.97 }} transition={{ duration: 0.4, ease }}>
-                    {STEPS[active].screen(true)}
+                    initial={still ? false : { opacity: 0, scale: 1.03 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.97 }} transition={{ duration: 0.4, ease }}>
+                    {STEPS[active].screen(tourOn)}
                   </motion.div>
                 </AnimatePresence>
               </Phone3D>

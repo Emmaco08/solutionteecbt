@@ -33,7 +33,7 @@ export function EarnSection({ kind, eyebrow, title, text, points, cash }: {
           </ul>
         </div>
         <Reveal className="relative mx-auto">
-          <div className="pointer-events-none absolute inset-0 -z-10 m-auto size-[380px] rounded-full bg-[#F2B233]/25 blur-[90px]" aria-hidden />
+          <div className="pointer-events-none absolute inset-0 -z-10 m-auto size-[560px] bg-[radial-gradient(closest-side,rgba(242,178,51,.25),transparent)]" aria-hidden />
           <Phone3D width={300}>{invite ? <InviteScreen play={inView} cash={cash} /> : <ChallengeScreen play={inView} cash={cash} />}</Phone3D>
         </Reveal>
       </div>
