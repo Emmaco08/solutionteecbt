@@ -1228,3 +1228,12 @@ The owner asked to run the admin from Vercel instead of the laptop.
   real money; anyone could have got Premium with Paystack's public test cards). All 69 earlier Paystack payments are
   now marked Test, and test mode is staff-only from now on. Until live keys are saved and Live is chosen, students
   cannot pay on the website or in the direct app.
+
+## D-134 — App builds use far fewer GitHub Actions minutes (2026-11-11)
+- GitHub's free plan has 2,000 minutes a month; each app change used ~82 (phone app 20, emulator copy 23, Google Play
+  preview 18, Play bundle 18), so the minutes ran out on 11 Nov.
+- Now: every push that changes the app runs only a ~3-minute check (analyzer + tests). A new version (build, emulator
+  check, /download) only when the commit message has [release] or the workflow is run by hand. The emulator copy is
+  built right after the phone app on the same machine (warm Gradle) and the emulator job only opens it. The Google
+  Play preview APK and the .aab only with [play] or "Also build the Google Play versions" when run by hand. Gradle
+  downloads are cached. Expected: ~3 minutes per change, ~30 per release, ~65 with the Play files.
