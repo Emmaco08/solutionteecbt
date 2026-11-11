@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, ArrowSquareOut, CalendarCheck, CheckCircle, Crown, EnvelopeSimple, LockSimple, Plus, ShieldCheck, SignOut, SpinnerGap, Ticket, XCircle } from "@phosphor-icons/react";
 import type { Session } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
@@ -91,14 +91,18 @@ export function PayFlow() {
   }, [sp]);
 
   // From the app (D-115): a one-time code in the link logs the student in, then is removed from the address bar.
+  // Runs once per page load. Removing the code changes the search params, which re-runs effects that depend on them;
+  // this one must still finish (it used to be cancelled there and the page kept loading for ever).
+  const handoffRan = useRef(false);
   useEffect(() => {
-    const code = sp.get("h");
+    if (handoffRan.current) return;
+    const code = new URL(window.location.href).searchParams.get("h");
     if (!code) return;
+    handoffRan.current = true;
     const url = new URL(window.location.href);
     url.searchParams.delete("h");
     url.searchParams.delete("email");
     window.history.replaceState(null, "", url.pathname + url.search);
-    let live = true;
     (async () => {
       try {
         const r = await fetch("/api/web/handoff/redeem", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ code }) });
@@ -107,15 +111,14 @@ export function PayFlow() {
         await sb.auth.signOut({ scope: "local" }); // never mix two accounts
         const { error } = await sb.auth.verifyOtp({ token_hash: j.token_hash, type: "magiclink" });
         if (error) throw new Error("This link has expired. Log in with your email instead.");
-        if (live && j.plan) setPick(String(j.plan));
+        if (j.plan) setPick(String(j.plan));
       } catch (x) {
-        if (live) setErr(x instanceof Error ? x.message : "This link has expired.");
+        setErr(x instanceof Error ? x.message : "This link has expired.");
       } finally {
-        if (live) setHandoff(false);
+        setHandoff(false);
       }
     })();
-    return () => { live = false; };
-  }, [sp, sb]);
+  }, [sb]);
 
   // Back from Paystack without paying (Cancel on Paystack's page, or the back button): ask the server, never spin forever.
   useEffect(() => {
@@ -181,8 +184,12 @@ export function PayFlow() {
   useEffect(() => {
     if (!session) { queueMicrotask(() => { setMine(null); setExtend(false); }); return; }
     let live = true;
-    sb.rpc("my_plan").then(({ data }) => { if (live) setMine((data as Mine | null) ?? { tier: "free", expires_at: null, plan: null }); });
-    return () => { live = false; };
+    const free: Mine = { tier: "free", expires_at: null, plan: null };
+    // Never wait for ever: with no answer in 8 seconds the plans are shown (the server still refuses a plan that
+    // Premium already covers).
+    const t = setTimeout(() => { if (live) setMine((m) => m ?? free); }, 8000);
+    sb.rpc("my_plan").then(({ data }) => { if (live) setMine((data as Mine | null) ?? free); }, () => { if (live) setMine(free); });
+    return () => { live = false; clearTimeout(t); };
   }, [session, sb]);
 
   useEffect(() => {
