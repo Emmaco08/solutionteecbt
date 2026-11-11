@@ -1,8 +1,8 @@
 # Builds the website Android app and puts it on https://admin.solutiontee.com/download (D-060, D-065).
 # Every push that changes the app: a quick check (analyzer + tests, ~3 minutes).
 # A new version (build, emulator check, /download) only when the commit message has [release], or by hand
-# (Actions → Android app → Run). The Google Play versions (preview APK + .aab) only with [play] or "Also build the
-# Google Play versions" when run by hand. GitHub's free plan has 2,000 minutes a month (D-134).
+# (Actions → Android app → Run). The Google Play versions (preview APK + .aab) are built with every new version,
+# as the owner asked (D-140); [play] alone also builds them. GitHub's free plan has 2,000 minutes a month (D-134).
 # No GitHub secrets are needed: the run proves who it is to our website with GitHub's signed run token, and the
 # website hands back the signing key and an upload link only to this workflow in this repository.
 name: Android app
@@ -12,11 +12,6 @@ on:
     branches: [main, "claude/**"]
     paths: ["apps/mobile/**", ".github/workflows/android-apk.yml"]
   workflow_dispatch:
-    inputs:
-      play:
-        description: "Also build the Google Play versions (preview APK + .aab)"
-        type: boolean
-        default: false
 
 # A newer check replaces an older check; a newer release replaces an older release; a check never stops a release.
 concurrency:
@@ -150,7 +145,7 @@ jobs:
   # build number as the direct app, so it installs over it and back.
   play:
     needs: [apk]
-    if: (github.event_name == 'workflow_dispatch' && inputs.play) || contains(github.event.head_commit.message, '[play]')
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[release]') || contains(github.event.head_commit.message, '[play]')
     runs-on: ubuntu-latest
     timeout-minutes: 60
     defaults:
@@ -221,7 +216,7 @@ jobs:
   # (Play Console uses it as the upload key). Its own machine, after the direct app, so it never blocks /download.
   aab:
     needs: [apk]
-    if: (github.event_name == 'workflow_dispatch' && inputs.play) || contains(github.event.head_commit.message, '[play]')
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[release]') || contains(github.event.head_commit.message, '[play]')
     runs-on: ubuntu-latest
     timeout-minutes: 60
     defaults:

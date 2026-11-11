@@ -1304,3 +1304,8 @@ The owner asked to run the admin from Vercel instead of the laptop.
 - Not encrypted: Android keeps app files private, and encrypting large videos would be slow on 3 GB phones. Revisit if
   copying from rooted phones becomes a problem.
 
+## D-140 — Google Play versions with every release (2026-11-11)
+- Owner: "always build play version". Every new version (`[release]` in the commit message, or run by hand) now also
+  builds the Google Play preview APK (/download?channel=play) and the .aab. `[play]` on its own still works. The
+  quick check on other pushes is unchanged. Costs more GitHub minutes per release; fine while the repository is public.
+
