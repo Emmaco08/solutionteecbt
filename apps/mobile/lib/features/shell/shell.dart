@@ -31,6 +31,7 @@ import '../notifications/turn_on_sheet.dart';
 import '../home/countdown.dart';
 import '../premium/payments.dart';
 import '../setup/age_gate.dart';
+import '../profile/badges.dart';
 
 /// Branch order in router.dart: home, study, test, ai, me.
 const _branchOf = {'home': 0, 'study': 1, 'test': 2, 'ai_chat': 3, 'profile': 4};
@@ -141,6 +142,9 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
     _popupsShown = true;
     // The exam countdown first (once a day, D-135), then the milestone or daily claim.
     await maybeShowDailyCountdown(context, ref);
+    if (!mounted) return;
+    // Badge levels won since the last visit (D-142), celebrated once.
+    await checkBadgeWins(context, ref);
     if (!mounted) return;
     try {
       ref.invalidate(myStreakProvider);

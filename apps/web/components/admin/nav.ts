@@ -29,6 +29,7 @@ export const NAV: NavGroup[] = [
     items: [
       { href: "/admin/users", label: "Users", icon: "Users", roles: ADMINS },
       { href: "/admin/leaderboard", label: "Leaderboard", icon: "Ranking", roles: ADMINS },
+      { href: "/admin/badges", label: "Badges", icon: "Medal", roles: ADMINS },
       { href: "/admin/xp", label: "XP & streaks", icon: "Coins", roles: ADMINS },
       { href: "/admin/referrals", label: "Referrals", icon: "Gift", roles: ADMINS },
       { href: "/admin/fraud", label: "Fraud & bans", icon: "ShieldWarning", roles: ADMINS },

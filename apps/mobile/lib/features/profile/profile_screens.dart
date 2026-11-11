@@ -14,6 +14,7 @@ import '../../core/nav.dart';
 import '../../core/config.dart';
 import '../../core/providers.dart';
 import '../../data/offline_files.dart';
+import 'badges.dart';
 import '../../core/tab_scroll.dart';
 import '../../core/updater.dart';
 import '../../core/push.dart';

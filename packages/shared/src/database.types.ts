@@ -961,6 +961,66 @@ export type Database = {
         }
         Relationships: []
       }
+      badge_first_checks: {
+        Row: {
+          checked_at: string
+          user_id: string
+        }
+        Insert: {
+          checked_at?: string
+          user_id: string
+        }
+        Update: {
+          checked_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      badges: {
+        Row: {
+          active: boolean
+          created_at: string
+          description: string
+          icon: string
+          id: number
+          key: string
+          metric: string
+          name: string
+          rewards: Json
+          sort: number
+          targets: Json
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          description: string
+          icon?: string
+          id?: number
+          key: string
+          metric: string
+          name: string
+          rewards?: Json
+          sort?: number
+          targets: Json
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          description?: string
+          icon?: string
+          id?: number
+          key?: string
+          metric?: string
+          name?: string
+          rewards?: Json
+          sort?: number
+          targets?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ban_appeals: {
         Row: {
           admin_note: string | null
@@ -2771,6 +2831,39 @@ export type Database = {
           },
         ]
       }
+      user_badges: {
+        Row: {
+          backfill: boolean
+          badge_id: number
+          days_given: number
+          reached_at: string
+          seen_at: string | null
+          tier: number
+          user_id: string
+          xp_given: number
+        }
+        Insert: {
+          backfill?: boolean
+          badge_id: number
+          days_given?: number
+          reached_at?: string
+          seen_at?: string | null
+          tier: number
+          user_id: string
+          xp_given?: number
+        }
+        Update: {
+          backfill?: boolean
+          badge_id?: number
+          days_given?: number
+          reached_at?: string
+          seen_at?: string | null
+          tier?: number
+          user_id?: string
+          xp_given?: number
+        }
+        Relationships: []
+      }
       web_handoffs: {
         Row: { code_hash: string; created_at: string; expires_at: string; ip_hash: string | null; plan: string | null; used_at: string | null; user_id: string }
         Insert: { code_hash: string; created_at?: string; expires_at?: string; ip_hash?: string | null; plan?: string | null; used_at?: string | null; user_id: string }
@@ -3865,6 +3958,7 @@ export type Database = {
         Args: { p_batch: string; p_id: string }
         Returns: number
       }
+      admin_badge_counts: { Args: never; Returns: { badge_id: number; tier: number; holders: number }[] }
       admin_ban: {
         Args: {
           p_banned: boolean
@@ -4154,6 +4248,8 @@ export type Database = {
       am_money_admin: { Args: never; Returns: boolean }
       am_notifier: { Args: never; Returns: boolean }
       auth_user_status: { Args: { p_email: string }; Returns: string }
+      badges_check: { Args: never; Returns: Json }
+      badges_seen: { Args: { p_badges: number[] }; Returns: undefined }
       ban_appeal: { Args: { p_reason: string }; Returns: Json }
       can_upload_images: { Args: never; Returns: boolean }
       can_view_ad_file: { Args: { p_key: string }; Returns: boolean }

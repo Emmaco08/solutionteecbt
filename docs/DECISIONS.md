@@ -1322,3 +1322,19 @@ The owner asked to run the admin from Vercel instead of the laptop.
   there; the link points to cbt.solutiontee.com because the website has no news pages yet). News list: group chips
   and Saved, likes and comments under each post, pull to refresh. Related news: same group first.
 
+## D-142 — Badges v2: admin badges with four levels and rewards (2026-11-11)
+- `badges` (name, how to win, icon, what it counts, bronze/silver/gold/diamond targets, XP and free Premium days per
+  level) and `user_badges` (one row per level reached). 30 metrics are counted on the server from the student's own
+  records (tests, correct answers, best JAMB mock, streak, night/early/weekend tests, lessons, videos, notes, novels, AI
+  chats, challenges and top-3 finishes, invites, question of the day, XP, news comments and likes, ...).
+- `badges_check()` records new levels and pays each level once (XP outside the daily cap; Premium days via the
+  normal grant, source "prize"; nothing for banned students). The app calls it when it opens and after each test.
+- Fair start: the first check of an account made before badges v2 started records what it had already reached with
+  no reward and no celebration, so old accounts do not get a burst of XP. Every level reached after that pays.
+- 30 sample badges replace the 8 fixed ones (`my_badges` stays for older app versions). Sample rewards: 20/50/100/250
+  XP, and 7 Premium days at diamond for the hardest badges; the owner sets real amounts in Admin → Badges.
+- Cash rewards for badges are not offered while cash prizes wait for approval (D-110).
+- App: Me shows the 8 badges with the most progress (level colour, ring to the next level) and "See all"; a sheet per
+  badge lists the levels and rewards; a full-screen "Badge won" moment (medal pop, confetti, reward; reduce motion
+  respected) shows each new level once.
+

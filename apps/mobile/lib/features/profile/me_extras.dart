@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
@@ -12,13 +11,6 @@ import '../../theme/tokens.g.dart';
 import '../../ui/kit.dart';
 import '../../widgets/phosphor.g.dart';
 import '../../widgets/r2_image.dart';
-
-/// The 8 badges of the approved design (server `my_badges`), cached for offline.
-final myBadgesProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
-  final uid = currentSession(ref)?.user.id;
-  if (uid == null) return const [];
-  return cached(ref, 'badges:$uid', (s) => s.rpc('my_badges'), rows);
-});
 
 /// The student's avatar: their photo when they added one, else initials (prototype `.avatar`).
 class MyAvatar extends ConsumerWidget {
@@ -90,83 +82,5 @@ Future<void> showPhotoSheet(BuildContext context, WidgetRef ref) async {
     if (context.mounted) toast(context, 'Profile photo saved', icon: PhosphorIcons.checkCircle(PhosphorIconsStyle.fill));
   } catch (_) {
     if (context.mounted) toast(context, 'Could not save the photo. Check your internet and try again.');
-  }
-}
-
-/// Badges (prototype `.badge-tile`): the 8 from the design, earned ones in colour, the rest faded with what is left.
-class BadgesSection extends ConsumerWidget {
-  const BadgesSection({super.key});
-
-  static (IconData, Tone) look(String key) => switch (key) {
-    'streak7' => (PhosphorIcons.fire(PhosphorIconsStyle.fill), Tone.gold),
-    'first250' => (PhosphorIcons.target(PhosphorIconsStyle.fill), Tone.blue),
-    'speedster' => (PhosphorIcons.lightning(PhosphorIconsStyle.fill), Tone.navy),
-    'correct100' => (PhosphorIcons.star(PhosphorIconsStyle.fill), Tone.gold),
-    'score300' => (PhosphorIcons.trophy(PhosphorIconsStyle.fill), Tone.gold),
-    'nightowl' => (PhosphorIcons.moonStars(PhosphorIconsStyle.fill), Tone.navy),
-    'bookworm' => (PhosphorIcons.books(PhosphorIconsStyle.fill), Tone.green),
-    _ => (PhosphorIcons.medal(PhosphorIconsStyle.fill), Tone.blue),
-  };
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final c = context.c;
-    final badges = ref.watch(myBadgesProvider).value;
-    if (badges == null || badges.isEmpty) return const SizedBox.shrink();
-    final earned = badges.where((b) => b['earned'] == true).length;
-    final rm = context.reduceMotion;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: Space.s3),
-          child: Row(
-            children: [
-              Expanded(child: Text('Badges', style: context.ty.h3)),
-              Text('$earned of ${badges.length}', style: context.ty.cap.col(c.textMuted)),
-            ],
-          ),
-        ),
-        GridView.count(
-          crossAxisCount: 4,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: Space.s2,
-          crossAxisSpacing: Space.s2,
-          childAspectRatio: .8,
-          children: [
-            for (final (i, b) in badges.indexed)
-              _tile(
-                context,
-                b,
-                c,
-              ).animate(target: rm ? 0 : 1).fadeIn(delay: (30 * i).ms, duration: Motion.base).scale(begin: const Offset(.9, .9), end: const Offset(1, 1)),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _tile(BuildContext context, Map<String, dynamic> b, AppColors c) {
-    final on = b['earned'] == true;
-    final (icon, tone) = look('${b['key']}');
-    return Tooltip(
-      message: on ? '${b['title']}: earned' : '${b['title']}: ${b['progress'] ?? ''}',
-      triggerMode: TooltipTriggerMode.tap,
-      child: Semantics(
-        label: '${b['title']}, ${on ? 'earned' : 'not yet'}',
-        child: Opacity(
-          opacity: on ? 1 : .45,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconTile(icon, tone: on ? tone : Tone.neutral, size: 48, radius: 24, iconSize: 24),
-              const Gap(Space.s1),
-              Text('${b['title']}', style: context.ty.cap.bold, textAlign: TextAlign.center, maxLines: 2),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }

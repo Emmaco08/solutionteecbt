@@ -26,6 +26,7 @@ import '../cbt/cbt_screen.dart';
 import '../cbt/exam_clock.dart';
 import '../cbt/scoring.dart';
 import '../home/home_screen.dart';
+import '../profile/badges.dart';
 
 /// Everything the results and review screens need, read from the phone's database.
 class AttemptView {
@@ -104,7 +105,9 @@ class ResultsScreen extends ConsumerWidget {
     Future.microtask(() => Ads.instance.prepareBreak(ref));
     // A skippable "earn XP" video offer a moment after the result shows (once per test, when the level offers it).
     if (_offered.add(attemptId)) {
-      Future<void>.delayed(const Duration(seconds: 3), () {
+      // First any badge level this test won (D-142), then the video offer.
+      Future<void>.delayed(const Duration(milliseconds: 1200), () async {
+        if (context.mounted) await checkBadgeWins(context, ref);
         if (context.mounted) offerEarnVideo(context, ref, 'test');
       });
     }

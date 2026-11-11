@@ -42,6 +42,7 @@ import 'features/test/leaderboard_screen.dart';
 import 'features/test/test_screens.dart';
 import 'features/search/search_screen.dart';
 import 'features/careers/careers.dart';
+import 'features/profile/badges.dart';
 
 /// Screens anyone can open without an account.
 const _public = {
@@ -292,6 +293,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/study/search', builder: (_, _) => const AppSearchScreen()),
       GoRoute(path: '/search', builder: (_, _) => const AppSearchScreen()),
       GoRoute(path: '/careers', builder: (_, _) => const CareersScreen()),
+      GoRoute(path: '/badges', builder: (_, _) => const BadgesScreen()),
       GoRoute(
         path: '/careers/:id',
         builder: (_, s) => CareerScreen(id: int.tryParse(s.pathParameters['id'] ?? '') ?? 0),
