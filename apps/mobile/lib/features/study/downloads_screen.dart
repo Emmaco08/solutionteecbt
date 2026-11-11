@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/providers.dart';
+import '../../data/offline_files.dart';
 import '../../data/study_repo.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
@@ -16,8 +17,8 @@ import 'study_widgets.dart';
 
 typedef _Paper = ({int exam, int subject, int year, int count, int bytes});
 
-/// Past papers saved on this phone (for tests and study offline). Downloads are a Premium feature; the hub
-/// opens the paywall for Free. Papers are saved as you open them; this screen shows and removes them.
+/// Videos, PDFs (saved with "Save for offline", D-139) and past papers on this phone. Downloads are a Premium feature;
+/// the hub opens the paywall for Free. Papers are saved as you open them; this screen shows and removes them.
 final _papersProvider = FutureProvider.autoDispose<List<_Paper>>((ref) async {
   final db = ref.watch(dbProvider);
   final rows = await (db.select(db.cachedQuestions)..orderBy([(q) => OrderingTerm.desc(q.year)])).get();
@@ -52,23 +53,25 @@ class DownloadsScreen extends ConsumerWidget {
     final c = context.c;
     final async = ref.watch(_papersProvider);
     final papers = async.value ?? const <_Paper>[];
+    final files = ref.watch(offlineFilesProvider).values.toList()..sort((a, b) => b.savedAt.compareTo(a.savedAt));
+    final jobs = ref.watch(offlineJobsProvider);
     final exams = ref.watch(examsProvider).value ?? const [];
     String code(int id) => '${firstOr(exams, (e) => e['id'] == id)['code']}';
-    final total = papers.fold<int>(0, (a, p) => a + p.bytes);
+    final total = papers.fold<int>(0, (a, p) => a + p.bytes) + files.fold<int>(0, (a, f) => a + f.bytes);
     return Scaffold(
       appBar: const TopBar(title: 'Downloads'),
       body: async.hasError
           ? StateView.error(async.error!, onRetry: () => ref.invalidate(_papersProvider))
           : async.isLoading
           ? const ListSkeleton()
-          : papers.isEmpty
+          : papers.isEmpty && files.isEmpty && jobs.isEmpty
           ? Center(
               child: SingleChildScrollView(
                 child: StateBlock(
                   icon: PhosphorIcons.cloudCheck(PhosphorIconsStyle.fill),
                   tone: Tone.green,
                   title: 'Nothing on this phone yet',
-                  text: 'Past papers you open in Test or Study are saved here, so you can practise without data.',
+                  text: 'Past papers you open are saved here. Tap the download button on a video or PDF to keep it too, and study without data.',
                   action: Btn('Browse past questions', onPressed: () => context.push('/study/pq')),
                 ),
               ),
@@ -82,21 +85,74 @@ class DownloadsScreen extends ConsumerWidget {
                     Text('${(total / 1024 / 1024).toStringAsFixed(1)} MB used', style: context.ty.cap.col(c.textMuted)),
                   ],
                 ),
-                const Gap(Space.s3),
-                ListCard(
-                  children: [
-                    for (final p in papers)
-                      ListRow(
-                        lead: IconTile(PhosphorIcons.cloudCheck(PhosphorIconsStyle.fill), tone: Tone.green),
-                        title: '${code(p.exam)} ${p.year} ${subjectName(ref, p.subject)}',
-                        caption: '${p.count} questions · ${(p.bytes / 1024).ceil()} KB',
-                        onTap: () => context.push('/study/pq/${p.exam}/${p.subject}/${p.year}'),
-                        trailing: IconBtn(PhosphorIcons.trash(), label: 'Remove download', onPressed: () => _remove(context, ref, p)),
-                      ),
-                  ],
-                ),
+                if (files.isNotEmpty || jobs.isNotEmpty) ...[
+                  const Gap(Space.s4),
+                  Text('VIDEOS AND PDFS', style: context.ty.over.col(c.textMuted)),
+                  const Gap(Space.s2),
+                  ListCard(
+                    children: [
+                      for (final id in jobs.keys)
+                        ListRow(
+                          lead: SizedBox(
+                            width: 40,
+                            height: 40,
+                            child: Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: CircularProgressIndicator(value: jobs[id]! < 0 ? null : jobs[id], strokeWidth: 3, color: c.secondary),
+                            ),
+                          ),
+                          title: 'Saving…',
+                          caption: jobs[id]! < 0 ? 'Starting' : '${(jobs[id]! * 100).round()}%',
+                          caret: false,
+                          trailing: IconBtn(PhosphorIcons.x(), label: 'Stop', onPressed: () => ref.read(offlineJobsProvider.notifier).cancel(id)),
+                        ),
+                      for (final f in files)
+                        ListRow(
+                          lead: IconTile(
+                            f.isVideo ? PhosphorIcons.playCircle(PhosphorIconsStyle.fill) : PhosphorIcons.filePdf(PhosphorIconsStyle.fill),
+                            tone: f.isVideo ? Tone.blue : Tone.red,
+                          ),
+                          title: plainTitle(f.title),
+                          caption: [
+                            if (f.isVideo) f.file == '720' ? 'HD video' : 'Video' else 'PDF',
+                            fileSize(f.bytes),
+                            if (!openableOffline(f, DateTime.now())) 'connect once to open',
+                          ].join(' · '),
+                          onTap: () => context.push(f.isVideo ? '/study/video/${f.id}' : '/study/doc/${f.id}'),
+                          trailing: IconBtn(
+                            PhosphorIcons.trash(),
+                            label: 'Remove download',
+                            onPressed: () async {
+                              await ref.read(offlineFilesProvider.notifier).remove(f.id);
+                              if (context.mounted) toast(context, 'Removed from this phone', icon: PhosphorIcons.trash(PhosphorIconsStyle.fill));
+                            },
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+                if (papers.isNotEmpty) ...[
+                  const Gap(Space.s4),
+                  Text('PAST PAPERS', style: context.ty.over.col(c.textMuted)),
+                  const Gap(Space.s2),
+                  ListCard(
+                    children: [
+                      for (final p in papers)
+                        ListRow(
+                          lead: IconTile(PhosphorIcons.cloudCheck(PhosphorIconsStyle.fill), tone: Tone.green),
+                          title: '${code(p.exam)} ${p.year} ${subjectName(ref, p.subject)}',
+                          caption: '${p.count} questions · ${(p.bytes / 1024).ceil()} KB',
+                          onTap: () => context.push('/study/pq/${p.exam}/${p.subject}/${p.year}'),
+                          trailing: IconBtn(PhosphorIcons.trash(), label: 'Remove download', onPressed: () => _remove(context, ref, p)),
+                        ),
+                    ],
+                  ),
+                ],
                 const Gap(Space.s4),
-                Text('Videos and PDFs stream with a short secure link and are not saved on the phone yet.', style: context.ty.cap.col(c.textMuted)),
+                Text(
+                  'Saved files stay inside the app. Premium files open without data for 30 days after the app last checked your plan online.',
+                  style: context.ty.cap.col(c.textMuted),
+                ),
               ],
             ),
     );

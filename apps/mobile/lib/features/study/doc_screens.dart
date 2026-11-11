@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,6 +8,7 @@ import 'package:pdfx/pdfx.dart';
 
 import '../../core/api.dart';
 import '../../core/providers.dart';
+import '../../data/offline_files.dart';
 import '../../data/study_repo.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
@@ -13,6 +16,7 @@ import '../../ui/kit.dart';
 import '../../widgets/phosphor.g.dart';
 import '../../widgets/states.dart';
 import '../premium/content_offer.dart';
+import 'offline_button.dart';
 import 'study_widgets.dart';
 
 /// Syllabus & brochure list (prototype `docs`). Free users see which documents are free; the rest open the paywall.
@@ -101,10 +105,23 @@ class _DocScreenState extends ConsumerState<DocScreen> {
         setState(() => _noFile = true);
         return;
       }
-      final url = await ref.read(studyRepoProvider).fileUrl(widget.id, 'pdf');
-      final r = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 60));
-      if (r.statusCode != 200) throw ApiError('Could not download the PDF. Try again.');
-      final ctl = PdfControllerPinch(document: PdfDocument.openData(r.bodyBytes));
+      // A copy saved on this phone opens without data (D-139); the website still checks the plan when online.
+      File? local;
+      try {
+        local = await ref.read(offlineFilesProvider.notifier).open(widget.id);
+      } on ApiError catch (e) {
+        if (e.status == 402) rethrow;
+        if (mounted) toast(context, e.message, icon: PhosphorIcons.wifiSlash(PhosphorIconsStyle.fill));
+      }
+      final PdfControllerPinch ctl;
+      if (local != null) {
+        ctl = PdfControllerPinch(document: PdfDocument.openFile(local.path));
+      } else {
+        final url = await ref.read(studyRepoProvider).fileUrl(widget.id, 'pdf');
+        final r = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 60));
+        if (r.statusCode != 200) throw ApiError('Could not download the PDF. Try again.');
+        ctl = PdfControllerPinch(document: PdfDocument.openData(r.bodyBytes));
+      }
       if (!mounted) {
         ctl.dispose();
         return;
@@ -140,7 +157,10 @@ class _DocScreenState extends ConsumerState<DocScreen> {
         title: it == null ? 'Document' : plainTitle(it['title']),
         subtitle: ['PDF', if (pages != null) '$pages pages', if (size.isNotEmpty) size].join(' · '),
         lined: true,
-        actions: [if (it != null) BookmarkButton(kind: 'item', refId: 'doc:${widget.id}', label: '${it['title']}')],
+        actions: [
+          if (it != null && !(err is ApiError && err.status == 402)) OfflineButton(item: {...it, 'id': widget.id, 'kind': 'doc'}),
+          if (it != null) BookmarkButton(kind: 'item', refId: 'doc:${widget.id}', label: '${it['title']}'),
+        ],
       ),
       body: err is ApiError && err.status == 402
           ? Center(

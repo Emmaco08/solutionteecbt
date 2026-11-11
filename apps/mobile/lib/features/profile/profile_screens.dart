@@ -13,6 +13,7 @@ import '../../core/ads.dart';
 import '../../core/nav.dart';
 import '../../core/config.dart';
 import '../../core/providers.dart';
+import '../../data/offline_files.dart';
 import '../../core/tab_scroll.dart';
 import '../../core/updater.dart';
 import '../../core/push.dart';
@@ -58,6 +59,7 @@ String _date(DateTime d) {
 Future<void> signOutAndWipe(WidgetRef ref) async {
   final db = ref.read(dbProvider);
   await ref.read(pushProvider).signOut();
+  await ref.read(offlineFilesProvider.notifier).removeAll().catchError((_) {});
   await db.wipe();
   // Local lists re-read the now-empty database; account data (profile, plan, years) follows the login state by itself.
   for (final p in [historyProvider, unfinishedProvider, practiceStatsProvider]) {

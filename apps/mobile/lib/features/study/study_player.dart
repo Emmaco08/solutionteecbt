@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
@@ -19,10 +20,14 @@ import '../../widgets/phosphor.g.dart';
 /// - A dropped connection shows "Tap to retry", which asks for a fresh signed link and carries on from the spot.
 /// - The screen stays awake while playing.
 class StudyPlayer extends ChangeNotifier {
-  StudyPlayer({required this.itemId, required this.repo, required this.hasHd, required this.dataSaver});
+  StudyPlayer({required this.itemId, required this.repo, required this.hasHd, required this.dataSaver, this.local, this.localQuality});
   final String itemId;
   final StudyRepo repo;
   final bool hasHd, dataSaver;
+
+  /// A copy saved on this phone (D-139): played from the file, no data used.
+  final File? local;
+  final String? localQuality;
 
   VideoPlayerController? ctl;
   String quality = '360';
@@ -38,6 +43,7 @@ class StudyPlayer extends ChangeNotifier {
   bool _wasPlaying = false;
 
   Future<void> start({Duration? at}) async {
+    if (local != null) return open(localQuality ?? '360', at: at);
     var q = '360';
     if (hasHd && !dataSaver) {
       final net = await Connectivity().checkConnectivity();
@@ -54,8 +60,10 @@ class StudyPlayer extends ChangeNotifier {
     final keep = at ?? old?.value.position;
     final playAfter = old == null || old.value.isPlaying || _wasPlaying;
     try {
-      final url = await repo.fileUrl(itemId, q);
-      final c = VideoPlayerController.networkUrl(Uri.parse(url), videoPlayerOptions: VideoPlayerOptions(mixWithOthers: false));
+      final file = local != null && q == (localQuality ?? '360') ? local : null;
+      final c = file != null
+          ? VideoPlayerController.file(file, videoPlayerOptions: VideoPlayerOptions(mixWithOthers: false))
+          : VideoPlayerController.networkUrl(Uri.parse(await repo.fileUrl(itemId, q)), videoPlayerOptions: VideoPlayerOptions(mixWithOthers: false));
       await c.initialize().timeout(const Duration(seconds: 40));
       if (disposed) {
         await c.dispose();

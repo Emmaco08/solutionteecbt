@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -9,6 +10,7 @@ import '../../core/house_ads.dart';
 import '../../core/api.dart';
 import '../../core/providers.dart';
 import '../../core/secure_screen.dart';
+import '../../data/offline_files.dart';
 import '../../data/study_repo.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
@@ -18,6 +20,7 @@ import '../../widgets/phosphor.g.dart';
 import '../../widgets/states.dart';
 import '../premium/content_offer.dart';
 import 'study_player.dart';
+import 'offline_button.dart';
 import 'study_widgets.dart';
 
 /// Video solutions or topic lessons (prototype `videos`).
@@ -170,7 +173,23 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
       final files = Map<String, dynamic>.from((item['files'] as Map?) ?? const {});
       if (files['360'] != true) return;
       final pos = Map<String, dynamic>.from(firstOr(ref.read(studyProgressProvider).value, (p) => p['item_id'] == widget.id)['position'] as Map? ?? const {});
-      final player = StudyPlayer(itemId: widget.id, repo: _repo, hasHd: files['720'] == true, dataSaver: ref.read(settingsProvider).dataSaver);
+      // A copy saved on this phone plays without data (D-139); the website still checks the plan when online.
+      File? local;
+      try {
+        local = await ref.read(offlineFilesProvider.notifier).open(widget.id);
+      } on ApiError catch (e) {
+        if (e.status == 402) rethrow;
+        if (mounted) toast(context, e.message, icon: PhosphorIcons.wifiSlash(PhosphorIconsStyle.fill));
+      }
+      if (!mounted) return;
+      final player = StudyPlayer(
+        itemId: widget.id,
+        repo: _repo,
+        hasHd: files['720'] == true,
+        dataSaver: ref.read(settingsProvider).dataSaver,
+        local: local,
+        localQuality: ref.read(offlineFilesProvider)[widget.id]?.file,
+      );
       player.message.addListener(() {
         final m = player.message.value;
         if (m != null && mounted) toast(context, m, icon: PhosphorIcons.cellSignalLow(PhosphorIconsStyle.fill));
@@ -273,7 +292,10 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     return Scaffold(
       appBar: TopBar(
         title: lesson ? 'Topic lesson' : 'Video solution',
-        actions: [if (item != null) BookmarkButton(kind: 'item', refId: '$kind:${widget.id}', label: '${item['title']}')],
+        actions: [
+          if (item != null && !locked) OfflineButton(item: {...item, 'id': widget.id}),
+          if (item != null) BookmarkButton(kind: 'item', refId: '$kind:${widget.id}', label: '${item['title']}'),
+        ],
       ),
       body: locked
           ? Center(

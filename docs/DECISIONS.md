@@ -1289,3 +1289,18 @@ The owner asked to run the admin from Vercel instead of the laptop.
 - Not in this step: new subjects (the 18 subjects stay; add more when an exam needs them) and the website's landing
   page, which still shows the three main exams.
 
+## D-139 — Save videos and PDFs for offline (2026-11-11)
+- A download button on every video (solutions and topic lessons) and PDF document. Videos with an HD copy ask
+  Standard (360p) or HD (720p) with the size; on mobile data the app shows the size and asks first. Progress shows in
+  the button (tap to stop) and on Downloads; the student can keep studying while it saves.
+- Files are fetched through the same plan-checked link used to stream them (the website decides, D-045), and kept in
+  the app's own private folder (other apps cannot read them). Saved videos play from the file and saved PDFs open from
+  the file: no data, and the video's stall/quality switching does not apply.
+- Premium files: each time a saved file is opened online, the website is asked again; if the plan no longer opens it,
+  the file is removed and the Premium screen shows. Offline, a Premium file opens for **30 days** after the last check
+  ("connect once to open" after that). Free items always open. Log out removes every saved file.
+- Downloads (Premium by default, the admin's `offline` rule) now lists Videos and PDFs (size, remove, open) above
+  Past papers, with the total space used.
+- Not encrypted: Android keeps app files private, and encrypting large videos would be slow on 3 GB phones. Revisit if
+  copying from rooted phones becomes a problem.
+
