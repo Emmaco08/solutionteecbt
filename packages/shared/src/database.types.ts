@@ -830,6 +830,117 @@ export type Database = {
         }
         Relationships: []
       }
+      arena_answers: {
+        Row: {
+          arena_id: string
+          choice: string | null
+          correct: boolean
+          idx: number
+          ms: number
+          points: number
+          user_id: string
+        }
+        Insert: {
+          arena_id: string
+          choice?: string | null
+          correct: boolean
+          idx: number
+          ms: number
+          points: number
+          user_id: string
+        }
+        Update: {
+          arena_id?: string
+          choice?: string | null
+          correct?: boolean
+          idx?: number
+          ms?: number
+          points?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      arena_players: {
+        Row: {
+          arena_id: string
+          correct: number
+          joined_at: string
+          score: number
+          user_id: string
+          xp: number
+        }
+        Insert: {
+          arena_id: string
+          correct?: number
+          joined_at?: string
+          score?: number
+          user_id: string
+          xp?: number
+        }
+        Update: {
+          arena_id?: string
+          correct?: number
+          joined_at?: string
+          score?: number
+          user_id?: string
+          xp?: number
+        }
+        Relationships: []
+      }
+      arenas: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          exam_id: number
+          gap: number
+          id: string
+          max_players: number
+          q_count: number
+          question_ids: string[] | null
+          reminded_at: string | null
+          rewarded_at: string | null
+          seconds: number
+          starts_at: string
+          status: string
+          subject_id: number | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          exam_id: number
+          gap?: number
+          id?: string
+          max_players?: number
+          q_count?: number
+          question_ids?: string[] | null
+          reminded_at?: string | null
+          rewarded_at?: string | null
+          seconds?: number
+          starts_at: string
+          status?: string
+          subject_id?: number | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          exam_id?: number
+          gap?: number
+          id?: string
+          max_players?: number
+          q_count?: number
+          question_ids?: string[] | null
+          reminded_at?: string | null
+          rewarded_at?: string | null
+          seconds?: number
+          starts_at?: string
+          status?: string
+          subject_id?: number | null
+          title?: string
+        }
+        Relationships: []
+      }
       attempt_answers: {
         Row: {
           attempt_id: string
@@ -2312,6 +2423,117 @@ export type Database = {
           key?: string
           updated_at?: string
           updated_by?: string | null
+        }
+        Relationships: []
+      }
+      game_answers: {
+        Row: {
+          choice: string | null
+          correct: boolean
+          game_id: string
+          idx: number
+          ms: number
+          points: number
+          user_id: string
+        }
+        Insert: {
+          choice?: string | null
+          correct: boolean
+          game_id: string
+          idx: number
+          ms: number
+          points: number
+          user_id: string
+        }
+        Update: {
+          choice?: string | null
+          correct?: boolean
+          game_id?: string
+          idx?: number
+          ms?: number
+          points?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      game_players: {
+        Row: {
+          correct: number
+          cur: number
+          finished_at: string | null
+          game_id: string
+          joined_at: string
+          score: number
+          served_at: string | null
+          user_id: string
+          xp: number
+        }
+        Insert: {
+          correct?: number
+          cur?: number
+          finished_at?: string | null
+          game_id: string
+          joined_at?: string
+          score?: number
+          served_at?: string | null
+          user_id: string
+          xp?: number
+        }
+        Update: {
+          correct?: number
+          cur?: number
+          finished_at?: string | null
+          game_id?: string
+          joined_at?: string
+          score?: number
+          served_at?: string | null
+          user_id?: string
+          xp?: number
+        }
+        Relationships: []
+      }
+      games: {
+        Row: {
+          bot: Json | null
+          code: string | null
+          created_at: string
+          exam_id: number
+          expires_at: string
+          host: string
+          id: string
+          mode: string
+          question_ids: string[]
+          seconds: number
+          status: string
+          subject_id: number
+        }
+        Insert: {
+          bot?: Json | null
+          code?: string | null
+          created_at?: string
+          exam_id: number
+          expires_at?: string
+          host: string
+          id?: string
+          mode: string
+          question_ids: string[]
+          seconds?: number
+          status?: string
+          subject_id: number
+        }
+        Update: {
+          bot?: Json | null
+          code?: string | null
+          created_at?: string
+          exam_id?: number
+          expires_at?: string
+          host?: string
+          id?: string
+          mode?: string
+          question_ids?: string[]
+          seconds?: number
+          status?: string
+          subject_id?: number
         }
         Relationships: []
       }
@@ -4516,6 +4738,7 @@ export type Database = {
         Returns: Json
       }
       admin_fraud: { Args: never; Returns: Json }
+      admin_games_stats: { Args: never; Returns: Json }
       admin_leaderboard_held: { Args: { p_season?: number }; Returns: Json }
       admin_leaderboard_recent: { Args: { p_limit?: number }; Returns: Json }
       admin_list_staff: {
@@ -4729,6 +4952,10 @@ export type Database = {
       am_content_editor: { Args: never; Returns: boolean }
       am_money_admin: { Args: never; Returns: boolean }
       am_notifier: { Args: never; Returns: boolean }
+      arena_answer: { Args: { p_arena: string; p_index: number; p_choice: string }; Returns: Json }
+      arena_join: { Args: { p_arena: string }; Returns: Json }
+      arena_state: { Args: { p_arena: string }; Returns: Json }
+      arenas_list: { Args: never; Returns: Json }
       auth_user_status: { Args: { p_email: string }; Returns: string }
       badges_check: { Args: never; Returns: Json }
       badges_seen: { Args: { p_badges: number[] }; Returns: undefined }
@@ -4858,6 +5085,11 @@ export type Database = {
           year: number
         }[]
       }
+      game_answer: { Args: { p_game: string; p_index: number; p_choice: string }; Returns: Json }
+      game_create: { Args: { p_mode: string; p_exam: number; p_subject: number }; Returns: Json }
+      game_join: { Args: { p_code: string }; Returns: Json }
+      game_next: { Args: { p_game: string }; Returns: Json }
+      games_mine: { Args: never; Returns: Json }
       house_ad_log: {
         Args: { p_campaign: string; p_click?: boolean; p_placement: string }
         Returns: Json

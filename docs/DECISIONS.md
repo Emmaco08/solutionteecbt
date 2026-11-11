@@ -1440,3 +1440,20 @@ The owner asked to run the admin from Vercel instead of the laptop.
   server in `tutor_overview()`); tutors' table is admins only.
 - The Play Store build has no Paystack: "Ask about this plan" posts a message in the chat and the team helps the
   student, so the Play app does not link to an outside payment.
+
+## D-150 — Games (C14, 2026-11-11)
+- Study → Games (and search). Three ways to play, all scored on the server: the app gets one question at a time
+  without the answer; the answer, points and (against a bot) the bot's result come back only after answering.
+  Points: 100 for a right answer + up to 50 for speed. A question left open past its time (+3 s) counts as missed.
+- **Speed Quiz Duel** against the SolutionTee bot (about 55–75% right) and **Beat the AI Tutor** (harder questions
+  first; the AI Tutor gets about 80–90% right) use years the student can open.
+- **Duel a friend** is played in turn: the host plays at once and sends a 6-letter code (WhatsApp); the friend joins
+  with the code within a day and plays the same 10 questions. Both get a notification when the result is in. Friend
+  duels use only years open on the free plan, so a free student never sees locked questions through a friend.
+- **Live Exam Arena** is scheduled by staff in Admin → Games (title, exam, subject, start, questions, seconds,
+  seconds to show the answer, most players, default 50). Everyone gets the same question at the same time; the phase
+  comes from the server clock (the app asks every 2 s while open). 1.5 s grace for slow networks. Questions are picked
+  from free-plan years when the first student joins. Players get a reminder 5 minutes before.
+- XP (never money; admin can change): finish a duel 5, win 15, beat the AI Tutor 25, play an arena 5, arena top 3:
+  30 / 20 / 10 (only with points above 0 and at least 5 players). Game XP is capped at 100 a day and also counts
+  toward the normal daily XP cap. A student can start 40 games a day.

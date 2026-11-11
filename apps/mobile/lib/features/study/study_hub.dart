@@ -17,6 +17,7 @@ import '../premium/paywall.dart';
 import 'study_widgets.dart';
 import '../classes/classes.dart';
 import '../tutor/tutor.dart';
+import '../games/games.dart';
 
 /// Default sections when app_settings.study_sections has not loaded (same as the seeded setting).
 const _defaultSections = [
@@ -155,6 +156,8 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
             const NextClassCard(),
             const Gap(Space.s3),
             const TutorCard(),
+            const Gap(Space.s3),
+            const GamesCard(),
             const Gap(Space.s6),
             const SectTitle('Continue learning'),
             if (progress.isNotEmpty) ...[

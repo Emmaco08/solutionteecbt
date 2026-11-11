@@ -76,6 +76,13 @@ final List<QuickLink> quickLinks = [
     tone: Tone.blue,
   ),
   (
+    title: 'Games',
+    words: 'games game duel quiz arena play friend ai bot compete fun xp',
+    icon: PhosphorIcons.gameController(PhosphorIconsStyle.fill),
+    route: '/games',
+    tone: Tone.red,
+  ),
+  (
     title: 'Request a tutor',
     words: 'tutor teacher private lessons help home lesson whatsapp coach',
     icon: PhosphorIcons.chatsCircle(PhosphorIconsStyle.fill),

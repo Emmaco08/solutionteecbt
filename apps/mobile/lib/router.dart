@@ -45,6 +45,9 @@ import 'features/careers/careers.dart';
 import 'features/profile/badges.dart';
 import 'features/classes/classes.dart';
 import 'features/tutor/tutor.dart';
+import 'features/games/games.dart';
+import 'features/games/game_play.dart';
+import 'features/games/arena.dart';
 
 /// Screens anyone can open without an account.
 const _public = {
@@ -298,6 +301,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/badges', builder: (_, _) => const BadgesScreen()),
       GoRoute(path: '/classes', builder: (_, _) => const ClassesScreen()),
       GoRoute(path: '/tutor', builder: (_, _) => const TutorScreen()),
+      GoRoute(path: '/games', builder: (_, _) => const GamesScreen()),
+      GoRoute(
+        path: '/games/play/:id',
+        builder: (_, s) => GamePlayScreen(id: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/games/arena/:id',
+        builder: (_, s) => ArenaScreen(id: s.pathParameters['id']!),
+      ),
       GoRoute(
         path: '/classes/:id',
         builder: (_, s) => ClassScreen(id: s.pathParameters['id']!),

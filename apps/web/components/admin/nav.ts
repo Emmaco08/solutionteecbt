@@ -23,6 +23,7 @@ export const NAV: NavGroup[] = [
       { href: "/admin/careers", label: "Careers", icon: "Briefcase", roles: ["super_admin", "admin", "editor"] },
       { href: "/admin/motivation", label: "Daily motivation", icon: "Quotes", roles: ["super_admin", "admin", "editor"] },
       { href: "/admin/challenges", label: "Challenges & events", icon: "Trophy", roles: ["super_admin", "admin", "editor"] },
+      { href: "/admin/games", label: "Games", icon: "GameController", roles: ["super_admin", "admin", "editor"] },
     ],
   },
   {
