@@ -16,6 +16,7 @@ import '../careers/careers.dart';
 import '../premium/paywall.dart';
 import 'study_widgets.dart';
 import '../classes/classes.dart';
+import '../tutor/tutor.dart';
 
 /// Default sections when app_settings.study_sections has not loaded (same as the seeded setting).
 const _defaultSections = [
@@ -55,6 +56,7 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
     ref.invalidate(contentKindsProvider);
     ref.invalidate(careersProvider);
     ref.invalidate(classesProvider);
+    ref.invalidate(tutorProvider);
     await ref.read(studyProgressProvider.future).catchError((_) => const <Map<String, dynamic>>[]);
   }
 
@@ -151,6 +153,8 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
             const CareerCard(),
             const Gap(Space.s3),
             const NextClassCard(),
+            const Gap(Space.s3),
+            const TutorCard(),
             const Gap(Space.s6),
             const SectTitle('Continue learning'),
             if (progress.isNotEmpty) ...[

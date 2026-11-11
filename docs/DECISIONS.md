@@ -1424,3 +1424,19 @@ The owner asked to run the admin from Vercel instead of the laptop.
   teacher) can manage these too. Students read materials and assignments only through `my_class_dashboard()`.
 - Fixed in passing: the website footer's support email made phone screens scroll sideways (all pages).
 
+
+## D-149 — Request a tutor (C12, 2026-11-11)
+- A student sends one request at a time (exam, subject, what they need, free times; 3 a day at most) from
+  Study → Request a tutor. The SolutionTee team replies in Admin → Tutor requests; each reply shows in the app chat,
+  sends a notification that opens /tutor and an email (`tutor_reply`). Students can send 20 messages an hour. The app
+  checks for new replies every 20 s only while the screen is open.
+- Only super admins and admins see tutor requests (they hold students' contacts and chats); editors and teachers do not.
+- Tutor plans (name, price, days, optional number of lessons) are made in Admin → Tutor requests. **Owner:** prices.
+  There are no plans until the owner adds them; until then the app shows the chat only.
+- Paying uses the Paystack item flow (D-147): `content_pay_start` sees the plan id and records kind `tutor`;
+  `finish_payment` calls `private.tutor_paid`, which adds the plan's days after any time still left (buying again
+  extends it), links it to the open request and posts a message in the chat. It runs once per payment.
+- The assigned tutor's name, bio, WhatsApp and phone reach the student only while a plan is active (checked by the
+  server in `tutor_overview()`); tutors' table is admins only.
+- The Play Store build has no Paystack: "Ask about this plan" posts a message in the chat and the team helps the
+  student, so the Play app does not link to an outside payment.

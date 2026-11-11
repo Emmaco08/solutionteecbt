@@ -75,6 +75,13 @@ final List<QuickLink> quickLinks = [
     route: '/classes',
     tone: Tone.blue,
   ),
+  (
+    title: 'Request a tutor',
+    words: 'tutor teacher private lessons help home lesson whatsapp coach',
+    icon: PhosphorIcons.chatsCircle(PhosphorIconsStyle.fill),
+    route: '/tutor',
+    tone: Tone.green,
+  ),
   (title: 'Downloads', words: 'downloads offline saved', icon: PhosphorIcons.downloadSimple(PhosphorIconsStyle.fill), route: '/downloads', tone: Tone.navy),
   (
     title: 'Challenges',

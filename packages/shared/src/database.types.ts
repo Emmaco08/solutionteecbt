@@ -3139,6 +3139,174 @@ export type Database = {
         }
         Relationships: []
       }
+      tutor_messages: {
+        Row: {
+          body: string
+          created_at: string
+          from_staff: boolean
+          id: number
+          read_at: string | null
+          request_id: string
+          sender_id: string | null
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          from_staff?: boolean
+          id?: number
+          read_at?: string | null
+          request_id: string
+          sender_id?: string | null
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          from_staff?: boolean
+          id?: number
+          read_at?: string | null
+          request_id?: string
+          sender_id?: string | null
+        }
+        Relationships: []
+      }
+      tutor_plans: {
+        Row: {
+          active: boolean
+          created_at: string
+          days: number
+          description: string | null
+          id: string
+          name: string
+          price_kobo: number
+          sessions: number | null
+          sort: number
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          days?: number
+          description?: string | null
+          id?: string
+          name: string
+          price_kobo: number
+          sessions?: number | null
+          sort?: number
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          days?: number
+          description?: string | null
+          id?: string
+          name?: string
+          price_kobo?: number
+          sessions?: number | null
+          sort?: number
+        }
+        Relationships: []
+      }
+      tutor_requests: {
+        Row: {
+          created_at: string
+          goals: string
+          id: string
+          level: string
+          status: string
+          subject_id: number | null
+          times: string | null
+          tutor_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          goals: string
+          id?: string
+          level: string
+          status?: string
+          subject_id?: number | null
+          times?: string | null
+          tutor_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          goals?: string
+          id?: string
+          level?: string
+          status?: string
+          subject_id?: number | null
+          times?: string | null
+          tutor_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tutor_subscriptions: {
+        Row: {
+          ends_at: string
+          id: string
+          payment_id: string | null
+          plan_id: string
+          request_id: string | null
+          starts_at: string
+          user_id: string
+        }
+        Insert: {
+          ends_at: string
+          id?: string
+          payment_id?: string | null
+          plan_id: string
+          request_id?: string | null
+          starts_at?: string
+          user_id: string
+        }
+        Update: {
+          ends_at?: string
+          id?: string
+          payment_id?: string | null
+          plan_id?: string
+          request_id?: string | null
+          starts_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tutors: {
+        Row: {
+          active: boolean
+          bio: string | null
+          created_at: string
+          id: string
+          name: string
+          phone: string | null
+          subjects: string | null
+          whatsapp: string | null
+        }
+        Insert: {
+          active?: boolean
+          bio?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          phone?: string | null
+          subjects?: string | null
+          whatsapp?: string | null
+        }
+        Update: {
+          active?: boolean
+          bio?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          phone?: string | null
+          subjects?: string | null
+          whatsapp?: string | null
+        }
+        Relationships: []
+      }
       user_badges: {
         Row: {
           backfill: boolean
@@ -4421,6 +4589,7 @@ export type Database = {
         Args: { p_banned: boolean; p_reason?: string; p_user: string }
         Returns: undefined
       }
+      admin_tutor_requests: { Args: { p_status?: string }; Returns: Json }
       admin_unban_device: { Args: { p_hash: string }; Returns: Json }
       admin_update_codes: {
         Args: {
@@ -4957,6 +5126,9 @@ export type Database = {
       study_item: { Args: { p_id: string }; Returns: Json }
       submit_attempt: { Args: { p: Json }; Returns: Json }
       today_motivation: { Args: never; Returns: Json }
+      tutor_message_send: { Args: { p_request: string; p_body: string }; Returns: Json }
+      tutor_overview: { Args: never; Returns: Json }
+      tutor_request_create: { Args: { p_subject: number; p_level: string; p_goals: string; p_times: string }; Returns: Json }
       undo_import: { Args: { p_batch: string }; Returns: number }
       winners_wall_list: { Args: never; Returns: Json }
       xp_buy_premium: { Args: { p_plan: string }; Returns: Json }

@@ -482,6 +482,22 @@ export function accountDeletedEmail(name: string) {
   };
 }
 
+/** The SolutionTee team replied to a tutor request (D-149); the chat itself is in the app (Learn → Request a tutor). */
+export function tutorReplyEmail(name: string, body: string) {
+  return {
+    subject: "SolutionTee replied about your tutor request",
+    html: layout({
+      title: "Tutor request reply", preheader: body.slice(0, 90), heading: "We replied to your tutor request",
+      body: p(hello(name)) + p("Someone from the SolutionTee team replied to your request for a tutor:")
+        + note(esc(body).replace(/\n/g, "<br>"))
+        + p("Open the SolutionTee CBT app and go to <b>Request a tutor</b> to reply or see the tutor plans.")
+        + small("For your safety, keep your chats with tutors inside the app or on the WhatsApp number we give you.") + signoff,
+      why: "You are receiving this because you asked for a tutor on SolutionTee CBT.",
+    }),
+    text: `${helloText(name)}\n\nSomeone from the SolutionTee team replied to your tutor request:\n\n${body}\n\nOpen the SolutionTee CBT app and go to Request a tutor to reply.${footText()}`,
+  };
+}
+
 const REASONS: Record<string, string> = {
   shared_phone: "More than one account used on the same phone", many_accounts: "Many accounts on the same phone",
   second_account: "A second account was tried on your phone", phone_banned: "A phone linked to your account was blocked",
@@ -547,6 +563,7 @@ export function outboxEmail(kind: string, name: string, data: Record<string, unk
     case "guardian_turned_off": return guardianTurnedOffEmail(name);
     case "safety_warning": return safetyWarningEmail(name, Array.isArray(data.reasons) ? (data.reasons as string[]) : []);
     case "admin_alert": return adminAlertEmail(name, data);
+    case "tutor_reply": return tutorReplyEmail(name, s("body") ?? "");
     default: return null;
   }
 }

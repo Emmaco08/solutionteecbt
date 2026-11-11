@@ -36,6 +36,7 @@ export const NAV: NavGroup[] = [
       { href: "/admin/fraud", label: "Fraud & bans", icon: "ShieldWarning", roles: ADMINS },
       { href: "/admin/safety", label: "Safety checks", icon: "ShieldWarning", roles: ADMINS },
       { href: "/admin/ai-safety", label: "AI safety", icon: "Robot", roles: ADMINS },
+      { href: "/admin/tutors", label: "Tutor requests", icon: "ChatsCircle", roles: ADMINS },
     ],
   },
   {
