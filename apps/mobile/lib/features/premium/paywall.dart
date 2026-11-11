@@ -31,7 +31,13 @@ const _reasons = {
 
 /// Opens the Premium paywall bottom sheet (prototype `paywall`).
 Future<void> showPaywall(BuildContext context, {String? reason}) {
-  final head = _reasons[reason] ?? (RegExp(r'\d{4}$').hasMatch(reason ?? '') ? '$reason is Premium' : 'Go Premium');
+  final head =
+      _reasons[reason] ??
+      (RegExp(r'\d{4}$').hasMatch(reason ?? '')
+          ? '$reason is Premium'
+          : RegExp(r'^[A-Z][A-Z0-9]{1,11}$').hasMatch(reason ?? '')
+          ? '$reason is a Premium exam'
+          : 'Go Premium');
   return showSheet<void>(context, closeButton: false, builder: (_) => _Paywall(head: head));
 }
 

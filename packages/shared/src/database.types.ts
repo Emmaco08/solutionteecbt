@@ -1871,6 +1871,7 @@ export type Database = {
           logo_path: string | null
           name: string
           sort: number
+          subtitle: string | null
         }
         Insert: {
           code: string
@@ -1879,6 +1880,7 @@ export type Database = {
           logo_path?: string | null
           name: string
           sort?: number
+          subtitle?: string | null
         }
         Update: {
           code?: string
@@ -1887,6 +1889,7 @@ export type Database = {
           logo_path?: string | null
           name?: string
           sort?: number
+          subtitle?: string | null
         }
         Relationships: []
       }

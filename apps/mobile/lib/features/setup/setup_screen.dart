@@ -390,13 +390,22 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     ),
   ]);
 
+  /// The exams from the server (the admin can add more, D-138); the three main ones while the list loads.
+  List<(String, String, String)> get _examChoices {
+    final list = ref.watch(examsProvider).value ?? const <Map<String, dynamic>>[];
+    if (list.isEmpty) {
+      return const [
+        ('JAMB', 'JAMB UTME', '4 subjects · 180 questions · 2 hours'),
+        ('WAEC', 'WAEC WASSCE', 'Objective papers per subject'),
+        ('NECO', 'NECO SSCE', 'Objective papers per subject'),
+      ];
+    }
+    return [for (final e in list) ('${e['code']}', '${e['name']}', '${e['subtitle'] ?? ''}')];
+  }
+
   // Step 2: Which exams are you writing? + target JAMB score
   Widget _examsStep() => _page('Which exams are you writing?', const Text('Pick all that apply. You can change this later.'), [
-    for (final (code, name, sub) in const [
-      ('JAMB', 'JAMB UTME', '4 subjects · 180 questions · 2 hours'),
-      ('WAEC', 'WAEC WASSCE', 'Objective papers per subject'),
-      ('NECO', 'NECO SSCE', 'Objective papers per subject'),
-    ]) ...[
+    for (final (code, name, sub) in _examChoices) ...[
       SubjTile(
         on: _exams.contains(code),
         minHeight: 72,
@@ -405,7 +414,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(name, style: context.ty.label.bold),
-            Text(sub, style: context.ty.cap.col(context.c.textMuted)),
+            if (sub.isNotEmpty) Text(sub, style: context.ty.cap.col(context.c.textMuted)),
           ],
         ),
         onTap: () => setState(() => _exams.contains(code) ? _exams.remove(code) : _exams.add(code)),

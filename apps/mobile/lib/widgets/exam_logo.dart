@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 
-import '../core/providers.dart' show examLogosOn;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../core/providers.dart' show examLogoKeys, examLogosOn;
 import '../theme/theme.dart';
 import '../theme/tokens.g.dart';
 import 'phosphor.g.dart';
+import 'r2_image.dart';
+
+/// The exams whose official logos ship with the app (/brand/exam-bodies).
+const builtInExams = {'JAMB', 'WAEC', 'NECO'};
 
 /// Visible-content box of each owner-supplied PNG [x, y, w, h, imageW, imageH], measured from the alpha channel
 /// (same numbers as prototype/js/core.js). The files keep transparent margins; we crop on screen so the logo
@@ -31,6 +37,11 @@ class ExamLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final upper = code.toUpperCase();
+    // Exams the admin added (D-138): their uploaded logo, or our badge with the short name.
+    if (!builtInExams.contains(upper)) {
+      final key = examLogoKeys[upper];
+      return key == null ? ExamBadge(upper, size: size, px: px) : _UploadedLogo(code: upper, imageKey: key, size: size, px: px);
+    }
     if (!examLogosOn) return ExamBadge(upper, size: size, px: px);
     final box =
         px ??
@@ -88,6 +99,40 @@ class ExamLogo extends StatelessWidget {
         border: Border.all(color: context.c.border),
       ),
       child: logo,
+    );
+  }
+}
+
+/// An admin-uploaded logo in the usual white tile; our badge shows until it has loaded (or if it fails).
+class _UploadedLogo extends ConsumerWidget {
+  const _UploadedLogo({required this.code, required this.imageKey, required this.size, this.px});
+  final String code, imageKey;
+  final LogoSize size;
+  final double? px;
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final bytes = ref.watch(r2BytesProvider((key: imageKey, itemId: null))).value;
+    if (bytes == null) return ExamBadge(code, size: size, px: px);
+    final box =
+        px ??
+        switch (size) {
+          LogoSize.sm => 28.0,
+          LogoSize.md => 44.0,
+          LogoSize.lg => 64.0,
+          LogoSize.bare => 60.0,
+        };
+    final img = Image.memory(bytes, fit: BoxFit.contain, cacheWidth: 256, semanticLabel: '$code logo');
+    if (size == LogoSize.bare) return SizedBox(width: box, height: box, child: img);
+    return Container(
+      width: box,
+      height: box,
+      padding: EdgeInsets.all(box * .09),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(size == LogoSize.sm ? 7 : (size == LogoSize.lg ? Radii.md : Radii.sm)),
+        border: Border.all(color: context.c.border),
+      ),
+      child: img,
     );
   }
 }

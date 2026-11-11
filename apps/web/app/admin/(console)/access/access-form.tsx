@@ -5,13 +5,13 @@ import { Crown } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { RULES, type RuleDef } from "./rules";
+import type { RuleDef } from "./rules";
 import { saveAccessRules } from "./actions";
 
-export function AccessForm({ free, premium }: { free: Record<string, unknown>; premium: Record<string, unknown> }) {
+export function AccessForm({ rules, free, premium }: { rules: RuleDef[]; free: Record<string, unknown>; premium: Record<string, unknown> }) {
   const router = useRouter();
   const [pending, start] = useTransition();
-  const groups = [...new Set(RULES.map((r) => r.group))];
+  const groups = [...new Set(rules.map((r) => r.group))];
   return (
     <form action={(f) => start(async () => { const r = await saveAccessRules(f); if (r.ok) { toast.success("Rules saved. Students get them on their next request."); router.refresh(); } else toast.error(r.error); })}>
       <div className="overflow-hidden rounded-2xl border bg-card">
@@ -21,7 +21,7 @@ export function AccessForm({ free, premium }: { free: Record<string, unknown>; p
           </thead>
           <tbody>
             {groups.map((g) => (
-              <Group key={g} label={g} rows={RULES.filter((r) => r.group === g)} free={free} premium={premium} />
+              <Group key={g} label={g} rows={rules.filter((r) => r.group === g)} free={free} premium={premium} />
             ))}
           </tbody>
         </table>

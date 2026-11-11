@@ -147,45 +147,62 @@ class TestHubScreen extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const SectTitle('Other exams'),
-          Row(
-            children: [
-              for (final b in const ['WAEC', 'NECO']) ...[
-                if (b == 'NECO') const Gap(Space.s3),
-                Expanded(
-                  child: Builder(
-                    builder: (context) {
-                      final y = yearsFor(b);
-                      final locked = y.all > 0 && y.open == 0;
-                      return AppCard(
-                        padding: const EdgeInsets.symmetric(horizontal: Space.s4, vertical: Space.s3),
-                        onTap: locked
-                            ? () => showPaywall(context, reason: b)
-                            : y.all == 0
-                            ? () =>
-                                  toast(context, '$b papers are being added. Practise JAMB or WAEC for now.', icon: PhosphorIcons.info(PhosphorIconsStyle.fill))
-                            : () => context.push('/test/setup?exam=$b'),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            ExamLogo(b),
-                            const Gap(Space.s3),
-                            Text(b, style: context.ty.sm.bold),
-                            const Gap(Space.s3),
-                            locked
-                                ? Pill('Premium', kind: BadgeKind.neutral, icon: PhosphorIcons.lockSimple(PhosphorIconsStyle.fill))
+          LayoutBuilder(
+            builder: (context, box) {
+              final others = otherExams(exams);
+              final shown = others.isEmpty
+                  ? const [
+                      {'code': 'WAEC'},
+                      {'code': 'NECO'},
+                    ]
+                  : others;
+              final w = (box.maxWidth - Space.s3) / 2;
+              return Wrap(
+                spacing: Space.s3,
+                runSpacing: Space.s3,
+                children: [
+                  for (final e in shown)
+                    SizedBox(
+                      width: w,
+                      child: Builder(
+                        builder: (context) {
+                          final b = '${e['code']}';
+                          final y = yearsFor(b);
+                          final locked = y.all > 0 && y.open == 0;
+                          return AppCard(
+                            padding: const EdgeInsets.symmetric(horizontal: Space.s4, vertical: Space.s3),
+                            onTap: locked
+                                ? () => showPaywall(context, reason: b)
                                 : y.all == 0
-                                ? const Pill('No papers yet', kind: BadgeKind.neutral)
-                                : y.open == y.all
-                                ? Pill('All years', kind: BadgeKind.success, icon: PhosphorIcons.lockSimpleOpen(PhosphorIconsStyle.fill))
-                                : Pill('${y.open} year${y.open == 1 ? '' : 's'} free', icon: PhosphorIcons.lockSimpleOpen(PhosphorIconsStyle.fill)),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ],
+                                ? () => toast(context, '$b papers are being added. Practise JAMB for now.', icon: PhosphorIcons.info(PhosphorIconsStyle.fill))
+                                : () => context.push('/test/setup?exam=$b'),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                ExamLogo(b),
+                                const Gap(Space.s3),
+                                Text(b, style: context.ty.sm.bold, maxLines: 1, overflow: TextOverflow.ellipsis),
+                                const Gap(Space.s3),
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerLeft,
+                                  child: locked
+                                      ? Pill('Premium', kind: BadgeKind.neutral, icon: PhosphorIcons.lockSimple(PhosphorIconsStyle.fill))
+                                      : y.all == 0
+                                      ? const Pill('No papers yet', kind: BadgeKind.neutral)
+                                      : y.open == y.all
+                                      ? Pill('All years', kind: BadgeKind.success, icon: PhosphorIcons.lockSimpleOpen(PhosphorIconsStyle.fill))
+                                      : Pill('${y.open} year${y.open == 1 ? '' : 's'} free', icon: PhosphorIcons.lockSimpleOpen(PhosphorIconsStyle.fill)),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -518,12 +535,12 @@ class _TestSetupScreenState extends ConsumerState<TestSetupScreen> {
 
     return Scaffold(
       appBar: TopBar(
-        title:
-            '${widget.examCode} ${_jamb
-                ? 'UTME'
-                : widget.examCode == 'WAEC'
-                ? 'WASSCE'
-                : 'SSCE'} practice',
+        title: switch (widget.examCode) {
+          'JAMB' => 'JAMB UTME practice',
+          'WAEC' => 'WAEC WASSCE practice',
+          'NECO' => 'NECO SSCE practice',
+          final code => '$code practice',
+        },
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(Space.s5, Space.s2, Space.s5, Space.s8),

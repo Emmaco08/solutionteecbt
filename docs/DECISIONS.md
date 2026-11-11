@@ -1272,3 +1272,20 @@ The owner asked to run the admin from Vercel instead of the laptop.
   JAMB exam offers; the student picks any missing one); Settings → My dream career; careers in app search.
 - Kept optional (no extra setup step), so sign-up stays as short as before.
 
+## D-138 — More exams, added by the admin (2026-11-11)
+- Admin → Exams & years → **Add exam**: short name (2 to 12 letters/numbers, e.g. BECE), full name and a short line.
+  A new exam starts **hidden** and the database gives it a rules row and its own Free vs Premium rule: Premium all
+  years, free **locked** (0) until the admin opens some. Without that rule the server would open it for nobody.
+- **Exam details** panel for each exam: name, short line, order, Show in the app (JAMB cannot be hidden) and, for
+  added exams only, an optional logo upload (PNG/WebP, 500 KB, kept in the private bucket under `public/exams/`,
+  signed for students only while an exam shown in the app uses it). JAMB, WAEC and NECO keep the bundled
+  /brand/exam-bodies files and the exam-logos switch. An uploaded logo shows whenever it is set, so the admin should
+  upload only logos they have permission to use; without one the app shows our badge with the short name.
+- Free vs Premium lists a "years (tests)" rule for every exam, not only the three.
+- App: Test tab → Other exams lists every shown exam (2 per row, same lock / free years / no papers labels); setup's
+  "Which exams are you writing?" lists them with their short line; the test setup title and the paywall heading work
+  for any exam. Subjects, rules, years and questions for a new exam use the existing tools (subjects in this exam,
+  CSV import, publish years).
+- Not in this step: new subjects (the 18 subjects stay; add more when an exam needs them) and the website's landing
+  page, which still shows the three main exams.
+

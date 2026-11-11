@@ -9,6 +9,7 @@ import { EmptyState, ErrorState, PageHeader, PageSkeleton, Panel, Pill } from "@
 import { cn } from "@/lib/utils";
 import { YearChip } from "./year-chip";
 import { RulesForm, SubjectRuleRow } from "./forms";
+import { AddExam, BUILT_IN, ExamDetailsForm } from "./exam-forms";
 
 export const metadata: Metadata = { title: "Exams & years" };
 
@@ -42,16 +43,21 @@ async function Exams({ searchParams }: { searchParams: PageProps<"/admin/exams">
 
   return (
     <>
-      <PageHeader title="Exams & years" description="Rules for each exam and which years students can practise. Publishing a year makes it appear in the app at once (Free students only see the years set in Free vs Premium)." />
+      <PageHeader title="Exams & years" description="Add exams, set the rules for each one and choose which years students can practise. Publishing a year makes it appear in the app at once (free students only see the years set in Free vs Premium)." />
       <div className="mb-4 flex flex-wrap gap-2">
         {exams.map((e) => (
           <Link key={e.id} href={`/admin/exams?exam=${e.id}`}
             className={cn("flex h-[52px] items-center gap-2.5 rounded-2xl border bg-card pl-2 pr-4 font-bold", e.id === exam.id && "border-blue bg-info-soft ring-1 ring-blue")}>
-            {/* Real exam-body logo from /brand/exam-bodies */}
-            <span className="grid size-9 place-items-center rounded-lg bg-white p-0.5"><img src={`/brand/exam-bodies/${e.code.toLowerCase()}.png`} alt="" className="max-h-full max-w-full object-contain" /></span>
+            {/* Real exam-body logo from /brand/exam-bodies, the admin's upload for added exams, or the short name */}
+            <span className="grid size-9 place-items-center rounded-lg border bg-white p-0.5 text-[10px] font-black text-[#0B1F44]">
+              {BUILT_IN.includes(e.code) ? <img src={`/brand/exam-bodies/${e.code.toLowerCase()}.png`} alt="" className="max-h-full max-w-full object-contain" />
+                : e.logo_path ? <img src={`/admin/api/image?key=${encodeURIComponent(e.logo_path)}`} alt="" className="max-h-full max-w-full object-contain" /> : e.code.slice(0, 4)}
+            </span>
             {e.code}
+            {!e.is_active ? <Pill>Hidden</Pill> : null}
           </Link>
         ))}
+        {canManage(staff.role) ? <AddExam /> : null}
       </div>
 
       <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
@@ -76,6 +82,9 @@ async function Exams({ searchParams }: { searchParams: PageProps<"/admin/exams">
         </Panel>
 
         <div className="space-y-4">
+          <Panel title="Exam details">
+            <ExamDetailsForm exam={exam} editable={canManage(staff.role)} />
+          </Panel>
           <Panel title="Exam rules">
             {cfg.data ? <RulesForm cfg={cfg.data} editable={canManage(staff.role)} /> : <p className="text-sm text-muted-foreground">No rules set.</p>}
           </Panel>

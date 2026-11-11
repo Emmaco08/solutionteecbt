@@ -119,14 +119,31 @@ final tabsProvider = FutureProvider<List<Map<String, dynamic>>>(
   ),
 );
 
+/// Uploaded logos of exams the admin added (code → private storage key, D-138). JAMB, WAEC and NECO use the files
+/// bundled with the app. Filled each time the exam list loads.
+final examLogoKeys = <String, String>{};
+
 final examsProvider = FutureProvider<List<Map<String, dynamic>>>(
   (ref) => cached(
     ref,
     'exams',
-    (s) => s.from('exam_bodies').select('id, code, name, sort, exam_configs(*)').eq('is_active', true).order('sort', ascending: true),
-    rows,
+    (s) => s.from('exam_bodies').select('id, code, name, subtitle, logo_path, sort, exam_configs(*)').eq('is_active', true).order('sort', ascending: true),
+    (j) {
+      final list = rows(j);
+      for (final e in list) {
+        final key = '${e['logo_path'] ?? ''}';
+        if (key.startsWith('public/exams/')) examLogoKeys['${e['code']}'.toUpperCase()] = key;
+      }
+      return list;
+    },
   ),
 );
+
+/// Exams other than JAMB, in the admin's order (WAEC, NECO and any the admin added).
+List<Map<String, dynamic>> otherExams(List<Map<String, dynamic>> exams) => [
+  for (final e in exams)
+    if (e['code'] != 'JAMB') e,
+];
 
 final subjectsProvider = FutureProvider<List<Map<String, dynamic>>>(
   (ref) => cached(ref, 'subjects', (s) => s.from('subjects').select('id, code, name, sort').order('sort', ascending: true), rows),

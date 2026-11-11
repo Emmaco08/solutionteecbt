@@ -5,7 +5,7 @@ import { hasR2 } from "@/lib/env";
 import { ALLOWED_TYPES, MAX_BYTES, presignPut } from "@/lib/r2";
 
 const Body = z.object({
-  kind: z.enum(["question", "news", "video", "pdf", "cover", "note_image", "receipt", "challenge", "ad_image", "ad_video"]),
+  kind: z.enum(["question", "news", "video", "pdf", "cover", "note_image", "receipt", "challenge", "ad_image", "ad_video", "exam_logo"]),
   contentType: z.string(),
   size: z.number().int().positive(),
 });
@@ -17,6 +17,7 @@ const KINDS = {
   news: { types: ALLOWED_TYPES, max: MAX_BYTES, prefix: "public/news", what: "Use a WebP, PNG, JPG or SVG image.", big: "The image is over 2 MB. Make it smaller (WebP works best)." },
   note_image: { types: ALLOWED_TYPES, max: MAX_BYTES, prefix: "n", what: "Use a WebP, PNG, JPG or SVG image.", big: "The image is over 2 MB. Make it smaller (WebP works best)." },
   challenge: { types: { "image/webp": "webp", "image/png": "png", "image/jpeg": "jpg" } as Record<string, string>, max: MAX_BYTES, prefix: "public/challenges", what: "Use a WebP, PNG or JPG picture.", big: "The picture is over 2 MB. Make it smaller (WebP works best)." },
+  exam_logo: { types: { "image/webp": "webp", "image/png": "png" } as Record<string, string>, max: 512 * 1024, prefix: "public/exams", what: "Use a PNG or WebP logo (a clear background is best).", big: "The logo is over 500 KB. Make it smaller (about 256 × 256 is enough)." },
   receipt: { types: ALLOWED_TYPES, max: MAX_BYTES, prefix: "public/winners", what: "Use a WebP, PNG or JPG image of the receipt.", big: "The image is over 2 MB. Make it smaller (WebP works best)." },
   cover: { types: ALLOWED_TYPES, max: MAX_BYTES, prefix: "s", what: "Use a WebP, PNG, JPG or SVG image.", big: "The image is over 2 MB. Make it smaller (WebP works best)." },
   ad_image: { types: { "image/webp": "webp", "image/png": "png", "image/jpeg": "jpg", "image/gif": "gif" } as Record<string, string>, max: MAX_BYTES, prefix: "public/ads", what: "Use a WebP, PNG, JPG or GIF picture.", big: "The picture is over 2 MB. Make it smaller (WebP works best)." },
