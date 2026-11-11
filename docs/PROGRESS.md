@@ -132,6 +132,8 @@ Plan: `docs/plans/phase-4.md`.
   - [x] **Lawyer's list finished** (D-119, D-120): Google consent message for EEA/UK, 24-month inactivity deletion with email notice, clean-up of deleted accounts in R2 and Neon, "Past Questions" / "SolutionTee Mock" labels with a super-admin switch. Owner paperwork left: NDPC registration, DPIA, licence letters to JAMB/WAEC/NECO.
   - [x] **Cash for 13 to 17 + website CMS** (D-121, D-122): admin switch for teen cash prizes with a parent email after each win (claims wait for it); admin → Website edits every section of cbt.solutiontee.com with on/off switches, new Invite & earn and Challenges sections; Privacy/Terms follow the cash switches; store images 6 and 7. **Waiting:** "deploy". **Next:** email templates, then the analytics dashboard.
   - [ ] Step C JAMB countdown · [ ] D Request a tutor · [ ] E Online classes · [ ] F Games · [ ] G Community
+  - [x] **Payments fixed for good** (D-129, D-130): payments confirmed by the webhook, the result page/app (by reference, no login needed) and a 2-minute scheduler; the website never logs the app out (local sign-out only); "You are already on Premium" on /pay; new receipt page. Server parts live 2026-11-11. **Waiting:** "deploy" (website) and the app build on /download.
+  - [x] **Website exam logos + smooth landing page** (D-131): logos follow the admin switch; landing page 47 → 58 fps on a slowed phone, 0 janky frames. **Waiting:** "deploy".
 
 ## Phase 5 — Website, classes, community  (approval: `WEBSITE APPROVED`)
 - [ ] Not started
