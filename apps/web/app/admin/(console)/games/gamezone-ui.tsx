@@ -8,18 +8,11 @@ import { Label } from "@/components/ui/label";
 import { inputCls } from "@/components/admin/row-form";
 import { EmptyState, Panel, Pill } from "@/components/admin/ui";
 import { deleteGzContent, saveGzCard, saveGzSettings, saveGzWord, setGzContent } from "./gamezone-actions";
+import { GZ_GAMES } from "./gamezone-shared";
 
 // Game Zone v2 admin (D-157).
 
-export const GZ_GAMES = [
-  { id: "duel", name: "JAMB Duel", seconds: 15, rounds: 10 },
-  { id: "rush", name: "Speed Rush", seconds: 120, rounds: null },
-  { id: "survival", name: "Knowledge Survival", seconds: 12, rounds: 20 },
-  { id: "blitz", name: "Maths Blitz", seconds: 60, rounds: null },
-  { id: "words", name: "Word War", seconds: 10, rounds: 10 },
-  { id: "memory", name: "Memory Flash", seconds: 180, rounds: null },
-  { id: "relay", name: "Team Relay", seconds: 15, rounds: 12 },
-] as const;
+
 
 type GameRow = { on: boolean; xp_play: string; xp_win: string; seconds: string; rounds: string };
 export type GzSettings = {

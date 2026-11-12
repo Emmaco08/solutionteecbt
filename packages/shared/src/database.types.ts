@@ -3008,6 +3008,63 @@ export type Database = {
         }
         Relationships: []
       }
+      gz_questions: {
+        Row: {
+          active: boolean
+          answer: string
+          batch: string | null
+          body: string
+          created_at: string
+          created_by: string | null
+          difficulty: string
+          id: number
+          options: Json
+          subject_id: number
+        }
+        Insert: {
+          active?: boolean
+          answer: string
+          batch?: string | null
+          body: string
+          created_at?: string
+          created_by?: string | null
+          difficulty?: string
+          id?: number
+          options: Json
+          subject_id: number
+        }
+        Update: {
+          active?: boolean
+          answer?: string
+          batch?: string | null
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          difficulty?: string
+          id?: number
+          options?: Json
+          subject_id?: number
+        }
+        Relationships: []
+      }
+      gz_seen: {
+        Row: {
+          qkey: string
+          seen_at: string
+          user_id: string
+        }
+        Insert: {
+          qkey: string
+          seen_at?: string
+          user_id: string
+        }
+        Update: {
+          qkey?: string
+          seen_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       gz_words: {
         Row: {
           active: boolean
@@ -5457,6 +5514,7 @@ export type Database = {
       }
       admin_fraud: { Args: never; Returns: Json }
       admin_games_stats: { Args: never; Returns: Json }
+      admin_gz_question_counts: { Args: never; Returns: Json }
       admin_gz_stats: { Args: never; Returns: Json }
       admin_leaderboard_held: { Args: { p_season?: number }; Returns: Json }
       admin_leaderboard_recent: { Args: { p_limit?: number }; Returns: Json }

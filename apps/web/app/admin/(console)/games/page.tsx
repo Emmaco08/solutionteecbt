@@ -5,7 +5,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getCatalogue } from "@/lib/catalogue";
 import { ErrorState, PageHeader, PageSkeleton, Panel } from "@/components/admin/ui";
 import { ArenaList, GamesSettingsForm, type AdminArena, type GamesSettings } from "./games-ui";
-import { GZ_GAMES, GzCards, GzSettingsForm, GzWords, type GzCard, type GzWord } from "./gamezone-ui";
+import { GzCards, GzSettingsForm, GzWords, type GzCard, type GzWord } from "./gamezone-ui";
+import { GZ_GAMES } from "./gamezone-shared";
+import { GzQuestions, GzSourceForm } from "./gz-questions-ui";
 
 export const metadata: Metadata = { title: "Games" };
 
@@ -21,7 +23,7 @@ function since() {
 async function Games() {
   const staff = await requireStaff(["super_admin", "admin", "editor"]);
   const supabase = await createClient();
-  const [arenas, players, settings, stats, cat, gzStats, words, cards] = await Promise.all([
+  const [arenas, players, settings, stats, cat, gzStats, words, cards, gzCounts] = await Promise.all([
     supabase.from("arenas").select("id, title, exam_id, subject_id, starts_at, q_count, seconds, gap, max_players, status, rewarded_at").gte("starts_at", since()).order("starts_at"),
     supabase.from("arena_players").select("arena_id"),
     supabase.from("app_settings").select("value").eq("key", "games").maybeSingle(),
@@ -30,6 +32,7 @@ async function Games() {
     supabase.rpc("admin_gz_stats"),
     supabase.from("gz_words").select("id, kind, word, answer, wrong, active").order("active").order("id"),
     supabase.from("gz_cards").select("id, subject_id, front, back, active").order("active").order("subject_id").order("id"),
+    supabase.rpc("admin_gz_question_counts"),
   ]);
   if (arenas.error) return <ErrorState message={arenas.error.message} />;
   const count = new Map<string, number>();
@@ -41,6 +44,8 @@ async function Games() {
   const gz = ((s as Record<string, unknown>).gz ?? {}) as Record<string, unknown> & { games?: Record<string, Record<string, unknown>> };
   const num = (v: unknown, d: number) => (typeof v === "number" ? v : d);
   const str = (v: unknown) => (typeof v === "number" ? String(v) : "");
+  const subjectList = cat.subjects.map((x) => ({ id: x.id, name: x.name }));
+  const src = (v: unknown): "jamb" | "own" | "both" | null => (v === "jamb" || v === "own" || v === "both" ? v : null);
   const tile = (label: string, value: number | string) => (
     <div className="rounded-2xl border bg-card p-4"><p className="text-xs text-muted-foreground">{label}</p><p className="text-2xl font-bold tabular-nums">{value}</p></div>
   );
@@ -64,9 +69,18 @@ async function Games() {
           }} />
         </Panel>
       ) : null}
+      {isAdmin ? (
+        <Panel title="Where game questions come from" className="mb-4">
+          <GzSourceForm subjects={subjectList}
+            source={src(gz.source) ?? "both"}
+            sources={Object.fromEntries(Object.entries((gz.sources ?? {}) as Record<string, unknown>).flatMap(([k, v]) => { const x = src(v); return x ? [[k, x] as const] : []; }))}
+            counts={(gzCounts.data ?? {}) as Record<string, { all: number; live: number }>} />
+        </Panel>
+      ) : null}
+      <div className="mb-4"><GzQuestions subjects={subjectList} /></div>
       <div className="mb-4 grid gap-4 xl:grid-cols-2">
         <GzWords words={(words.data ?? []) as GzWord[]} />
-        <GzCards cards={(cards.data ?? []) as GzCard[]} subjects={cat.subjects.map((x) => ({ id: x.id, name: x.name }))} />
+        <GzCards cards={(cards.data ?? []) as GzCard[]} subjects={subjectList} />
       </div>
       <h2 className="mb-2 mt-6 text-lg font-bold">Classic games</h2>
       <PageHeader title="" description="Study → Games in the app: Speed Quiz Duel (against the SolutionTee bot or a friend with a 6-letter code), Beat the AI Tutor, and Live Exam Arenas you schedule here. Answers are checked on the server; games with other people only use years open on the free plan." />

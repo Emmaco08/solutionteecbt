@@ -1704,3 +1704,13 @@ Owner: "COMMUNITY IS APPROVED, only few changes…" (same day as D-155).
 - **Text size on every phone:** the phone's font size setting is followed between 90% and 115% (very large settings broke
   layouts), narrow screens under 360 dp scale down a little; the Home greeting and name stay on one line; the search button
   left the Home header (search stays in the menus and app shortcuts).
+- **Admin → Games crashed** (12 Nov 2026): the page (a server component) read the games list from a "use client" file,
+  which Next.js turns into a client reference, so `.map` failed on the server. The list now lives in `gamezone-shared.ts`.
+- **SolutionTee's own game questions** (owner, 12 Nov 2026): Admin → Games → "Game questions" takes a CSV per subject
+  (question, option_a–e, answer as a letter or the option text, difficulty), checks every row in the browser first, adds
+  the good rows as one undoable batch, and lists, hides or deletes them. They live in `gz_questions` (staff-only RLS; the
+  answer never leaves the server, like past questions). "Where game questions come from" sets JAMB past questions only,
+  SolutionTee questions only or both, for all subjects and per subject (`games.gz.source`, `games.gz.sources.<id>`).
+  Students are never told the source: items carry no source field. If a subject has fewer own questions than a game needs,
+  past questions fill the gap so a game always starts. To cut repeats, `gz_seen` remembers each question a student got
+  (30 days); questions seen in the last 21 days go to the back of the queue.
