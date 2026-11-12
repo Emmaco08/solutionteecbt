@@ -32,6 +32,14 @@ Maths Blitz, Word War, Memory Flash, team relay); the best UI and animation.
 - Subjects: only the student's JAMB combination (and Use of English); WAEC/NECO students pick from their exam subjects.
 - Premium questions stay locked: free students only get free-year questions in games.
 
+## Art direction (owner: "real games with real graphics")
+- A real mobile-game look, drawn as our own vector art (sharp on every phone, small download, fully ours):
+  cartoon student characters (skin tones, hair styles, school uniform colours; idle, focus, cheer, hit and win poses),
+  a stadium arena at night with spotlights, chunky 3D buttons, a race track with cars, floating islands over rising
+  lava, a card table, a neon arcade and a castle, a victory screen with a treasure chest, stars and rank shields.
+- Game font for headings (Lilita One, free Google font, bundled) with the app font for small text.
+- In the app: characters and scenes animate (Rive or Flutter painters), with sounds (off by default) and haptics.
+
 ## App
 - **Game Zone hub**: a hero card for Quick Match, a grid of 7 game cards (animated illustration, players online now),
   ranked level and rating, "Your week" stats, recent matches, daily challenge.
