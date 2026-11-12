@@ -193,4 +193,29 @@ void main() {
     await _settle(t);
     expect(find.textContaining('SolutionTee AI will answer'), findsOneWidget);
   });
+
+  test('AI markdown preview, posting pause text and new note kinds', () {
+    expect(plainPreview('**Osmosis** is\n\n- water moving\n- across a membrane'), 'Osmosis is\n• water moving\n• across a membrane');
+    expect(pausedText('2026-11-13T14:00:00Z'), contains('Posting is paused until'));
+    expect(noteText({'kind': 'milestone', 'body': '25 likes on your post. Students love it!', 'actors': const []}), startsWith('25 likes'));
+    expect(noteText({'kind': 'removed', 'actors': const []}), contains('community guidelines'));
+  });
+
+  testWidgets('staff and official pages show the SolutionTee badge', (t) async {
+    _big(t);
+    await t.pumpWidget(
+      _wrap(
+        Column(
+          children: [
+            PostCell(post: {..._post('s'), 'badge': 'staff'}),
+            PostCell(post: {..._post('o'), 'badge': 'official', 'page_id': 'pg', 'name': 'SolutionTee', 'handle': 'solutiontee'}),
+          ],
+        ),
+        reduce: true,
+      ),
+    );
+    await _settle(t);
+    expect(find.byTooltip('SolutionTee team'), findsOneWidget);
+    expect(find.byTooltip('Official SolutionTee page'), findsOneWidget);
+  });
 }

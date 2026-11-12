@@ -336,6 +336,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             quote: x['quote'] is Map ? Map<String, dynamic>.from(x['quote'] as Map) : null,
             subject: (x['subject'] as num?)?.toInt(),
             text: x['text'] as String?,
+            page: x['page'] is Map ? Map<String, dynamic>.from(x['page'] as Map) : null,
           );
         },
       ),

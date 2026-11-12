@@ -14,6 +14,7 @@ import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
 import '../../ui/kit.dart';
 import '../../widgets/phosphor.g.dart';
+import '../study/note_screens.dart' show NoteBody;
 import 'community_data.dart';
 import 'community_widgets.dart';
 
@@ -401,6 +402,8 @@ class _ReplyTileState extends ConsumerState<_ReplyTile> {
           ListRow(title: 'Copy text', onTap: () => Navigator.pop(ctx, 'copy')),
           if (r['mine'] == true) ListRow(title: 'Delete reply', onTap: () => Navigator.pop(ctx, 'delete')),
           if (r['mine'] != true && r['from_ai'] != true) ListRow(title: 'Report reply', onTap: () => Navigator.pop(ctx, 'report')),
+          if (r['mine'] != true && ref.read(communityMeProvider).value?['mod'] == true)
+            ListRow(title: 'Remove reply (moderator)', onTap: () => Navigator.pop(ctx, 'mod')),
         ],
       ),
     );
@@ -413,6 +416,12 @@ class _ReplyTileState extends ConsumerState<_ReplyTile> {
         case 'delete':
           if (!await confirmDelete(context, 'Delete this reply?')) return;
           await crpc('community_comment_delete', {'p_id': r['id']});
+          widget.onChanged();
+        case 'mod':
+          final why = await pickRemoveReason(context);
+          if (why == null) return;
+          await crpc('community_mod_remove', {'p_kind': 'comment', 'p_id': '${r['id']}', 'p_reason': why});
+          if (mounted) toast(context, 'Removed. The student is told why.');
           widget.onChanged();
         case 'report':
           final reason = await pickReportReason(context);
@@ -467,7 +476,7 @@ class _ReplyTileState extends ConsumerState<_ReplyTile> {
                           Flexible(
                             child: Text('${r['name']}', style: context.ty.sm.bold, maxLines: 1, overflow: TextOverflow.ellipsis),
                           ),
-                          if (ai) ...[const Gap(4), const AiSeal(size: 14)],
+                          if (r['badge'] != null) ...[const Gap(4), CBadge('${r['badge']}', size: 14)],
                           const Gap(4),
                           Expanded(
                             child: Text(
@@ -489,7 +498,8 @@ class _ReplyTileState extends ConsumerState<_ReplyTile> {
                       ),
                       if (widget.nested && r['reply_to_handle'] != null) Text('Replying to @${r['reply_to_handle']}', style: context.ty.cap.col(c.link)),
                       const Gap(2),
-                      CText('${r['body']}', style: context.ty.body),
+                      // SolutionTee AI writes Markdown (bold, lists, maths): drawn like lesson notes.
+                      if (ai) NoteBody(text: '${r['body']}', scale: .9) else CText('${r['body']}', style: context.ty.body),
                       if (status == 'pending') ...[const Gap(Space.s2), const CheckingNote(text: 'Being checked. Only you can see it for now.')],
                       if (status == 'rejected') ...[const Gap(Space.s2), NotShownNote(reason: r['reason'] as String?)],
                       if (status == 'shown')
@@ -527,8 +537,11 @@ class _ReplyTileState extends ConsumerState<_ReplyTile> {
 // ---------------------------------------------------------------- compose
 
 class ComposeScreen extends ConsumerStatefulWidget {
-  const ComposeScreen({super.key, this.quote, this.subject, this.text});
+  const ComposeScreen({super.key, this.quote, this.subject, this.text, this.page});
   final Json? quote;
+
+  /// Staff posting as a SolutionTee page (the page's id, name and handle).
+  final Json? page;
   final int? subject;
   final String? text;
   @override
@@ -536,7 +549,8 @@ class ComposeScreen extends ConsumerStatefulWidget {
 }
 
 class _ComposeScreenState extends ConsumerState<ComposeScreen> {
-  static const max = 500;
+  late Json? _as = widget.page;
+  int get max => _as != null ? 1000 : 500;
   late final _text = TextEditingController(text: widget.text ?? '');
   final _focus = FocusNode();
   late int? _subject = widget.subject ?? (widget.quote?['subject_id'] as num?)?.toInt();
@@ -652,8 +666,12 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
           throw const _Msg('Could not upload a picture. Check your internet and try again.');
         }
       }
-      final r = asJson(await crpc('community_post_send', {'p_body': body, 'p_images': keys, 'p_subject': _subject, 'p_quote': widget.quote?['id']}));
-      if (r['ok'] != true) throw _Msg(communityError(r['error']));
+      final r = asJson(
+        _as != null
+            ? await crpc('community_page_post', {'p_page': _as!['id'], 'p_body': body, 'p_images': keys, 'p_subject': _subject})
+            : await crpc('community_post_send', {'p_body': body, 'p_images': keys, 'p_subject': _subject, 'p_quote': widget.quote?['id']}),
+      );
+      if (r['ok'] != true) throw _Msg(r['error'] == 'banned' ? pausedText(r['until']) : communityError(r['error']));
       if (!mounted) return;
       HapticFeedback.mediumImpact();
       toast(context, r['status'] == 'pending' ? 'Posted! We are checking it now.' : 'Posted!', icon: PhosphorIcons.checkCircle(PhosphorIconsStyle.fill));
@@ -734,12 +752,27 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        CAvatar(name: '${me['name'] ?? 'Me'}', photo: me['avatar_path'] as String?, size: 40),
+                        _as != null
+                            ? CAvatar(
+                                name: '${_as!['name']}',
+                                photo: _as!['avatar_path'] as String?,
+                                size: 40,
+                                brand: _as!['official'] == true || _as!['badge'] == 'official',
+                              )
+                            : CAvatar(name: '${me['name'] ?? 'Me'}', photo: me['avatar_path'] as String?, size: 40),
                         const Gap(Space.s3),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              if (me['banned_until'] != null && _as == null) ...[
+                                InfoBanner(kind: BannerKind.err, child: Text(pausedText(me['banned_until']))),
+                                const Gap(Space.s3),
+                              ],
+                              if ((me['pages'] as List? ?? const []).isNotEmpty && widget.quote == null) ...[
+                                _PostAs(me: me, value: _as, onChanged: (v) => setState(() => _as = v)),
+                                const Gap(Space.s2),
+                              ],
                               GestureDetector(
                                 onTap: _pickSubject,
                                 child: Container(
@@ -1005,4 +1038,32 @@ class _RingPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_RingPainter o) => o.v != v || o.col != col;
+}
+
+/// Staff choose who posts: themselves or a SolutionTee page they manage.
+class _PostAs extends StatelessWidget {
+  const _PostAs({required this.me, required this.value, required this.onChanged});
+  final Json me;
+  final Json? value;
+  final ValueChanged<Json?> onChanged;
+  @override
+  Widget build(BuildContext context) {
+    final pages = asList(me['pages']);
+    final c = context.c;
+    return Wrap(
+      spacing: Space.s2,
+      runSpacing: Space.s2,
+      children: [
+        ChoiceChip(label: Text('Me (@${me['handle'] ?? 'you'})'), selected: value == null, onSelected: (_) => onChanged(null)),
+        for (final p in pages)
+          ChoiceChip(
+            avatar: CBadge(p['official'] == true ? 'official' : 'page', size: 16),
+            label: Text('${p['name']}'),
+            selected: value?['id'] == p['id'],
+            selectedColor: c.accentSoft,
+            onSelected: (_) => onChanged(p),
+          ),
+      ],
+    );
+  }
 }

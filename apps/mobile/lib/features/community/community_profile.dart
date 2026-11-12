@@ -52,7 +52,7 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
 
   List<(String, String)> get _tabs => [
     ('posts', 'Posts'),
-    ('replies', 'Replies'),
+    if (_u?['is_page'] != true) ('replies', 'Replies'),
     if (_u?['me'] == true) ...[('likes', 'Likes'), ('saved', 'Saved')],
   ];
 
@@ -212,6 +212,50 @@ class _Header extends ConsumerWidget {
         ),
       ),
     );
+    final page = u['is_page'] == true;
+    final followers = (u['followers'] as num?)?.toInt() ?? 0;
+    Widget action() {
+      if (me) {
+        return OutlinedButton(
+          onPressed: () async {
+            await context.push('/community/edit');
+            onChanged();
+          },
+          style: OutlinedButton.styleFrom(
+            shape: const StadiumBorder(),
+            side: BorderSide(color: c.borderStrong),
+            foregroundColor: c.text,
+            minimumSize: const Size(0, 40),
+          ),
+          child: Text('Edit profile', style: context.ty.sm.bold),
+        );
+      }
+      if (page && u['can_post'] == true) {
+        return FilledButton(
+          onPressed: () => context.push('/community/compose', extra: {'page': u}),
+          style: FilledButton.styleFrom(
+            backgroundColor: Palette.gold400,
+            foregroundColor: Palette.navy900,
+            shape: const StadiumBorder(),
+            minimumSize: const Size(0, 40),
+          ),
+          child: Text('Post as page', style: context.ty.sm.bold.col(Palette.navy900)),
+        );
+      }
+      if (u['blocked'] == true) {
+        return OutlinedButton(
+          onPressed: () async {
+            await crpc('community_block', {'p_user': u['id']});
+            ref.read(communityTickProvider.notifier).bump();
+          },
+          style: OutlinedButton.styleFrom(shape: const StadiumBorder(), foregroundColor: c.error),
+          child: const Text('Unblock'),
+        );
+      }
+      if (u['blocked_me'] == true) return const SizedBox.shrink();
+      return FollowPill(user: '${u['id']}', following: u['following'] == true, followsMe: u['follows_me'] == true, handle: '${u['handle']}', page: page);
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -225,120 +269,91 @@ class _Header extends ConsumerWidget {
                 left: 10,
                 child: _Round(icon: PhosphorIcons.caretLeft(), label: 'Back', onTap: () => context.canPop() ? context.pop() : context.go('/community')),
               ),
-            if (!me)
+            if (!me && !page)
               Positioned(
                 top: top + 10,
                 right: 10,
                 child: _Round(icon: PhosphorIcons.dotsThree(), label: 'More', onTap: () => _more(context, ref)),
               ),
+            Positioned(
+              left: Space.s4,
+              bottom: -40,
+              child: CAvatar(name: '${u['name']}', photo: u['avatar_path'] as String?, size: 84, ring: c.surface, brand: u['badge'] == 'official'),
+            ),
           ],
         ),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: Space.s4),
+          padding: const EdgeInsets.fromLTRB(Space.s4, Space.s3, Space.s4, 0),
+          child: SizedBox(height: 44, child: Row(children: [const Spacer(), action()])),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(Space.s4, Space.s3, Space.s4, 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Transform.translate(
-                    offset: const Offset(0, -38),
-                    child: CAvatar(name: '${u['name']}', photo: u['avatar_path'] as String?, size: 80, ring: c.surface),
+                  Flexible(
+                    child: Text('${u['name']}', style: context.ty.h2, maxLines: 2, overflow: TextOverflow.ellipsis),
                   ),
-                  const Spacer(),
-                  Padding(
-                    padding: const EdgeInsets.only(top: Space.s3),
-                    child: me
-                        ? OutlinedButton(
-                            onPressed: () async {
-                              await context.push('/community/edit');
-                              onChanged();
-                            },
-                            style: OutlinedButton.styleFrom(
-                              shape: const StadiumBorder(),
-                              side: BorderSide(color: c.borderStrong),
-                              foregroundColor: c.text,
-                              minimumSize: const Size(0, 40),
-                            ),
-                            child: Text('Edit profile', style: context.ty.sm.bold),
-                          )
-                        : u['blocked'] == true
-                        ? OutlinedButton(
-                            onPressed: () async {
-                              await crpc('community_block', {'p_user': u['id']});
-                              ref.read(communityTickProvider.notifier).bump();
-                            },
-                            style: OutlinedButton.styleFrom(shape: const StadiumBorder(), foregroundColor: c.error),
-                            child: const Text('Unblock'),
-                          )
-                        : u['blocked_me'] == true
-                        ? const SizedBox.shrink()
-                        : FollowPill(user: '${u['id']}', following: u['following'] == true, followsMe: u['follows_me'] == true, handle: '${u['handle']}'),
-                  ),
+                  if (u['badge'] != null) ...[const Gap(Space.s2), CBadge('${u['badge']}', size: 20)],
                 ],
               ),
-              Transform.translate(
-                offset: const Offset(0, -26),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('${u['name']}', style: context.ty.h2),
+              const Gap(2),
+              Wrap(
+                spacing: Space.s2,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text('@${u['handle']}', style: context.ty.body.col(c.textMuted)),
+                  if (u['follows_me'] == true && !me)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                      decoration: BoxDecoration(color: c.surfaceSunken, borderRadius: BorderRadius.circular(4)),
+                      child: Text('Follows you', style: context.ty.cap.col(c.textMuted)),
+                    ),
+                ],
+              ),
+              if (me && (u['pending_handle'] != null || u['pending_bio'] != null)) ...[
+                const Gap(Space.s3),
+                CheckingNote(text: u['pending_handle'] != null ? 'Your new @${u['pending_handle']} is being checked.' : 'Your new bio is being checked.'),
+              ],
+              if (me && u['pending_reason'] != null) ...[const Gap(Space.s3), NotShownNote(reason: '${u['pending_reason']}')],
+              if (me && u['banned_until'] != null) ...[const Gap(Space.s3), InfoBanner(kind: BannerKind.err, child: Text(pausedText(u['banned_until'])))],
+              if ('${u['bio'] ?? ''}'.isNotEmpty) ...[const Gap(Space.s3), CText('${u['bio']}', style: context.ty.body)],
+              const Gap(Space.s4),
+              if (exams.isNotEmpty) ...[_Meta(icon: PhosphorIcons.graduationCap(), label: 'Exams', text: exams.join(', ')), const Gap(10)],
+              if (subjects.isNotEmpty) ...[_Meta(icon: PhosphorIcons.books(), label: 'Subjects', text: subjects.join(', ')), const Gap(10)],
+              _Meta(icon: PhosphorIcons.calendarBlank(), label: 'Joined', text: 'Joined ${monthYear(u['joined'])}'),
+              const Gap(Space.s3),
+              Wrap(
+                spacing: 22,
+                runSpacing: 4,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  if (!page) count(countText((u['following_count'] as num?)?.toInt() ?? 0), 'Following', 'following'),
+                  page
+                      ? Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          child: Text.rich(
+                            TextSpan(
+                              children: [
+                                TextSpan(text: countText(followers), style: context.ty.sm.bold),
+                                TextSpan(text: followers == 1 ? ' Follower' : ' Followers', style: context.ty.sm.col(c.textMuted)),
+                              ],
+                            ),
+                          ),
+                        )
+                      : count(countText(followers), followers == 1 ? 'Follower' : 'Followers', 'followers'),
+                  if (streak > 0)
                     Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('@${u['handle']}', style: context.ty.body.col(c.textMuted)),
-                        if (u['follows_me'] == true && !me) ...[
-                          const Gap(Space.s2),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                            decoration: BoxDecoration(color: c.surfaceSunken, borderRadius: BorderRadius.circular(4)),
-                            child: Text('Follows you', style: context.ty.cap.col(c.textMuted)),
-                          ),
-                        ],
+                        Icon(PhosphorIcons.fire(PhosphorIconsStyle.fill), size: 16, color: Palette.gold400),
+                        const Gap(4),
+                        Text('$streak day streak', style: context.ty.sm.bold.col(context.isDark ? Palette.gold200 : Palette.gold700)),
                       ],
                     ),
-                    if (me && (u['pending_handle'] != null || u['pending_bio'] != null)) ...[
-                      const Gap(Space.s2),
-                      CheckingNote(text: u['pending_handle'] != null ? 'Your new @${u['pending_handle']} is being checked.' : 'Your new bio is being checked.'),
-                    ],
-                    if (me && u['pending_reason'] != null) ...[const Gap(Space.s2), NotShownNote(reason: '${u['pending_reason']}')],
-                    if ('${u['bio'] ?? ''}'.isNotEmpty) ...[const Gap(10), CText('${u['bio']}', style: context.ty.body)],
-                    const Gap(10),
-                    Wrap(
-                      spacing: 14,
-                      runSpacing: 6,
-                      children: [
-                        if (exams.isNotEmpty || subjects.isNotEmpty)
-                          _Meta(
-                            icon: PhosphorIcons.bookOpen(),
-                            text: [if (exams.isNotEmpty) exams.join(', '), if (subjects.isNotEmpty) subjects.join(', ')].join(' · '),
-                          ),
-                        _Meta(icon: PhosphorIcons.calendarBlank(), text: 'Joined ${monthYear(u['joined'])}'),
-                      ],
-                    ),
-                    const Gap(6),
-                    Wrap(
-                      spacing: 18,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        count(countText((u['following_count'] as num?)?.toInt() ?? 0), 'Following', 'following'),
-                        count(
-                          countText((u['followers'] as num?)?.toInt() ?? 0),
-                          (u['followers'] as num?)?.toInt() == 1 ? 'Follower' : 'Followers',
-                          'followers',
-                        ),
-                        if (streak > 0)
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(PhosphorIcons.fire(PhosphorIconsStyle.fill), size: 15, color: Palette.gold400),
-                              const Gap(4),
-                              Text('$streak day streak', style: context.ty.sm.bold.col(context.isDark ? Palette.gold200 : Palette.gold700)),
-                            ],
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
+                ],
               ),
             ],
           ),
@@ -397,17 +412,25 @@ class _Round extends StatelessWidget {
 }
 
 class _Meta extends StatelessWidget {
-  const _Meta({required this.icon, required this.text});
+  const _Meta({required this.icon, required this.label, required this.text});
   final IconData icon;
+  final String label;
   final String text;
   @override
-  Widget build(BuildContext context) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Icon(icon, size: 15, color: context.c.textMuted),
-      const Gap(5),
-      Flexible(child: Text(text, style: context.ty.sm.col(context.c.textMuted))),
-    ],
+  Widget build(BuildContext context) => Semantics(
+    label: label == 'Joined' ? text : '$label: $text',
+    excludeSemantics: true,
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 1),
+          child: Icon(icon, size: 18, color: context.c.textMuted),
+        ),
+        const Gap(10),
+        Expanded(child: Text(text, style: context.ty.sm.col(context.c.textMuted).copyWith(height: 1.45))),
+      ],
+    ),
   );
 }
 
@@ -538,6 +561,7 @@ class _CommunityEditScreenState extends ConsumerState<CommunityEditScreen> {
   final _bio = TextEditingController();
   bool _photo = true;
   int _header = 0;
+  Map<String, bool> _notify = {};
   bool _busy = false;
   String? _err;
   String? _hint;
@@ -559,6 +583,7 @@ class _CommunityEditScreenState extends ConsumerState<CommunityEditScreen> {
         _handle.text = '${u['pending_handle'] ?? u['handle']}';
         _bio.text = '${u['pending_bio'] ?? u['bio'] ?? ''}';
         _photo = u['show_photo'] != false;
+        _notify = {for (final e in asJson(u['notify']).entries) e.key: e.value == true};
         _header = (u['header'] as num?)?.toInt() ?? 0;
       });
     } catch (_) {
@@ -740,6 +765,38 @@ class _CommunityEditScreenState extends ConsumerState<CommunityEditScreen> {
                 ),
                 const Gap(Space.s2),
                 Text('To change the photo itself, go to Profile → Edit profile in the app.', style: context.ty.cap.col(c.textSubtle)),
+                const Gap(Space.s5),
+                Text('Phone notifications', style: context.ty.sm.bold),
+                const Gap(4),
+                Text('Everything still shows in Community → Notifications. Choose what also buzzes your phone.', style: context.ty.cap.col(c.textMuted)),
+                const Gap(Space.s2),
+                AppCard(
+                  padding: EdgeInsets.zero,
+                  child: Column(
+                    children: [
+                      for (final (k, title, on) in const [
+                        ('replies', 'Replies to you', true),
+                        ('mentions', 'Mentions and quotes', true),
+                        ('ai', 'Answers from SolutionTee AI', true),
+                        ('follows', 'New followers', true),
+                        ('posts', 'Posts from people you talk with most', true),
+                        ('milestones', 'Like milestones (10, 25, 50 …)', true),
+                        ('digest', 'Your daily summary', true),
+                        ('likes', 'Every like and repost', false),
+                      ])
+                        SwitchListTile(
+                          title: Text(title, style: context.ty.body),
+                          value: _notify[k] ?? on,
+                          onChanged: (v) {
+                            setState(() => _notify[k] = v);
+                            crpc('community_notify_save', {
+                              'p_notify': {k: v},
+                            }).catchError((_) => null);
+                          },
+                        ),
+                    ],
+                  ),
+                ),
                 if (_err != null) ...[const Gap(Space.s3), ErrText(_err!)],
                 const Gap(Space.s5),
                 Btn('Save', block: true, loading: _busy, onPressed: _busy || _free == false ? null : _save),

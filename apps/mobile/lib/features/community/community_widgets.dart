@@ -24,11 +24,14 @@ Color repostColor(BuildContext c) => c.isDark ? const Color(0xFF3DDC84) : Palett
 
 /// Initials in a coloured circle, the student's photo over them when they chose to show it (on by default).
 class CAvatar extends StatelessWidget {
-  const CAvatar({super.key, required this.name, this.photo, this.size = 44, this.ai = false, this.onTap, this.ring});
+  const CAvatar({super.key, required this.name, this.photo, this.size = 44, this.ai = false, this.onTap, this.ring, this.brand = false});
   final String name;
   final String? photo;
   final double size;
   final bool ai;
+
+  /// The official SolutionTee page: the logo (unless the page has its own photo).
+  final bool brand;
   final VoidCallback? onTap;
   final Color? ring;
 
@@ -37,7 +40,7 @@ class CAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Widget a;
-    if (ai) {
+    if (ai || (brand && (photo == null || photo!.isEmpty))) {
       a = Container(
         width: size,
         height: size,
@@ -456,7 +459,7 @@ class AiAnswerCard extends StatelessWidget {
               ],
             ),
             const Gap(6),
-            CText(text, style: context.ty.sm.col(c.textMuted), maxLines: 4),
+            CText(plainPreview(text), style: context.ty.sm.col(c.textMuted), maxLines: 4),
             const Gap(6),
             Text('Read the full answer', style: context.ty.sm.bold.col(c.link)),
           ],
@@ -862,7 +865,10 @@ class PostMenu extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final mine = post['mine'] == true;
-    final following = ref.watch(followPatchesProvider.select((m) => m['${post['user_id']}'])) ?? post['following'] == true;
+    final page = post['page_id'] != null;
+    final followKey = page ? '${post['page_id']}' : '${post['user_id']}';
+    final following = ref.watch(followPatchesProvider.select((m) => m[followKey])) ?? post['following'] == true;
+    final mod = ref.watch(communityMeProvider.select((v) => v.value?['mod'] == true));
     return SizedBox(
       width: 32,
       height: 28,
@@ -886,8 +892,25 @@ class PostMenu extends ConsumerWidget {
               if (reason != null && context.mounted) {
                 await _rpc(context, 'community_report', {'p_kind': 'post', 'p_ref': '${post['id']}', 'p_reason': reason}, 'Thanks. We will look at it.');
               }
+            case 'hide':
+              if (await _rpc(context, 'community_hide', {'p_post': post['id']}, 'Got it. You will see fewer posts like this.')) {
+                ref.read(postPatchesProvider.notifier).patch('${post['id']}', {'deleted': true});
+                onGone?.call();
+              }
+            case 'mod':
+              final reason = await pickRemoveReason(context);
+              if (reason != null &&
+                  context.mounted &&
+                  await _rpc(context, 'community_mod_remove', {
+                    'p_kind': 'post',
+                    'p_id': '${post['id']}',
+                    'p_reason': reason,
+                  }, 'Removed. The student is told why.')) {
+                ref.read(postPatchesProvider.notifier).patch('${post['id']}', {'deleted': true});
+                onGone?.call();
+              }
             case 'follow':
-              final on = await toggleFollow(ref, '${post['user_id']}', following);
+              final on = await toggleFollow(ref, followKey, following, page: page);
               if (context.mounted && on != null) toast(context, on ? 'Following @${post['handle']}' : 'Unfollowed @${post['handle']}');
             case 'block':
               final ok = await confirmBlock(context, '${post['handle']}');
@@ -900,9 +923,11 @@ class PostMenu extends ConsumerWidget {
         itemBuilder: (_) => [
           if (!mine) PopupMenuItem(value: 'follow', child: Text(following ? 'Unfollow @${post['handle']}' : 'Follow @${post['handle']}')),
           const PopupMenuItem(value: 'copy', child: Text('Copy text')),
+          if (!mine) const PopupMenuItem(value: 'hide', child: Text('Not interested in this')),
           if (mine) const PopupMenuItem(value: 'delete', child: Text('Delete post')),
           if (!mine && post['status'] == 'shown') const PopupMenuItem(value: 'report', child: Text('Report post')),
-          if (!mine) PopupMenuItem(value: 'block', child: Text('Block @${post['handle']}')),
+          if (!mine && !page) PopupMenuItem(value: 'block', child: Text('Block @${post['handle']}')),
+          if (mod && !mine && post['status'] == 'shown') const PopupMenuItem(value: 'mod', child: Text('Remove post (moderator)')),
         ],
       ),
     );
@@ -958,7 +983,7 @@ class PostCell extends ConsumerWidget {
     final subject = subjects.where((s) => s['id'] == p['subject_id']).firstOrNull?['name'];
     final imgs = [for (final x in (p['images'] as List? ?? const [])) '$x'];
     final by = p['reposted_by'] is Map ? asJson(p['reposted_by']) : null;
-    void openUser() => context.push('/community/user/${p['user_id']}');
+    void openUser() => p['page_id'] != null ? context.push('/community/u/${p['handle']}') : context.push('/community/user/${p['user_id']}');
     void open() => context.push('/community/post/${p['id']}');
 
     final cell = InkWell(
@@ -992,7 +1017,7 @@ class PostCell extends ConsumerWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                CAvatar(name: '${p['name']}', photo: p['avatar_path'] as String?, onTap: openUser),
+                CAvatar(name: '${p['name']}', photo: p['avatar_path'] as String?, onTap: openUser, brand: p['badge'] == 'official'),
                 const Gap(Space.s3),
                 Expanded(
                   child: Column(
@@ -1006,6 +1031,7 @@ class PostCell extends ConsumerWidget {
                               child: Text('${p['name']}', style: context.ty.body.bold, maxLines: 1, overflow: TextOverflow.ellipsis),
                             ),
                           ),
+                          if (p['badge'] != null) ...[const Gap(4), CBadge('${p['badge']}')],
                           const Gap(4),
                           Expanded(
                             child: Text(
@@ -1093,11 +1119,12 @@ class SubjectChip extends StatelessWidget {
 
 /// Follow / Following / Follow back pill.
 class FollowPill extends ConsumerWidget {
-  const FollowPill({super.key, required this.user, required this.following, this.followsMe = false, this.handle});
+  const FollowPill({super.key, required this.user, required this.following, this.followsMe = false, this.handle, this.page = false});
   final String user;
   final bool following;
   final bool followsMe;
   final String? handle;
+  final bool page;
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final c = context.c;
@@ -1109,7 +1136,7 @@ class FollowPill extends ConsumerWidget {
       child: GestureDetector(
         onTap: () {
           HapticFeedback.selectionClick();
-          toggleFollow(ref, user, on);
+          toggleFollow(ref, user, on, page: page);
         },
         child: AnimatedContainer(
           duration: context.reduceMotion ? Duration.zero : Motion.fast,
@@ -1150,7 +1177,14 @@ class PersonRow extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('${p['name']}', style: context.ty.body.bold, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text('${p['name']}', style: context.ty.body.bold, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ),
+                      if (p['badge'] != null) ...[const Gap(4), CBadge('${p['badge']}')],
+                    ],
+                  ),
                   Text('@${p['handle']}${sub != null ? ' · $sub' : ''}', style: context.ty.sm.col(c.textMuted), maxLines: 1, overflow: TextOverflow.ellipsis),
                   if ('${p['bio'] ?? ''}'.isNotEmpty) ...[
                     const Gap(2),
@@ -1221,3 +1255,66 @@ class PostSkeletons extends StatelessWidget {
     return rows.animate(onPlay: (a) => a.repeat()).shimmer(duration: 1400.ms, color: c.surface.withValues(alpha: .5));
   }
 }
+
+/// The SolutionTee mark next to a name: SolutionTee pages, staff and Community moderators (they work for SolutionTee);
+/// a gold seal for SolutionTee AI.
+class CBadge extends StatelessWidget {
+  const CBadge(this.kind, {super.key, this.size = 16});
+  final String kind;
+  final double size;
+  @override
+  Widget build(BuildContext context) {
+    if (kind == 'ai') return AiSeal(size: size);
+    final label = switch (kind) {
+      'official' => 'Official SolutionTee page',
+      'page' => 'SolutionTee page',
+      'mod' => 'SolutionTee Community moderator',
+      _ => 'SolutionTee team',
+    };
+    return Tooltip(
+      message: label,
+      child: Semantics(
+        label: label,
+        child: Container(
+          width: size,
+          height: size,
+          padding: EdgeInsets.all(size * .12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(size * .3),
+            border: Border.all(color: kind == 'official' ? Palette.gold400 : Palette.blue600, width: 1.2),
+          ),
+          child: const Mark(onDark: false),
+        ),
+      ),
+    );
+  }
+}
+
+/// Why a moderator takes a post or reply down (the student sees it).
+Future<String?> pickRemoveReason(BuildContext context) => showSheet<String>(
+  context,
+  builder: (ctx) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Text('Why remove it?', style: ctx.ty.h3),
+      const Gap(4),
+      Text('The student is told why and gets a strike. Repeated strikes pause their posting.', style: ctx.ty.sm.col(ctx.c.textMuted)),
+      const Gap(Space.s3),
+      ListCard(
+        children: [
+          for (final r in const [
+            'Rude, bullying or hateful',
+            'Sexual or not for students',
+            'Politics, betting or sports gossip',
+            'Phone numbers, links or contacts',
+            'Exam malpractice (expo)',
+            'Scam, selling or spam',
+            'Wrong or harmful information',
+          ])
+            ListRow(title: r, onTap: () => Navigator.pop(ctx, r)),
+        ],
+      ),
+    ],
+  ),
+);

@@ -7,6 +7,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/ads.dart' show AdNativeCard;
 import '../../core/providers.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
@@ -356,6 +357,7 @@ class _HomeTabState extends ConsumerState<_HomeTab> with SingleTickerProviderSta
                 FeedList(
                   pager: _pagers[i],
                   controller: _scroll[i],
+                  adEvery: (me['ad_every'] as num?)?.toInt() ?? 0,
                   topPad: top + head,
                   empty: i == 0
                       ? _Empty(
@@ -495,8 +497,11 @@ class _HomeTabState extends ConsumerState<_HomeTab> with SingleTickerProviderSta
 
 /// A feed with pull to refresh, endless scroll, offline note, loading and empty states.
 class FeedList extends StatelessWidget {
-  const FeedList({super.key, required this.pager, required this.empty, this.controller, this.topPad = 0, this.header});
+  const FeedList({super.key, required this.pager, required this.empty, this.controller, this.topPad = 0, this.header, this.adEvery = 0});
   final Pager pager;
+
+  /// A card ad after every this many posts (admin setting; 0 = none). The ads level and Premium still decide.
+  final int adEvery;
   final Widget empty;
   final ScrollController? controller;
   final double topPad;
@@ -535,11 +540,12 @@ class FeedList extends StatelessWidget {
         } else {
           final extra = header == null ? 0 : 1;
           final offline = pager.offline ? 1 : 0;
+          final ads = adEvery > 0 ? items.length ~/ adEvery : 0;
           body = ListView.builder(
             controller: controller,
             physics: const AlwaysScrollableScrollPhysics(),
             padding: EdgeInsets.only(top: topPad, bottom: bottom),
-            itemCount: extra + offline + items.length + 1,
+            itemCount: extra + offline + items.length + ads + 1,
             itemBuilder: (context, i) {
               if (extra == 1 && i == 0) return header!;
               if (offline == 1 && i == extra) {
@@ -548,7 +554,14 @@ class FeedList extends StatelessWidget {
                   child: InfoBanner(icon: PhosphorIcons.wifiSlash(), child: const Text('You are offline. These are the posts saved on your phone.')),
                 );
               }
-              final k = i - extra - offline;
+              final v = i - extra - offline;
+              if (adEvery > 0 && v < items.length + ads && (v + 1) % (adEvery + 1) == 0) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: Space.s4, vertical: Space.s2),
+                  child: AdNativeCard(key: ValueKey('ad-community-$v'), placement: 'community'),
+                );
+              }
+              final k = adEvery > 0 ? v - (v ~/ (adEvery + 1)) : v;
               if (k >= items.length) {
                 if (pager.more) {
                   pager.next();
@@ -995,6 +1008,13 @@ class NoteRow extends StatelessWidget {
       'shown' => (PhosphorIcons.checkCircle(), c.success),
       'rejected' => (PhosphorIcons.prohibit(), c.error),
       'profile' => (PhosphorIcons.identificationBadge(), c.link),
+      'removed' => (PhosphorIcons.prohibit(), c.error),
+      'ban' => (PhosphorIcons.hourglassMedium(PhosphorIconsStyle.fill), c.error),
+      'post' => (PhosphorIcons.pencilSimple(), c.link),
+      'page' => (PhosphorIcons.megaphone(PhosphorIconsStyle.fill), Palette.gold500),
+      'milestone' => (PhosphorIcons.confetti(PhosphorIconsStyle.fill), Palette.gold500),
+      'digest' => (PhosphorIcons.chartLineUp(), c.link),
+      'suggest' => (PhosphorIcons.lightbulb(PhosphorIconsStyle.fill), Palette.gold500),
       _ => (PhosphorIcons.bell(), c.link),
     };
   }
@@ -1007,7 +1027,17 @@ class NoteRow extends StatelessWidget {
     final unread = n['unread'] == true;
     final post = n['post'] is Map ? asJson(n['post']) : null;
     final snippet = switch (kind) {
-      'reply' || 'mention' || 'quote' || 'ai' || 'rejected' => '${n['body'] ?? ''}',
+      'reply' ||
+      'mention' ||
+      'quote' ||
+      'ai' ||
+      'rejected' ||
+      'removed' ||
+      'ban' ||
+      'post' ||
+      'page' ||
+      'digest' ||
+      'suggest' => plainPreview('${n['body'] ?? ''}'),
       'profile' => '',
       _ => '${post?['body'] ?? ''}',
     };

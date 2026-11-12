@@ -69,6 +69,7 @@ String communityError(Object? e) => switch ('$e') {
   'taken' => 'Someone already has that @handle. Try another.',
   'wait' => 'You can change your @handle once a month.',
   'bio_long' => 'Your bio can be up to 160 characters.',
+  'banned' => 'Posting is paused for now because some of your posts broke the community guidelines.',
   _ => 'Something went wrong. Please try again.',
 };
 
@@ -152,10 +153,11 @@ Future<bool> toggleBookmark(WidgetRef ref, Json p) async {
   return cur['bookmarked'] == true;
 }
 
-Future<bool?> toggleFollow(WidgetRef ref, String user, bool now) async {
+/// Follow a student, or a SolutionTee page when [page] is true.
+Future<bool?> toggleFollow(WidgetRef ref, String user, bool now, {bool page = false}) async {
   final n = ref.read(followPatchesProvider.notifier)..set(user, !now);
   try {
-    final r = asJson(await crpc('community_follow', {'p_user': user}));
+    final r = asJson(await crpc(page ? 'community_page_follow' : 'community_follow', page ? {'p_page': user} : {'p_user': user}));
     if (r['ok'] == true) {
       n.set(user, r['following'] == true);
       return r['following'] == true;
@@ -306,6 +308,29 @@ String noteText(Json n) {
     'shown' => 'Your post is now shown to everyone',
     'rejected' => 'Your post was not shared',
     'profile' => '${n['body'] ?? 'Your profile was checked'}',
+    'removed' => 'Your post was removed for breaking the community guidelines',
+    'ban' => 'Posting is paused for a while',
+    'post' => '$first just posted',
+    'page' => 'New from SolutionTee',
+    'milestone' => '${n['body'] ?? 'Your post is doing well'}',
+    'digest' => 'Your day in Community',
+    'suggest' => 'A question you might know',
     _ => 'New activity',
   };
 }
+
+/// "Posting is paused until 3:15 pm, 13 Nov".
+String pausedText(Object? until) {
+  final d = DateTime.tryParse('${until ?? ''}')?.toLocal();
+  if (d == null) return communityError('banned');
+  final h = d.hour % 12 == 0 ? 12 : d.hour % 12;
+  return 'Posting is paused until $h:${d.minute.toString().padLeft(2, '0')} ${d.hour < 12 ? 'am' : 'pm'}, ${dayText(d)}, because some of your posts broke the community guidelines. You can still read and like posts.';
+}
+
+/// SolutionTee AI writes Markdown: a plain preview for small cards.
+String plainPreview(String md) => md
+    .replaceAll(RegExp(r'\*\*|__|`'), '')
+    .replaceAll(RegExp(r'^#{1,6}\s*', multiLine: true), '')
+    .replaceAll(RegExp(r'^\s*[-*•]\s+', multiLine: true), '• ')
+    .replaceAll(RegExp(r'\n{2,}'), '\n')
+    .trim();
