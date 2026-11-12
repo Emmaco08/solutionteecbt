@@ -106,16 +106,26 @@ async function moderate(text: string, images: Pic[] = [], rules = RULES): Promis
   return null;
 }
 
-/** One answer from the first chat model that gives one (temperature a little higher: friendlier, less robotic). */
-async function talk(system: string, user: string, purpose: string, maxTokens = 900) {
-  for (const m of (await getModels()).filter((x) => x.purpose === "chat").slice(0, 3)) {
+/** One answer from the first model that gives one (temperature a little higher: friendlier, less robotic). With
+ *  pictures it asks the vision models first, then falls back to text only. */
+async function talk(system: string, user: string, purpose: string, maxTokens = 900, pics: Pic[] = []) {
+  const all = await getModels();
+  const tries: { m: Model; withPics: boolean }[] = [
+    ...(pics.length ? all.filter((x) => x.purpose === "vision").slice(0, 2).map((m) => ({ m, withPics: true })) : []),
+    ...all.filter((x) => x.purpose === "chat").slice(0, 3).map((m) => ({ m, withPics: false })),
+  ];
+  for (const { m, withPics } of tries) {
+    const content = withPics
+      ? [{ type: "text", text: `${user}\n\n(The post's pictures are attached. Read them carefully: they are part of the question.)` },
+        ...pics.map((i) => ({ type: "image_url", image_url: { url: `data:${i.type};base64,${i.b64}` } }))]
+      : pics.length ? `${user}\n\n(The post has ${pics.length} picture(s) you cannot see. If the question depends on them, say so kindly.)` : user;
     try {
       const r = await fetch(`${m.base_url}/chat/completions`, {
         method: "POST",
         headers: { authorization: `Bearer ${m.key}`, "content-type": "application/json" },
         body: JSON.stringify({ ...(m.params ?? {}), model: m.model, stream: false, temperature: 0.7, max_tokens: maxTokens,
-          messages: [{ role: "system", content: system }, { role: "user", content: user }] }),
-        signal: AbortSignal.timeout(25_000),
+          messages: [{ role: "system", content: system }, { role: "user", content }] }),
+        signal: AbortSignal.timeout(withPics ? 35_000 : 25_000),
       });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const j = await r.json();
@@ -131,22 +141,66 @@ async function talk(system: string, user: string, purpose: string, maxTokens = 9
 
 const clean = (t: string) => t.replace(/@solutiontee/gi, "SolutionTee").slice(0, 2000);
 
-const writeAnswer = (body: string, name?: string) =>
-  talk(ANSWER, `Student${name ? ` (${name})` : ""} posted (data): ${clean(body)}`, "community_answer", 800);
+/** What SolutionTee AI reads before it replies in a thread (owner, 13 Nov 2026: "explain the post" must work): the
+ *  post, its pictures, its AI answer, the quoted post and the conversation so far. */
+type ReplyCtx = { post: string; author?: string; quote?: string; thread: string[]; pics: Pic[] };
 
-const writeReply = (body: string, name?: string, post?: string, thread?: string[]) =>
-  talk(REPLY, [`The post (data): ${clean(post ?? "")}`, thread?.length ? `Earlier in this thread (data):\n${thread.join("\n")}` : "",
-    `${name ?? "The student"} now says (data): ${clean(body)}`].filter(Boolean).join("\n\n"), "community_reply", 450);
+async function replyContext(postId: string, commentId: number | null, token: string | null, cron?: string): Promise<ReplyCtx> {
+  const { data: p } = await admin.from("community_posts").select("body, user_id, images, image_path, quote_of").eq("id", postId).maybeSingle();
+  const ctx: ReplyCtx = { post: String(p?.body ?? ""), thread: [], pics: [] };
+  if (p?.user_id) ctx.author = String((await admin.from("profiles").select("full_name").eq("id", p.user_id).maybeSingle()).data?.full_name ?? "") || undefined;
+  if (p?.quote_of) ctx.quote = String((await admin.from("community_posts").select("body").eq("id", p.quote_of).maybeSingle()).data?.body ?? "").slice(0, 500);
+  const { data: cs } = await admin.from("community_comments").select("id, user_id, body, from_ai, created_at")
+    .eq("post_id", postId).eq("status", "shown").order("created_at", { ascending: false }).limit(16);
+  const rows = ((cs ?? []) as { id: number; user_id: string | null; body: string; from_ai?: boolean }[]).filter((c) => c.id !== commentId).reverse();
+  const ids = [...new Set(rows.map((r) => r.user_id).filter(Boolean))] as string[];
+  const names = new Map<string, string>();
+  if (ids.length) for (const x of ((await admin.from("profiles").select("id, full_name").in("id", ids)).data ?? []) as { id: string; full_name: string | null }[]) names.set(x.id, (x.full_name ?? "A student").split(" ")[0]);
+  let size = 0;
+  for (const r of rows.reverse()) { // newest first while trimming, then back in order
+    const line = `${r.from_ai || !r.user_id ? "SolutionTee AI" : names.get(r.user_id) ?? "A student"}: ${clean(r.body).slice(0, 500)}`;
+    if (size + line.length > 3500) break;
+    size += line.length;
+    ctx.thread.unshift(line);
+  }
+  const keys = ((p?.images ?? []) as string[]).length ? (p!.images as string[]) : p?.image_path ? [String(p.image_path)] : [];
+  for (const k of keys.slice(0, 3)) {
+    const pic = await picture(k, token, cron).catch(() => null);
+    if (pic) ctx.pics.push(pic);
+  }
+  return ctx;
+}
 
-async function answer(postId: string, body: string, name?: string, ready?: Promise<string | null>) {
-  const out = (await ready?.catch(() => null)) ?? (await writeAnswer(body, name));
+const writeAnswer = (body: string, name?: string, pics: Pic[] = []) =>
+  talk(ANSWER, `Student${name ? ` (${name})` : ""} posted (data): ${clean(body)}`, "community_answer", 800, pics);
+
+const writeReply = (body: string, name?: string, post?: string, thread?: string[], ctx?: ReplyCtx) =>
+  talk(REPLY, [
+    `The post${ctx?.author ? ` by ${ctx.author}` : ""} (data): ${clean(ctx?.post ?? post ?? "")}`,
+    ctx?.quote ? `It quotes this post (data): ${clean(ctx.quote)}` : "",
+    (ctx?.thread ?? thread ?? []).length ? `The conversation so far, oldest first (data):\n${(ctx?.thread ?? thread ?? []).join("\n")}` : "",
+    `${name ?? "The student"} now says (data): ${clean(body)}`,
+    "If they ask you to explain the post, the question in it or its picture, explain that clearly, step by step.",
+  ].filter(Boolean).join("\n\n"), "community_reply", 600, ctx?.pics ?? []);
+
+async function answer(postId: string, body: string, name?: string, ready?: Promise<string | null>, pics: Pic[] = []) {
+  const out = (await ready?.catch(() => null)) ?? (await writeAnswer(body, name, pics));
   if (out) await admin.rpc("community_ai_answer", { p_post: postId, p_body: out });
 }
 
-async function aiReply(commentId: number, body: string, name?: string, post?: string, thread?: string[], ready?: Promise<string | null>) {
-  const out = (await ready?.catch(() => null)) ?? (await writeReply(body, name, post, thread));
+async function aiReply(commentId: number, body: string, name?: string, post?: string, thread?: string[], ready?: Promise<string | null>, ctx?: ReplyCtx) {
+  const out = (await ready?.catch(() => null)) ?? (await writeReply(body, name, post, thread, ctx));
   if (out) await admin.rpc("community_ai_reply", { p_comment: commentId, p_body: out });
 }
+
+/** The full reply context for a waiting comment (sweep): looked up by the comment id. */
+async function contextFor(commentId: number, cron?: string) {
+  const { data } = await admin.from("community_comments").select("post_id").eq("id", commentId).maybeSingle();
+  return data?.post_id ? await replyContext(String(data.post_id), commentId, null, cron).catch(() => undefined) : undefined;
+}
+
+const firstName = async (uid: string | null | undefined) =>
+  uid ? (String((await admin.from("profiles").select("full_name").eq("id", uid).maybeSingle()).data?.full_name ?? "").split(" ")[0] || undefined) : undefined;
 
 async function auto(p: { id: string; body: string; name: string; subject?: string | null; replies?: string[] }) {
   const ctx = `${p.name} posted${p.subject ? ` (subject: ${p.subject})` : ""} (data): ${clean(p.body)}` +
@@ -174,17 +228,23 @@ async function picture(key: string, token: string | null, cron?: string) {
   return { type: f.headers.get("content-type") ?? "image/jpeg", b64: btoa(bin) };
 }
 
-async function decide(kind: "post" | "comment", id: string, body: string, images: Pic[] = [], context?: string, ask = false) {
+async function decide(kind: "post" | "comment", id: string, body: string, images: Pic[] = [], context?: string, ask = false,
+  opts: { name?: string; ctx?: Promise<ReplyCtx | undefined> } = {}) {
   const text = kind === "comment" && context ? `Reply: ${body}\n\n(on this post: ${context})` : context ? `Post: ${body}\n\n(quoting this post: ${context})` : body;
   // When SolutionTee AI is tagged, it writes its answer while the check runs (one wait instead of two). The answer is only
-  // saved if the check passes.
-  const ready = ask || /@solutiontee/i.test(body) ? (kind === "post" ? writeAnswer(body) : writeReply(body, undefined, context)) : undefined;
+  // saved if the check passes. Replies read the whole post (pictures too) and the conversation first.
+  const tagged = ask || /@solutiontee/i.test(body);
+  const ready = tagged
+    ? kind === "post"
+      ? writeAnswer(body, opts.name, images)
+      : (opts.ctx ?? Promise.resolve(undefined)).then((ctx) => writeReply(body, opts.name, context, undefined, ctx))
+    : undefined;
   const v = await moderate(text, images);
   if (!v) return { status: "pending" };
   const { data } = await admin.rpc("community_decide", { p_kind: kind, p_id: id, p_ok: v.ok, p_reason: v.reason || "It does not follow the community guidelines." });
   if (v.ok && (data as { ask_ai?: boolean } | null)?.ask_ai) {
-    if (kind === "post") await answer(id, body, undefined, ready);
-    else await aiReply(Number(id), body, undefined, context, undefined, ready);
+    if (kind === "post") await answer(id, body, opts.name, ready, images);
+    else await aiReply(Number(id), body, opts.name, context, undefined, ready, await (opts.ctx ?? Promise.resolve(undefined)));
   }
   return { status: v.ok ? "shown" : "rejected", reason: v.ok ? null : v.reason };
 }
@@ -226,10 +286,21 @@ Deno.serve(async (req) => {
       if ((p.images ?? []).length && !pics.length) continue; // pictures could not be read: try again next time (or staff decide)
       await decide("post", p.id, p.body, pics, p.quote ?? undefined); done++;
     }
-    for (const c of d.comments ?? []) { if (!time()) break; await decide("comment", String(c.id), c.body, [], c.post); done++; }
+    for (const c of d.comments ?? []) {
+      if (!time()) break;
+      const ctx = /@solutiontee/i.test(c.body) ? contextFor(c.id, cron) : undefined;
+      await decide("comment", String(c.id), c.body, [], c.post, false, { ctx }); done++;
+    }
     for (const u of d.profiles ?? []) { if (!time()) break; await checkProfile(u.user_id, u.handle, u.bio); done++; }
-    for (const a of d.answers ?? []) { if (!time()) break; await answer(a.id, a.body, a.name); done++; }
-    for (const r of d.replies ?? []) { if (!time()) break; await aiReply(r.id, r.body, r.name, r.post, r.thread); done++; }
+    for (const a of d.answers ?? []) {
+      if (!time()) break;
+      const pics = (await replyContext(a.id, null, null, cron).catch(() => undefined))?.pics ?? [];
+      await answer(a.id, a.body, a.name, undefined, pics); done++;
+    }
+    for (const r of d.replies ?? []) {
+      if (!time()) break;
+      await aiReply(r.id, r.body, r.name, r.post, r.thread, undefined, await contextFor(r.id, cron)); done++;
+    }
     if (time()) {
       const { data: cands } = await admin.rpc("community_ai_candidates", { p_limit: 2 });
       for (const p of (cands ?? []) as { id: string; body: string; name: string; subject?: string | null; replies?: string[] }[]) { if (!time()) break; await auto(p); done++; }
@@ -262,11 +333,13 @@ Deno.serve(async (req) => {
     }
     let quote: string | undefined;
     if (p.quote_of) quote = String((await admin.from("community_posts").select("body").eq("id", p.quote_of).maybeSingle()).data?.body ?? "").slice(0, 400);
-    return json(await decide("post", p.id, p.body, pics, quote, p.ask_ai === true));
+    return json(await decide("post", p.id, p.body, pics, quote, p.ask_ai === true, { name: await firstName(uid) }));
   }
   const { data: c } = await admin.from("community_comments").select("id, user_id, body, status, post_id, checked_at, ask_ai").eq("id", Number(body.id)).maybeSingle();
   if (!c || c.user_id !== uid) return json({ error: "not found" }, 404);
   if (c.status === "rejected" || c.checked_at) return json({ status: c.status });
   const { data: post } = await admin.from("community_posts").select("body").eq("id", c.post_id).maybeSingle();
-  return json(await decide("comment", String(c.id), c.body, [], String(post?.body ?? "").slice(0, 600), c.ask_ai === true));
+  // Tagged: read the post, its pictures and the conversation while the reply is checked.
+  const ctx = c.ask_ai === true || /@solutiontee/i.test(c.body) ? replyContext(String(c.post_id), c.id, token).catch(() => undefined) : undefined;
+  return json(await decide("comment", String(c.id), c.body, [], String(post?.body ?? "").slice(0, 600), c.ask_ai === true, { name: await firstName(uid), ctx }));
 });

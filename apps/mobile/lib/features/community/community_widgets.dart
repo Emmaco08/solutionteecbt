@@ -1307,3 +1307,135 @@ Future<String?> pickRemoveReason(BuildContext context) => showSheet<String>(
     ],
   ),
 );
+
+// ---------------------------------------------------------------- @ suggestions
+
+/// While someone types "@s…" in a post or reply, this lists matching pages and students (SolutionTee first). Tap one:
+/// it finishes the @handle in the text (owner, 13 Nov 2026).
+class MentionSuggestions extends StatefulWidget {
+  const MentionSuggestions({super.key, required this.controller, this.focus, this.maxRows = 4});
+  final TextEditingController controller;
+  final FocusNode? focus;
+  final int maxRows;
+  @override
+  State<MentionSuggestions> createState() => _MentionSuggestionsState();
+}
+
+class _MentionSuggestionsState extends State<MentionSuggestions> {
+  static final _cache = <String, List<Json>>{};
+  String? _q; // the letters after "@" at the cursor, or null
+  List<Json> _rows = const [];
+  int _ask = 0;
+
+  static final _at = RegExp(r'(^|[\s(])@([a-zA-Z0-9_.]{0,20})$');
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_changed);
+    widget.focus?.addListener(_changed);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_changed);
+    widget.focus?.removeListener(_changed);
+    super.dispose();
+  }
+
+  void _changed() {
+    final v = widget.controller.value;
+    final cur = v.selection.baseOffset;
+    String? q;
+    if (cur >= 0 && cur <= v.text.length && (widget.focus?.hasFocus ?? true)) {
+      q = _at.firstMatch(v.text.substring(0, cur))?.group(2)?.toLowerCase();
+    }
+    if (q == _q) return;
+    setState(() => _q = q);
+    if (q == null) return;
+    final hit = _cache[q];
+    if (hit != null) return setState(() => _rows = hit);
+    final ask = ++_ask;
+    Future<void>.delayed(const Duration(milliseconds: 180), () async {
+      if (!mounted || ask != _ask) return;
+      try {
+        final r = asList(await crpc('community_mention_suggest', {'p_q': q}));
+        _cache[q!] = r;
+        if (mounted && ask == _ask) setState(() => _rows = r);
+      } catch (_) {}
+    });
+  }
+
+  void _pick(Json r) {
+    final v = widget.controller.value;
+    final cur = v.selection.baseOffset;
+    final before = v.text.substring(0, cur);
+    final m = _at.firstMatch(before);
+    if (m == null) return;
+    final start = m.start + m.group(1)!.length;
+    final insert = '@${r['handle']} ';
+    final text = before.substring(0, start) + insert + v.text.substring(cur);
+    widget.controller.value = TextEditingValue(text: text, selection: TextSelection.collapsed(offset: start + insert.length));
+    setState(() {
+      _q = null;
+      _rows = const [];
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    final show = _q != null && _rows.isNotEmpty;
+    return AnimatedSize(
+      duration: Motion.fast,
+      curve: Motion.out,
+      alignment: Alignment.bottomCenter,
+      child: !show
+          ? const SizedBox(width: double.infinity)
+          : Container(
+              width: double.infinity,
+              constraints: BoxConstraints(maxHeight: 54.0 * widget.maxRows + 8),
+              margin: const EdgeInsets.symmetric(vertical: 6),
+              decoration: BoxDecoration(
+                color: c.surface,
+                borderRadius: BorderRadius.circular(Radii.md),
+                border: Border.all(color: c.borderStrong),
+                boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 12, offset: Offset(0, 4))],
+              ),
+              child: ListView(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                shrinkWrap: true,
+                children: [
+                  for (final r in _rows)
+                    InkWell(
+                      onTap: () => _pick(r),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        child: Row(
+                          children: [
+                            CAvatar(name: '${r['name']}', photo: r['avatar_path'] as String?, size: 36, brand: r['badge'] == 'official'),
+                            const Gap(10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Flexible(child: FitText('${r['name']}', style: context.ty.sm.bold)),
+                                      if (r['badge'] != null) ...[const Gap(4), CBadge('${r['badge']}', size: 14)],
+                                    ],
+                                  ),
+                                  Text('@${r['handle']}', style: context.ty.cap.col(c.textMuted), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ).animate().fadeIn(duration: Motion.fast),
+                ],
+              ),
+            ),
+    );
+  }
+}

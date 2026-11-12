@@ -5814,9 +5814,11 @@ export type Database = {
       community_hide: { Args: { p_post: string }; Returns: Json }
       community_home: { Args: { p_tab?: string; p_offset?: number; p_subject?: number; p_tag?: string }; Returns: Json }
       community_like: { Args: { p_id: string }; Returns: Json }
+      community_mention_suggest: { Args: { p_q: string }; Returns: Json }
       community_mod_remove: { Args: { p_kind: string; p_id: string; p_reason?: string; p_strike?: boolean }; Returns: Json }
       community_my_pages: { Args: never; Returns: Json }
       community_new_count: { Args: { p_tab: string; p_since: string }; Returns: number }
+      community_note_open: { Args: { p_id?: number; p_post?: string }; Returns: Json }
       community_notes_list: { Args: { p_tab?: string; p_offset?: number }; Returns: Json }
       community_notes_read: { Args: never; Returns: Json }
       community_notify_save: { Args: { p_notify: Json }; Returns: Json }

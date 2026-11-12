@@ -993,6 +993,9 @@ class _NotesTabState extends ConsumerState<_NotesTab> with SingleTickerProviderS
   }
 }
 
+/// Notifications opened in this session: shown as read at once, before the list reloads (owner, 13 Nov 2026).
+final openedNotes = ValueNotifier<Set<String>>(<String>{});
+
 class NoteRow extends StatelessWidget {
   const NoteRow({super.key, required this.n});
   final Json n;
@@ -1020,11 +1023,13 @@ class NoteRow extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ValueListenableBuilder<Set<String>>(valueListenable: openedNotes, builder: (context, _, _) => _row(context));
+
+  Widget _row(BuildContext context) {
     final c = context.c;
     final kind = '${n['kind']}';
     final actors = asList(n['actors']);
-    final unread = n['unread'] == true;
+    final unread = n['unread'] == true && !openedNotes.value.contains('${n['id']}');
     final post = n['post'] is Map ? asJson(n['post']) : null;
     final snippet = switch (kind) {
       'reply' ||
@@ -1043,6 +1048,9 @@ class NoteRow extends StatelessWidget {
     };
     final (icon, tone) = _icon(context);
     void open() {
+      // Read now: the row changes at once and the server is told (the whole group: likes on one post, …).
+      openedNotes.value = {...openedNotes.value, '${n['id']}'};
+      crpc('community_note_open', {'p_id': n['id']}).ignore();
       if (kind == 'follow' && actors.isNotEmpty) {
         context.push('/community/user/${actors.first['id']}');
       } else if (n['post_id'] != null) {

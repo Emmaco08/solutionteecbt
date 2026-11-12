@@ -60,6 +60,11 @@ class _ThreadScreenState extends ConsumerState<ThreadScreen> {
     super.initState();
     _load();
     if (widget.reply) WidgetsBinding.instance.addPostFrameCallback((_) => _focus.requestFocus());
+    // Opening a post (from a push or a link) reads its notifications.
+    crpc('community_note_open', {'p_post': widget.id}).then((r) {
+      final left = (asJson(r)['unread'] as num?)?.toInt();
+      if (mounted && left != null) ref.read(communityUnreadProvider.notifier).set(left);
+    }, onError: (_) {});
   }
 
   Future<void> _load() async {
@@ -232,6 +237,7 @@ class _ThreadScreenState extends ConsumerState<ThreadScreen> {
                   ],
                 ),
               ),
+            MentionSuggestions(controller: _text, focus: _focus, maxRows: 3),
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -941,6 +947,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
                                   contentPadding: EdgeInsets.symmetric(vertical: Space.s3),
                                 ),
                               ),
+                              MentionSuggestions(controller: _text, focus: _focus),
                               if (_preview && _text.text.contains(r'$')) ...[
                                 Container(
                                   width: double.infinity,

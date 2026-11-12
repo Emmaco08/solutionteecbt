@@ -785,7 +785,7 @@ class _CommunityEditScreenState extends ConsumerState<CommunityEditScreen> {
                         ('posts', 'Posts from people you talk with most', true),
                         ('milestones', 'Like milestones (10, 25, 50 …)', true),
                         ('digest', 'Your daily summary', true),
-                        ('likes', 'Every like and repost', false),
+                        ('likes', 'Likes and reposts (one alert per post an hour)', true),
                       ])
                         SwitchListTile(
                           title: Text(title, style: context.ty.body),

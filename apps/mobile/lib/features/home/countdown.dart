@@ -334,7 +334,7 @@ class CountdownChip extends ConsumerWidget {
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
     );
-    return Semantics(
+    final chip = Semantics(
       button: true,
       label: d == 0 ? 'Your ${cd.label} is today. Open the countdown' : '$d days to your ${cd.label} (${cd.dateText}). Open the countdown',
       child: InkWell(
@@ -367,6 +367,8 @@ class CountdownChip extends ConsumerWidget {
         ),
       ),
     );
+    if (rm) return chip;
+    return chip.animate(onPlay: (c) => c.repeat()).shimmer(delay: 3.seconds, duration: 1400.ms, color: Palette.gold300.withValues(alpha: .22));
   }
 }
 
@@ -377,8 +379,23 @@ class _Glass extends StatelessWidget {
   final bool still;
   @override
   Widget build(BuildContext context) {
-    final i = SizedBox(width: 28, height: 28, child: Icon(icon, size: 18, color: Palette.gold500));
-    if (still) return i;
-    return i.animate(onPlay: (c) => c.repeat()).rotate(begin: 0, end: .5, duration: 700.ms, delay: 3.seconds, curve: Curves.easeInOutBack);
+    final glass = Icon(icon, size: 18, color: Palette.gold500);
+    if (still) return SizedBox(width: 30, height: 30, child: Center(child: glass));
+    // The hourglass keeps turning over (half a turn, a short rest, again) with a soft gold glow breathing behind it.
+    return SizedBox(
+      width: 30,
+      height: 30,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            width: 26,
+            height: 26,
+            decoration: BoxDecoration(shape: BoxShape.circle, color: Palette.gold400.withValues(alpha: .18)),
+          ).animate(onPlay: (c) => c.repeat(reverse: true)).scaleXY(begin: .7, end: 1.1, duration: 900.ms, curve: Curves.easeInOut).fade(begin: .5, end: 1),
+          glass.animate(onPlay: (c) => c.repeat()).rotate(begin: 0, end: .5, duration: 650.ms, delay: 650.ms, curve: Curves.easeInOutBack),
+        ],
+      ),
+    );
   }
 }
