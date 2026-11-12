@@ -49,6 +49,10 @@ import 'features/tutor/tutor_quiz.dart';
 import 'features/games/games.dart';
 import 'features/games/game_play.dart';
 import 'features/games/arena.dart';
+import 'features/gamezone/gz_find.dart';
+import 'features/gamezone/gz_hub.dart';
+import 'features/gamezone/gz_match.dart';
+import 'features/gamezone/gz_ranks.dart';
 import 'features/community/community.dart';
 
 /// Screens anyone can open without an account.
@@ -309,7 +313,25 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/tutor/quiz/:id',
         builder: (_, s) => TutorQuizScreen(id: s.pathParameters['id']!),
       ),
-      GoRoute(path: '/games', builder: (_, _) => const GamesScreen()),
+      GoRoute(
+        path: '/games',
+        builder: (_, s) => GzHubScreen(game: s.uri.queryParameters['game']),
+      ),
+      GoRoute(path: '/games/classic', builder: (_, _) => const GamesScreen()),
+      GoRoute(path: '/games/ranks', builder: (_, _) => const GzRanksScreen()),
+      GoRoute(
+        path: '/games/find',
+        builder: (_, s) => GzFindScreen(
+          game: s.uri.queryParameters['game'] ?? 'duel',
+          mode: s.uri.queryParameters['mode'] ?? 'quick',
+          subject: int.tryParse(s.uri.queryParameters['subject'] ?? ''),
+          level: s.uri.queryParameters['level'] ?? 'medium',
+        ),
+      ),
+      GoRoute(
+        path: '/games/m/:id',
+        builder: (_, s) => GzMatchScreen(id: s.pathParameters['id']!),
+      ),
       GoRoute(
         path: '/community',
         builder: (_, s) => CommunityShell(tab: const {'explore': 1, 'notifications': 2, 'me': 3}[s.uri.queryParameters['tab']] ?? 0),

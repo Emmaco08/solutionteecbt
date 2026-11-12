@@ -58,6 +58,10 @@ flutter:
     - assets/brand/exam-bodies/
     - assets/third_party/
   fonts:
+    # Lilita One (SIL OFL, assets/fonts/LILITA_ONE_OFL.txt): Game Zone headings only (D-157)
+    - family: LilitaOne
+      fonts:
+        - asset: assets/fonts/LilitaOne-Regular.ttf
     - family: PlusJakartaSans
       fonts:
         - asset: assets/fonts/PlusJakartaSans-Medium.ttf
