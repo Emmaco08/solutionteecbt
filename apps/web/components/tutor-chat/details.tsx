@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Briefcase, Copy, EnvelopeSimple, Fire, GraduationCap, MapPin, Phone, Ranking, Target, TrendDown, TrendUp, Trophy, WhatsappLogo, X } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { Face } from "./face";
 import { initials, naira, planInfo, type Chat, type TutorOpt } from "./lib";
 
 type Profile = {
@@ -40,9 +41,18 @@ function Row({ icon: Icon, children, copy }: { icon: typeof Fire; children: Reac
   );
 }
 
-export function Details({ sb, chat, chats, mode, tutors, onClose, onChanged }: {
+export function Details({ sb, chat, chats, mode, tutors, onClose, onChanged, onQuiz, onNewQuiz }: {
   sb: SupabaseClient; chat: Chat; chats?: Chat[]; mode: "tutor" | "admin"; tutors?: TutorOpt[]; onClose: () => void; onChanged: () => void;
+  onQuiz?: (id: string) => void; onNewQuiz?: () => void;
 }) {
+  const [quizzes, setQuizzes] = useState<{ id: string; title: string; state: string; score: number | null; total: number | null; count: number; created_at: string }[] | null>(null);
+  useEffect(() => {
+    let live = true;
+    const load = () => sb.rpc("tutor_quiz_list", { p_request: chat.id }).then(({ data }) => { if (live) setQuizzes((data ?? []) as unknown as NonNullable<typeof quizzes>); });
+    void load();
+    const t = setInterval(load, 30_000);
+    return () => { live = false; clearInterval(t); };
+  }, [sb, chat.id]);
   const [p, setP] = useState<Profile | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -139,10 +149,29 @@ export function Details({ sb, chat, chats, mode, tutors, onClose, onChanged }: {
           </section>
         ) : null}
         <div className="text-center">
-          <div className="mx-auto grid size-20 place-items-center rounded-full bg-[#2563B3] text-2xl font-bold text-white shadow">{initials(chat.name)}</div>
+          <Face sb={sb} path={chat.avatar_path} name={chat.name} size={80} className="mx-auto bg-[#2563B3] text-white shadow" />
           <h3 className="mt-2 text-lg font-bold">{chat.name}</h3>
           <p className="text-sm text-muted-foreground">{[p?.age ? `${p.age} years` : null, p?.state, p?.premium ? "Premium" : null].filter(Boolean).join(" · ")}</p>
         </div>
+        <section className="rounded-2xl border p-3">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <h4 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Quizzes</h4>
+            {onNewQuiz && chat.status === "matched" ? <Button size="sm" className="h-8 bg-[#F2B233] font-bold text-[#0B1F44] hover:bg-[#F6C970]" onClick={onNewQuiz}>Set a quiz</Button> : null}
+          </div>
+          {quizzes === null ? <div className="h-10 animate-pulse rounded-xl bg-muted" /> : quizzes.length === 0 ? <p className="text-sm text-muted-foreground">No quizzes yet. Set one: random past questions or your own.</p> : (
+            <ul className="divide-y">
+              {quizzes.map((q) => (
+                <li key={q.id}>
+                  <button type="button" onClick={() => onQuiz?.(q.id)} className="flex w-full items-center gap-2 py-2 text-left text-sm hover:opacity-80">
+                    <span className="min-w-0 flex-1"><b className="block truncate">{q.title}</b><span className="text-xs text-muted-foreground">{q.count} questions · {new Date(q.created_at).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}</span></span>
+                    {q.state === "done" ? <b className={cn("rounded-full px-2 py-0.5 text-xs tabular-nums", (q.score ?? 0) / Math.max(1, q.total ?? 1) >= 0.5 ? "bg-emerald-100 text-emerald-800 dark:bg-[#0F3B26] dark:text-[#7FD8A6]" : "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200")}>{q.score}/{q.total}</b>
+                      : <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-bold text-muted-foreground">{q.state === "started" ? "Started" : q.state === "closed" ? "Closed" : "Not started"}</span>}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
         {err ? <p className="text-sm text-red-600">{err}</p> : !p ? <div className="space-y-2">{[0, 1, 2, 3].map((i) => <div key={i} className="h-14 animate-pulse rounded-xl bg-muted" />)}</div> : (
           <>
             <div className="grid grid-cols-2 gap-2">

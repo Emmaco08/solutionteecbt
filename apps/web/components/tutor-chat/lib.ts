@@ -1,5 +1,6 @@
 "use client";
 // Shared helpers for the tutor chat (D-152): types, formatting, signed file links and uploads.
+import { useEffect, useState } from "react";
 import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
 
 export type Role = "student" | "tutor" | "admin" | "system";
@@ -7,14 +8,16 @@ export type Kind = "text" | "image" | "voice" | "file" | "link" | "ref";
 export type Msg = {
   id: number; role: Role; kind: Kind; body: string; attachment: string | null; at: string; read_at: string | null;
   meta: { url?: string; type?: string; duration?: number; size?: number; name?: string; mime?: string } | null;
-  ref: { type: "pq" | "lesson"; title?: string; subtitle?: string; kind?: string; id?: string; exam_id?: number; subject_id?: number; year?: number; number?: number; snippet?: string } | null;
+  ref: { type: "pq" | "lesson" | "quiz"; title?: string; count?: number; minutes?: number | null; due_at?: string | null; subtitle?: string; kind?: string; id?: string; exam_id?: number; subject_id?: number; year?: number; number?: number; snippet?: string } | null;
   /** v3 (D-153): reply, reactions (one per side), delete for everyone, my star. */
   reply_to?: number | null; reply?: Quote | null; reactions?: Partial<Record<Role, string>>; deleted?: boolean; starred?: boolean;
   pending?: boolean; failed?: boolean;
+  /** A stable React key: a "sending" copy keeps its key when the server's copy replaces it, so nothing jumps (D-154). */
+  ck?: string;
 };
 export type Quote = { id: number; role: Role; kind: Kind; body: string; deleted?: boolean; meta?: Msg["meta"] };
 export type Chat = {
-  id: string; user_id: string; name: string; status: string; level: string; subject: string | null; tutor_id: string | null; tutor: string | null;
+  id: string; user_id: string; name: string; avatar_path?: string | null; status: string; level: string; subject: string | null; tutor_id: string | null; tutor: string | null;
   paid_at: string | null; created_at: string; custom_note: string | null; custom_price_kobo: number | null; custom_days: number | null;
   goals: string; times: string | null; plan: string | null; last: Msg | null; unread: number; sort: string;
 };
@@ -35,7 +38,7 @@ export function fromRow(r: Record<string, unknown>): Msg {
 
 /** A newer copy of a known message (a raw Realtime row has no reply copy or star: keep ours). */
 export function mergeMsg(old: Msg, n: Msg): Msg {
-  return { ...old, ...n, reply: n.reply ?? old.reply, starred: n.starred ?? old.starred, read_at: n.read_at ?? old.read_at, pending: false, failed: false };
+  return { ...old, ...n, ck: old.ck ?? n.ck, reply: n.reply ?? old.reply, starred: n.starred ?? old.starred, read_at: n.read_at ?? old.read_at, pending: false, failed: false };
 }
 
 /** Adds new messages and updates known ones (ticks, reactions, deletes), in id order. Our "sending" copies are replaced. */
@@ -49,8 +52,13 @@ export function mergeAll(ms: Msg[], fresh: Msg[], myRole: Role): Msg[] {
   }
   let out = [...byId.values()];
   if (added.length) {
-    out = out.filter((x) => !(x.pending && added.some((n) => n.role === myRole && n.kind === x.kind && n.body === x.body)));
-    out.push(...added);
+    const keep: Msg[] = [];
+    for (const x of out) {
+      const twin = x.pending ? added.find((n) => n.role === myRole && n.kind === x.kind && n.body === x.body && !n.ck) : undefined;
+      if (twin) twin.ck = x.ck ?? `t${x.id}`; // the server's copy takes over the "sending" bubble's place and key
+      else keep.push(x);
+    }
+    out = [...keep, ...added];
   }
   const quote = (id: number): Quote | null => { const o = out.find((x) => x.id === id); return o ? { id: o.id, role: o.role, kind: o.kind, body: o.body, deleted: o.deleted, meta: o.meta } : null; };
   return out.map((m) => (m.reply_to && !m.reply ? { ...m, reply: quote(m.reply_to) } : m)).sort((a, b) => (a.pending ? 2 ** 52 : a.id) - (b.pending ? 2 ** 52 : b.id));
@@ -99,6 +107,17 @@ export function lastSeen(iso?: string | null, now = new Date()) {
   if (!iso) return "";
   const l = dayLabel(iso, now);
   return l === "Today" || l === "Yesterday" ? `last seen ${l.toLowerCase()} at ${timeOf(iso)}` : `last seen ${l}`;
+}
+
+/** A profile photo (a/<user id>/…) as a short-lived link, or null. */
+export function useAvatar(sb: SupabaseClient, path: string | null | undefined) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    if (path) signed(sb, path).then((u) => live && setUrl(u)).catch(() => live && setUrl(null));
+    return () => { live = false; };
+  }, [sb, path]);
+  return path ? url : null;
 }
 
 /** Seconds to wait before joining a channel again: 1, 2, 4, 8, 16, 30… */

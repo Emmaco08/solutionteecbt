@@ -3667,6 +3667,108 @@ export type Database = {
         }
         Relationships: []
       }
+      tutor_quiz_attempts: {
+        Row: {
+          answers: Json
+          quiz_id: string
+          score: number | null
+          started_at: string
+          submitted_at: string | null
+          total: number | null
+          user_id: string
+        }
+        Insert: {
+          answers?: Json
+          quiz_id: string
+          score?: number | null
+          started_at?: string
+          submitted_at?: string | null
+          total?: number | null
+          user_id: string
+        }
+        Update: {
+          answers?: Json
+          quiz_id?: string
+          score?: number | null
+          started_at?: string
+          submitted_at?: string | null
+          total?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tutor_quiz_questions: {
+        Row: {
+          answer: string
+          body: string
+          explanation: string | null
+          id: number
+          options: Json
+          question_id: string | null
+          quiz_id: string
+          sort: number
+        }
+        Insert: {
+          answer: string
+          body: string
+          explanation?: string | null
+          id?: number
+          options: Json
+          question_id?: string | null
+          quiz_id: string
+          sort: number
+        }
+        Update: {
+          answer?: string
+          body?: string
+          explanation?: string | null
+          id?: number
+          options?: Json
+          question_id?: string | null
+          quiz_id?: string
+          sort?: number
+        }
+        Relationships: []
+      }
+      tutor_quizzes: {
+        Row: {
+          closed_at: string | null
+          created_at: string
+          created_by: string | null
+          due_at: string | null
+          id: string
+          minutes: number | null
+          note: string | null
+          request_id: string
+          subject_id: number | null
+          title: string
+        }
+        Insert: {
+          closed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          due_at?: string | null
+          id?: string
+          minutes?: number | null
+          note?: string | null
+          request_id: string
+          subject_id?: number | null
+          title: string
+        }
+        Update: {
+          closed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          due_at?: string | null
+          id?: string
+          minutes?: number | null
+          note?: string | null
+          request_id?: string
+          subject_id?: number | null
+          title?: string
+        }
+        Relationships: []
+      }
       tutor_requests: {
         Row: {
           assigned_at: string | null
@@ -5668,7 +5770,16 @@ export type Database = {
       tutor_message_star: { Args: { p_message: number; p_on: boolean }; Returns: Json }
       tutor_messages_before: { Args: { p_request: string; p_before: number; p_limit?: number }; Returns: Json }
       tutor_overview: { Args: never; Returns: Json }
+      tutor_photo_save: { Args: { p_path: string | null }; Returns: Json }
       tutor_profile_save: { Args: { p_name: string; p_subjects: string; p_bio: string; p_years?: number; p_qualification?: string }; Returns: Json }
+      tutor_quiz_close: { Args: { p_quiz: string }; Returns: Json }
+      tutor_quiz_create: { Args: { p_request: string; p_title: string; p_note?: string; p_minutes?: number; p_due?: string; p_pq?: Json; p_custom?: Json }; Returns: Json }
+      tutor_quiz_list: { Args: { p_request: string }; Returns: Json }
+      tutor_quiz_review: { Args: { p_quiz: string; p_student?: string }; Returns: Json }
+      tutor_quiz_save: { Args: { p_quiz: string; p_answers: Json }; Returns: Json }
+      tutor_quiz_start: { Args: { p_quiz: string }; Returns: Json }
+      tutor_quiz_submit: { Args: { p_quiz: string; p_answers: Json }; Returns: Json }
+      tutor_quizzes_mine: { Args: never; Returns: Json }
       tutor_ref_search: { Args: { p_kind: string; p_q?: string; p_subject?: number }; Returns: Json }
       tutor_request_create: { Args: { p_subject: number; p_level: string; p_goals: string; p_times: string; p_subjects?: number[] }; Returns: Json }
       tutor_starred: { Args: { p_request: string }; Returns: Json }

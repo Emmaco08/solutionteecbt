@@ -24,7 +24,7 @@ async function TutorHome({ searchParams }: { searchParams: Promise<{ c?: string 
   const supabase = await createClient();
   const [{ data: chats }, { data: me }] = await Promise.all([
     supabase.rpc("tutor_chats", { p_scope: "mine" }),
-    supabase.from("tutors").select("name, subjects, bio, years_teaching, qualification").eq("user_id", staff.id).maybeSingle(),
+    supabase.from("tutors").select("name, subjects, bio, years_teaching, qualification, photo_path").eq("user_id", staff.id).maybeSingle(),
   ]);
   return (
     <div className="flex h-dvh flex-col bg-background">
@@ -35,7 +35,7 @@ async function TutorHome({ searchParams }: { searchParams: Promise<{ c?: string 
           <b className="block truncate text-sm">Tutor desk</b>
           <span className="block truncate text-[11px] text-white/70">Your students, live. New messages ping and show at once.</span>
         </div>
-        {staff.role === "tutor" ? <TutorProfileButton initial={{ name: me?.name ?? staff.name, subjects: me?.subjects ?? "", bio: me?.bio ?? "", years: me?.years_teaching != null ? String(me.years_teaching) : "", qualification: me?.qualification ?? "" }} /> : null}
+        {staff.role === "tutor" ? <TutorProfileButton initial={{ name: me?.name ?? staff.name, subjects: me?.subjects ?? "", bio: me?.bio ?? "", years: me?.years_teaching != null ? String(me.years_teaching) : "", qualification: me?.qualification ?? "", photo: me?.photo_path ?? null }} /> : null}
         <div className="rounded-full bg-white text-foreground"><AccountMenu name={staff.name} email={staff.email} role={staff.role} /></div>
       </header>
       <ChatApp mode="tutor" initialChats={(chats ?? []) as unknown as Chat[]} initialOpen={c ?? null} className="min-h-0 flex-1" />

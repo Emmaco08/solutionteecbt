@@ -107,6 +107,26 @@ function CallCard({ m, mine, from }: { m: Msg; mine: boolean; from: string }) {
   );
 }
 
+/** A quiz the tutor set (D-154): the student takes it in the app; here it opens the results. */
+function QuizCard({ m, mine, onOpen }: { m: Msg; mine: boolean; onOpen?: (id: string) => void }) {
+  const r = m.ref!;
+  return (
+    <div className={cn("w-[270px] overflow-hidden rounded-xl", mine ? "bg-white/12" : "bg-[#F1F4F9] dark:bg-[#0A1A33]")}>
+      <div className="flex items-center gap-3 p-3">
+        <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-[#F2B233] text-[#0B1F44]"><Exam size={22} weight="fill" /></span>
+        <span className="min-w-0">
+          <span className={cn("block text-[11px] font-bold uppercase tracking-wide", mine ? "text-[#F6C970]" : "text-[#8C600F] dark:text-[#F2B233]")}>Quiz</span>
+          <b className="block truncate text-sm">{r.title ?? m.body}</b>
+          <span className="block text-xs opacity-75">{r.count ?? "?"} questions{r.minutes ? ` · ${r.minutes} min` : ""}</span>
+        </span>
+      </div>
+      {onOpen && r.id ? (
+        <button type="button" onClick={() => onOpen(String(r.id))} className="block w-full bg-[#2563B3] py-2.5 text-center text-sm font-bold text-white hover:brightness-110">See results</button>
+      ) : null}
+    </div>
+  );
+}
+
 function RefCard({ m, mine }: { m: Msg; mine: boolean }) {
   const pq = m.ref?.type === "pq";
   return (
@@ -126,8 +146,9 @@ const who = (role: Role, me: Role, peer: string, tutor: string) => (role === me 
  * One message (D-153). Mine on the right (navy, blue in dark mode), theirs on the left; system notes in the middle.
  * Hover (or right-click, or press and hold on a phone) for the menu: reactions, reply, copy, star, delete, report.
  */
-export function Bubble({ sb, m, me, first, peer, tutor, onPhoto, onAction, showName }: {
+export function Bubble({ sb, m, me, first, peer, tutor, onPhoto, onAction, showName, onQuiz }: {
   sb: SupabaseClient; m: Msg; me: Role; first: boolean; peer: string; tutor: string; onPhoto: (url: string) => void; onAction: (m: Msg, a: MsgAction) => void; showName?: boolean;
+  onQuiz?: (id: string) => void;
 }) {
   const rm = useReducedMotion();
   const [menu, setMenu] = useState(false);
@@ -156,7 +177,7 @@ export function Bubble({ sb, m, me, first, peer, tutor, onPhoto, onAction, showN
   const my = m.reactions?.[me];
 
   return (
-    <motion.div initial={rm ? false : { opacity: 0, x: mine ? 14 : -14, scale: 0.97 }} animate={{ opacity: 1, x: 0, scale: 1 }} transition={{ duration: 0.22, ease: "easeOut" }}
+    <motion.div initial={rm ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18, ease: "easeOut" }}
       className={cn("group flex", mine ? "justify-end" : "justify-start", first ? "mt-2.5" : "mt-0.5", reactions.length && "mb-3")}>
       <div ref={box} className={cn("relative max-w-[min(78%,520px)]", mine ? "items-end" : "items-start")}
         onContextMenu={(e) => { if (m.pending) return; e.preventDefault(); open(); }}
@@ -181,7 +202,7 @@ export function Bubble({ sb, m, me, first, peer, tutor, onPhoto, onAction, showN
               {m.kind === "voice" && !m.attachment && m.pending ? <p className="flex items-center gap-2 py-2 text-sm opacity-80"><span className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" /> Sending voice note…</p> : null}
               {m.kind === "file" && m.attachment ? <FileCard sb={sb} m={m} mine={mine} /> : null}
               {m.kind === "link" ? <CallCard m={m} mine={mine} from={who(m.role, me, peer, tutor)} /> : null}
-              {m.kind === "ref" ? <RefCard m={m} mine={mine} /> : null}
+              {m.kind === "ref" && m.ref?.type === "quiz" ? <QuizCard m={m} mine={mine} onOpen={onQuiz} /> : m.kind === "ref" ? <RefCard m={m} mine={mine} /> : null}
               {m.kind === "text" || (m.body && m.kind === "image") ? (
                 <p className={cn("whitespace-pre-wrap break-words text-[15px] leading-[1.38]", media && "px-2 pt-1", /^(\p{Extended_Pictographic}|‍|️|\s){1,8}$/u.test(m.body) && "text-4xl leading-tight")}>
                   {linkParts(m.body).map((p, i) => p.href ? <a key={i} href={p.href} target="_blank" rel="noopener noreferrer" className={cn("underline underline-offset-2", mine ? "text-[#F6C970]" : "text-[#2563B3] dark:text-[#98B6DB]")}>{p.t}</a> : <span key={i}>{p.t}</span>)}

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { toast } from "sonner";
-import { BookOpenText, Books, Image as ImageIcon, Microphone, PaperPlaneRight, Paperclip, Pause, Smiley, Trash, VideoCamera, X } from "@phosphor-icons/react";
+import { BookOpenText, Books, Exam, Image as ImageIcon, Microphone, PaperPlaneRight, Paperclip, Pause, Smiley, Trash, VideoCamera, X } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -32,9 +32,9 @@ async function shrink(file: File): Promise<Blob> {
   return await new Promise<Blob>((res) => c.toBlob((b) => res(b ?? file), "image/jpeg", 0.82));
 }
 
-export function Composer({ sb, onSend, onTyping, disabled, staff, subjectId, reply, replyName, onCancelReply }: {
+export function Composer({ sb, onSend, onTyping, disabled, staff, subjectId, reply, replyName, onCancelReply, onQuiz }: {
   sb: SupabaseClient; onSend: SendFn; onTyping: (voice?: boolean) => void; disabled?: string; staff: boolean; subjectId?: number | null;
-  reply?: Msg | null; replyName?: string; onCancelReply?: () => void;
+  reply?: Msg | null; replyName?: string; onCancelReply?: () => void; onQuiz?: () => void;
 }) {
   const rm = useReducedMotion();
   const [text, setText] = useState("");
@@ -185,6 +185,7 @@ export function Composer({ sb, onSend, onTyping, disabled, staff, subjectId, rep
                 <DropdownMenuContent align="end" className="w-64">
                   <DropdownMenuItem className="gap-3 py-2" onClick={() => fileRef.current?.click()}><span className="grid size-8 place-items-center rounded-full bg-[#2563B3] text-white"><ImageIcon size={16} weight="fill" /></span> Photo or PDF</DropdownMenuItem>
                   {staff ? <>
+                    {onQuiz ? <DropdownMenuItem className="gap-3 py-2 font-bold" onClick={onQuiz}><span className="grid size-8 place-items-center rounded-full bg-[#F2B233] text-[#0B1F44]"><Exam size={16} weight="fill" /></span> Set a quiz</DropdownMenuItem> : null}
                     <DropdownMenuItem className="gap-3 py-2" onClick={() => setCall("meet")}><span className="grid size-8 place-items-center rounded-full bg-white ring-1 ring-border"><CallLogo type="meet" size={20} /></span> Google Meet link</DropdownMenuItem>
                     <DropdownMenuItem className="gap-3 py-2" onClick={() => setCall("whatsapp")}><span className="grid size-8 place-items-center rounded-full bg-white ring-1 ring-border"><CallLogo type="whatsapp" size={22} /></span> WhatsApp call link</DropdownMenuItem>
                     <DropdownMenuItem className="gap-3 py-2" onClick={() => setCall("zoom")}><span className="grid size-8 place-items-center rounded-full bg-white ring-1 ring-border"><CallLogo type="zoom" size={14} /></span> Zoom link</DropdownMenuItem>

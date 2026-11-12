@@ -9,7 +9,9 @@ import { cn } from "@/lib/utils";
 import { Bubble, Typing, type MsgAction } from "./bubbles";
 import { Composer, type SendFn } from "./composer";
 import { Details } from "./details";
-import { dayLabel, fromRow, initials, listTime, liveChannel, mergeAll, naira, ping, planInfo, preview, quoteText, upload, type Chat, type Msg, type TutorOpt } from "./lib";
+import { Face } from "./face";
+import { QuizDialog, QuizResults } from "./quiz";
+import { dayLabel, fromRow, listTime, liveChannel, mergeAll, naira, ping, planInfo, preview, quoteText, upload, type Chat, type Msg, type TutorOpt } from "./lib";
 
 const STATUS: Record<string, { label: string; tone: string }> = {
   new: { label: "Choosing a plan", tone: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200" },
@@ -51,6 +53,11 @@ export function ChatApp({ mode, initialChats, tutors, initialOpen, className }: 
   const [newBelow, setNewBelow] = useState(0);
   const [starred, setStarred] = useState<Msg[] | null>(null);
   const [report, setReport] = useState<Msg | null>(null);
+  const [quizOpen, setQuizOpen] = useState(false);
+  const [quizView, setQuizView] = useState<string | null>(null);
+  const [uid, setUid] = useState<string | null>(null);
+  const stick = useRef(true); // the tutor is at the newest message: new ones scroll into view by themselves
+  const seen = useRef(0);
   const scroller = useRef<HTMLDivElement>(null);
   const room = useRef<ReturnType<typeof liveChannel> | null>(null);
   const lastTyping = useRef(0);
@@ -59,6 +66,7 @@ export function ChatApp({ mode, initialChats, tutors, initialOpen, className }: 
   const activeRef = useRef(active);
   const myRole = mode === "tutor" ? "tutor" : "admin";
   useEffect(() => { activeRef.current = active; }, [active]);
+  useEffect(() => { void sb.auth.getUser().then(({ data }) => setUid(data.user?.id ?? null)); }, [sb]);
 
   const chat = chats.find((c) => c.id === active) ?? null;
   const reload = useCallback(async () => {
@@ -76,7 +84,7 @@ export function ChatApp({ mode, initialChats, tutors, initialOpen, className }: 
     const ch = liveChannel(sb, `tutor-list-${mode}`, {}, (c) => c
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "tutor_messages" }, (p) => {
         const row = p.new as { sender_role?: string; request_id?: string };
-        if (row.sender_role === "student" && (document.visibilityState !== "visible" || row.request_id !== activeRef.current)) ping();
+        if (mode === "admin" && row.sender_role === "student" && (document.visibilityState !== "visible" || row.request_id !== activeRef.current)) ping();
         soon();
       })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "tutor_messages" }, soon)
@@ -84,11 +92,18 @@ export function ChatApp({ mode, initialChats, tutors, initialOpen, className }: 
         if (mode === "admin" && (p.new as { status?: string })?.status === "paid" && (p.old as { status?: string })?.status !== "paid") { ping(); toast("A student paid for a tutor. Assign one within 24 hours."); }
         soon();
       }), () => soon());
+    // Instant: the database tells this tutor about each student message on their own channel (D-154).
+    const me = uid ? liveChannel(sb, `user:${uid}`, { private: true }, (c) => c
+      .on("broadcast", { event: "student_msg" }, (p) => {
+        const row = p.payload as { request_id?: string };
+        if (document.visibilityState !== "visible" || row.request_id !== activeRef.current) ping();
+        soon();
+      })) : null;
     const poll = setInterval(() => void reload(), 45_000);
     const vis = () => { if (document.visibilityState === "visible") void reload(); };
     document.addEventListener("visibilitychange", vis);
-    return () => { ch.close(); clearInterval(poll); document.removeEventListener("visibilitychange", vis); if (t) clearTimeout(t); };
-  }, [sb, mode, reload]);
+    return () => { ch.close(); me?.close(); clearInterval(poll); document.removeEventListener("visibilitychange", vis); if (t) clearTimeout(t); };
+  }, [sb, mode, reload, uid]);
 
   const markRead = useCallback(async (id: string) => {
     if (document.visibilityState !== "visible") return;
@@ -109,26 +124,32 @@ export function ChatApp({ mode, initialChats, tutors, initialOpen, className }: 
     if (!active) return;
     let alive = true;
     queueMicrotask(() => { setLoading(true); setMsgs([]); setTyping(null); setOnline(false); setOlder(true); setReply(null); setNewBelow(0); });
+    stick.current = true; seen.current = 0;
     void (async () => {
       const { data } = await sb.rpc("tutor_messages_before", { p_request: active, p_before: Number.MAX_SAFE_INTEGER, p_limit: 80 });
       if (!alive) return;
       const rows = ((data ?? []) as unknown as Record<string, unknown>[]).map(fromRow);
-      setMsgs(mergeAll([], rows, myRole)); setOlder(rows.length >= 80); setLoading(false); toBottom(false);
+      setMsgs(mergeAll([], rows, myRole)); setOlder(rows.length >= 80); setLoading(false);
       void markRead(active);
     })();
     const filter = `request_id=eq.${active}`;
     const db = liveChannel(sb, `tutor-db:${active}`, {}, (c) => c
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "tutor_messages", filter }, (p) => {
         const m = fromRow(p.new as Record<string, unknown>);
-        const stick = atBottom();
         setMsgs((ms) => mergeAll(ms, [m], myRole));
         if (m.role === "student") { setTyping(null); void markRead(active); }
-        if (stick || m.role === myRole) toBottom(); else setNewBelow((n) => n + 1);
       })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "tutor_messages", filter }, (p) => {
         setMsgs((ms) => mergeAll(ms, [fromRow(p.new as Record<string, unknown>)], myRole));
       }), () => { setLive(true); void sync(active); }, () => setLive(false));
     const r = liveChannel(sb, `tutor:${active}`, { private: true, presenceKey: myRole }, (c) => c
+      // Instant: the database broadcasts every new or changed message to this room (D-154); rows above are the backup.
+      .on("broadcast", { event: "msg" }, (p) => {
+        const m = fromRow(p.payload as Record<string, unknown>);
+        setMsgs((ms) => mergeAll(ms, [m], myRole));
+        if (m.role === "student") { setTyping(null); void markRead(active); }
+      })
+      .on("broadcast", { event: "msg_update" }, (p) => setMsgs((ms) => mergeAll(ms, [fromRow(p.payload as Record<string, unknown>)], myRole)))
       .on("broadcast", { event: "typing" }, (p) => {
         const pl = p.payload as { role?: string; what?: string };
         if (pl?.role !== "student") return;
@@ -145,6 +166,17 @@ export function ChatApp({ mode, initialChats, tutors, initialOpen, className }: 
     return () => { alive = false; document.removeEventListener("visibilitychange", vis); clearInterval(poll); db.close(); r.close(); room.current = null; };
   }, [sb, active, myRole, markRead, sync, toBottom]);
 
+  // New messages: follow them when the tutor is at the bottom, otherwise count them on the "newest" button.
+  useEffect(() => {
+    const added = msgs.length - seen.current;
+    const last = msgs[msgs.length - 1];
+    seen.current = msgs.length;
+    if (added <= 0 || !last) return;
+    if (stick.current || last.role === myRole || added > 20) toBottom(added <= 3);
+    else queueMicrotask(() => setNewBelow((n) => n + added));
+  }, [msgs, myRole, toBottom]);
+  useEffect(() => { if (typing && stick.current) toBottom(); }, [typing, toBottom]);
+
   async function loadOlder() {
     if (!active || !msgs.length) return;
     const el = scroller.current, h = el?.scrollHeight ?? 0;
@@ -153,6 +185,7 @@ export function ChatApp({ mode, initialChats, tutors, initialOpen, className }: 
     const { data } = await sb.rpc("tutor_messages_before", { p_request: active, p_before: first.id, p_limit: 60 });
     const rows = ((data ?? []) as unknown as Record<string, unknown>[]).map(fromRow);
     setOlder(rows.length >= 60);
+    seen.current += rows.length; // older messages are not "new"
     setMsgs((ms) => mergeAll(ms, rows, myRole));
     requestAnimationFrame(() => { if (el) el.scrollTop = el.scrollHeight - h; });
   }
@@ -172,8 +205,8 @@ export function ChatApp({ mode, initialChats, tutors, initialOpen, className }: 
       id, role: myRole, kind, body, attachment: null, at: new Date().toISOString(), read_at: null, meta: extra?.meta ?? null, ref: extra?.ref ?? null, pending: true,
       reply_to: r?.id ?? null, reply: r ? { id: r.id, role: r.role, kind: r.kind, body: r.body, deleted: r.deleted, meta: r.meta } : null,
     };
+    temp.ck = `t${id}`;
     setMsgs((ms) => [...ms, temp]);
-    toBottom();
     try {
       let key: string | undefined;
       if (extra?.file) key = await upload(sb, active, extra.file, extra.contentType ?? extra.file.type);
@@ -183,7 +216,7 @@ export function ChatApp({ mode, initialChats, tutors, initialOpen, className }: 
       const d = (data ?? {}) as { ok?: boolean; error?: string; message?: Record<string, unknown> };
       if (error || !d.ok || !d.message) throw new Error(d.error === "too_many" ? "Slow down a little." : "Not sent. Try again.");
       const m = fromRow(d.message);
-      setMsgs((ms) => mergeAll(ms.filter((x) => x.id !== id), [m], myRole));
+      setMsgs((ms) => (ms.some((x) => x.id === m.id) ? ms.filter((x) => x.id !== id) : ms.map((x) => (x.id === id ? { ...m, ck: x.ck } : x))));
     } catch (e) {
       setMsgs((ms) => ms.map((x) => (x.id === id ? { ...x, pending: false, failed: true } : x)));
       toast.error(e instanceof Error ? e.message : "Not sent.");
@@ -278,7 +311,7 @@ export function ChatApp({ mode, initialChats, tutors, initialOpen, className }: 
                 <motion.li key={c.id} layout={!rm} initial={rm ? false : { opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}>
                   <button type="button" onClick={() => { setActive(c.id); if (mode === "admin") setDetails(c.status === "paid" || c.status === "quoted" || Boolean(c.custom_note && !c.custom_price_kobo)); }}
                     className={cn("flex w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-muted/70 dark:hover:bg-[#0D1A30]", active === c.id && "bg-muted shadow-[inset_3px_0_0_#F2B233] dark:bg-[#13233F]")}>
-                    <span className={cn("grid size-12 shrink-0 place-items-center rounded-full font-bold", active === c.id ? "bg-[#2563B3] text-white" : "bg-[#D9E1EF] text-[#0B1F44] dark:bg-[#1C2D4A] dark:text-[#A7B4CA]")}>{initials(c.name)}</span>
+                    <Face sb={sb} path={c.avatar_path} name={c.name} size={48} className={active === c.id ? "bg-[#2563B3] text-white" : "bg-[#D9E1EF] text-[#0B1F44] dark:bg-[#1C2D4A] dark:text-[#A7B4CA]"} />
                     <span className="min-w-0 flex-1">
                       <span className="flex items-baseline gap-2">
                         <b className="min-w-0 flex-1 truncate">{c.name}</b>
@@ -316,9 +349,7 @@ export function ChatApp({ mode, initialChats, tutors, initialOpen, className }: 
             <header className="flex h-16 shrink-0 items-center gap-2 border-b bg-card px-2 dark:bg-[#0B1730] sm:px-3">
               <button type="button" onClick={() => setActive(null)} className="rounded-full p-2 hover:bg-muted lg:hidden" aria-label="Back to chats"><ArrowLeft size={22} /></button>
               <button type="button" onClick={() => setDetails((d) => !d)} className="flex min-w-0 flex-1 items-center gap-3 rounded-xl p-1 text-left hover:bg-muted/60">
-                <span className="relative grid size-10 shrink-0 place-items-center rounded-full bg-[#2563B3] text-sm font-bold text-white">
-                  {initials(chat.name)}{online ? <span className="absolute bottom-0 right-0 size-3 rounded-full border-2 border-card bg-emerald-500 dark:border-[#0B1730]" /> : null}
-                </span>
+                <Face sb={sb} path={chat.avatar_path} name={chat.name} size={40} online={online} className="bg-[#2563B3] text-white" dotRing="border-card dark:border-[#0B1730]" />
                 <span className="min-w-0">
                   <b className="block truncate">{chat.name}</b>
                   <AnimatePresence mode="wait" initial={false}>
@@ -330,7 +361,7 @@ export function ChatApp({ mode, initialChats, tutors, initialOpen, className }: 
               <button type="button" onClick={openStarred} className="rounded-full p-2 hover:bg-muted" aria-label="Starred messages" title="Starred messages"><Star size={21} /></button>
               <button type="button" onClick={() => setDetails((d) => !d)} className={cn("rounded-full p-2 hover:bg-muted", details && "bg-muted")} aria-label="Student details" title="Student details"><IdentificationCard size={22} /></button>
             </header>
-            <div ref={scroller} onScroll={() => { const a = !atBottom(); setAway(a); if (!a) setNewBelow(0); if (scroller.current && scroller.current.scrollTop < 200 && older && !loading) void loadOlder(); }}
+            <div ref={scroller} onScroll={() => { const a = !atBottom(); stick.current = !a; setAway(a); if (!a) setNewBelow(0); if (scroller.current && scroller.current.scrollTop < 200 && older && !loading) void loadOlder(); }}
               className="min-h-0 flex-1 overflow-y-auto bg-[#EEF2F8] px-3 py-3 dark:bg-[#081224] sm:px-6">
               {loading ? <div className="space-y-2">{[60, 40, 70, 30].map((w, i) => <div key={i} className={cn("h-10 animate-pulse rounded-2xl bg-black/5 dark:bg-white/5", i % 2 ? "ml-auto" : "")} style={{ width: `${w}%` }} />)}</div> : null}
               {!loading && !msgs.length ? <p className="py-16 text-center text-sm text-muted-foreground">No messages yet. Say hello to {chat.name.split(" ")[0]}.</p> : null}
@@ -338,10 +369,10 @@ export function ChatApp({ mode, initialChats, tutors, initialOpen, className }: 
                 const prev = msgs[i - 1];
                 const newDay = !prev || dayLabel(prev.at) !== dayLabel(m.at);
                 return (
-                  <div key={m.id}>
+                  <div key={m.ck ?? m.id}>
                     {newDay ? <div className="sticky top-0 z-10 my-3 flex justify-center"><span className="rounded-lg bg-white/95 px-3 py-1 text-xs font-bold text-[#4A5A74] shadow-sm dark:bg-[#13233F] dark:text-[#A7B4CA]">{dayLabel(m.at)}</span></div> : null}
                     <Bubble sb={sb} m={m} me={myRole} first={newDay || !prev || prev.role !== m.role || prev.role === "system"} peer={chat.name} tutor={tutorName}
-                      showName={mode === "admin" || m.role === "admin"} onPhoto={setPhoto} onAction={onAction} />
+                      showName={mode === "admin" || m.role === "admin"} onPhoto={setPhoto} onAction={onAction} onQuiz={setQuizView} />
                   </div>
                 );
               })}
@@ -358,7 +389,7 @@ export function ChatApp({ mode, initialChats, tutors, initialOpen, className }: 
             </AnimatePresence>
             <Composer sb={sb} onSend={send} onTyping={onTyping} staff disabled={readOnly} subjectId={null}
               reply={reply} replyName={reply ? (reply.role === myRole ? "yourself" : reply.role === "student" ? chat.name : reply.role === "tutor" ? tutorName : "SolutionTee") : undefined}
-              onCancelReply={() => setReply(null)} />
+              onCancelReply={() => setReply(null)} onQuiz={() => setQuizOpen(true)} />
           </>
         )}
       </section>
@@ -368,7 +399,8 @@ export function ChatApp({ mode, initialChats, tutors, initialOpen, className }: 
         {chat && details ? (
           <motion.div key="details" initial={rm ? false : { x: 40, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={rm ? undefined : { x: 40, opacity: 0 }} transition={{ duration: 0.22 }}
             className="fixed inset-y-0 right-0 z-40 w-full max-w-[380px] border-l shadow-2xl xl:static xl:z-auto xl:w-[360px] xl:shadow-none">
-            <Details sb={sb} chat={chat} chats={chats} mode={mode} tutors={tutors} onClose={() => setDetails(false)} onChanged={() => void reload()} />
+            <Details sb={sb} chat={chat} chats={chats} mode={mode} tutors={tutors} onClose={() => setDetails(false)} onChanged={() => void reload()}
+              onQuiz={setQuizView} onNewQuiz={() => setQuizOpen(true)} />
           </motion.div>
         ) : null}
       </AnimatePresence>
@@ -380,6 +412,9 @@ export function ChatApp({ mode, initialChats, tutors, initialOpen, className }: 
           <img src={photo} alt="Photo in the chat" className="max-h-full max-w-full rounded-lg object-contain" />
         </div>
       ) : null}
+
+      {quizOpen && chat ? <QuizDialog sb={sb} chat={chat} onClose={() => setQuizOpen(false)} onSent={() => toast.success("Quiz sent. The student sees it in the chat, on Home and in Test.")} /> : null}
+      {quizView ? <QuizResults sb={sb} quizId={quizView} name={chat?.name ?? "Student"} onClose={() => setQuizView(null)} /> : null}
 
       <Dialog open={starred !== null} onOpenChange={(o) => !o && setStarred(null)}>
         <DialogContent className="max-h-[80dvh] overflow-y-auto">
