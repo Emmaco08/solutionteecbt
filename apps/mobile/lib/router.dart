@@ -310,14 +310,49 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, s) => TutorQuizScreen(id: s.pathParameters['id']!),
       ),
       GoRoute(path: '/games', builder: (_, _) => const GamesScreen()),
-      GoRoute(path: '/community', builder: (_, _) => const CommunityScreen()),
+      GoRoute(
+        path: '/community',
+        builder: (_, s) => CommunityShell(tab: const {'explore': 1, 'notifications': 2, 'me': 3}[s.uri.queryParameters['tab']] ?? 0),
+      ),
+      GoRoute(path: '/community/me', builder: (_, _) => const CommunityShell(tab: 3)),
+      GoRoute(path: '/community/notifications', builder: (_, _) => const CommunityShell(tab: 2)),
       GoRoute(
         path: '/community/post/:id',
-        builder: (_, s) => PostScreen(id: s.pathParameters['id']!),
+        builder: (_, s) => ThreadScreen(id: s.pathParameters['id']!, reply: s.uri.queryParameters['reply'] == '1'),
       ),
       GoRoute(
         path: '/community/user/:id',
-        builder: (_, s) => CommunityUserScreen(id: s.pathParameters['id']!),
+        builder: (_, s) => ProfileView(id: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/community/u/:handle',
+        builder: (_, s) => ProfileView(handle: s.pathParameters['handle']!),
+      ),
+      GoRoute(
+        path: '/community/compose',
+        builder: (_, s) {
+          final x = s.extra is Map ? Map<String, dynamic>.from(s.extra! as Map) : const <String, dynamic>{};
+          return ComposeScreen(
+            quote: x['quote'] is Map ? Map<String, dynamic>.from(x['quote'] as Map) : null,
+            subject: (x['subject'] as num?)?.toInt(),
+            text: x['text'] as String?,
+          );
+        },
+      ),
+      GoRoute(path: '/community/edit', builder: (_, _) => const CommunityEditScreen()),
+      GoRoute(path: '/community/subjects', builder: (_, _) => const AllSubjectsScreen()),
+      GoRoute(
+        path: '/community/tag/:tag',
+        builder: (_, s) => TagFeedScreen(tag: s.pathParameters['tag']!),
+      ),
+      GoRoute(
+        path: '/community/subject/:id',
+        builder: (_, s) => TagFeedScreen(subject: int.tryParse(s.pathParameters['id']!)),
+      ),
+      GoRoute(
+        path: '/community/follows/:id',
+        builder: (_, s) =>
+            FollowListScreen(id: s.pathParameters['id']!, kind: s.uri.queryParameters['kind'] ?? 'followers', name: s.uri.queryParameters['name']),
       ),
       GoRoute(
         path: '/games/play/:id',

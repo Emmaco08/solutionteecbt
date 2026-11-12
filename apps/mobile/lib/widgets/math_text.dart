@@ -4,8 +4,11 @@ import 'package:flutter_math_fork/flutter_math.dart';
 /// Text with LaTeX: `$...$` inline and `$$...$$` on its own line (KaTeX syntax).
 /// A formula that fails to parse is shown as plain source in a highlighted box instead of crashing.
 class MathText extends StatelessWidget {
-  const MathText(this.text, {super.key, this.style, this.textAlign = TextAlign.start, this.bold = false});
+  const MathText(this.text, {super.key, this.style, this.textAlign = TextAlign.start, this.bold = false, this.plain});
   final String text;
+
+  /// Draws the text between formulas (Community uses it for #topics and @handles, D-155).
+  final List<InlineSpan> Function(String text)? plain;
   final TextStyle? style;
   final TextAlign textAlign;
 
@@ -79,6 +82,7 @@ class MathText extends StatelessWidget {
   static String _unescape(String s) => s.replaceAll(r'\$', r'$');
 
   List<InlineSpan> _plain(String s) {
+    if (plain != null) return plain!(_unescape(s));
     if (!bold || !s.contains('**')) return [TextSpan(text: _unescape(s))];
     final parts = s.split('**');
     return [
