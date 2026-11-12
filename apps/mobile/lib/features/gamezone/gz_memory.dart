@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 import '../community/community_data.dart' show Json, asList;
@@ -10,6 +11,7 @@ import 'gz_data.dart';
 import 'gz_fx.dart';
 import 'gz_match.dart';
 import 'gz_scenes.dart';
+import 'gz_sound.dart';
 import 'gz_theme.dart';
 
 // Memory Flash (D-157): see the cards, remember them, then match each pair. Three levels (4, 5 and 6 pairs).
@@ -100,7 +102,7 @@ class _GzMemoryPlayState extends State<GzMemoryPlay> {
     if (_step != _Step.play || _busy) return;
     final c = _cards[i];
     if (c.up || c.matched || _open.length >= 2) return;
-    GzFeel.tap();
+    GzFeel.sfx(GzSfx.flip);
     setState(() {
       c.up = true;
       _open.add(i);
@@ -109,7 +111,8 @@ class _GzMemoryPlayState extends State<GzMemoryPlay> {
     _moves++;
     final a = _cards[_open[0]], b = _cards[_open[1]];
     if (a.pair == b.pair) {
-      GzFeel.right();
+      HapticFeedback.mediumImpact();
+      GzFeel.sfx(GzSfx.pair);
       setState(() {
         a.matched = true;
         b.matched = true;
@@ -135,7 +138,8 @@ class _GzMemoryPlayState extends State<GzMemoryPlay> {
     final pairs = _cards.length ~/ 2;
     _stars = _moves <= pairs + 1 ? 3 : (_moves <= (pairs * 1.6).round() ? 2 : 1);
     setState(() => _step = _Step.clear);
-    GzFeel.win();
+    HapticFeedback.heavyImpact();
+    GzFeel.sfx(GzSfx.level);
     final r = await m.memoryLevel(_level, _moves, _clock.elapsedMilliseconds);
     await Future.delayed(const Duration(milliseconds: 1500));
     if (!mounted) return;

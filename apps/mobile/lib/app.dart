@@ -36,7 +36,7 @@ class SolutionTeeApp extends ConsumerWidget {
       builder: (context, child) {
         final mq = MediaQuery.of(context);
         return MediaQuery(
-          data: mq.copyWith(disableAnimations: mq.disableAnimations || settings.reduceMotion, textScaler: mq.textScaler.clamp(maxScaleFactor: 1.4)),
+          data: mq.copyWith(disableAnimations: mq.disableAnimations || settings.reduceMotion, textScaler: appTextScaler(mq)),
           child: UpdateGate(
             child: StickyAds(child: TutorLiveBanner(child: child!)),
           ),
@@ -44,4 +44,13 @@ class SolutionTeeApp extends ConsumerWidget {
       },
     );
   }
+}
+
+/// Text size that suits the phone (owner, 12 Nov 2026): the phone's own font size is followed but kept between 90% and
+/// 115% (very large settings broke the layout on some phones), and narrow screens (under 360 dp) scale down a little.
+TextScaler appTextScaler(MediaQueryData mq) {
+  final system = (mq.textScaler.scale(14) / 14).clamp(.9, 1.15);
+  final w = mq.size.width;
+  final narrow = w > 0 && w < 360 ? (w / 360).clamp(.86, 1.0) : 1.0;
+  return TextScaler.linear((system * narrow).clamp(.82, 1.15));
 }

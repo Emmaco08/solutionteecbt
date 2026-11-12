@@ -521,4 +521,67 @@ void main() {
     };
     await _shot(t, const GzRanksScreen(), '15_ranks', leaders: leaders);
   });
+
+  testWidgets('16 reveal', (t) async {
+    final players = [_p(1, 'Tolu', me: true, score: 604, correct: 6, answered: 9, avatar: _me), _p(2, 'Akinbola', score: 212, correct: 2, answered: 9)];
+    final s = _match(
+      'duel',
+      players,
+      round: {'idx': 9, 'open_at': _now + 2600, 'close_at': _now + 17600, 'item': null, 'mine': null},
+      last: {
+        'idx': 8,
+        'key': 'B',
+        'item': {
+          'body': r'Choose the option nearest in meaning to the underlined words: He took a $\underline{\text{quick look}}$ at the poor man',
+          'options': [
+            {'key': 'A', 'text': 'Gazed at'},
+            {'key': 'B', 'text': 'Glanced at'},
+            {'key': 'C', 'text': 'Viewed'},
+            {'key': 'D', 'text': 'Observed'},
+          ],
+        },
+        'results': [
+          {'p': 1, 'correct': true, 'points': 138, 'ms': 3100},
+          {'p': 2, 'correct': false, 'points': 0, 'ms': 9000},
+        ],
+      },
+    );
+    await _shot(
+      t,
+      Scaffold(
+        body: GzSyncPlay(m: _m(s), onLeave: () {}),
+      ),
+      '16_reveal',
+    );
+  });
+
+  testWidgets('17 underline', (t) async {
+    final s = _match(
+      'duel',
+      duelPlayers,
+      round: {
+        'idx': 5,
+        'open_at': _now - 4000,
+        'close_at': _now + 11000,
+        'item': {
+          'body': r'Choose the option nearest in meaning to the underlined words: He took a $\underline{\text{quick look}}$ at the poor man, shook his head and took to his heels',
+          'options': [
+            {'key': 'A', 'text': 'Gazed at'},
+            {'key': 'B', 'text': 'Glanced at'},
+            {'key': 'C', 'text': 'Viewed'},
+            {'key': 'D', 'text': 'Observed'},
+          ],
+        },
+        'mine': null,
+      },
+    );
+    s['subject'] = {'id': 1, 'code': 'eng', 'name': 'Use of English'};
+    await _shot(
+      t,
+      Scaffold(
+        body: GzSyncPlay(m: _m(s), onLeave: () {}),
+      ),
+      '17_underline',
+    );
+  });
 }

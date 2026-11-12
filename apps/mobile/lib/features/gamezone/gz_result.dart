@@ -14,6 +14,7 @@ import 'gz_data.dart';
 import 'gz_fx.dart';
 import 'gz_hub.dart';
 import 'gz_scenes.dart';
+import 'gz_sound.dart';
 import 'gz_theme.dart';
 
 // Results (D-157): victory ribbon, stars, the treasure chest with XP, rating change, every question to review, and
@@ -32,7 +33,12 @@ class _GzResultsState extends State<GzResults> {
   @override
   void initState() {
     super.initState();
-    if (_win) GzFeel.win();
+    if (_win) {
+      GzFeel.win();
+    } else {
+      GzFeel.sfx(GzSfx.lose);
+    }
+    if (v.xp > 0) Future.delayed(const Duration(milliseconds: 1500), () => GzFeel.sfx(GzSfx.coin));
   }
 
   GzMatchView get v => GzMatchView(widget.m.s ?? const {});

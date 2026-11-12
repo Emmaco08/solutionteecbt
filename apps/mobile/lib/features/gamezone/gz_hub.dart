@@ -6,6 +6,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/providers.dart';
 import '../../ui/kit.dart' show toast;
 import '../../widgets/phosphor.g.dart';
 import '../community/community_data.dart' show Json, asJson, asList;
@@ -13,6 +14,7 @@ import 'gz_avatar.dart';
 import 'gz_data.dart';
 import 'gz_fx.dart';
 import 'gz_scenes.dart';
+import 'gz_sound.dart';
 import 'gz_theme.dart';
 
 // Game Zone hub (D-157): your portrait under the spotlights, pick a game, a subject and a way to play, then BATTLE.
@@ -36,6 +38,9 @@ class _GzHubScreenState extends ConsumerState<GzHubScreen> {
   @override
   void initState() {
     super.initState();
+    final st = ref.read(settingsProvider);
+    GzSound.instance.sounds = st.gameSounds;
+    GzSound.instance.setMusic(st.gameMusic);
     GzUserFeed.instance.hold();
     _invites = GzUserFeed.instance.events.listen((e) {
       if (e.$1 == 'rematch' && mounted) _showInvite(e.$2);
@@ -103,7 +108,7 @@ class _GzHubScreenState extends ConsumerState<GzHubScreen> {
   @override
   Widget build(BuildContext context) {
     final home = ref.watch(gzHomeProvider);
-    return AnnotatedRegion<SystemUiOverlayStyle>(
+    final page = AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: Scaffold(
         backgroundColor: GzC.ink,
@@ -121,6 +126,56 @@ class _GzHubScreenState extends ConsumerState<GzHubScreen> {
         ),
       ),
     );
+    return GzMusic(track: 'hub', child: page);
+  }
+
+  Future<void> _soundSheet() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      useRootNavigator: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Consumer(
+        builder: (context, ref, _) {
+          final s = ref.watch(settingsProvider);
+          return Container(
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 20 + MediaQuery.paddingOf(context).bottom),
+            decoration: const BoxDecoration(
+              color: GzC.navy,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              border: Border(top: BorderSide(color: GzC.ink, width: 4)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('SOUND', style: gzFont(22)),
+                const SizedBox(height: 12),
+                _Toggle(
+                  text: 'Sound effects',
+                  sub: 'Taps, right and wrong answers, countdowns, wins',
+                  on: s.gameSounds,
+                  onChanged: (v) {
+                    ref.read(settingsProvider.notifier).update((x) => x.copyWith(gameSounds: v));
+                    GzSound.instance.sounds = v;
+                    if (v) GzFeel.sfx(GzSfx.coin);
+                  },
+                ),
+                const SizedBox(height: 10),
+                _Toggle(
+                  text: 'Music',
+                  sub: 'Game Zone music in the hub and in games',
+                  on: s.gameMusic,
+                  onChanged: (v) {
+                    ref.read(settingsProvider.notifier).update((x) => x.copyWith(gameMusic: v));
+                    GzSound.instance.setMusic(v);
+                  },
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+    if (mounted) setState(() {});
   }
 
   Widget _body(Json h) {
@@ -177,6 +232,14 @@ class _GzHubScreenState extends ConsumerState<GzHubScreen> {
                   icon: Icon(PhosphorIcons.trophy(PhosphorIconsStyle.fill), size: 20, color: GzC.goldLight),
                   text: '${gzMs(week['won']) ?? 0}',
                   label: 'wins this week',
+                ),
+                GzRoundIcon(
+                  icon: GzSound.instance.music || GzSound.instance.sounds
+                      ? PhosphorIcons.speakerHigh(PhosphorIconsStyle.fill)
+                      : PhosphorIcons.speakerSlash(PhosphorIconsStyle.fill),
+                  label: 'Sound and music',
+                  size: 36,
+                  onTap: _soundSheet,
                 ),
               ],
             ),
@@ -259,8 +322,7 @@ class _GzHubScreenState extends ConsumerState<GzHubScreen> {
                 children: [
                   if (g.id == 'memory') _SubjectChip(text: 'ALL', on: _subject == null, onTap: () => setState(() => _subject = null)),
                   for (final s in subs)
-                    if (g.id != 'memory' || const ['phy', 'chm', 'mth', 'bio'].contains(s['code']))
-                      _SubjectChip(text: '${s['name']}'.toUpperCase(), on: gzMs(s['id']) == sel, onTap: () => setState(() => _subject = gzMs(s['id']))),
+                    _SubjectChip(text: '${s['name']}'.toUpperCase(), on: gzMs(s['id']) == sel, onTap: () => setState(() => _subject = gzMs(s['id']))),
                 ],
               ),
             ),
@@ -285,11 +347,11 @@ class _GzHubScreenState extends ConsumerState<GzHubScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
                 children: [
-                  for (final (id, name) in const [('easy', 'EASY'), ('medium', 'MEDIUM'), ('hard', 'HARD')]) ...[
+                  for (final (id, name) in const [('easy', 'EASY'), ('medium', 'MEDIUM'), ('hard', 'HARD'), ('expert', 'EXPERT'), ('legend', 'LEGEND')]) ...[
                     Expanded(
                       child: _SubjectChip(text: name, on: _level == id, onTap: () => setState(() => _level = id), wide: true),
                     ),
-                    if (id != 'hard') const SizedBox(width: 8),
+                    if (id != 'legend') const SizedBox(width: 5),
                   ],
                 ],
               ),
@@ -536,7 +598,7 @@ class _SubjectChip extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
           height: 34,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          padding: EdgeInsets.symmetric(horizontal: wide ? 4 : 12),
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: on ? Colors.white : GzC.navy.withValues(alpha: .9),
@@ -544,7 +606,10 @@ class _SubjectChip extends StatelessWidget {
             border: Border.all(color: GzC.ink, width: 2),
             boxShadow: const [BoxShadow(color: GzC.ink, offset: Offset(0, 3))],
           ),
-          child: Text(text, maxLines: 1, style: gzFont(14, color: on ? GzC.navy : GzC.subLight, shadow: 0)),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(text, maxLines: 1, style: gzFont(14, color: on ? GzC.navy : GzC.subLight, shadow: 0)),
+          ),
         ),
       ),
     ),

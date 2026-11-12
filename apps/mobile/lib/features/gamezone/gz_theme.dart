@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../theme/theme.dart';
+import 'gz_sound.dart';
 
 // Game Zone v2 (D-157) look: a real mobile-game style drawn in code (sharp on every phone, almost no download).
 // Chunky outlined shapes, 3D buttons that press down, Lilita One for game words, the app font for small text.
@@ -159,7 +160,7 @@ class _GameButtonState extends State<GameButton> {
         onTapUp: (_) => _set(false),
         onTap: on
             ? () {
-                if (widget.haptic) HapticFeedback.selectionClick();
+                if (widget.haptic) GzFeel.tap();
                 widget.onTap!();
               }
             : null,
@@ -416,10 +417,27 @@ String gzNum(num n) {
 
 /// Haptics that follow the game moments (no sounds: they are off by default).
 abstract final class GzFeel {
-  static void tap() => HapticFeedback.selectionClick();
-  static void right() => HapticFeedback.mediumImpact();
-  static void wrong() => HapticFeedback.heavyImpact();
-  static void win() => HapticFeedback.heavyImpact();
+  static void tap() {
+    HapticFeedback.selectionClick();
+    GzSound.instance.play(GzSfx.tap, volume: .7);
+  }
+
+  static void right() {
+    HapticFeedback.mediumImpact();
+    GzSound.instance.play(GzSfx.correct);
+  }
+
+  static void wrong() {
+    HapticFeedback.heavyImpact();
+    GzSound.instance.play(GzSfx.wrong, volume: .8);
+  }
+
+  static void win() {
+    HapticFeedback.heavyImpact();
+    GzSound.instance.play(GzSfx.win);
+  }
+
+  static void sfx(GzSfx s, {double volume = 1}) => GzSound.instance.play(s, volume: volume);
 }
 
 extension GzMotion on BuildContext {

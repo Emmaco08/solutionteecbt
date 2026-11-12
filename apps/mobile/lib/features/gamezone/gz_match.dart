@@ -17,6 +17,7 @@ import 'gz_memory.dart';
 import 'gz_race.dart';
 import 'gz_result.dart';
 import 'gz_scenes.dart';
+import 'gz_sound.dart';
 import 'gz_sync.dart';
 import 'gz_theme.dart';
 
@@ -30,7 +31,26 @@ class GzMatchScreen extends StatefulWidget {
 }
 
 class _GzMatchScreenState extends State<GzMatchScreen> {
-  late final GzMatch _m = GzMatch(widget.id)..open();
+  late final GzMatch _m = GzMatch(widget.id)
+    ..addListener(_sounds)
+    ..open();
+  GzPhase? _was;
+  int _seats = 0;
+
+  /// Sounds for match moments: a player joins the lobby, the match is found, the game starts.
+  void _sounds() {
+    final p = _m.phase;
+    final n = _m.players.where((x) => x['bot'] != true).length;
+    if (p == GzPhase.lobby && _seats > 0 && n > _seats) GzFeel.sfx(GzSfx.pop);
+    _seats = n;
+    if (p != _was) {
+      if (p == GzPhase.intro) {
+        GzFeel.sfx(GzSfx.found);
+        Future.delayed(const Duration(milliseconds: 450), () => GzFeel.sfx(GzSfx.whoosh));
+      }
+      _was = p;
+    }
+  }
 
   @override
   void dispose() {
@@ -119,26 +139,34 @@ class _GzMatchScreenState extends State<GzMatchScreen> {
                 child: GzResults(m: _m),
               ),
             };
-            return Stack(
-              children: [
-                Positioned.fill(
-                  child: AnimatedSwitcher(
-                    duration: context.calm ? Duration.zero : const Duration(milliseconds: 360),
-                    switchInCurve: Curves.easeOut,
-                    transitionBuilder: (c, a) => FadeTransition(
-                      opacity: a,
-                      child: ScaleTransition(scale: Tween(begin: 1.04, end: 1.0).animate(a), child: c),
-                    ),
-                    child: child,
-                  ),
-                ),
-                if (_m.s != null && _m.status == 'playing' && _m.now() < _m.startsAt + 900)
+            final track = switch (phase) {
+              GzPhase.lobby || GzPhase.loading => 'hub',
+              GzPhase.intro || GzPhase.play => 'battle',
+              _ => null,
+            };
+            return GzMusic(
+              track: track,
+              child: Stack(
+                children: [
                   Positioned.fill(
-                    child: IgnorePointer(
-                      child: StartCountdown(now: _m.now, startsAt: _m.startsAt),
+                    child: AnimatedSwitcher(
+                      duration: context.calm ? Duration.zero : const Duration(milliseconds: 360),
+                      switchInCurve: Curves.easeOut,
+                      transitionBuilder: (c, a) => FadeTransition(
+                        opacity: a,
+                        child: ScaleTransition(scale: Tween(begin: 1.04, end: 1.0).animate(a), child: c),
+                      ),
+                      child: child,
                     ),
                   ),
-              ],
+                  if (_m.s != null && _m.status == 'playing' && _m.now() < _m.startsAt + 900)
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: StartCountdown(now: _m.now, startsAt: _m.startsAt),
+                      ),
+                    ),
+                ],
+              ),
             );
           },
         ),

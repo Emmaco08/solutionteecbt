@@ -10,6 +10,7 @@ import 'gz_avatar.dart';
 import 'gz_data.dart';
 import 'gz_hub.dart';
 import 'gz_scenes.dart';
+import 'gz_sound.dart';
 import 'gz_theme.dart';
 
 // Game Zone ranks (D-157): the best ratings, for all games or one game, with a podium for the top three.
@@ -26,51 +27,54 @@ class _GzRanksScreenState extends ConsumerState<GzRanksScreen> {
   @override
   Widget build(BuildContext context) {
     final data = ref.watch(gzLeadersProvider(_game));
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light,
-      child: Scaffold(
-        backgroundColor: GzC.ink,
-        body: Stack(
-          children: [
-            const Positioned.fill(
-              child: ArenaScene(top: Color(0xFF2A0F5C), mid: Color(0xFF10284D), glow: GzC.purple, beams: false),
-            ),
-            SafeArea(
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(8, 8, 16, 0),
-                    child: Row(
-                      children: [
-                        GzRoundIcon(icon: PhosphorIcons.caretLeft(PhosphorIconsStyle.bold), label: 'Back', onTap: () => context.pop()),
-                        const SizedBox(width: 8),
-                        Text('RANKS', style: gzFont(28, spacing: 1)),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    height: 40,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      children: [
-                        _Tab(text: 'ALL GAMES', on: _game == null, onTap: () => setState(() => _game = null)),
-                        for (final g in GzGame.all) _Tab(text: g.name.toUpperCase(), on: _game == g.id, onTap: () => setState(() => _game = g.id)),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: data.when(
-                      data: (d) => _list(d),
-                      loading: () => const GzLoading(),
-                      error: (e, _) => GzErrorView(text: gzErrorText(e), onRetry: () => ref.invalidate(gzLeadersProvider(_game))),
-                    ),
-                  ),
-                ],
+    return GzMusic(
+      track: 'hub',
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.light,
+        child: Scaffold(
+          backgroundColor: GzC.ink,
+          body: Stack(
+            children: [
+              const Positioned.fill(
+                child: ArenaScene(top: Color(0xFF2A0F5C), mid: Color(0xFF10284D), glow: GzC.purple, beams: false),
               ),
-            ),
-          ],
+              SafeArea(
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(8, 8, 16, 0),
+                      child: Row(
+                        children: [
+                          GzRoundIcon(icon: PhosphorIcons.caretLeft(PhosphorIconsStyle.bold), label: 'Back', onTap: () => context.pop()),
+                          const SizedBox(width: 8),
+                          Text('RANKS', style: gzFont(28, spacing: 1)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      height: 40,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        children: [
+                          _Tab(text: 'ALL GAMES', on: _game == null, onTap: () => setState(() => _game = null)),
+                          for (final g in GzGame.all) _Tab(text: g.name.toUpperCase(), on: _game == g.id, onTap: () => setState(() => _game = g.id)),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: data.when(
+                        data: (d) => _list(d),
+                        loading: () => const GzLoading(),
+                        error: (e, _) => GzErrorView(text: gzErrorText(e), onRetry: () => ref.invalidate(gzLeadersProvider(_game))),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

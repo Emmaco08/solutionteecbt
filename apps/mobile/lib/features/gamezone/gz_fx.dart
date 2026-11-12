@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
+import 'gz_sound.dart';
 import 'gz_theme.dart';
 
 // Game moments (D-157): the timer ring, 3-2-1-GO, score pops, spark bursts, stars, the treasure chest.
@@ -32,7 +33,7 @@ mixin _Ticking<T extends StatefulWidget> on State<T>, SingleTickerProviderStateM
 
 /// The big round timer: green, then gold, then red; pulses in the last 3 seconds.
 class TimerRing extends StatefulWidget {
-  const TimerRing({super.key, required this.now, required this.from, required this.to, this.size = 62, this.frozen = false});
+  const TimerRing({super.key, required this.now, required this.from, required this.to, this.size = 62, this.frozen = false, this.ticks = true});
   final ServerNow now;
   final int from;
   final int to;
@@ -40,6 +41,9 @@ class TimerRing extends StatefulWidget {
 
   /// Answered or round over: hold still.
   final bool frozen;
+
+  /// Tick sounds in the last 3 seconds.
+  final bool ticks;
 
   @override
   State<TimerRing> createState() => _TimerRingState();
@@ -55,7 +59,9 @@ class _TimerRingState extends State<TimerRing> with SingleTickerProviderStateMix
     final total = math.max(1, widget.to - widget.from);
     final rem = (widget.to - widget.now()).clamp(0, total);
     _left.value = rem / total;
-    _secs.value = (rem / 1000).ceil();
+    final s = (rem / 1000).ceil();
+    if (widget.ticks && s != _secs.value && s >= 1 && s <= 3 && _secs.value > s) GzSound.instance.play(GzSfx.tick, volume: .8);
+    _secs.value = s;
   }
 
   @override
@@ -219,7 +225,9 @@ class _StartCountdownState extends State<StartCountdown> with SingleTickerProvid
   @override
   void onTick() {
     final ms = widget.startsAt - widget.now();
-    _n.value = ms <= -700 ? -1 : (ms <= 0 ? 0 : math.min(3, (ms / 1000).ceil()));
+    final n = ms <= -700 ? -1 : (ms <= 0 ? 0 : math.min(3, (ms / 1000).ceil()));
+    if (n != _n.value && n >= 0 && n <= 3) GzSound.instance.play(n == 0 ? GzSfx.go : GzSfx.count);
+    _n.value = n;
   }
 
   @override

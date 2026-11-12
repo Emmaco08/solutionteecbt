@@ -8,6 +8,7 @@ environment:
   sdk: ^3.13.7
 
 dependencies:
+  audioplayers: ^6.8.1
   connectivity_plus: ^7.3.2
   crypto: ^3.0.8
   drift: ^2.35.3
@@ -57,6 +58,7 @@ flutter:
     - assets/brand/
     - assets/brand/exam-bodies/
     - assets/third_party/
+    - assets/sounds/
   fonts:
     # Lilita One (SIL OFL, assets/fonts/LILITA_ONE_OFL.txt): Game Zone headings only (D-157)
     - family: LilitaOne

@@ -323,8 +323,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('${_greeting()},', style: context.ty.cap.col(c.textMuted)),
-                          Text(first.isEmpty ? 'Student' : first, style: context.ty.h3),
+                          Text('${_greeting()},', maxLines: 1, overflow: TextOverflow.ellipsis, softWrap: false, style: context.ty.cap.col(c.textMuted)),
+                          Text(first.isEmpty ? 'Student' : first, maxLines: 1, overflow: TextOverflow.ellipsis, softWrap: false, style: context.ty.h3),
                         ],
                       ),
                     ),
@@ -356,7 +356,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ],
                     ),
                     const Gap(Space.s1),
-                    IconBtn(PhosphorIcons.magnifyingGlass(), label: 'Search', onPressed: () => context.push('/search')),
                     Consumer(
                       builder: (context, ref, _) {
                         final unread = ref.watch(unreadCountProvider);

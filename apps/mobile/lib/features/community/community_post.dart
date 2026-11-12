@@ -37,6 +37,21 @@ class _ThreadScreenState extends ConsumerState<ThreadScreen> {
   final _focus = FocusNode();
   Json? _to; // the reply being answered
   bool _sending = false;
+
+  /// The student tagged @solutiontee: show "SolutionTee AI is typing…" until its reply arrives.
+  bool _aiTyping = false;
+
+  int get _aiCount {
+    var n = 0;
+    for (final r in asList(_p?['replies'])) {
+      if (r['from_ai'] == true) n++;
+      for (final x in asList(r['reply_list'])) {
+        if (x['from_ai'] == true) n++;
+      }
+    }
+    return n;
+  }
+
   final _open = <String>{};
 
   @override
@@ -81,10 +96,19 @@ class _ThreadScreenState extends ConsumerState<ThreadScreen> {
         _to = null;
         if (parent != null) _open.add(parent);
       });
+      final asksAi = RegExp('@solutiontee', caseSensitive: false).hasMatch(body);
+      final before = _aiCount;
+      if (asksAi && r['status'] != 'rejected') setState(() => _aiTyping = true);
       await _load();
-      if (r['status'] == 'pending') {
+      // Replies go live at once and are checked after (D-156): ask the server to check (and let the AI answer) right now.
+      if (r['status'] != 'rejected') {
         await checkNow('comment', r['id']);
         if (mounted) await _load();
+        for (var i = 0; i < 3 && asksAi && mounted && _aiCount <= before; i++) {
+          await Future<void>.delayed(const Duration(seconds: 5));
+          if (mounted) await _load();
+        }
+        if (mounted) setState(() => _aiTyping = false);
       }
     } catch (_) {
       if (mounted) toast(context, offlineText);
@@ -162,6 +186,7 @@ class _ThreadScreenState extends ConsumerState<ThreadScreen> {
                         ),
                     Divider(height: 1, color: c.border),
                   ],
+                  if (_aiTyping) const _AiTyping(),
                 ],
               ),
             ),
@@ -284,7 +309,9 @@ class _BigPost extends ConsumerWidget {
     final reposts = (p['reposts'] as num?)?.toInt() ?? 0;
     final likes = (p['likes'] as num?)?.toInt() ?? 0;
     final mine = p['mine'] == true;
-    void openUser() => context.push('/community/user/${p['user_id']}');
+    final page = p['page_id'] != null;
+    // A page post (e.g. the official SolutionTee page) opens the page, not the staff member who wrote it.
+    void openUser() => page ? context.push('/community/u/${p['handle']}') : context.push('/community/user/${p['user_id']}');
     Widget stat(int n, String one, String many) => Text.rich(
       TextSpan(
         children: [
@@ -300,7 +327,7 @@ class _BigPost extends ConsumerWidget {
         children: [
           Row(
             children: [
-              CAvatar(name: '${p['name']}', photo: p['avatar_path'] as String?, size: 48, onTap: openUser),
+              CAvatar(name: '${p['name']}', photo: p['avatar_path'] as String?, size: 48, onTap: openUser, brand: p['badge'] == 'official'),
               const Gap(Space.s3),
               Expanded(
                 child: GestureDetector(
@@ -308,13 +335,21 @@ class _BigPost extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('${p['name']}', style: context.ty.lg.bold, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text('${p['name']}', style: context.ty.lg.bold, maxLines: 1, overflow: TextOverflow.ellipsis),
+                          ),
+                          if (p['badge'] != null) ...[const Gap(4), CBadge('${p['badge']}', size: 16)],
+                        ],
+                      ),
                       Text('@${p['handle']}', style: context.ty.sm.col(c.textMuted)),
                     ],
                   ),
                 ),
               ),
-              if (!mine) FollowPill(user: '${p['user_id']}', following: p['following'] == true, handle: '${p['handle']}'),
+              if (!mine || page)
+                FollowPill(user: page ? '${p['page_id']}' : '${p['user_id']}', following: p['following'] == true, handle: '${p['handle']}', page: page),
               PostMenu(post: p, onGone: () => context.canPop() ? context.pop() : null),
             ],
           ),
@@ -445,86 +480,87 @@ class _ReplyTileState extends ConsumerState<_ReplyTile> {
       onLongPress: _menu,
       child: Padding(
         padding: EdgeInsets.fromLTRB(widget.nested ? 68 : Space.s4, Space.s3, Space.s3, 0),
-        child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Column(
-                children: [
-                  CAvatar(
-                    name: '${r['name']}',
-                    photo: r['avatar_path'] as String?,
-                    size: size,
-                    ai: ai,
-                    onTap: ai ? null : () => context.push('/community/user/${r['user_id']}'),
-                  ),
-                  if (widget.line)
-                    Expanded(
-                      child: Container(width: 2, margin: const EdgeInsets.only(top: 4), color: c.border),
-                    ),
-                ],
+        child: Stack(
+          children: [
+            if (widget.line)
+              Positioned(
+                left: size / 2 - 1,
+                top: size + 4,
+                bottom: 0,
+                child: Container(width: 2, color: c.border),
               ),
-              const Gap(Space.s3),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: Space.s2),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text('${r['name']}', style: context.ty.sm.bold, maxLines: 1, overflow: TextOverflow.ellipsis),
-                          ),
-                          if (r['badge'] != null) ...[const Gap(4), CBadge('${r['badge']}', size: 14)],
-                          const Gap(4),
-                          Expanded(
-                            child: Text(
-                              '@${r['handle']} · ${agoText(r['created_at'])}',
-                              style: context.ty.sm.col(c.textMuted),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CAvatar(
+                  name: '${r['name']}',
+                  photo: r['avatar_path'] as String?,
+                  size: size,
+                  ai: ai,
+                  onTap: ai ? null : () => context.push('/community/user/${r['user_id']}'),
+                ),
+                const Gap(Space.s3),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: Space.s2),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text('${r['name']}', style: context.ty.sm.bold, maxLines: 1, overflow: TextOverflow.ellipsis),
                             ),
-                          ),
-                          InkResponse(
-                            onTap: _menu,
-                            radius: 18,
-                            child: Padding(
-                              padding: const EdgeInsets.all(4),
-                              child: Icon(PhosphorIcons.dotsThree(), size: 18, color: c.textMuted, semanticLabel: 'More'),
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (widget.nested && r['reply_to_handle'] != null) Text('Replying to @${r['reply_to_handle']}', style: context.ty.cap.col(c.link)),
-                      const Gap(2),
-                      // SolutionTee AI writes Markdown (bold, lists, maths): drawn like lesson notes.
-                      if (ai) NoteBody(text: '${r['body']}', scale: .9) else CText('${r['body']}', style: context.ty.body),
-                      if (status == 'pending') ...[const Gap(Space.s2), const CheckingNote(text: 'Being checked. Only you can see it for now.')],
-                      if (status == 'rejected') ...[const Gap(Space.s2), NotShownNote(reason: r['reason'] as String?)],
-                      if (status == 'shown')
-                        Transform.translate(
-                          offset: const Offset(-8, 0),
-                          child: Row(
-                            children: [
-                              ActionBtn(icon: PhosphorIcons.chatCircle(), label: 'Reply', onTap: widget.onReply),
-                              ActionBtn(
-                                icon: PhosphorIcons.heart(),
-                                label: _liked ? 'Unlike' : 'Like',
-                                count: _likes,
-                                color: _liked ? kLike : null,
-                                onTap: _like,
-                                child: HeartIcon(on: _liked, size: 17),
+                            if (r['badge'] != null) ...[const Gap(4), CBadge('${r['badge']}', size: 14)],
+                            const Gap(4),
+                            Expanded(
+                              child: Text(
+                                '@${r['handle']} · ${agoText(r['created_at'])}',
+                                style: context.ty.sm.col(c.textMuted),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                            ],
-                          ),
+                            ),
+                            InkResponse(
+                              onTap: _menu,
+                              radius: 18,
+                              child: Padding(
+                                padding: const EdgeInsets.all(4),
+                                child: Icon(PhosphorIcons.dotsThree(), size: 18, color: c.textMuted, semanticLabel: 'More'),
+                              ),
+                            ),
+                          ],
                         ),
-                    ],
+                        if (widget.nested && r['reply_to_handle'] != null) Text('Replying to @${r['reply_to_handle']}', style: context.ty.cap.col(c.link)),
+                        const Gap(2),
+                        // SolutionTee AI writes Markdown (bold, lists, maths): a soft card, long answers fold.
+                        if (ai) AiReplyBody(text: '${r['body']}') else CText('${r['body']}', style: context.ty.body),
+                        if (status == 'pending') ...[const Gap(Space.s2), const CheckingNote(text: 'Being checked. Only you can see it for now.')],
+                        if (status == 'rejected') ...[const Gap(Space.s2), NotShownNote(reason: r['reason'] as String?)],
+                        if (status == 'shown')
+                          Transform.translate(
+                            offset: const Offset(-8, 0),
+                            child: Row(
+                              children: [
+                                ActionBtn(icon: PhosphorIcons.chatCircle(), label: 'Reply', onTap: widget.onReply),
+                                ActionBtn(
+                                  icon: PhosphorIcons.heart(),
+                                  label: _liked ? 'Unlike' : 'Like',
+                                  count: _likes,
+                                  color: _liked ? kLike : null,
+                                  onTap: _like,
+                                  child: HeartIcon(on: _liked, size: 17),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -535,6 +571,104 @@ class _ReplyTileState extends ConsumerState<_ReplyTile> {
 }
 
 // ---------------------------------------------------------------- compose
+
+/// SolutionTee AI's reply in a thread: Markdown in a soft card; answers longer than about 9 lines fold with "Show more".
+class _AiTyping extends StatelessWidget {
+  const _AiTyping();
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    final dots = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var i = 0; i < 3; i++)
+          Container(
+            width: 7,
+            height: 7,
+            margin: const EdgeInsets.symmetric(horizontal: 2),
+            decoration: BoxDecoration(color: c.textMuted, shape: BoxShape.circle),
+          ).animate(onPlay: (a) => a.repeat()).fade(begin: .3, end: 1, delay: (150 * i).ms, duration: 450.ms).then().fade(begin: 1, end: .3, duration: 450.ms),
+      ],
+    );
+    return Semantics(
+      liveRegion: true,
+      label: 'SolutionTee AI is typing',
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(Space.s4, Space.s3, Space.s4, Space.s3),
+        child: Row(
+          children: [
+            const CAvatar(name: 'SolutionTee AI', ai: true, size: 40),
+            const Gap(Space.s3),
+            Text('SolutionTee AI is typing', style: context.ty.sm.bold.col(c.textMuted)),
+            const Gap(6),
+            context.reduceMotion ? const SizedBox.shrink() : dots,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class AiReplyBody extends StatefulWidget {
+  const AiReplyBody({super.key, required this.text});
+  final String text;
+  @override
+  State<AiReplyBody> createState() => _AiReplyBodyState();
+}
+
+class _AiReplyBodyState extends State<AiReplyBody> {
+  bool _open = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    final long = widget.text.length > 420 || '\n'.allMatches(widget.text).length > 7;
+    final body = NoteBody(text: widget.text, scale: .88);
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 4, bottom: 2),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      decoration: BoxDecoration(
+        color: c.surfaceAlt,
+        borderRadius: BorderRadius.circular(Radii.md),
+        border: Border.all(color: c.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AnimatedSize(
+            duration: Motion.base,
+            curve: Motion.standard,
+            alignment: Alignment.topCenter,
+            child: !long || _open
+                ? body
+                : ClipRect(
+                    child: ShaderMask(
+                      blendMode: BlendMode.dstIn,
+                      shaderCallback: (r) => const LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Colors.black, Colors.black, Colors.transparent],
+                        stops: [0, .7, 1],
+                      ).createShader(r),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxHeight: 200),
+                        child: SingleChildScrollView(physics: const NeverScrollableScrollPhysics(), child: body),
+                      ),
+                    ),
+                  ),
+          ),
+          if (long)
+            TextButton(
+              onPressed: () => setState(() => _open = !_open),
+              style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(48, 36), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+              child: Text(_open ? 'Show less' : 'Show more', style: context.ty.sm.bold.col(c.link)),
+            ),
+        ],
+      ),
+    );
+  }
+}
 
 class ComposeScreen extends ConsumerStatefulWidget {
   const ComposeScreen({super.key, this.quote, this.subject, this.text, this.page});
@@ -678,7 +812,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
       final container = ProviderScope.containerOf(context, listen: false);
       container.read(communityTickProvider.notifier).bump();
       context.pop(true);
-      if (r['status'] == 'pending') {
+      if (r['status'] != 'rejected') {
         await checkNow('post', r['id']);
         container.read(communityTickProvider.notifier).bump();
       }

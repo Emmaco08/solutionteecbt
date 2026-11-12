@@ -12,6 +12,7 @@ import 'gz_avatar.dart';
 import 'gz_data.dart';
 import 'gz_hub.dart';
 import 'gz_scenes.dart';
+import 'gz_sound.dart';
 import 'gz_theme.dart';
 
 // Matchmaking (D-157): a radar sweep while the server looks for a student of a similar level; a SolutionTee Bot
@@ -48,6 +49,7 @@ class _GzFindScreenState extends ConsumerState<GzFindScreen> {
     if (!mounted) return;
     if (_f.stage == FindStage.found && _f.matchId != null) {
       HapticFeedback.heavyImpact();
+      GzFeel.sfx(GzSfx.found);
       context.pushReplacement('/games/m/${_f.matchId}');
       return;
     }
@@ -68,66 +70,69 @@ class _GzFindScreenState extends ConsumerState<GzFindScreen> {
     final home = ref.watch(gzHomeProvider).value;
     final face = GzFace.from(asJson(home?['me'])['avatar']);
     final queue = widget.mode == 'quick' || widget.mode == 'ranked';
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light,
-      child: PopScope(
-        canPop: true,
-        child: Scaffold(
-          backgroundColor: GzC.ink,
-          body: Stack(
-            children: [
-              const Positioned.fill(
-                child: ArenaScene(top: Color(0xFF0B1F44), mid: Color(0xFF13234A), glow: GzC.cyan, beams: false),
-              ),
-              SafeArea(
-                child: _f.stage == FindStage.failed
-                    ? GzErrorView(text: _f.error ?? 'Something went wrong.', onRetry: () => _f.start())
-                    : Column(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                GzTag(g.name.toUpperCase(), color: g.color, textColor: g.dark ? GzC.navy : Colors.white),
-                                if (widget.mode == 'ranked') const GzTag('RANKED', color: GzC.red),
-                              ],
+    return GzMusic(
+      track: 'hub',
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.light,
+        child: PopScope(
+          canPop: true,
+          child: Scaffold(
+            backgroundColor: GzC.ink,
+            body: Stack(
+              children: [
+                const Positioned.fill(
+                  child: ArenaScene(top: Color(0xFF0B1F44), mid: Color(0xFF13234A), glow: GzC.cyan, beams: false),
+                ),
+                SafeArea(
+                  child: _f.stage == FindStage.failed
+                      ? GzErrorView(text: _f.error ?? 'Something went wrong.', onRetry: () => _f.start())
+                      : Column(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  GzTag(g.name.toUpperCase(), color: g.color, textColor: g.dark ? GzC.navy : Colors.white),
+                                  if (widget.mode == 'ranked') const GzTag('RANKED', color: GzC.red),
+                                ],
+                              ),
                             ),
-                          ),
-                          const Spacer(),
-                          SizedBox(
-                            width: 300,
-                            height: 300,
-                            child: Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                const Positioned.fill(child: _Radar()),
-                                if (queue) ..._ghosts(context),
-                                GzPortrait(face: face, size: 120, name: 'You'),
-                              ],
+                            const Spacer(),
+                            SizedBox(
+                              width: 300,
+                              height: 300,
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  const Positioned.fill(child: _Radar()),
+                                  if (queue) ..._ghosts(context),
+                                  GzPortrait(face: face, size: 120, name: 'You'),
+                                ],
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 24),
-                          Text(queue ? 'FINDING A PLAYER' : (widget.mode == 'friend' ? 'MAKING YOUR CODE' : 'GETTING READY'), style: gzFont(28, spacing: 1)),
-                          const SizedBox(height: 6),
-                          if (queue) _Waiting(clock: _clock, wait: _f.wait, searching: _f.searching),
-                          const Spacer(),
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(40, 0, 40, 24),
-                            child: GameButton(
-                              color: GzC.navy2,
-                              height: 54,
-                              onTap: () async {
-                                await _f.cancel();
-                                if (context.mounted) context.pop();
-                              },
-                              child: Text('CANCEL', style: gzFont(20)),
+                            const SizedBox(height: 24),
+                            Text(queue ? 'FINDING A PLAYER' : (widget.mode == 'friend' ? 'MAKING YOUR CODE' : 'GETTING READY'), style: gzFont(28, spacing: 1)),
+                            const SizedBox(height: 6),
+                            if (queue) _Waiting(clock: _clock, wait: _f.wait, searching: _f.searching),
+                            const Spacer(),
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(40, 0, 40, 24),
+                              child: GameButton(
+                                color: GzC.navy2,
+                                height: 54,
+                                onTap: () async {
+                                  await _f.cancel();
+                                  if (context.mounted) context.pop();
+                                },
+                                child: Text('CANCEL', style: gzFont(20)),
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-              ),
-            ],
+                          ],
+                        ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

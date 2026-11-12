@@ -10,6 +10,7 @@ import 'gz_data.dart';
 import 'gz_fx.dart';
 import 'gz_match.dart';
 import 'gz_scenes.dart';
+import 'gz_sound.dart';
 import 'gz_theme.dart';
 
 // Round games (D-157): JAMB Duel, Word War, Knowledge Survival and Team Relay. Everybody gets the same question at
@@ -57,6 +58,7 @@ class _GzSyncPlayState extends State<GzSyncPlay> {
       _good = true;
       _fx++;
       GzFeel.right();
+      if (combo == 3 || combo == 5) Future.delayed(const Duration(milliseconds: 250), () => GzFeel.sfx(GzSfx.combo, volume: .7));
     } else if (m.misses != _misses) {
       _misses = m.misses;
       _pop = m.game == 'survival' ? '-1 HEART' : 'MISSED!';
@@ -86,7 +88,7 @@ class _GzSyncPlayState extends State<GzSyncPlay> {
     final open = gzMs(round['open_at']) ?? 0;
     final close = gzMs(round['close_at']) ?? 0;
     final item = round['item'] == null ? null : asJson(round['item']);
-    final live = item != null && m.now() >= open - 250;
+    final live = item != null && m.now() >= open;
     final me = m.me;
     final dead = me['alive'] == false;
     final subject = (m.s?['subject'] as Map?)?['name'];
@@ -169,7 +171,10 @@ class _GzSyncPlayState extends State<GzSyncPlay> {
   // ---------------------------------------------------------------- top HUD
 
   Widget _hud(int idx, int open, int close, bool live, bool answered) {
-    final ring = TimerRing(now: m.now, from: open, to: math.max(open + 1, close), size: 58, frozen: !live);
+    // Between rounds the ring counts down to the next question instead of sitting at 0.
+    final ring = live
+        ? TimerRing(now: m.now, from: open, to: math.max(open + 1, close), size: 58)
+        : TimerRing(key: ValueKey('next$open'), now: m.now, from: open - (gzMs(m.s?['gap_ms']) ?? 3500), to: open, size: 58, ticks: false);
     final players = m.players;
     switch (m.game) {
       case 'survival':
@@ -771,65 +776,148 @@ class _Reveal extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final last = m.last;
-    final title = nextIdx >= m.rounds ? 'FINAL RESULTS COMING' : (nextIdx == 0 ? 'GET READY!' : 'ROUND ${nextIdx + 1} NEXT');
+    final calm = context.calm;
+    final openAt = gzMs(m.round?['open_at']) ?? 0;
+    final next = nextIdx >= m.rounds ? 'RESULTS COMING' : (nextIdx == 0 ? 'GET READY!' : 'ROUND ${nextIdx + 1}');
+    final countdown = _NextIn(m: m, at: openAt, label: next);
     if (last == null || last['item'] == null) {
-      return Center(
-        child: Text(title, style: gzFont(28)).animate(onPlay: (c) => c.repeat(reverse: true)).fade(begin: .6, end: 1, duration: 600.ms),
-      );
+      return Center(child: countdown);
     }
     final item = asJson(last['item']);
     final key = '${last['key']}';
     final right = asList(item['options']).firstWhere((o) => '${o['key']}' == key, orElse: () => const {});
     final mine = asList(last['results']).firstWhere((x) => x['p'] == m.me['id'], orElse: () => const {});
     final ok = mine['correct'] == true;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 4, 14, 14),
-      child: Column(
-        children: [
-          Text(mine.isEmpty ? 'TIME UP!' : (ok ? 'NICE ONE!' : 'NOT THIS TIME'), style: gzFont(26, color: ok ? GzC.mint : const Color(0xFFFFB3C3))),
-          const SizedBox(height: 10),
-          Flexible(
-            child: GzPanel(
-              padding: const EdgeInsets.all(14),
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    if (m.game == 'words')
-                      Text('${item['word'] ?? ''}'.toUpperCase(), style: gzFont(22))
-                    else
-                      MathText(
-                        '${item['body'] ?? ''}',
-                        textAlign: TextAlign.center,
-                        style: gzBody(14, color: GzC.subLight, weight: FontWeight.w500),
-                      ),
-                    const SizedBox(height: 10),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: GzC.green,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: GzC.ink, width: 3),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.check_circle_rounded, color: Colors.white),
-                          const SizedBox(width: 8),
-                          Expanded(child: MathText('${right['text'] ?? key}', style: gzBody(16))),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(title, style: gzFont(18, color: GzC.goldLight)),
+    final pts = gzMs(mine['points']) ?? 0;
+    final title = mine.isEmpty ? 'TIME UP!' : (ok ? 'CORRECT!' : 'WRONG!');
+    final color = mine.isEmpty ? GzC.goldLight : (ok ? GzC.mint : const Color(0xFFFF8FA8));
+    Widget banner = Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        OutlinedText(title, size: 34, color: color, stroke: 3, shadow: 4),
+        if (ok && pts > 0) ...[const SizedBox(width: 10), GzTag('+$pts', color: GzC.brand, textColor: GzC.navy, size: 18)],
+      ],
+    );
+    if (!calm) banner = banner.animate().scale(begin: const Offset(.5, .5), duration: 360.ms, curve: Curves.easeOutBack).fadeIn(duration: 140.ms);
+    final words = m.game == 'words';
+    Widget answer = Container(
+      width: double.infinity,
+      constraints: const BoxConstraints(minHeight: 64),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      decoration: BoxDecoration(
+        color: GzC.green,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: GzC.ink, width: 3),
+        boxShadow: [
+          const BoxShadow(color: GzC.ink, offset: Offset(0, 6)),
+          BoxShadow(color: GzC.mint.withValues(alpha: .45), blurRadius: 16),
         ],
       ),
-    ).animate().fadeIn(duration: 220.ms);
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: GzC.mint,
+              shape: BoxShape.circle,
+              border: Border.all(color: GzC.ink, width: 2.5),
+            ),
+            child: const Icon(Icons.check_rounded, color: GzC.navy, size: 22),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: words
+                ? Text('${right['text'] ?? key}'.toUpperCase(), style: gzFont(22))
+                : MathText('${right['text'] ?? key}', style: gzBody(17, height: 1.25)),
+          ),
+        ],
+      ),
+    );
+    if (!calm) answer = answer.animate(delay: 160.ms).slideY(begin: .3, duration: 320.ms, curve: Curves.easeOutBack).fadeIn(duration: 160.ms);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          banner,
+          const SizedBox(height: 10),
+          Flexible(
+            child: Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.topCenter,
+              children: [
+                Container(
+                  margin: const EdgeInsets.only(top: 14),
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: GzC.cream,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: GzC.ink, width: 4),
+                    boxShadow: const [BoxShadow(color: GzC.ink, offset: Offset(0, 6))],
+                  ),
+                  child: SingleChildScrollView(
+                    primary: false,
+                    padding: const EdgeInsets.fromLTRB(14, 22, 14, 14),
+                    child: words
+                        ? Column(
+                            children: [
+                              Text('${item['body'] ?? ''}'.toUpperCase(), style: gzBody(12, color: GzC.navy)),
+                              FittedBox(
+                                child: Text('${item['word'] ?? ''}'.toUpperCase(), style: gzFont(30, color: GzC.navy, shadow: 0)),
+                              ),
+                            ],
+                          )
+                        : MathText(
+                            '${item['body'] ?? ''}',
+                            textAlign: TextAlign.center,
+                            style: gzBody(15, color: GzC.navy, height: 1.35),
+                          ),
+                  ),
+                ),
+                GzTag('THE ANSWER', color: GzC.green, size: 13),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          answer,
+          const SizedBox(height: 16),
+          countdown,
+        ],
+      ),
+    );
   }
+}
+
+/// "ROUND 7 IN 3": counts down to the next round on the server clock.
+class _NextIn extends StatefulWidget {
+  const _NextIn({required this.m, required this.at, required this.label});
+  final GzMatch m;
+  final int at;
+  final String label;
+  @override
+  State<_NextIn> createState() => _NextInState();
+}
+
+class _NextInState extends State<_NextIn> {
+  late final _t = Stream.periodic(const Duration(milliseconds: 200));
+  @override
+  Widget build(BuildContext context) => StreamBuilder(
+    stream: _t,
+    builder: (_, _) {
+      final left = math.max(0, ((widget.at - widget.m.now()) / 1000).ceil());
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+        decoration: BoxDecoration(
+          color: GzC.ink.withValues(alpha: .85),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: GzC.goldLight, width: 2.5),
+          boxShadow: const [BoxShadow(color: GzC.ink, offset: Offset(0, 4))],
+        ),
+        child: Text(left > 0 ? '${widget.label} IN $left' : widget.label, style: gzFont(20, color: GzC.goldLight)),
+      );
+    },
+  );
 }
 
 class _Fallen extends StatelessWidget {

@@ -27,27 +27,52 @@ final sessionProvider = StreamProvider<Session?>((ref) async* {
 
 // ---------------------------------------------------------------- settings (per device)
 class AppSettings {
-  const AppSettings({this.theme = ThemeMode.system, this.reduceMotion = false, this.dataSaver = false, this.onboarded = false, this.toured = false});
+  const AppSettings({
+    this.theme = ThemeMode.system,
+    this.reduceMotion = false,
+    this.dataSaver = false,
+    this.onboarded = false,
+    this.toured = false,
+    this.gameSounds = true,
+    this.gameMusic = true,
+  });
   final ThemeMode theme;
   final bool reduceMotion;
   final bool dataSaver;
   final bool onboarded;
   final bool toured;
 
-  AppSettings copyWith({ThemeMode? theme, bool? reduceMotion, bool? dataSaver, bool? onboarded, bool? toured}) => AppSettings(
-    theme: theme ?? this.theme,
-    reduceMotion: reduceMotion ?? this.reduceMotion,
-    dataSaver: dataSaver ?? this.dataSaver,
-    onboarded: onboarded ?? this.onboarded,
-    toured: toured ?? this.toured,
-  );
-  Map<String, Object> toJson() => {'theme': theme.name, 'rm': reduceMotion, 'ds': dataSaver, 'ob': onboarded, 'tour': toured};
+  /// Game Zone sound effects and music (D-157), both on by default.
+  final bool gameSounds;
+  final bool gameMusic;
+
+  AppSettings copyWith({ThemeMode? theme, bool? reduceMotion, bool? dataSaver, bool? onboarded, bool? toured, bool? gameSounds, bool? gameMusic}) =>
+      AppSettings(
+        theme: theme ?? this.theme,
+        reduceMotion: reduceMotion ?? this.reduceMotion,
+        dataSaver: dataSaver ?? this.dataSaver,
+        onboarded: onboarded ?? this.onboarded,
+        toured: toured ?? this.toured,
+        gameSounds: gameSounds ?? this.gameSounds,
+        gameMusic: gameMusic ?? this.gameMusic,
+      );
+  Map<String, Object> toJson() => {
+    'theme': theme.name,
+    'rm': reduceMotion,
+    'ds': dataSaver,
+    'ob': onboarded,
+    'tour': toured,
+    'gs': gameSounds,
+    'gm': gameMusic,
+  };
   static AppSettings fromJson(Map<String, dynamic> j) => AppSettings(
     theme: ThemeMode.values.firstWhere((m) => m.name == j['theme'], orElse: () => ThemeMode.system),
     reduceMotion: j['rm'] == true,
     dataSaver: j['ds'] == true,
     onboarded: j['ob'] == true,
     toured: j['tour'] == true,
+    gameSounds: j['gs'] != false,
+    gameMusic: j['gm'] != false,
   );
 }
 

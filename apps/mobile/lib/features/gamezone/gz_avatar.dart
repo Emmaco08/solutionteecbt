@@ -175,18 +175,6 @@ class GzPortrait extends StatelessWidget {
                 ),
               ),
             ),
-            // Rim light on the ring.
-            Positioned(
-              left: size * .16,
-              top: size * .08,
-              child: IgnorePointer(
-                child: Container(
-                  width: size * .3,
-                  height: size * .08,
-                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: .45), borderRadius: BorderRadius.circular(size)),
-                ),
-              ),
-            ),
             if (bot)
               Positioned(
                 bottom: -size * .06,

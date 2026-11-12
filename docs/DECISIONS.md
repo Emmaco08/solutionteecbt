@@ -1682,3 +1682,25 @@ Owner: "COMMUNITY IS APPROVED, only few changes…" (same day as D-155).
 - **Live updates:** private Realtime topics `gz:<match>` (start, answers, rounds, steps, done) and `gzu:<user>` (match found,
   rematch invites), with timed refreshes at each round's open/close and a 3–5 s backup, so a dropped connection never
   freezes a game. The app keeps the server-clock offset from the quickest round trip.
+- **Owner changes (12 Nov 2026, after the first check):**
+  - **Sound and music:** synthesised by `design/scripts/gz_sounds.py` (ours, no licences, 476 KB): 17 effects (tap, right,
+    wrong, last-3-second ticks, 3-2-1-GO, match found, flips, pairs, coins, combo, spin-out, win, lose …) and two music loops
+    (an Afro-pop hub groove at 112 BPM and a battle track at 128 BPM). Played with `audioplayers` (low-latency pools for
+    effects), mixed with other apps, paused in the background. Effects and music are on by default; the speaker button in
+    the hub turns each off (remembered on the phone).
+  - **Tougher Practice vs AI:** Expert and Legend levels (93% and 97% right, answering in 7–28% of the time). Quick Match
+    bots follow the student's rating up to Legend.
+  - **Word War and Memory Flash open** (the owner's earlier review step is dropped): 89 more words and 76 more card pairs,
+    with Economics, Government, Geography, Literature and Agriculture cards; Memory Flash lists all the student's subjects.
+  - **Less waiting online:** the question reaches the phone 1.5 s before its round opens and shows exactly at the open time
+    on the server clock, so a slow network no longer eats answering time.
+  - **Look:** the round result is a game screen (CORRECT!/WRONG! banner with points, the answer as a green tile, "ROUND 7 IN
+    3" countdown, the timer ring counting to the next round); no shine on the portrait ring; underlined words in questions
+    are bold with a thick gold line (everywhere in the app).
+- **Community fixes:** a page post opens the page (logo, badge, follow the page), not the staff member who wrote it; the
+  AI reply no longer overlaps the next reply (the row is laid out at its real height) and long answers fold with "Show
+  more"; @solutiontee answers within seconds (the app asks the server to check every new reply at once, the AI writes
+  while the check runs, shorter replies, 25 s per model before the next one), with "SolutionTee AI is typing…" meanwhile.
+- **Text size on every phone:** the phone's font size setting is followed between 90% and 115% (very large settings broke
+  layouts), narrow screens under 360 dp scale down a little; the Home greeting and name stay on one line; the search button
+  left the Home header (search stays in the menus and app shortcuts).

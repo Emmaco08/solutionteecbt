@@ -39,7 +39,13 @@ class MathText extends StatelessWidget {
         spans.add(
           TextSpan(
             text: u.group(1) ?? u.group(2) ?? '',
-            style: const TextStyle(decoration: TextDecoration.underline),
+            // Bold with a thick line so the underlined word stands out (owner: it was hard to see).
+            style: const TextStyle(
+              decoration: TextDecoration.underline,
+              decorationThickness: 3.5,
+              decorationColor: Color(0xFFE0A21E),
+              fontWeight: FontWeight.w700,
+            ),
           ),
         );
         last = m.end;

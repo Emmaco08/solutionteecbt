@@ -261,6 +261,7 @@ class GzMatch extends ChangeNotifier {
   Timer? _next;
   Timer? _backup;
   Timer? _debounce;
+  Timer? _show;
   bool _loading = false;
   bool _again = false;
   bool _disposed = false;
@@ -373,7 +374,17 @@ class GzMatch extends ChangeNotifier {
     } else if (round != null) {
       final r = round!;
       final open = gzMs(r['open_at']) ?? 0;
-      at = r['item'] == null || t < open ? open + 40 : (gzMs(r['close_at']) ?? t) + 450;
+      if (r['item'] == null && t < open) {
+        at = math.max(t + 40, open - 1300); // the server sends the question 1.5 s early
+      } else if (t < open) {
+        _show?.cancel();
+        _show = Timer(Duration(milliseconds: open - t), () {
+          if (!_disposed) notifyListeners();
+        });
+        at = (gzMs(r['close_at']) ?? open) + 450;
+      } else {
+        at = (gzMs(r['close_at']) ?? t) + 450;
+      }
     } else if (game == 'rush' || game == 'blitz') {
       at = t + 1500;
       if (endsAt > 0 && endsAt < at) at = endsAt + 400;
@@ -484,6 +495,7 @@ class GzMatch extends ChangeNotifier {
     _next?.cancel();
     _backup?.cancel();
     _debounce?.cancel();
+    _show?.cancel();
     _ch?.close();
     _resume?.dispose();
     super.dispose();

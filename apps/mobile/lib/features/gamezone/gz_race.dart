@@ -10,6 +10,7 @@ import 'gz_data.dart';
 import 'gz_fx.dart';
 import 'gz_match.dart';
 import 'gz_scenes.dart';
+import 'gz_sound.dart';
 import 'gz_theme.dart';
 
 // Race games (D-157): Speed Rush (first to 10 right; a wrong answer spins you out for 2 s) and Maths Blitz
@@ -47,6 +48,8 @@ class _GzRacePlayState extends State<GzRacePlay> {
           : (m.game == 'rush' ? 'SPIN OUT!' : 'OOPS!');
     });
     ok ? GzFeel.right() : GzFeel.wrong();
+    if (!ok && m.game == 'rush') GzFeel.sfx(GzSfx.spin, volume: .8);
+    if (ok && (combo == 3 || combo == 5)) GzFeel.sfx(GzSfx.combo, volume: .7);
     Future.delayed(const Duration(milliseconds: 260), () {
       if (mounted) setState(() => _flash = null);
     });
