@@ -19,7 +19,7 @@
 //      Each start makes a new reference; the webhook + verify grant it, exactly like a checkout payment.
 //   {action:"cancel", reference, reason?}   the student left or cancelled (D-095): asks Paystack first; if not paid, the
 //      payment becomes "abandoned" (a later success still counts) → {status: "abandoned"|"success"|…, expires_at?}
-//   {action:"check", reference}   → {status, kind: plan|xp|tutor|class|…, expires_at?}
+//   {action:"check", reference}
 //      → {status: "pending"|"success"|"failed"|"needs_review"|"refunded", expires_at?}
 //   {action:"banks"} → {banks:[{name, code}]}   Nigerian banks for prize payouts (D-090)
 //   {action:"resolve", account_number, bank_code} → {account_name}   checks an account before a winner sends it
@@ -482,7 +482,7 @@ Deno.serve(async (req) => {
     if (action === "check" || action === "refund") {
       const reference = String(body.reference ?? "");
       if (!/^st_[0-9a-f]{20}$/.test(reference)) return json({ error: "Bad reference" }, 400);
-      const { data: pay } = await admin.from("payments").select("user_id, status, provider, item_kind, xp_pack").eq("reference", reference).maybeSingle();
+      const { data: pay } = await admin.from("payments").select("user_id, status, provider").eq("reference", reference).maybeSingle();
       if (!pay || pay.provider !== "paystack") return json({ error: "Payment not found" }, 404);
       const isAdmin = (await asUser(user.token).rpc("am_money_admin")).data === true;
       if (pay.user_id !== user.id && !isAdmin) return json({ error: "Payment not found" }, 404);
@@ -492,9 +492,7 @@ Deno.serve(async (req) => {
           : { status: pay.status };
         // A cancelled (abandoned) or failed payment keeps that status unless Paystack now gives a final answer.
         const status = r.status === "pending" ? String(pay.status) : String(r.status);
-        // kind (D-153): what was bought, so the app shows the right success screen (a tutor plan is never "Premium").
-        const kind = pay.xp_pack ? "xp" : pay.item_kind ? String(pay.item_kind) : "plan";
-        return json({ status, kind, expires_at: status === "success" && pay.user_id && kind === "plan" ? await premiumUntil(pay.user_id) : null });
+        return json({ status, expires_at: status === "success" && pay.user_id ? await premiumUntil(pay.user_id) : null });
       }
 
       if (!isAdmin) return json({ error: "Only admins with 2-step login can refund." }, 403);

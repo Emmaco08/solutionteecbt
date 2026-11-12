@@ -77,14 +77,34 @@ preview + .aab), a short test guide, then **stop and wait for the owner's approv
 - **Play Console:** create a managed product for each tutor plan and paste its id in Admin → Tutor plans.
 - Custom prices are set by an admin per request.
 
-## Update 2 — Community v2 (D-153, after approval of 1)
+## Update 1b — Tutor v3: the owner's corrections (D-153)
+
+Approved designs: the "SolutionTee Tutor v2 designs" canvas (owner: "TUTOR DESIGN APPROVED", but **not** the Home header:
+Home and every non-tutor screen stay exactly as they are).
+
+- Payments: tutor payments never say "Premium". In-app pay → "Your tutor plan is on!" (`/tutor/paid`); website pay from
+  the app → /pay/done tutor screen with a 3-2-1 countdown that opens the app (`solutiontee://app/paid?…&kind=tutor`),
+  which shows the same tutor screen. New cbt.solutiontee.com/tutor design (navy header, plan radio list, sticky Pay bar).
+- Live updates that heal themselves (root cause: the first private-channel join failed with "MissingPartition" while
+  Realtime woke up, and the clients never joined again): re-join with back-off, refetch on every re-join and when the
+  app/tab comes back, a slow poll as a safety net; message rows on a public channel (row security), typing/online on the
+  private room; `tutor_requests` added to the publication so paid → tutor assigned shows live.
+- Chat (app, tutor desk, admin): reactions, reply/quote (swipe right in the app), long-press / hover menu (react, reply,
+  copy, star, delete for everyone within 48 h, report), emoji panel, voice notes (app: hold, slide to cancel, slide up to
+  lock, pause; web: record with pause and a live wave), playback 1x/1.5x/2x, real Google Meet / WhatsApp / Zoom logos,
+  "class is live" bar, unread divider, jump-to-newest button, starred messages, sound for new messages on the desk.
+- Screens: request (subjects from the combination, up to 4; free-time tiles), plans (step 2 of 3, Most popular, custom
+  plan row), paid, finding your tutor (live), tutor reveal (once, until the student says hello), chat.
+- Tutor profile: years teaching and qualification (shown on the reveal). Admin: summary cards and best-match tutors first.
+
+## Update 2 — Community v2 (D-154, after approval of 1)
 Own full-screen shell (no app bars): Home (For you / Following), Explore (subjects, trending), Notifications, Profile;
 compose as its own page (X-style: avatar, 280+ text, photos, maths preview, subject, @solutiontee); X-style post cells,
 threads, reposts/quote, bookmarks, profiles with header, follower lists, pull-to-refresh, haptic likes with animation.
 AI check relaxed: greetings and friendly chat allowed; still blocks sexual content, politics, sports betting/gossip,
 religion fights, bullying, contacts/links, scams, exam "expo".
 
-## Update 3 — Game Zone v2 (D-154, after approval of 2)
+## Update 3 — Game Zone v2 (D-155, after approval of 2)
 Quick Match (live opponent found automatically; bot if nobody within 15 s), Practice vs AI, Play a friend, and
 ranked. Subjects limited to the student's JAMB combination. Games: **JAMB Duel** (live 1v1, same question at the
 same time), **Speed Rush** (race track driven by fast correct answers), **Knowledge Survival** (up to 20, lives,

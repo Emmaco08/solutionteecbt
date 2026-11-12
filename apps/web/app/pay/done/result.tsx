@@ -7,8 +7,8 @@ import { createClient } from "@/lib/supabase/client";
 import { payStatus, type PayStatus } from "./status";
 
 /** The app's own link back (D-116). Chrome needs the intent: form; the plain scheme is the fallback for other browsers. */
-function appLink(reference: string, plan?: string) {
-  const q = `ref=${encodeURIComponent(reference)}${plan ? `&plan=${encodeURIComponent(plan)}` : ""}`;
+function appLink(reference: string, plan?: string, kind?: string) {
+  const q = `ref=${encodeURIComponent(reference)}${plan ? `&plan=${encodeURIComponent(plan)}` : ""}${kind === "tutor" ? "&kind=tutor" : ""}`;
   const android = typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent);
   return android ? `intent://app/paid?${q}#Intent;scheme=solutiontee;package=com.solutiontee.cbt;end` : `solutiontee://app/paid?${q}`;
 }
@@ -34,9 +34,16 @@ export function PayResult({ reference, initial }: { reference: string; initial: 
     void createClient().auth.signOut({ scope: "local" });
     if (!app) return;
     queueMicrotask(() => setFromApp(true));
-    const t = setTimeout(() => window.location.assign(appLink(reference, s.plan)), 2200);
+    // A tutor plan counts down 3, 2, 1 on screen, then opens the app's tutor screen (D-153).
+    const t = setTimeout(() => window.location.assign(appLink(reference, s.plan, s.kind)), s.kind === "tutor" ? 3000 : 2200);
     return () => clearTimeout(t);
-  }, [s.status, s.plan, reference]);
+  }, [s.status, s.plan, s.kind, reference]);
+  const [count, setCount] = useState(3);
+  useEffect(() => {
+    if (!fromApp || s.kind !== "tutor") return;
+    const t = setInterval(() => setCount((n) => Math.max(0, n - 1)), 1000);
+    return () => clearInterval(t);
+  }, [fromApp, s.kind]);
 
   useEffect(() => {
     if (s.status !== "pending" && s.status !== "abandoned" && s.status !== "unknown") return;
@@ -46,6 +53,55 @@ export function PayResult({ reference, initial }: { reference: string; initial: 
   }, [s, tries, reference]);
 
   const rise = (d = 0) => (still ? {} : { initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.4, delay: d, ease } });
+
+  if (s.status === "success" && s.kind === "tutor") {
+    const rows: [string, React.ReactNode][] = [
+      ["Plan", [s.tutor_plan, s.sessions ? `${s.sessions} lessons` : null].filter(Boolean).join(" · ") || "Tutor plan"],
+      ...(s.tutor_until ? [["Runs until", longDay(s.tutor_until)] as [string, React.ReactNode]] : []),
+      ...(s.amount_kobo ? [["Amount paid", ng(s.amount_kobo)] as [string, React.ReactNode]] : []),
+      ["Receipt", <span key="r" className="font-mono text-[13px]">{reference.slice(0, 7)}…{reference.slice(-3)}</span>],
+    ];
+    return (
+      <div>
+        <div className="flex flex-col items-center text-center">
+          <SuccessMark still={Boolean(still)} />
+          <motion.p {...rise(0.15)} className="mt-5 text-sm font-bold text-success">Payment confirmed{s.amount_kobo ? ` · ${ng(s.amount_kobo)}` : ""}</motion.p>
+          <motion.h1 {...rise(0.2)} className="mt-1 text-[26px] font-bold leading-tight tracking-tight">Your tutor plan is on</motion.h1>
+          <motion.p {...rise(0.25)} className="mt-2 max-w-sm text-[15px] leading-6 text-muted-foreground">We will match you with a tutor within 24 hours. Your app shows it the moment a tutor is assigned.</motion.p>
+        </div>
+        {fromApp ? (
+          <motion.div {...rise(0.3)} className="mt-6 flex items-center gap-3 rounded-2xl bg-[#EEF3FB] p-3.5 dark:bg-[#10284D]">
+            <span className="relative grid size-11 shrink-0 place-items-center">
+              <svg viewBox="0 0 44 44" className="absolute inset-0 -rotate-90" aria-hidden>
+                <circle cx="22" cy="22" r="19" fill="none" strokeWidth="4" className="stroke-[#D3DEEF] dark:stroke-[#1C2D4A]" />
+                <motion.circle cx="22" cy="22" r="19" fill="none" strokeWidth="4" strokeLinecap="round" className="stroke-[#0B1F44] dark:stroke-[#F2B233]"
+                  initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: still ? 0 : 3, ease: "linear" }} />
+              </svg>
+              <b className="relative text-base tabular-nums" aria-live="polite">{count}</b>
+            </span>
+            <span><b className="block text-[15px]">Opening the app…</b><span className="text-[13px] text-muted-foreground">Your tutor screen opens by itself</span></span>
+          </motion.div>
+        ) : null}
+        <motion.div {...rise(0.35)}>
+          <a href={appLink(reference, s.plan, "tutor")} className="mt-4 inline-flex h-13 w-full items-center justify-center gap-2 rounded-2xl bg-[#0B1F44] px-6 text-[16px] font-bold text-white transition-transform active:scale-[.98] dark:bg-[#F2B233] dark:text-[#0B1F44]">
+            <ArrowSquareOut size={19} weight="bold" /> Open SolutionTee app
+          </a>
+          <Link href="/tutor" className="mt-2 inline-flex h-12 w-full items-center justify-center rounded-2xl text-sm font-bold text-muted-foreground hover:text-foreground">See my tutor page</Link>
+        </motion.div>
+        <motion.dl {...rise(0.4)} className="mt-4 divide-y rounded-2xl border bg-muted/40 px-4 text-sm">
+          {rows.map(([k, v]) => (
+            <div key={k} className="flex items-center justify-between gap-4 py-3">
+              <dt className="text-muted-foreground">{k}</dt>
+              <dd className="min-w-0 truncate text-right font-bold">{v}</dd>
+            </div>
+          ))}
+        </motion.dl>
+        <motion.p {...rise(0.45)} className="mt-3 text-center text-xs leading-5 text-muted-foreground">
+          <EnvelopeSimple size={15} className="mr-1 inline align-[-3px]" />A receipt has been sent to your email.
+        </motion.p>
+      </div>
+    );
+  }
 
   if (s.status === "success") {
     const what = s.kind === "xp" ? "Your XP has been added" : s.kind === "class" ? "You are in the class" : s.kind === "tutor" ? "Your tutor plan is on" : s.kind === "item" ? "Unlocked on your account" : "Premium is now on";

@@ -1509,3 +1509,35 @@ The owner asked to run the admin from Vercel instead of the laptop.
 - **Owner / legal**: tutors see students' contacts (asked by the owner) — the Privacy Policy needs a line saying a paid
   tutor sees the student's name, contacts and practice results (draft for the lawyer). Admins can read every chat
   (safeguarding for 13–17). Create Play products for tutor plans in Play Console when ready.
+
+## D-153 — Tutor v3: the owner's corrections (2026-11-12)
+**Context:** the owner tested Tutor v2: tutor payments said "You are now Premium", the website pay page and success page
+looked poor and did not return to the app, chat messages appeared only after reopening the app, and the chat lacked
+emoji, reactions, swipe to reply and a good voice recorder. They approved new designs for the tutor pages only
+("don't change anything on my home … only the tutor related pages").
+**Decisions:**
+- **Scope:** only tutor screens change. Home, Study and every other screen are untouched (the Study tutor card and the
+  payment-return screen change only for tutor payments).
+- **Realtime root cause and fix:** Realtime logs showed `MissingPartition` on the first private-channel join (the tenant
+  was waking up); supabase-js / supabase_flutter do not join a failed channel again. Fix: `LiveChannel` (app) and
+  `liveChannel` (web) re-join on error / time-out / close with back-off 1, 2, 4 … 30 s; each (re)join and each return
+  to the app/tab refetches the last 60 messages and merges them (ticks, reactions, deletes too); a poll (12–15 s while a
+  channel is down, 60 s otherwise) is the last safety net. Message rows use a public channel (`tutor-db:<id>`, row
+  security decides who receives rows); typing and online stay on the private room `tutor:<id>`. `tutor_requests` joined
+  the publication so "paid" and "tutor assigned" change the screen live.
+- **Messages:** `reply_to`, `reactions` (one per side, jsonb {student, tutor, admin}), `deleted_at` (delete for
+  everyone: own messages for 48 h, admins any time; body, file key, meta and reactions are cleared),
+  `tutor_message_stars` (private per user), `tutor_message_reports` (admins notified). RPCs: `tutor_message_react`,
+  `tutor_message_delete`, `tutor_message_star`, `tutor_starred`, `tutor_message_report`; `tutor_message_send` takes
+  `p_reply_to`. `tutor_msg_json` returns a short copy of the replied message and my star.
+- **Requests:** up to 4 subjects (`subject_ids`, `subject_id` = the first, for old screens); names via
+  `private.tutor_subject_names`. Tutors: `years_teaching`, `qualification`.
+- **Payments:** a tutor payment never shows Premium. The website link back to the app carries `kind=tutor`; the app's
+  payment-return screen then opens `/tutor/paid`. The website tutor page remembers "from the app", so /pay/done counts
+  down 3-2-1 and opens the app. (The app also understands a `kind` from the payment server; the server does not send it
+  yet, which is not needed.)
+- **Logos:** official Google Meet, WhatsApp and Zoom files from Wikimedia Commons, unchanged (PNG renders for the app
+  because Flutter cannot draw the WhatsApp SVG's blur filter). Used only to mark "Join with …" call links.
+- **Sound:** the tutor desk / admin plays a short two-note tone (Web Audio, no file) for a new student message when the
+  tab is hidden or another chat is open, and for a new paid request (admin).
+
