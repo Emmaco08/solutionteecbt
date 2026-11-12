@@ -1647,3 +1647,38 @@ Owner: "COMMUNITY IS APPROVED, only few changes…" (same day as D-155).
 - **Ads:** an ad card after every N posts in the Home feed (admin setting, default 5), through the existing ads level,
   consent and Premium rules (no ads for Premium where the ads level says so).
 - **Profile:** exams, subjects and joined date each on their own line with an icon, separated by commas.
+
+## D-157 · Game Zone v2 (owner: GAMES DESIGN APPROVED, 12 Nov 2026)
+- **Seven live games** replace Study → Games: JAMB Duel, Speed Rush, Knowledge Survival, Maths Blitz, Word War, Memory
+  Flash and Team Relay. The old Live Exam Arenas and classic duels stay reachable (Game Zone → "Live Exam Arenas and
+  classic games", `/games/classic`).
+- **Ways to play:** Quick Match (the server pairs students of a similar rating; the window widens while they wait), Practice
+  vs AI (Easy, Medium, Hard bots with set accuracy and speed), Play a friend (6-letter code, share link, Rematch invite on
+  a private topic) and Ranked (Elo, K = 32, limited to ±40; the same two students can play at most 3 rated games a day).
+  Nobody free in 15 s (admin setting) → a clearly labelled SolutionTee Bot joins, so a game always starts.
+- **Group games** (Survival up to 20, Relay 3 v 3, Rush up to 6) open a lobby for 12–15 s; **bots fill the empty seats**
+  (owner, answer 1).
+- **Fair play on the server:** one Postgres match; every round has its own open time on the server clock; answers are
+  scored by the server's time (faster right answers score more, up to 150); the right option is only sent after the round
+  closes or to the student who just answered; a round closes early once every student has answered (bots answer at their
+  planned moment); race answers faster than humanly possible count as a guess; Memory Flash levels are checked (moves ≥
+  pairs, time possible). Free students only get free-year questions. Bots are deterministic (seeded) and settle lazily
+  when anybody reads the match; a sweep closes old lobbies and queues every 10 minutes.
+- **Rewards are XP only** (owner, answer 3) and **every amount is set in Admin → Games**: XP for playing, for winning, extra
+  for a Ranked win, extra for 3 wins in a row, each overridable per game; a win only pays when at least 40% of the answers
+  were right; game XP stays inside the daily game XP cap and the normal daily XP cap. Students who leave a game get none.
+- **Starter content waits for review** (owner, answer 2): 102 Word War words and 96 Memory Flash card pairs are seeded
+  switched off; Admin → Games has Approve all, approve/hide each, edit and add. Word War needs 10 live words and Memory
+  Flash 6 live pairs before they open ("SOON" on the card until then).
+- **Players' pictures** (owner): the student's real photo when they have one (and allow it in Community), otherwise the
+  avatar they build in Game Zone (skin, 8 hair styles incl. hijab and cap, hair colour, shirt, face, glasses, background);
+  "Use my photo" can be switched off. Bots get their own avatar and a BOT tag.
+- **Look:** a real mobile-game style drawn in code (no image downloads): night stadium with moving spotlights, VS split,
+  race track with cars and nitro, floating islands over rising lava, neon arcade, castle, card table with 3D card flips,
+  chunky 3D buttons that press down, treasure chest, ribbons, stars, spark bursts, confetti; Lilita One (SIL OFL, 27 KB)
+  for game words. Performance: each scene is one painter in a RepaintBoundary, moving parts are small separate painters,
+  timers repaint only themselves from a Ticker, no blur over lists; everything still under "reduce motion". Haptics on
+  taps, right and wrong answers; no sounds (off by default, none added).
+- **Live updates:** private Realtime topics `gz:<match>` (start, answers, rounds, steps, done) and `gzu:<user>` (match found,
+  rematch invites), with timed refreshes at each round's open/close and a 3–5 s backup, so a dropped connection never
+  freezes a game. The app keeps the server-clock offset from the quickest round trip.

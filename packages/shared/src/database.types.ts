@@ -2336,6 +2336,7 @@ export type Database = {
         Row: {
           bio: string | null
           created_at: string
+          game_avatar: Json | null
           handle: string
           handle_auto: boolean
           handle_changed_at: string | null
@@ -2352,6 +2353,7 @@ export type Database = {
         Insert: {
           bio?: string | null
           created_at?: string
+          game_avatar?: Json | null
           handle: string
           handle_auto?: boolean
           handle_changed_at?: string | null
@@ -2368,6 +2370,7 @@ export type Database = {
         Update: {
           bio?: string | null
           created_at?: string
+          game_avatar?: Json | null
           handle?: string
           handle_auto?: boolean
           handle_changed_at?: string | null
@@ -2975,6 +2978,63 @@ export type Database = {
           seconds?: number
           status?: string
           subject_id?: number
+        }
+        Relationships: []
+      }
+      gz_cards: {
+        Row: {
+          active: boolean
+          back: string
+          created_at: string
+          front: string
+          id: number
+          subject_id: number
+        }
+        Insert: {
+          active?: boolean
+          back: string
+          created_at?: string
+          front: string
+          id?: number
+          subject_id: number
+        }
+        Update: {
+          active?: boolean
+          back?: string
+          created_at?: string
+          front?: string
+          id?: number
+          subject_id?: number
+        }
+        Relationships: []
+      }
+      gz_words: {
+        Row: {
+          active: boolean
+          answer: string
+          created_at: string
+          id: number
+          kind: string
+          word: string
+          wrong: string[]
+        }
+        Insert: {
+          active?: boolean
+          answer: string
+          created_at?: string
+          id?: number
+          kind: string
+          word: string
+          wrong: string[]
+        }
+        Update: {
+          active?: boolean
+          answer?: string
+          created_at?: string
+          id?: number
+          kind?: string
+          word?: string
+          wrong?: string[]
         }
         Relationships: []
       }
@@ -5397,6 +5457,7 @@ export type Database = {
       }
       admin_fraud: { Args: never; Returns: Json }
       admin_games_stats: { Args: never; Returns: Json }
+      admin_gz_stats: { Args: never; Returns: Json }
       admin_leaderboard_held: { Args: { p_season?: number }; Returns: Json }
       admin_leaderboard_recent: { Args: { p_limit?: number }; Returns: Json }
       admin_list_staff: {
@@ -5795,6 +5856,19 @@ export type Database = {
       game_join: { Args: { p_code: string }; Returns: Json }
       game_next: { Args: { p_game: string }; Returns: Json }
       games_mine: { Args: never; Returns: Json }
+      gz_answer: { Args: { p_match: string; p_idx: number; p_choice: string }; Returns: Json }
+      gz_avatar_save: { Args: { p: Json }; Returns: Json }
+      gz_cancel: { Args: never; Returns: undefined }
+      gz_find: { Args: { p_game: string; p_mode: string; p_subject?: number; p_level?: string }; Returns: Json }
+      gz_home: { Args: never; Returns: Json }
+      gz_join: { Args: { p_code: string }; Returns: Json }
+      gz_leaders: { Args: { p_game?: string }; Returns: Json }
+      gz_leave: { Args: { p_match: string }; Returns: undefined }
+      gz_memory: { Args: { p_match: string; p_level: number; p_moves: number; p_ms: number }; Returns: Json }
+      gz_poll: { Args: never; Returns: Json }
+      gz_rematch: { Args: { p_match: string }; Returns: Json }
+      gz_start_now: { Args: { p_match: string }; Returns: Json }
+      gz_state: { Args: { p_match: string }; Returns: Json }
       house_ad_log: {
         Args: { p_campaign: string; p_click?: boolean; p_placement: string }
         Returns: Json

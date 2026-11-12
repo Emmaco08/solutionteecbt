@@ -55,11 +55,11 @@ Maths Blitz, Word War, Memory Flash, team relay); the best UI and animation.
 - Admin → Games: switch each game on/off, questions per game, seconds, XP, bot levels, word list and memory cards
   editors, live matches now, players online, reports of abuse.
 
-## Owner decisions (please answer)
-1. **Team Relay** needs 6 students online at once; until we have many players, fill missing seats with bots? (Recommended: yes.)
+## Owner decisions (answered 12 Nov 2026)
+1. **Team Relay** needs 6 students online at once; until we have many players, fill missing seats with bots? **Yes.**
 2. **Word War and Memory Flash content**: I will make a starter word list (about 150 JAMB words) and starter memory cards
-   (about 120). Should SolutionTee review them before they go live? (Recommended: yes, in Admin → Games.)
-3. **Ranked prizes**: XP only for now (recommended), or weekly cash/airtime prizes later (needs the cash-prize switch).
+   (about 120). Should SolutionTee review them before they go live? **Yes: seeded switched off, approve in Admin → Games.**
+3. **Ranked prizes**: **XP only**, and every XP amount is set by admin (per game too).
 
 ## Test plan
 - Matchmaking: two test accounts find each other in seconds; a third gets a bot after 15 s.
