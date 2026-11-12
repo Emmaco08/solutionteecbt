@@ -25,6 +25,14 @@ export async function POST(req: Request) {
   if (!hasR2()) return json({ error: "Images are not available right now." }, 503);
   const token = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? "";
   const parsed = Body.safeParse(await req.json().catch(() => null));
+  // The Community checker's 2-minute sweep reads post pictures with the cron token (D-156): community pictures only.
+  const cron = req.headers.get("x-cron-token");
+  if (cron && parsed.success && parsed.data.key.startsWith("c/") && env.supabaseSecretKey) {
+    const svc = createClient(env.supabaseUrl, env.supabaseSecretKey, { auth: { persistSession: false, autoRefreshToken: false } });
+    const { data: okCron } = await svc.rpc("push_cron_ok", { p_token: cron });
+    if (okCron !== true) return json({ error: "forbidden" }, 403);
+    return json({ url: await presignGet(parsed.data.key), expiresIn: env.r2.signedUrlTtl });
+  }
   if (!token) return json({ error: "Please log in again." }, 401);
   if (!parsed.success) return json({ error: "Unknown image." }, 400);
 
