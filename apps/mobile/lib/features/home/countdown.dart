@@ -11,7 +11,6 @@ import '../../theme/tokens.g.dart';
 import '../../ui/kit.dart';
 import '../../widgets/exam_logo.dart';
 import '../../widgets/phosphor.g.dart';
-import '../compete/challenges_screens.dart' show Ticker;
 import '../xp/streak_ui.dart';
 import 'home_screen.dart';
 import 'top_card.dart';
@@ -25,6 +24,12 @@ class ExamCountdown {
   int get daysLeft {
     final now = DateTime.now();
     return DateTime(date.year, date.month, date.day).difference(DateTime(now.year, now.month, now.day)).inDays;
+  }
+
+  /// "15 Mar 2027" (fits the small Home chip on narrow phones).
+  String get shortDate {
+    const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${date.day} ${m[date.month - 1]} ${date.year}';
   }
 
   String get dateText {
@@ -308,230 +313,61 @@ class _Backdrop extends StatelessWidget {
   }
 }
 
-/// The countdown card on Home (owner, 13 Nov 2026): "122 days to your UTME (15 March 2027)" as big flip-in day
-/// tiles, a live hours · minutes · seconds clock, and a track of the study year. Tap: the full-screen countdown.
+/// The small countdown chip on Home: "122 days to your UTME (15 March 2027)" (owner, 13 Nov 2026: small, like before;
+/// the number counts up once and the hourglass turns over now and then). Tap: the full-screen countdown.
 class CountdownChip extends ConsumerWidget {
   const CountdownChip({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cd = ref.watch(examCountdownProvider);
     if (cd == null) return const SizedBox.shrink();
+    final c = context.c;
     final d = cd.daysLeft;
     final rm = context.reduceMotion;
-    // The study year: the last 365 days before the exam.
-    final done = (1 - d / 365).clamp(0.02, 1.0);
-    final note = d == 0
-        ? 'Today is the day. You are ready!'
-        : d <= 7
-        ? 'Final week. Light revision, good sleep.'
-        : d <= 30
-        ? 'Under a month. Full mock exams now.'
-        : d <= 90
-        ? 'Every day counts. Keep going.'
-        : 'Plenty of time if you start today.';
+    Text line(int n) => Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(text: d == 0 ? 'Your ${cd.label} is today' : '$n ${d == 1 ? 'day' : 'days'}', style: context.ty.label.bold.tnum),
+          TextSpan(text: d == 0 ? ' (${cd.shortDate})' : ' to your ${cd.label} (${cd.shortDate})', style: context.ty.sm.col(c.textMuted)),
+        ],
+      ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
     return Semantics(
       button: true,
-      label: d == 0 ? 'Your ${cd.label} is today' : '$d days to your ${cd.label} (${cd.dateText}). Open the countdown',
-      child: GestureDetector(
+      label: d == 0 ? 'Your ${cd.label} is today. Open the countdown' : '$d days to your ${cd.label} (${cd.dateText}). Open the countdown',
+      child: InkWell(
+        borderRadius: BorderRadius.circular(Radii.md),
         onTap: () => showExamCountdown(context),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(Radii.lg),
-          child: DecoratedBox(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(colors: [Color(0xFF0B1F44), Color(0xFF173B7A)], begin: Alignment.topLeft, end: Alignment.bottomRight),
-            ),
-            child: Stack(
-              children: [
-                // Rings on the right, like the full-screen countdown.
-                Positioned(right: -46, top: -40, child: _Rings(size: 170, still: rm)),
-                if (!rm)
-                  Positioned.fill(
-                    child: IgnorePointer(
-                      child: const DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [Color(0x00F2B233), Color(0x22F2B233), Color(0x00F2B233)],
-                            stops: [.35, .5, .65],
-                            begin: Alignment(-1, -.3),
-                            end: Alignment(1, .3),
-                          ),
-                        ),
-                      ).animate(onPlay: (c) => c.repeat()).slideX(begin: -1.2, end: 1.2, duration: 3200.ms, delay: 1500.ms, curve: Curves.easeInOut),
-                    ),
-                  ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(Space.s4, Space.s4, Space.s4, Space.s4),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(3),
-                            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
-                            child: ExamLogo(cd.code, px: 30),
-                          ),
-                          const Gap(Space.s3),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('COUNTDOWN', style: context.ty.over.col(Palette.gold300)),
-                                const Gap(2),
-                                Text(
-                                  d == 0 ? 'Your ${cd.label} is today (${cd.dateText})' : '$d ${d == 1 ? 'day' : 'days'} to your ${cd.label} (${cd.dateText})',
-                                  style: context.ty.sm.bold.col(Colors.white),
-                                  maxLines: 2,
-                                ),
-                              ],
-                            ),
-                          ),
-                          _Glass(icon: PhosphorIcons.hourglassMedium(PhosphorIconsStyle.fill), still: rm),
-                        ],
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(Space.s2, Space.s2, Space.s2, Space.s2),
+          decoration: BoxDecoration(
+            color: c.surface,
+            borderRadius: BorderRadius.circular(Radii.md),
+            border: Border.all(color: c.border),
+          ),
+          child: Row(
+            children: [
+              ExamLogo(cd.code, px: 32),
+              const Gap(Space.s2),
+              Expanded(
+                child: rm || d <= 0
+                    ? line(d)
+                    : TweenAnimationBuilder<double>(
+                        tween: Tween(begin: math.max(0, d - 30).toDouble(), end: d.toDouble()),
+                        duration: const Duration(milliseconds: 900),
+                        curve: Curves.easeOutCubic,
+                        builder: (_, v, _) => line(v.round()),
                       ),
-                      const Gap(Space.s4),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          for (final (i, ch) in '$d'.split('').indexed) ...[
-                            if (i > 0) const Gap(5),
-                            _DigitTile(ch, index: i, still: rm),
-                          ],
-                          const Gap(Space.s3),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(d == 1 ? 'DAY' : 'DAYS', style: context.ty.label.bold.col(Colors.white)),
-                                const Gap(6),
-                                // Live clock: what is left of today.
-                                Ticker(
-                                  builder: (context) {
-                                    final now = DateTime.now();
-                                    final left = DateTime(now.year, now.month, now.day + 1).difference(now);
-                                    return Row(
-                                      children: [
-                                        _Mini('${left.inHours}'.padLeft(2, '0'), 'HRS'),
-                                        _Colon(),
-                                        _Mini('${left.inMinutes % 60}'.padLeft(2, '0'), 'MIN'),
-                                        _Colon(),
-                                        _Mini('${left.inSeconds % 60}'.padLeft(2, '0'), 'SEC'),
-                                      ],
-                                    );
-                                  },
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const Gap(Space.s4),
-                      // The study-year track.
-                      LayoutBuilder(
-                        builder: (context, box) {
-                          final bar = Container(
-                            height: 8,
-                            width: box.maxWidth * done,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(99),
-                              gradient: const LinearGradient(colors: [Palette.gold400, Color(0xFFFFD877)]),
-                            ),
-                          );
-                          return Stack(
-                            children: [
-                              Container(
-                                height: 8,
-                                decoration: BoxDecoration(color: Colors.white.withValues(alpha: .12), borderRadius: BorderRadius.circular(99)),
-                              ),
-                              rm ? bar : bar.animate().scaleX(begin: 0, end: 1, alignment: Alignment.centerLeft, duration: 900.ms, delay: 250.ms, curve: Curves.easeOutCubic),
-                            ],
-                          );
-                        },
-                      ),
-                      const Gap(Space.s2),
-                      Row(
-                        children: [
-                          Expanded(child: Text(note, style: context.ty.cap.col(const Color(0xFFC9D6EE)), maxLines: 1, overflow: TextOverflow.ellipsis)),
-                          Text('Open', style: context.ty.cap.bold.col(Colors.white)),
-                          const Gap(2),
-                          Icon(PhosphorIcons.caretRight(PhosphorIconsStyle.bold), size: 12, color: Colors.white),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+              ),
+              _Glass(icon: PhosphorIcons.hourglassMedium(PhosphorIconsStyle.fill), still: rm),
+            ],
           ),
         ),
       ),
     );
   }
-}
-
-/// One day digit on a dark tile; the tiles flip in one after another.
-class _DigitTile extends StatelessWidget {
-  const _DigitTile(this.ch, {required this.index, required this.still});
-  final String ch;
-  final int index;
-  final bool still;
-  @override
-  Widget build(BuildContext context) {
-    final tile = Container(
-      width: 46,
-      height: 60,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: const Color(0xFF07162F),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: .10)),
-        boxShadow: const [BoxShadow(color: Color(0x55000000), blurRadius: 8, offset: Offset(0, 4))],
-      ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Text(ch, style: context.ty.display.tnum.copyWith(fontSize: 38, height: 1).col(Palette.gold300)),
-          // The flip-clock seam.
-          Container(height: 1.2, color: Colors.black.withValues(alpha: .45)),
-        ],
-      ),
-    );
-    if (still) return tile;
-    return tile
-        .animate(delay: (120 * index + 150).ms)
-        .fadeIn(duration: 250.ms)
-        .flipV(begin: -.5, end: 0, duration: 450.ms, curve: Curves.easeOutBack)
-        .then(delay: 4.seconds)
-        .shimmer(duration: 1200.ms, color: const Color(0x55FFFFFF));
-  }
-}
-
-class _Mini extends StatelessWidget {
-  const _Mini(this.v, this.label);
-  final String v, label;
-  @override
-  Widget build(BuildContext context) => Column(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Container(
-        width: 30,
-        height: 26,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(color: Colors.white.withValues(alpha: .10), borderRadius: BorderRadius.circular(7)),
-        child: Text(v, style: context.ty.label.bold.tnum.col(Palette.gold300)),
-      ),
-      const Gap(2),
-      Text(label, style: context.ty.over.copyWith(fontSize: 9).col(const Color(0xFFAFC0DD))),
-    ],
-  );
-}
-
-class _Colon extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(3, 0, 3, 14),
-    child: Text(':', style: context.ty.label.bold.col(const Color(0xFFAFC0DD))),
-  );
 }
 
 /// The hourglass turns over every few seconds.
@@ -541,40 +377,8 @@ class _Glass extends StatelessWidget {
   final bool still;
   @override
   Widget build(BuildContext context) {
-    final i = Container(
-      width: 36,
-      height: 36,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(color: Colors.white.withValues(alpha: .10), shape: BoxShape.circle),
-      child: Icon(icon, size: 20, color: Palette.gold400),
-    );
+    final i = SizedBox(width: 28, height: 28, child: Icon(icon, size: 18, color: Palette.gold500));
     if (still) return i;
     return i.animate(onPlay: (c) => c.repeat()).rotate(begin: 0, end: .5, duration: 700.ms, delay: 3.seconds, curve: Curves.easeInOutBack);
-  }
-}
-
-class _Rings extends StatelessWidget {
-  const _Rings({required this.size, required this.still});
-  final double size;
-  final bool still;
-  @override
-  Widget build(BuildContext context) {
-    final r = SizedBox(
-      width: size,
-      height: size,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          for (final f in const [1.0, .72, .46])
-            Container(
-              width: size * f,
-              height: size * f,
-              decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.white.withValues(alpha: .07), width: 1.4)),
-            ),
-        ],
-      ),
-    );
-    if (still) return r;
-    return r.animate(onPlay: (c) => c.repeat(reverse: true)).scaleXY(begin: .95, end: 1.05, duration: 4.seconds, curve: Curves.easeInOut);
   }
 }
