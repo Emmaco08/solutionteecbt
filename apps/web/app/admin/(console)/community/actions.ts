@@ -45,7 +45,11 @@ export async function moderate(kind: Kind, id: string, action: "show" | "reject"
 }
 
 const n = (min: number, max: number) => z.coerce.number().int().min(min).max(max);
-const Settings = z.object({ on: z.boolean(), ai_check: z.boolean(), daily_posts: n(1, 100), daily_comments: n(1, 500), ai_answers_daily: n(0, 50), report_hide: n(1, 50) });
+const Settings = z.object({
+  on: z.boolean(), ai_check: z.boolean(), daily_posts: n(1, 100), daily_comments: n(1, 500), ai_answers_daily: n(0, 50), report_hide: n(1, 50),
+  moderation: z.enum(["after", "before"]), strikes_limit: n(0, 50), strike_days: n(1, 365), ban_hours: n(1, 24 * 90),
+  ai_auto: z.boolean(), ai_auto_daily: n(0, 500), ad_every: n(0, 50),
+});
 
 export async function saveCommunitySettings(input: unknown): Promise<ActionResult> {
   await admins();
@@ -69,4 +73,15 @@ export async function decideProfile(user: string, ok: boolean, reason?: string):
   if (!(data as { ok?: boolean } | null)?.ok) return { ok: false, error: "It was already decided." };
   revalidatePath("/admin/community");
   return { ok: true, message: ok ? "Allowed. It shows now." : "Not allowed. The student is told why." };
+}
+
+/** Lift a posting pause early (D-156). */
+export async function liftBan(user: string): Promise<ActionResult> {
+  await admins();
+  if (!z.string().uuid().safeParse(user).success) return { ok: false, error: "Unknown student" };
+  const supabase = await createClient();
+  const { error } = await supabase.from("community_bans").delete().eq("user_id", user);
+  if (error) return { ok: false, error: friendlyError(error) };
+  revalidatePath("/admin/community");
+  return { ok: true, message: "They can post again." };
 }

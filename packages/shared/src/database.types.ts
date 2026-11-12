@@ -2017,6 +2017,27 @@ export type Database = {
         }
         Relationships: []
       }
+      community_bans: {
+        Row: {
+          created_at: string
+          reason: string | null
+          until: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          reason?: string | null
+          until: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          reason?: string | null
+          until?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       community_blocks: {
         Row: {
           blocked: string
@@ -2191,9 +2212,64 @@ export type Database = {
         }
         Relationships: []
       }
+      community_page_members: {
+        Row: {
+          page_id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          page_id: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          page_id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      community_pages: {
+        Row: {
+          avatar_path: string | null
+          bio: string | null
+          created_at: string
+          created_by: string | null
+          handle: string
+          header: number
+          id: string
+          name: string
+          official: boolean
+        }
+        Insert: {
+          avatar_path?: string | null
+          bio?: string | null
+          created_at?: string
+          created_by?: string | null
+          handle: string
+          header?: number
+          id?: string
+          name: string
+          official?: boolean
+        }
+        Update: {
+          avatar_path?: string | null
+          bio?: string | null
+          created_at?: string
+          created_by?: string | null
+          handle?: string
+          header?: number
+          id?: string
+          name?: string
+          official?: boolean
+        }
+        Relationships: []
+      }
       community_posts: {
         Row: {
           ai_answered: boolean
+          ai_seen: boolean
           ask_ai: boolean
           body: string
           checked_at: string | null
@@ -2203,6 +2279,7 @@ export type Database = {
           image_path: string | null
           images: string[]
           likes_count: number
+          page_id: string | null
           quote_of: string | null
           reason: string | null
           reposts_count: number
@@ -2213,6 +2290,7 @@ export type Database = {
         }
         Insert: {
           ai_answered?: boolean
+          ai_seen?: boolean
           ask_ai?: boolean
           body: string
           checked_at?: string | null
@@ -2222,6 +2300,7 @@ export type Database = {
           image_path?: string | null
           images?: string[]
           likes_count?: number
+          page_id?: string | null
           quote_of?: string | null
           reason?: string | null
           reposts_count?: number
@@ -2232,6 +2311,7 @@ export type Database = {
         }
         Update: {
           ai_answered?: boolean
+          ai_seen?: boolean
           ask_ai?: boolean
           body?: string
           checked_at?: string | null
@@ -2241,6 +2321,7 @@ export type Database = {
           image_path?: string | null
           images?: string[]
           likes_count?: number
+          page_id?: string | null
           quote_of?: string | null
           reason?: string | null
           reposts_count?: number
@@ -2259,10 +2340,12 @@ export type Database = {
           handle_auto: boolean
           handle_changed_at: string | null
           header: number
+          notify: Json
           pending_at: string | null
           pending_bio: string | null
           pending_handle: string | null
           pending_reason: string | null
+          role: string
           show_photo: boolean
           user_id: string
         }
@@ -2273,10 +2356,12 @@ export type Database = {
           handle_auto?: boolean
           handle_changed_at?: string | null
           header?: number
+          notify?: Json
           pending_at?: string | null
           pending_bio?: string | null
           pending_handle?: string | null
           pending_reason?: string | null
+          role?: string
           show_photo?: boolean
           user_id: string
         }
@@ -2287,10 +2372,12 @@ export type Database = {
           handle_auto?: boolean
           handle_changed_at?: string | null
           header?: number
+          notify?: Json
           pending_at?: string | null
           pending_bio?: string | null
           pending_handle?: string | null
           pending_reason?: string | null
+          role?: string
           show_photo?: boolean
           user_id?: string
         }
@@ -2337,6 +2424,36 @@ export type Database = {
         Update: {
           created_at?: string
           post_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      community_strikes: {
+        Row: {
+          by_user: string | null
+          created_at: string
+          id: number
+          kind: string
+          reason: string | null
+          ref: string
+          user_id: string
+        }
+        Insert: {
+          by_user?: string | null
+          created_at?: string
+          id?: number
+          kind: string
+          reason?: string | null
+          ref: string
+          user_id: string
+        }
+        Update: {
+          by_user?: string | null
+          created_at?: string
+          id?: number
+          kind?: string
+          reason?: string | null
+          ref?: string
           user_id?: string
         }
         Relationships: []
@@ -5575,11 +5692,19 @@ export type Database = {
       community_follow: { Args: { p_user: string }; Returns: Json }
       community_follow_list: { Args: { p_user: string; p_kind?: string; p_offset?: number }; Returns: Json }
       community_handle_check: { Args: { p_handle: string }; Returns: Json }
+      community_hide: { Args: { p_post: string }; Returns: Json }
       community_home: { Args: { p_tab?: string; p_offset?: number; p_subject?: number; p_tag?: string }; Returns: Json }
       community_like: { Args: { p_id: string }; Returns: Json }
+      community_mod_remove: { Args: { p_kind: string; p_id: string; p_reason?: string; p_strike?: boolean }; Returns: Json }
+      community_my_pages: { Args: never; Returns: Json }
       community_new_count: { Args: { p_tab: string; p_since: string }; Returns: number }
       community_notes_list: { Args: { p_tab?: string; p_offset?: number }; Returns: Json }
       community_notes_read: { Args: never; Returns: Json }
+      community_notify_save: { Args: { p_notify: Json }; Returns: Json }
+      community_page_follow: { Args: { p_page: string }; Returns: Json }
+      community_page_members_save: { Args: { p_page: string; p_handle: string; p_add: boolean }; Returns: Json }
+      community_page_post: { Args: { p_page: string; p_body: string; p_images?: string[]; p_subject?: number }; Returns: Json }
+      community_page_save: { Args: { p_id: string | null; p_handle: string; p_name: string; p_bio?: string; p_header?: number; p_avatar?: string }; Returns: Json }
       community_pending: { Args: { p_limit?: number }; Returns: Json }
       community_post_create: { Args: { p_body: string; p_image?: string; p_subject?: number }; Returns: Json }
       community_post_delete: { Args: { p_id: string }; Returns: Json }
@@ -5592,6 +5717,7 @@ export type Database = {
       community_report: { Args: { p_kind: string; p_ref: string; p_reason: string }; Returns: Json }
       community_repost: { Args: { p_id: string }; Returns: Json }
       community_search: { Args: { p_q: string; p_kind?: string; p_offset?: number }; Returns: Json }
+      community_set_moderator: { Args: { p_handle: string; p_on: boolean }; Returns: Json }
       community_thread: { Args: { p_id: string }; Returns: Json }
       community_unread: { Args: never; Returns: number }
       community_user: { Args: { p_user?: string; p_handle?: string }; Returns: Json }

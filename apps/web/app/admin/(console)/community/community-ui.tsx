@@ -6,14 +6,17 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { inputCls } from "@/components/admin/row-form";
 import { EmptyState, Panel, Pill, when } from "@/components/admin/ui";
-import { decideProfile, moderate, saveCommunitySettings } from "./actions";
+import { decideProfile, liftBan, moderate, saveCommunitySettings } from "./actions";
 
 export type ModItem = {
   kind: "post" | "comment"; id: string; name: string; user_id: string | null; body: string; image: string | null; pictures: string[]; quote: string | null;
   status: string; reason: string | null;
   at: string; extra: string; reports: string[];
 };
-export type CommunitySettings = { on: boolean; ai_check: boolean; daily_posts: number; daily_comments: number; ai_answers_daily: number; report_hide: number };
+export type CommunitySettings = {
+  on: boolean; ai_check: boolean; daily_posts: number; daily_comments: number; ai_answers_daily: number; report_hide: number;
+  moderation: "after" | "before"; strikes_limit: number; strike_days: number; ban_hours: number; ai_auto: boolean; ai_auto_daily: number; ad_every: number;
+};
 
 function Row({ it }: { it: ModItem }) {
   const router = useRouter();
@@ -84,7 +87,7 @@ export function CommunitySettingsForm({ initial }: { initial: CommunitySettings 
   const router = useRouter();
   const [pending, start] = useTransition();
   const [f, setF] = useState(initial);
-  const num = (k: keyof Omit<CommunitySettings, "on" | "ai_check">, label: string, max: number) => (
+  const num = (k: "daily_posts" | "daily_comments" | "ai_answers_daily" | "report_hide" | "strikes_limit" | "strike_days" | "ban_hours" | "ai_auto_daily" | "ad_every", label: string, max: number) => (
     <div><Label htmlFor={`cs-${k}`}>{label}</Label>
       <input id={`cs-${k}`} type="number" min={0} max={max} className={inputCls} value={f[k]} onChange={(e) => setF({ ...f, [k]: Number(e.target.value) })} /></div>
   );
@@ -99,6 +102,20 @@ export function CommunitySettingsForm({ initial }: { initial: CommunitySettings 
         {num("daily_comments", "Comments a day", 500)}
         {num("ai_answers_daily", "@solutiontee answers a day", 50)}
         {num("report_hide", "Reports that hide a post", 50)}
+        {num("strikes_limit", "Take-downs before posting is paused (0 = never)", 50)}
+        {num("strike_days", "…counted over this many days", 365)}
+        {num("ban_hours", "Posting pause (hours)", 2160)}
+        {num("ad_every", "Ad card after every N posts (0 = none)", 50)}
+        {num("ai_auto_daily", "SolutionTee AI comments on its own (a day)", 500)}
+      </div>
+      <div className="flex flex-wrap gap-6">
+        <label className="flex items-center gap-2 text-sm">When to check
+          <select aria-label="When to check" className={`${inputCls} w-auto`} value={f.moderation} onChange={(e) => setF({ ...f, moderation: e.target.value as "after" | "before" })}>
+            <option value="after">Right after posting (shows at once, removed if it breaks the rules)</option>
+            <option value="before">Before others see it</option>
+          </select>
+        </label>
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.ai_auto} onChange={(e) => setF({ ...f, ai_auto: e.target.checked })} /> SolutionTee AI joins some posts on its own</label>
       </div>
       <div className="flex justify-end"><Button disabled={pending} onClick={() => start(async () => {
         const r = await saveCommunitySettings(f);
@@ -143,5 +160,28 @@ export function ProfileList({ items }: { items: ProfileItem[] }) {
         <EmptyState title="Nothing waiting">New @handles and bios are checked by the AI in seconds. Anything it cannot decide shows here.</EmptyState>
       )}
     </Panel>
+  );
+}
+
+export type BanItem = { user_id: string; name: string; until: string; reason: string | null; strikes: number };
+
+export function BanList({ items }: { items: BanItem[] }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  if (!items.length) return <p className="text-sm text-muted-foreground">No one is paused right now.</p>;
+  return (
+    <ul className="divide-y">
+      {items.map((b) => (
+        <li key={b.user_id} className="flex flex-wrap items-center gap-2 py-2 text-sm">
+          <b>{b.name}</b><span className="text-muted-foreground">until {when(b.until)} · {b.strikes} strike{b.strikes === 1 ? "" : "s"} · {b.reason}</span>
+          <Button size="sm" variant="outline" className="ml-auto" disabled={pending} onClick={() => start(async () => {
+            const r = await liftBan(b.user_id);
+            if (!r.ok) return void toast.error(r.error);
+            toast.success(r.message);
+            router.refresh();
+          })}>Lift pause</Button>
+        </li>
+      ))}
+    </ul>
   );
 }

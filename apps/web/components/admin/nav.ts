@@ -39,6 +39,7 @@ export const NAV: NavGroup[] = [
       { href: "/admin/ai-safety", label: "AI safety", icon: "Robot", roles: ADMINS },
       { href: "/admin/tutors", label: "Tutor requests", icon: "ChatsCircle", roles: ADMINS },
       { href: "/admin/community", label: "Community", icon: "ChatsTeardrop", roles: ADMINS },
+      { href: "/admin/community/feed", label: "Community feed", icon: "Users", roles: ["super_admin", "admin", "editor", "teacher"] },
     ],
   },
   {

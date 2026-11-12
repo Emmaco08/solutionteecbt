@@ -1615,3 +1615,35 @@ Owner: "COMMUNITY DESIGN APPROVED, option b for photos but on by default, handle
 - Old app versions keep working: `community_feed`, `community_post_get`, `community_profile`, `community_post_create` and
   `community_comment_add` are unchanged in shape.
 - Share uses the phone's share sheet (`share_plus`), text plus the website link (no public post pages).
+
+## D-156 — Community v3: checked after posting, a livelier SolutionTee AI, SolutionTee team and pages (2026-11-12)
+Owner: "COMMUNITY IS APPROVED, only few changes…" (same day as D-155).
+- **Checked right after posting** (admin can switch back to "before"): posts and replies show at once; the AI checks them in
+  seconds (the app asks at once; the 2-minute sweep is the backup and reads post pictures with the cron token through
+  `/api/images/sign`). A post or reply that breaks the guidelines is taken down; the student gets a note and a push
+  ("Your post was removed …") and a **strike**. At the admin's limit (default 3 strikes in 30 days) posting and replying
+  pause for the admin's time (default 24 hours): `community_strikes`, `community_bans`; staff can lift a pause early.
+- **SolutionTee AI** (@solutiontee): a warm, chatty, funny and careful persona (never claims to be human), writes Markdown
+  and maths; answers posts **and replies** that tag it (and keeps chatting when a student answers it, a thread reply);
+  joins a few fresh posts on its own (admin cap a day, default 15; it answers "SKIP" when it has nothing kind or useful).
+  The app and the staff feed draw its replies as Markdown with maths (the same note renderer as lessons).
+- **Badges:** the SolutionTee mark next to staff (any role but tutor), Community moderators (chosen by admins by
+  @handle) and SolutionTee pages; a gold-edged mark for the official page; a gold seal for SolutionTee AI. Moderators,
+  admins and super admins can take down any post or reply (reason, strike, audit log). Staff powers in Community do not
+  need the admin console's 2-step sign-in (they only act on Community content).
+- **Pages:** the official **SolutionTee (@solutiontee)** page (only super admins post as it) and pages any staff member
+  creates; page posts show the page's name and mark, are not checked by the AI, notify the page's followers, and rank
+  higher in For you. Students follow pages. Handles are unique across students and pages.
+- **Staff feed** (website, Admin → Community feed): the same feed as students, post as yourself or a page, like, repost,
+  reply (threads, AI Markdown), delete or take down; create pages; choose moderators.
+- **Feed ranking (For you):** follows (+3), how often you liked or replied to the author in 30 days, friends of friends,
+  reposts by people you follow, your subjects, the #topics you use and like, activity (likes, 2×replies, 3×reposts), page and
+  team posts, fresh questions with no answer yet, pictures, the first 2 hours, minus age (about one point per 18 hours),
+  minus authors you marked "Not interested", and a variety rule (each extra post by the same author in a page drops 1.5).
+- **Personal notifications:** posts from people you really engage with (2+ likes or replies in 30 days; at most one a
+  person every 6 hours, 3 pushes a day), like milestones (10, 25, 50 … 1000), a daily summary at 19:31 Lagos ("Today your
+  posts got 12 likes and 3 replies"), a question in your subjects that nobody has answered yet, page posts, take-downs and
+  pauses. Each student chooses which of these buzz the phone (Edit profile → Phone notifications; likes off by default).
+- **Ads:** an ad card after every N posts in the Home feed (admin setting, default 5), through the existing ads level,
+  consent and Premium rules (no ads for Premium where the ads level says so).
+- **Profile:** exams, subjects and joined date each on their own line with an icon, separated by commas.
