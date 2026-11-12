@@ -140,6 +140,8 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
   Future<void> _dailyPopups() async {
     if (_popupsShown || !mounted) return;
     _popupsShown = true;
+    // A new student sees the app tour first: the countdown and the other pop-ups wait for their next open (D-154).
+    if (!ref.read(settingsProvider).toured) return;
     // The exam countdown first (once a day, D-135), then the milestone or daily claim.
     await maybeShowDailyCountdown(context, ref);
     if (!mounted) return;

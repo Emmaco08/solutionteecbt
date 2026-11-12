@@ -248,6 +248,9 @@ bool emojiOnly(String t) {
 /// A broadcast as supabase_flutter hands it over ({type, event, payload: {…}}) → the inner payload.
 Map<String, dynamic> broadcastPayload(Map<String, dynamic> p) => p['payload'] is Map ? Map<String, dynamic>.from(p['payload'] as Map) : p;
 
+/// How many tutor chat screens are open: the in-app message banner never shows over the chat (D-154).
+int tutorChatsOpen = 0;
+
 /// Call links the student has already joined: the "class is live" bar hides for them (kept on the phone, D-154).
 final joinedCalls = ValueNotifier<Set<int>>(<int>{});
 const _joinedKey = 'tutor_joined_calls';
@@ -356,6 +359,8 @@ class _TutorChatViewState extends ConsumerState<TutorChatView> {
   int? _unreadFrom; // first unread message from the tutor when the chat opened
   int _newBelow = 0; // messages that came in while scrolled up
   bool _away = false, _loadingOlder = false, _hasOlder = true;
+  final _keys = <int, GlobalKey>{}; // to scroll to a message when its reply is tapped
+  int? _flash; // the message that just got jumped to (it glows for a moment)
 
   // Voice recording.
   final _recorder = AudioRecorder();
@@ -375,6 +380,7 @@ class _TutorChatViewState extends ConsumerState<TutorChatView> {
   void initState() {
     super.initState();
     _unreadFrom = _msgs.where((m) => !m.mine && m.role != 'system' && m.readAt == null).map((m) => m.id).firstOrNull;
+    tutorChatsOpen++;
     _scroll.addListener(_onScroll);
     joinedCalls.addListener(_rebuild);
     loadJoinedCalls();
@@ -403,6 +409,7 @@ class _TutorChatViewState extends ConsumerState<TutorChatView> {
 
   @override
   void dispose() {
+    tutorChatsOpen--;
     joinedCalls.removeListener(_rebuild);
     _db?.close();
     _room?.close();
@@ -663,28 +670,29 @@ class _TutorChatViewState extends ConsumerState<TutorChatView> {
   Duration get _recElapsed => _recDone + (_recStart != null && !_recPaused ? DateTime.now().difference(_recStart!) : Duration.zero);
   bool get _recording => _recStart != null || _recPaused;
 
-  /// The finger is on the microphone button (a quick tap lifts it before recording has even started).
+  /// The finger is on the microphone button; a quick tap (under 300 ms) records hands-free (D-154), like a swipe up to lock.
   bool _pressing = false;
+  DateTime _pressAt = DateTime(2000);
+  bool _binning = false; // the short "into the bin" animation after slide to cancel
 
   Future<void> _recBegin() async {
     _pressing = true;
+    _pressAt = DateTime.now();
     if (_recording) return;
     try {
+      final asked = DateTime.now();
       if (!await _recorder.hasPermission()) return _say('Allow the microphone to send a voice note.');
-      if (!_pressing) return _say('Hold the microphone to record, then let go to send.'); // tapped, not held
+      // The first time, Android asks for the microphone: the press is over, so wait for the next tap or hold.
+      if (DateTime.now().difference(asked) > const Duration(milliseconds: 800)) return _say('Microphone ready. Tap to record, or hold and let go to send.');
       final dir = await getTemporaryDirectory();
       final path = '${dir.path}/voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
       await _recorder.start(const RecordConfig(encoder: AudioEncoder.aacLc, bitRate: 64000, sampleRate: 22050), path: path);
-      if (!_pressing) {
-        // Let go while the recorder was starting: stop at once, nothing is sent.
-        await _recorder.stop().catchError((_) => null);
-        return _say('Hold the microphone to record, then let go to send.');
-      }
       HapticFeedback.mediumImpact();
       setState(() {
         _recStart = DateTime.now();
         _recDone = Duration.zero;
-        _recLocked = _recPaused = false;
+        _recPaused = false;
+        _recLocked = !_pressing; // let go (a tap) while the recorder was starting: hands-free
         _recDrag = Offset.zero;
         _levels.clear();
       });
@@ -708,7 +716,9 @@ class _TutorChatViewState extends ConsumerState<TutorChatView> {
     if (!_recording || _recLocked) return;
     setState(() => _recDrag = Offset(d.dx.clamp(-160, 0), d.dy.clamp(-120, 0)));
     if (d.dx < -120) {
-      HapticFeedback.selectionClick();
+      HapticFeedback.heavyImpact();
+      setState(() => _binning = true);
+      Future.delayed(const Duration(milliseconds: 700), () => mounted ? setState(() => _binning = false) : null);
       _recFinish(false);
     } else if (d.dy < -80) {
       HapticFeedback.mediumImpact();
@@ -718,6 +728,14 @@ class _TutorChatViewState extends ConsumerState<TutorChatView> {
 
   void _recRelease() {
     _pressing = false;
+    if (DateTime.now().difference(_pressAt) < const Duration(milliseconds: 300)) {
+      // A tap: keep recording hands-free (delete, pause and send buttons), like WhatsApp after a swipe up.
+      if (_recording && !_recLocked) {
+        HapticFeedback.selectionClick();
+        setState(() => (_recLocked = true, _recDrag = Offset.zero));
+      }
+      return;
+    }
     if (!_recording || _recLocked) return;
     _recFinish(true);
   }
@@ -871,6 +889,35 @@ class _TutorChatViewState extends ConsumerState<TutorChatView> {
       case 'report':
         await _report(m);
     }
+  }
+
+  /// Tapping a quoted reply scrolls to the original message (loading older messages if needed) and makes it glow.
+  Future<void> _jumpTo(int id) async {
+    final still = context.reduceMotion;
+    for (var tries = 0; tries < 40 && mounted; tries++) {
+      final ctx = _keys[id]?.currentContext;
+      if (ctx != null && ctx.mounted) {
+        await Scrollable.ensureVisible(ctx, alignment: .4, duration: still ? Duration.zero : const Duration(milliseconds: 380), curve: Curves.easeOutCubic);
+        if (!mounted) return;
+        HapticFeedback.selectionClick();
+        setState(() => _flash = id);
+        Future.delayed(const Duration(milliseconds: 1400), () => mounted && _flash == id ? setState(() => _flash = null) : null);
+        return;
+      }
+      if (!_msgs.any((m) => m.id == id)) {
+        if (!_hasOlder) break;
+        await _older();
+        await WidgetsBinding.instance.endOfFrame;
+        continue;
+      }
+      if (!_scroll.hasClients) break;
+      final p = _scroll.position;
+      final next = math.min(p.maxScrollExtent, p.pixels + p.viewportDimension * .8);
+      if (next <= p.pixels) break;
+      _scroll.jumpTo(next); // older messages are further up (the list is reversed)
+      await WidgetsBinding.instance.endOfFrame;
+    }
+    if (mounted) _say('That message is no longer here.');
   }
 
   void _attach() => showSheet<void>(
@@ -1044,7 +1091,14 @@ class _TutorChatViewState extends ConsumerState<TutorChatView> {
                     padding: const EdgeInsets.fromLTRB(Space.s3, Space.s3, Space.s3, Space.s3),
                     itemCount: items.length + (_typing ? 1 : 0) + 1,
                     itemBuilder: (_, i) {
-                      if (_typing && i == 0) return _TypingDots(color: cc.theirs);
+                      if (_typing && i == 0) {
+                        return _TypingDots(
+                          color: cc.theirs,
+                          name: _peer,
+                          photo: widget.tutor?['photo_path'] as String?,
+                          voice: _peerDoing.startsWith('recording'),
+                        );
+                      }
                       final idx = _typing ? i - 1 : i;
                       if (idx == items.length) {
                         return _loadingOlder
@@ -1064,7 +1118,7 @@ class _TutorChatViewState extends ConsumerState<TutorChatView> {
                           if (newDay) _DayChip(chatDay(m.at)),
                           if (unreadHere) _UnreadChip(count: _msgs.where((x) => x.id >= m.id && !x.mine).length),
                           _SwipeToReply(
-                            key: ValueKey(m.id),
+                            key: _keys.putIfAbsent(m.id, GlobalKey.new),
                             enabled: !m.pending && !m.deleted && m.role != 'system' && widget.readOnly == null,
                             onReply: () => _startReply(m),
                             child: ChatBubble(
@@ -1074,6 +1128,8 @@ class _TutorChatViewState extends ConsumerState<TutorChatView> {
                               who: m.role == 'tutor' ? _peer : 'SolutionTee',
                               peer: _peer,
                               onLongPress: () => _actions(m),
+                              flash: _flash == m.id,
+                              onQuoteTap: m.replyTo == null ? null : () => _jumpTo(m.replyTo!),
                               onTap: m.failed ? null : () => _actions(m),
                               onRetry: m.failed && m.kind == 'text'
                                   ? () {
@@ -1193,7 +1249,9 @@ class _TutorChatViewState extends ConsumerState<TutorChatView> {
               padding: const EdgeInsets.fromLTRB(Space.s2, Space.s2, Space.s2, Space.s2),
               child: AnimatedSwitcher(
                 duration: Motion.fast,
-                child: _recLocked || _recPaused
+                child: _binning
+                    ? _BinRow(key: const ValueKey('bin'), color: cc.composer)
+                    : _recLocked || _recPaused
                     ? _lockedRecorder(context, cc)
                     : _recording
                     ? _holdRecorder(context, cc)
@@ -1297,14 +1355,22 @@ class _TutorChatViewState extends ConsumerState<TutorChatView> {
     );
   }
 
-  /// Holding the microphone: timer, "slide to cancel" and the lock hint above.
+  /// Holding the microphone (WhatsApp style): a blinking mic and the time, "slide to cancel" that shimmers and follows
+  /// the finger, the big mic under the finger with a ring that breathes with the voice, and the lock above it.
   Widget _holdRecorder(BuildContext context, ChatColors cc) {
     final c = context.c;
     final rm = context.reduceMotion;
-    final dot = Container(
-      width: 12,
-      height: 12,
-      decoration: BoxDecoration(color: c.error, shape: BoxShape.circle),
+    final cancel = (-_recDrag.dx / 120).clamp(0.0, 1.0);
+    final lock = (-_recDrag.dy / 80).clamp(0.0, 1.0);
+    final level = _levels.isEmpty ? .1 : _levels.last;
+    final mic = Icon(PhosphorIcons.microphone(PhosphorIconsStyle.fill), size: 22, color: c.error);
+    final slide = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(PhosphorIcons.caretLeft(), size: 16, color: c.textMuted),
+        const Gap(2),
+        Text('Slide to cancel', style: context.ty.sm.bold.col(c.textMuted)),
+      ],
     );
     return Row(
       key: const ValueKey('hold'),
@@ -1313,27 +1379,29 @@ class _TutorChatViewState extends ConsumerState<TutorChatView> {
         Expanded(
           child: Container(
             height: 48,
-            padding: const EdgeInsets.symmetric(horizontal: Space.s4),
+            padding: const EdgeInsets.only(left: Space.s3, right: Space.s3),
             decoration: BoxDecoration(color: cc.composer, borderRadius: BorderRadius.circular(24)),
             child: Row(
               children: [
-                rm ? dot : dot.animate(onPlay: (a) => a.repeat(reverse: true)).fade(begin: 1, end: .25, duration: 600.ms),
+                rm ? mic : mic.animate(onPlay: (a) => a.repeat(reverse: true)).fade(begin: 1, end: .2, duration: 550.ms),
                 const Gap(Space.s2),
-                Text(fmtDur(_recElapsed.inMilliseconds / 1000), style: context.ty.body.tnum),
+                Text(fmtDur(_recElapsed.inMilliseconds / 1000), style: context.ty.body.bold.tnum),
                 const Spacer(),
                 Transform.translate(
-                  offset: Offset(_recDrag.dx * .6, 0),
+                  offset: Offset(_recDrag.dx * .75, 0),
                   child: Opacity(
-                    opacity: (1 + _recDrag.dx / 140).clamp(.2, 1.0),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(PhosphorIcons.caretLeft(), size: 16, color: c.textMuted),
-                        Text('Slide to cancel', style: context.ty.sm.col(c.textMuted)),
-                      ],
-                    ),
+                    opacity: 1 - cancel * .85,
+                    child: rm
+                        ? slide
+                        : slide
+                              .animate(onPlay: (a) => a.repeat())
+                              .shimmer(duration: 1600.ms, color: c.text)
+                              .moveX(begin: 6, end: -6, duration: 800.ms, curve: Curves.easeInOut)
+                              .then()
+                              .moveX(begin: -6, end: 6, duration: 800.ms, curve: Curves.easeInOut),
                   ),
                 ),
+                const Gap(Space.s2),
               ],
             ),
           ),
@@ -1346,21 +1414,41 @@ class _TutorChatViewState extends ConsumerState<TutorChatView> {
             clipBehavior: Clip.none,
             alignment: Alignment.bottomCenter,
             children: [
-              // The lock hint rises above the button while holding.
+              // The lock rises out of the button and closes as the finger goes up.
               Positioned(
-                bottom: 64 - _recDrag.dy * .4,
-                child: _LockHint(progress: (-_recDrag.dy / 80).clamp(0.0, 1.0)),
+                bottom: 70 + _recDrag.dy.clamp(-80.0, 0.0) * .35,
+                child: Opacity(
+                  opacity: 1 - cancel,
+                  child: _LockHint(progress: lock),
+                ),
               ),
               Transform.translate(
-                offset: Offset(_recDrag.dx * .25, _recDrag.dy * .25),
-                child: Transform.scale(
-                  scale: 1.35,
-                  child: Container(
-                    width: 48,
-                    height: 48,
-                    decoration: const BoxDecoration(color: Palette.gold400, shape: BoxShape.circle),
-                    child: Icon(PhosphorIcons.microphone(PhosphorIconsStyle.fill), color: Palette.navy900, size: 22),
-                  ),
+                offset: Offset(_recDrag.dx * .35, _recDrag.dy * .35),
+                child: Stack(
+                  alignment: Alignment.center,
+                  clipBehavior: Clip.none,
+                  children: [
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 110),
+                      width: 66 + 34 * level,
+                      height: 66 + 34 * level,
+                      decoration: BoxDecoration(color: Palette.gold400.withValues(alpha: .22), shape: BoxShape.circle),
+                    ),
+                    Container(
+                      width: 66,
+                      height: 66,
+                      decoration: BoxDecoration(
+                        color: cancel > .6 ? c.error : Palette.gold400,
+                        shape: BoxShape.circle,
+                        boxShadow: [BoxShadow(color: Palette.gold400.withValues(alpha: .45), blurRadius: 16)],
+                      ),
+                      child: Icon(
+                        cancel > .6 ? PhosphorIcons.trash(PhosphorIconsStyle.fill) : PhosphorIcons.microphone(PhosphorIconsStyle.fill),
+                        color: cancel > .6 ? Colors.white : Palette.navy900,
+                        size: 28,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -1384,6 +1472,14 @@ class _TutorChatViewState extends ConsumerState<TutorChatView> {
             onPressed: () => _recFinish(false),
             icon: Icon(PhosphorIcons.trash(PhosphorIconsStyle.fill), color: c.error),
           ),
+          if (!_recPaused) ...[
+            Container(
+              width: 9,
+              height: 9,
+              decoration: BoxDecoration(color: c.error, shape: BoxShape.circle),
+            ).animate(onPlay: (a) => context.reduceMotion ? null : a.repeat(reverse: true)).fade(begin: 1, end: .2, duration: 550.ms),
+            const Gap(6),
+          ],
           Text(fmtDur(_recElapsed.inMilliseconds / 1000), style: context.ty.body.bold.tnum),
           const Gap(Space.s2),
           Expanded(
@@ -1685,20 +1781,73 @@ class _LockHint extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.c;
-    return Container(
-      width: 40,
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(20), boxShadow: context.shadow(2)),
+    final rm = context.reduceMotion;
+    final closed = progress > .9;
+    final arrow = Icon(PhosphorIcons.caretUp(), size: 14, color: c.textMuted);
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 90),
+      width: 42,
+      height: 88 - 34 * progress,
+      decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(21), boxShadow: context.shadow(2)),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          Icon(progress > .9 ? PhosphorIcons.lockSimple(PhosphorIconsStyle.fill) : PhosphorIcons.lockSimpleOpen(), size: 18, color: c.text),
-          const Gap(4),
-          Icon(
-            PhosphorIcons.caretUp(),
-            size: 14,
-            color: c.textMuted,
-          ).animate(onPlay: (a) => context.reduceMotion ? null : a.repeat(reverse: true)).moveY(begin: 2, end: -2, duration: 600.ms),
+          AnimatedSwitcher(
+            duration: Motion.fast,
+            transitionBuilder: (w, a) => ScaleTransition(scale: a, child: w),
+            child: Icon(
+              closed ? PhosphorIcons.lockSimple(PhosphorIconsStyle.fill) : PhosphorIcons.lockSimpleOpen(),
+              key: ValueKey(closed),
+              size: 19,
+              color: closed ? Palette.gold400 : c.text,
+            ),
+          ),
+          if (progress < .6)
+            Opacity(
+              opacity: 1 - progress,
+              child: rm ? arrow : arrow.animate(onPlay: (a) => a.repeat(reverse: true)).moveY(begin: 3, end: -3, duration: 500.ms, curve: Curves.easeInOut),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// After slide to cancel: the mic drops into a bin that closes, then the message box comes back.
+class _BinRow extends StatelessWidget {
+  const _BinRow({super.key, required this.color});
+  final Color color;
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    final rm = context.reduceMotion;
+    final micIcon = Icon(PhosphorIcons.microphone(PhosphorIconsStyle.fill), size: 20, color: c.error);
+    final bin = Icon(PhosphorIcons.trash(PhosphorIconsStyle.fill), size: 26, color: c.error);
+    return Container(
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: Space.s4),
+      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(24)),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 32,
+            height: 44,
+            child: Stack(
+              alignment: Alignment.bottomCenter,
+              children: [
+                rm
+                    ? bin
+                    : bin.animate().scaleXY(begin: .4, end: 1, duration: 220.ms, curve: Curves.easeOutBack).then(delay: 260.ms).shake(hz: 5, duration: 200.ms),
+                if (!rm)
+                  Positioned(
+                    top: 0,
+                    child: micIcon.animate().moveY(begin: -14, end: 18, duration: 380.ms, curve: Curves.easeIn).fadeOut(delay: 300.ms, duration: 100.ms),
+                  ),
+              ],
+            ),
+          ),
+          const Gap(Space.s2),
+          Text('Voice note deleted', style: context.ty.sm.col(c.textMuted)),
         ],
       ),
     );
@@ -1981,36 +2130,110 @@ class _UnreadChip extends StatelessWidget {
   );
 }
 
-class _TypingDots extends StatelessWidget {
-  const _TypingDots({required this.color});
+/// The tutor is typing (or recording): their small photo and a bubble whose dots ride a smooth wave (D-154).
+class _TypingDots extends StatefulWidget {
+  const _TypingDots({required this.color, required this.name, this.photo, this.voice = false});
   final Color color;
+  final String name;
+  final String? photo;
+  final bool voice;
+  @override
+  State<_TypingDots> createState() => _TypingDotsState();
+}
+
+class _TypingDotsState extends State<_TypingDots> with SingleTickerProviderStateMixin {
+  late final _wave = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100));
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (context.reduceMotion) {
+      _wave.stop();
+    } else if (!_wave.isAnimating) {
+      _wave.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _wave.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.c;
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(top: Space.s2),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-        decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(18)),
-        child: Row(
+    final rm = context.reduceMotion;
+    final bubble = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: widget.color,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(6),
+          topRight: Radius.circular(20),
+          bottomLeft: Radius.circular(20),
+          bottomRight: Radius.circular(20),
+        ),
+        boxShadow: context.isDark ? null : [BoxShadow(color: Palette.navy900.withValues(alpha: .08), blurRadius: 3, offset: const Offset(0, 1))],
+      ),
+      child: AnimatedBuilder(
+        animation: _wave,
+        builder: (_, _) => Row(
           mainAxisSize: MainAxisSize.min,
-          children: [
-            for (var i = 0; i < 3; i++)
-              Container(
-                    width: 7,
-                    height: 7,
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
-                    decoration: BoxDecoration(color: c.textMuted, shape: BoxShape.circle),
-                  )
-                  .animate(onPlay: (a) => a.repeat())
-                  .moveY(begin: 0, end: -4, delay: (150 * i).ms, duration: 300.ms, curve: Curves.easeOut)
-                  .then()
-                  .moveY(begin: -4, end: 0, duration: 300.ms),
-          ],
+          children: widget.voice
+              ? [
+                  Icon(PhosphorIcons.microphone(PhosphorIconsStyle.fill), size: 16, color: c.error),
+                  const Gap(6),
+                  for (var i = 0; i < 5; i++)
+                    Container(
+                      width: 3,
+                      height: 6 + 12 * (.5 + .5 * math.sin((_wave.value * 2 * math.pi) + i * .9)),
+                      margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                      decoration: BoxDecoration(color: c.textMuted, borderRadius: BorderRadius.circular(2)),
+                    ),
+                ]
+              : [
+                  for (var i = 0; i < 3; i++)
+                    Builder(
+                      builder: (_) {
+                        // Each dot rises and brightens in turn, a third of a wave after the one before.
+                        final t = (math.sin((_wave.value * 2 * math.pi) - i * 2 * math.pi / 3) + 1) / 2;
+                        return Transform.translate(
+                          offset: Offset(0, rm ? 0 : -5 * t),
+                          child: Container(
+                            width: 8,
+                            height: 8,
+                            margin: const EdgeInsets.symmetric(horizontal: 2.5),
+                            decoration: BoxDecoration(
+                              color: c.textMuted.withValues(alpha: rm ? .8 : .35 + .65 * t),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                ],
         ),
       ),
-    ).animate().fadeIn(duration: Motion.fast);
+    );
+    final row = Padding(
+      padding: const EdgeInsets.only(top: Space.s2, bottom: 2),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          TutorAvatar(name: widget.name, photo: widget.photo, size: 26),
+          const Gap(6),
+          bubble,
+        ],
+      ),
+    );
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: rm
+          ? row
+          : row.animate().fadeIn(duration: 180.ms).scaleXY(begin: .6, end: 1, alignment: Alignment.bottomLeft, duration: 380.ms, curve: Curves.easeOutBack),
+    );
   }
 }
 
@@ -2187,6 +2410,8 @@ class ChatBubble extends StatelessWidget {
     this.onLongPress,
     this.onTap,
     this.still = false,
+    this.flash = false,
+    this.onQuoteTap,
   });
   final ChatMsg m;
   final bool mine, first;
@@ -2196,6 +2421,12 @@ class ChatBubble extends StatelessWidget {
 
   /// No entrance animation (the copy in the long-press menu).
   final bool still;
+
+  /// Glows for a moment after a tap on a reply that points here.
+  final bool flash;
+
+  /// Tap on the quoted message: jump to it.
+  final VoidCallback? onQuoteTap;
 
   @override
   Widget build(BuildContext context) {
@@ -2262,29 +2493,33 @@ class ChatBubble extends StatelessWidget {
               child: Text(who, style: context.ty.cap.bold.col(cc.dark ? Palette.gold400 : Palette.blue600)),
             ),
           if (r != null)
-            Container(
-              margin: const EdgeInsets.only(bottom: 6),
-              padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
-              decoration: BoxDecoration(
-                color: mine ? Colors.white.withValues(alpha: .14) : cc.quote,
-                borderRadius: BorderRadius.circular(10),
-                border: const Border(left: BorderSide(color: Palette.gold400, width: 3)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    r['role'] == 'student' ? 'You' : (r['role'] == 'tutor' ? (peer ?? who) : 'SolutionTee'),
-                    style: context.ty.cap.bold.col(mine ? Palette.gold300 : (cc.dark ? Palette.gold400 : Palette.blue600)),
-                  ),
-                  Text(
-                    quoteText(r),
-                    style: context.ty.sm.col(mine ? Colors.white.withValues(alpha: .85) : cc.theirsMeta),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+            GestureDetector(
+              onTap: onQuoteTap,
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 6),
+                padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
+                decoration: BoxDecoration(
+                  color: mine ? Colors.white.withValues(alpha: .14) : cc.quote,
+                  borderRadius: BorderRadius.circular(10),
+                  border: const Border(left: BorderSide(color: Palette.gold400, width: 3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      r['role'] == 'student' ? 'You' : (r['role'] == 'tutor' ? (peer ?? who) : 'SolutionTee'),
+                      style: context.ty.cap.bold.col(mine ? Palette.gold300 : (cc.dark ? Palette.gold400 : Palette.blue600)),
+                    ),
+                    Text(
+                      quoteText(r),
+                      style: context.ty.sm.col(mine ? Colors.white.withValues(alpha: .85) : cc.theirsMeta),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
               ),
             ),
           body,
@@ -2319,9 +2554,14 @@ class ChatBubble extends StatelessWidget {
               ),
             ],
           );
-    final row = Align(
-      alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
-      child: GestureDetector(onTap: onRetry ?? onTap, onLongPress: onLongPress, child: withReactions),
+    final row = AnimatedContainer(
+      duration: const Duration(milliseconds: 450),
+      curve: Curves.easeOut,
+      decoration: BoxDecoration(color: flash ? Palette.gold400.withValues(alpha: .22) : Colors.transparent, borderRadius: BorderRadius.circular(12)),
+      child: Align(
+        alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
+        child: GestureDetector(onTap: onRetry ?? onTap, onLongPress: onLongPress, child: withReactions),
+      ),
     );
     if (still || context.reduceMotion) return row;
     return row

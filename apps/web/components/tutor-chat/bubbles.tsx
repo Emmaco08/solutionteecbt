@@ -146,9 +146,9 @@ const who = (role: Role, me: Role, peer: string, tutor: string) => (role === me 
  * One message (D-153). Mine on the right (navy, blue in dark mode), theirs on the left; system notes in the middle.
  * Hover (or right-click, or press and hold on a phone) for the menu: reactions, reply, copy, star, delete, report.
  */
-export function Bubble({ sb, m, me, first, peer, tutor, onPhoto, onAction, showName, onQuiz }: {
+export function Bubble({ sb, m, me, first, peer, tutor, onPhoto, onAction, showName, onQuiz, onJump, flash }: {
   sb: SupabaseClient; m: Msg; me: Role; first: boolean; peer: string; tutor: string; onPhoto: (url: string) => void; onAction: (m: Msg, a: MsgAction) => void; showName?: boolean;
-  onQuiz?: (id: string) => void;
+  onQuiz?: (id: string) => void; onJump?: (id: number) => void; flash?: boolean;
 }) {
   const rm = useReducedMotion();
   const [menu, setMenu] = useState(false);
@@ -178,7 +178,8 @@ export function Bubble({ sb, m, me, first, peer, tutor, onPhoto, onAction, showN
 
   return (
     <motion.div initial={rm ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18, ease: "easeOut" }}
-      className={cn("group flex", mine ? "justify-end" : "justify-start", first ? "mt-2.5" : "mt-0.5", reactions.length && "mb-3")}>
+      id={`msg-${m.id}`}
+      className={cn("group flex rounded-xl transition-colors duration-500", mine ? "justify-end" : "justify-start", first ? "mt-2.5" : "mt-0.5", reactions.length && "mb-3", flash && "bg-[#F2B233]/25")}>
       <div ref={box} className={cn("relative max-w-[min(78%,520px)]", mine ? "items-end" : "items-start")}
         onContextMenu={(e) => { if (m.pending) return; e.preventDefault(); open(); }}
         onPointerDown={(e) => { if (e.pointerType !== "touch" || m.pending) return; hold.current = setTimeout(open, 450); }}
@@ -188,10 +189,11 @@ export function Bubble({ sb, m, me, first, peer, tutor, onPhoto, onAction, showN
           first && (mine ? "rounded-tr-md" : "rounded-tl-md"), menu && "ring-2 ring-[#F2B233]")}>
           {showName && !mine && first ? <p className={cn("mb-0.5 text-xs font-bold text-[#2563B3] dark:text-[#F2B233]", media && "px-1.5 pt-0.5")}>{who(m.role, me, peer, tutor)}</p> : null}
           {m.reply ? (
-            <div className={cn("mb-1.5 rounded-[10px] border-l-[3px] border-[#F2B233] px-2.5 py-1.5", mine ? "bg-white/14" : "bg-[#F1F4F9] dark:bg-[#0A1A33]")}>
+            <button type="button" onClick={() => onJump?.(m.reply!.id)} title="Go to the message"
+              className={cn("mb-1.5 block w-full rounded-[10px] border-l-[3px] border-[#F2B233] px-2.5 py-1.5 text-left transition-opacity hover:opacity-85", mine ? "bg-white/14" : "bg-[#F1F4F9] dark:bg-[#0A1A33]")}>
               <p className={cn("text-xs font-bold", mine ? "text-[#F6C970]" : "text-[#2563B3] dark:text-[#F2B233]")}>{who(m.reply.role, me, peer, tutor)}</p>
               <p className="line-clamp-2 text-[13px] opacity-80">{quoteText(m.reply)}</p>
-            </div>
+            </button>
           ) : null}
           {m.deleted ? (
             <p className="flex items-center gap-1.5 text-[15px] italic opacity-70"><Prohibit size={16} />{mine ? "You deleted this message" : "This message was deleted"}</p>

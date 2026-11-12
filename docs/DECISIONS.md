@@ -1570,4 +1570,14 @@ after the finger had already lifted, with no way to stop it.
   student even if that year is Premium-only, because the tutor chose them for a paying tutor student.
 - Home shows "From your tutor" (quizzes to do) only when there are some; Test shows "Tutor quizzes" only when there are
   some. Nothing changes for students without a tutor.
+- **Follow-ups (owner, same day):** a tap on the app's mic records hands-free (delete, pause, send), a hold keeps the
+  WhatsApp hold (slide to cancel with a bin animation, slide up to lock); a tap on a quoted reply jumps to the original
+  and makes it glow (app and tutor desk); the in-app banner is a navy card with the tutor's photo, a "TUTOR" or "QUIZ"
+  tag, a time bar, swipe to close, and never shows while a tutor chat is open; a livelier typing indicator with the
+  tutor's photo; a tutor's name and photo now update their account profile and login too, and their students' apps
+  refresh at once (`private.tutor_profile_sync`, also after admin edits).
+- **New students:** the app tour comes first; the exam countdown and the other daily pop-ups wait for the next open.
+- **Countdown push:** every day at 07:00 Lagos (`countdown-push` cron, `private.countdown_notify`), "N days to JAMB UTME"
+  with a short line that changes with the days left, while the countdown is on and the date is ahead. The admin can
+  stop it with `exam_countdown.push = false`.
 

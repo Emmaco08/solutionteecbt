@@ -54,6 +54,7 @@ export function ChatApp({ mode, initialChats, tutors, initialOpen, className }: 
   const [starred, setStarred] = useState<Msg[] | null>(null);
   const [report, setReport] = useState<Msg | null>(null);
   const [quizOpen, setQuizOpen] = useState(false);
+  const [flash, setFlash] = useState<number | null>(null);
   const [quizView, setQuizView] = useState<string | null>(null);
   const [uid, setUid] = useState<string | null>(null);
   const stick = useRef(true); // the tutor is at the newest message: new ones scroll into view by themselves
@@ -176,6 +177,23 @@ export function ChatApp({ mode, initialChats, tutors, initialOpen, className }: 
     else queueMicrotask(() => setNewBelow((n) => n + added));
   }, [msgs, myRole, toBottom]);
   useEffect(() => { if (typing && stick.current) toBottom(); }, [typing, toBottom]);
+
+  /** A tap on a quoted reply: scroll to the original (loading older messages if needed) and make it glow. */
+  async function jumpTo(id: number) {
+    for (let i = 0; i < 12; i++) {
+      const el = document.getElementById(`msg-${id}`);
+      if (el) {
+        el.scrollIntoView({ block: "center", behavior: rm ? "auto" : "smooth" });
+        setFlash(id);
+        setTimeout(() => setFlash((f) => (f === id ? null : f)), 1500);
+        return;
+      }
+      if (!older) break;
+      await loadOlder();
+      await new Promise((r) => requestAnimationFrame(() => r(null)));
+    }
+    toast("That message is no longer here.");
+  }
 
   async function loadOlder() {
     if (!active || !msgs.length) return;
@@ -372,7 +390,7 @@ export function ChatApp({ mode, initialChats, tutors, initialOpen, className }: 
                   <div key={m.ck ?? m.id}>
                     {newDay ? <div className="sticky top-0 z-10 my-3 flex justify-center"><span className="rounded-lg bg-white/95 px-3 py-1 text-xs font-bold text-[#4A5A74] shadow-sm dark:bg-[#13233F] dark:text-[#A7B4CA]">{dayLabel(m.at)}</span></div> : null}
                     <Bubble sb={sb} m={m} me={myRole} first={newDay || !prev || prev.role !== m.role || prev.role === "system"} peer={chat.name} tutor={tutorName}
-                      showName={mode === "admin" || m.role === "admin"} onPhoto={setPhoto} onAction={onAction} onQuiz={setQuizView} />
+                      showName={mode === "admin" || m.role === "admin"} onPhoto={setPhoto} onAction={onAction} onQuiz={setQuizView} onJump={jumpTo} flash={flash === m.id} />
                   </div>
                 );
               })}
