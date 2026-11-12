@@ -1581,3 +1581,37 @@ after the finger had already lifted, with no way to stop it.
   with a short line that changes with the days left, while the countdown is on and the date is ahead. The admin can
   stop it with `exam_countdown.push = false`.
 
+
+## D-155 — Community v2: its own space like X (2026-11-12)
+Owner: "COMMUNITY DESIGN APPROVED, option b for photos but on by default, handles okay". Plan: `docs/plans/community-v2.md`.
+- **Its own full-screen space** (Study → Community): bottom bar Home · Explore · Notifications · Profile, a gold compose
+  button, header and bars slide away while scrolling down and return on scrolling up; back returns to Study. Colours come
+  from the app theme (the approved canvas is the dark theme; light mode uses the same layout with light tokens).
+- **Handles:** everyone got one from their first name (`tolu`, `tolu_a`, `tolu27` …); it follows the name until the student
+  picks their own. 3–20 small letters, numbers, `_` and `.`; unique; names with SolutionTee, JAMB, WAEC, NECO, admin,
+  staff, tutor and similar are kept; a picked handle can change once every 30 days. New handles and bios wait for the AI
+  check (`pending_handle`, `pending_bio`); others keep seeing the old ones until it passes. Undecided ones wait in
+  Admin → Community → @handles and bios.
+- **Photos (option b, on by default):** `community_profiles.show_photo` defaults to true; a student can turn it off in
+  Edit profile. `can_view_avatar` allows any signed-in student to see a Community photo that is on, unless one blocked the
+  other. Community is only inside the app, never on the public web.
+- **Posts:** up to 500 characters, up to 4 pictures (`images text[]`, `image_path` kept = first picture for older apps),
+  quotes (`quote_of`), reposts (`community_reposts`, the count includes shown quotes), bookmarks (private), #topics
+  (`tags`, used for trending and tag pages), `$maths$`. Replies are threaded one level (`parent_id` = the top reply,
+  `reply_to` = the person answered) with likes. Likes and saved posts are visible only to their owner.
+- **Feeds:** For you ranks by follow (+3), a followed person's repost (+2), the student's subjects (+2), activity and age
+  (60 days); Following shows posts and reposts by people followed, newest first; tag and subject pages are newest first;
+  a "N new posts" pill polls `community_new_count` every 45 s while Home is on screen (cheap, no realtime per post).
+- **Notifications:** `community_notes` (like, reply, repost, quote, follow, mention, AI answer, shown, rejected, reply
+  like, profile) grouped in the list ("Tolu and 3 others liked your post"), live on the student's own private
+  `cnote:<id>` topic (a separate topic from the tutor banner's `user:<id>` because one socket cannot join a topic twice).
+  Phone pushes only for replies, mentions, quotes, follows (once a day per person), AI answers and rejections — never
+  for likes or reposts.
+- **AI check, friendlier:** greetings, friendly chat, motivation, school life and study jokes pass; still blocked: sexual
+  content and dating, politics, betting and sports gossip, religious fights, bullying and hate, contacts and links,
+  scams and selling, exam "expo", drugs and weapons, spam; self-harm gets a kind message. "When unsure and friendly,
+  allow." Posts with pictures are checked with a vision model (all pictures); quotes are checked with the quoted text.
+- **Blocking:** blocked people never see each other anywhere (feeds, search, threads, notes, profiles, photos).
+- Old app versions keep working: `community_feed`, `community_post_get`, `community_profile`, `community_post_create` and
+  `community_comment_add` are unchanged in shape.
+- Share uses the phone's share sheet (`share_plus`), text plus the website link (no public post pages).

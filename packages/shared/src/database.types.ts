@@ -2035,6 +2035,42 @@ export type Database = {
         }
         Relationships: []
       }
+      community_bookmarks: {
+        Row: {
+          created_at: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      community_comment_likes: {
+        Row: {
+          comment_id: number
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          comment_id: number
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          comment_id?: number
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       community_comments: {
         Row: {
           body: string
@@ -2042,8 +2078,12 @@ export type Database = {
           created_at: string
           from_ai: boolean
           id: number
+          likes_count: number
+          parent_id: number | null
           post_id: string
           reason: string | null
+          replies_count: number
+          reply_to: string | null
           status: string
           user_id: string | null
         }
@@ -2053,8 +2093,12 @@ export type Database = {
           created_at?: string
           from_ai?: boolean
           id?: number
+          likes_count?: number
+          parent_id?: number | null
           post_id: string
           reason?: string | null
+          replies_count?: number
+          reply_to?: string | null
           status?: string
           user_id?: string | null
         }
@@ -2064,8 +2108,12 @@ export type Database = {
           created_at?: string
           from_ai?: boolean
           id?: number
+          likes_count?: number
+          parent_id?: number | null
           post_id?: string
           reason?: string | null
+          replies_count?: number
+          reply_to?: string | null
           status?: string
           user_id?: string | null
         }
@@ -2107,6 +2155,42 @@ export type Database = {
         }
         Relationships: []
       }
+      community_notes: {
+        Row: {
+          actor: string | null
+          body: string | null
+          comment_id: number | null
+          created_at: string
+          id: number
+          kind: string
+          post_id: string | null
+          read_at: string | null
+          user_id: string
+        }
+        Insert: {
+          actor?: string | null
+          body?: string | null
+          comment_id?: number | null
+          created_at?: string
+          id?: number
+          kind: string
+          post_id?: string | null
+          read_at?: string | null
+          user_id: string
+        }
+        Update: {
+          actor?: string | null
+          body?: string | null
+          comment_id?: number | null
+          created_at?: string
+          id?: number
+          kind?: string
+          post_id?: string | null
+          read_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       community_posts: {
         Row: {
           ai_answered: boolean
@@ -2117,10 +2201,14 @@ export type Database = {
           created_at: string
           id: string
           image_path: string | null
+          images: string[]
           likes_count: number
+          quote_of: string | null
           reason: string | null
+          reposts_count: number
           status: string
           subject_id: number | null
+          tags: string[]
           user_id: string
         }
         Insert: {
@@ -2132,10 +2220,14 @@ export type Database = {
           created_at?: string
           id?: string
           image_path?: string | null
+          images?: string[]
           likes_count?: number
+          quote_of?: string | null
           reason?: string | null
+          reposts_count?: number
           status?: string
           subject_id?: number | null
+          tags?: string[]
           user_id: string
         }
         Update: {
@@ -2147,10 +2239,59 @@ export type Database = {
           created_at?: string
           id?: string
           image_path?: string | null
+          images?: string[]
           likes_count?: number
+          quote_of?: string | null
           reason?: string | null
+          reposts_count?: number
           status?: string
           subject_id?: number | null
+          tags?: string[]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      community_profiles: {
+        Row: {
+          bio: string | null
+          created_at: string
+          handle: string
+          handle_auto: boolean
+          handle_changed_at: string | null
+          header: number
+          pending_at: string | null
+          pending_bio: string | null
+          pending_handle: string | null
+          pending_reason: string | null
+          show_photo: boolean
+          user_id: string
+        }
+        Insert: {
+          bio?: string | null
+          created_at?: string
+          handle: string
+          handle_auto?: boolean
+          handle_changed_at?: string | null
+          header?: number
+          pending_at?: string | null
+          pending_bio?: string | null
+          pending_handle?: string | null
+          pending_reason?: string | null
+          show_photo?: boolean
+          user_id: string
+        }
+        Update: {
+          bio?: string | null
+          created_at?: string
+          handle?: string
+          handle_auto?: boolean
+          handle_changed_at?: string | null
+          header?: number
+          pending_at?: string | null
+          pending_bio?: string | null
+          pending_handle?: string | null
+          pending_reason?: string | null
+          show_photo?: boolean
           user_id?: string
         }
         Relationships: []
@@ -2178,6 +2319,24 @@ export type Database = {
           kind?: string
           reason?: string | null
           ref?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      community_reposts: {
+        Row: {
+          created_at: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          post_id?: string
           user_id?: string
         }
         Relationships: []
@@ -5406,18 +5565,37 @@ export type Database = {
       classes_list: { Args: never; Returns: Json }
       community_ai_answer: { Args: { p_post: string; p_body: string }; Returns: Json }
       community_block: { Args: { p_user: string }; Returns: Json }
+      community_bookmark: { Args: { p_id: string }; Returns: Json }
       community_comment_add: { Args: { p_post: string; p_body: string }; Returns: Json }
       community_comment_delete: { Args: { p_id: number }; Returns: Json }
+      community_comment_like: { Args: { p_id: number }; Returns: Json }
       community_decide: { Args: { p_kind: string; p_id: string; p_ok: boolean; p_reason: string }; Returns: Json }
+      community_explore: { Args: never; Returns: Json }
       community_feed: { Args: { p_tab?: string; p_subject?: number; p_offset?: number }; Returns: Json }
       community_follow: { Args: { p_user: string }; Returns: Json }
+      community_follow_list: { Args: { p_user: string; p_kind?: string; p_offset?: number }; Returns: Json }
+      community_handle_check: { Args: { p_handle: string }; Returns: Json }
+      community_home: { Args: { p_tab?: string; p_offset?: number; p_subject?: number; p_tag?: string }; Returns: Json }
       community_like: { Args: { p_id: string }; Returns: Json }
+      community_new_count: { Args: { p_tab: string; p_since: string }; Returns: number }
+      community_notes_list: { Args: { p_tab?: string; p_offset?: number }; Returns: Json }
+      community_notes_read: { Args: never; Returns: Json }
       community_pending: { Args: { p_limit?: number }; Returns: Json }
       community_post_create: { Args: { p_body: string; p_image?: string; p_subject?: number }; Returns: Json }
       community_post_delete: { Args: { p_id: string }; Returns: Json }
       community_post_get: { Args: { p_id: string }; Returns: Json }
+      community_post_send: { Args: { p_body: string; p_images?: string[]; p_subject?: number; p_quote?: string }; Returns: Json }
       community_profile: { Args: { p_user: string }; Returns: Json }
+      community_profile_decide: { Args: { p_user: string; p_ok: boolean; p_reason?: string | null }; Returns: Json }
+      community_profile_save: { Args: { p_handle?: string; p_bio?: string; p_show_photo?: boolean; p_header?: number }; Returns: Json }
+      community_reply: { Args: { p_post: string; p_body: string; p_parent?: number }; Returns: Json }
       community_report: { Args: { p_kind: string; p_ref: string; p_reason: string }; Returns: Json }
+      community_repost: { Args: { p_id: string }; Returns: Json }
+      community_search: { Args: { p_q: string; p_kind?: string; p_offset?: number }; Returns: Json }
+      community_thread: { Args: { p_id: string }; Returns: Json }
+      community_unread: { Args: never; Returns: number }
+      community_user: { Args: { p_user?: string; p_handle?: string }; Returns: Json }
+      community_user_list: { Args: { p_user: string; p_tab?: string; p_offset?: number }; Returns: Json }
       content_offer: { Args: { p_kind: string; p_ref: string }; Returns: Json }
       content_pay_start: {
         Args: {

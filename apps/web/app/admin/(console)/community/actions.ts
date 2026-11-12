@@ -58,3 +58,15 @@ export async function saveCommunitySettings(input: unknown): Promise<ActionResul
   revalidatePath("/admin/community");
   return { ok: true, message: p.data.on ? "Saved." : "Saved. Community is paused in the app." };
 }
+
+/** Staff decision on a waiting @handle and bio (D-155), through the same path as the AI so the student is told. */
+export async function decideProfile(user: string, ok: boolean, reason?: string): Promise<ActionResult> {
+  await admins();
+  if (!z.string().uuid().safeParse(user).success) return { ok: false, error: "Unknown student" };
+  const svc = await createServiceClient();
+  const { data, error } = await svc.rpc("community_profile_decide", { p_user: user, p_ok: ok, p_reason: reason?.trim() || null });
+  if (error) return { ok: false, error: friendlyError(error) };
+  if (!(data as { ok?: boolean } | null)?.ok) return { ok: false, error: "It was already decided." };
+  revalidatePath("/admin/community");
+  return { ok: true, message: ok ? "Allowed. It shows now." : "Not allowed. The student is told why." };
+}

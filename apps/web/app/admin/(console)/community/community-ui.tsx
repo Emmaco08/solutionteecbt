@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { inputCls } from "@/components/admin/row-form";
 import { EmptyState, Panel, Pill, when } from "@/components/admin/ui";
-import { moderate, saveCommunitySettings } from "./actions";
+import { decideProfile, moderate, saveCommunitySettings } from "./actions";
 
 export type ModItem = {
-  kind: "post" | "comment"; id: string; name: string; user_id: string | null; body: string; image: string | null; status: string; reason: string | null;
+  kind: "post" | "comment"; id: string; name: string; user_id: string | null; body: string; image: string | null; pictures: string[]; quote: string | null;
+  status: string; reason: string | null;
   at: string; extra: string; reports: string[];
 };
 export type CommunitySettings = { on: boolean; ai_check: boolean; daily_posts: number; daily_comments: number; ai_answers_daily: number; report_hide: number };
@@ -33,11 +34,23 @@ function Row({ it }: { it: ModItem }) {
         <b>{it.name}</b>
         <span className="text-muted-foreground">{when(it.at)} · {it.extra}</span>
         <span className="ml-auto flex gap-2">
-          {it.image ? <Pill tone="info">Has a picture</Pill> : null}
+          {it.image ? <Pill tone="info">{it.pictures.length > 1 ? `${it.pictures.length} pictures` : "Has a picture"}</Pill> : null}
+          {it.quote !== null ? <Pill tone="info">Quote</Pill> : null}
           {it.reports.length ? <Pill tone="warn">{it.reports.length} report{it.reports.length > 1 ? "s" : ""}</Pill> : null}
         </span>
       </div>
       <p className="whitespace-pre-wrap rounded-xl bg-muted px-3 py-2 text-sm">{it.body}</p>
+      {it.quote !== null ? <p className="whitespace-pre-wrap rounded-xl border px-3 py-2 text-xs text-muted-foreground">Quoting: {it.quote}</p> : null}
+      {it.pictures.filter(Boolean).length ? (
+        <div className="flex flex-wrap gap-2">
+          {it.pictures.filter(Boolean).map((u, i) => (
+            <a key={u} href={u} target="_blank" rel="noreferrer">
+              {/* eslint-disable-next-line @next/next/no-img-element -- short signed R2 link */}
+              <img src={u} alt={`Picture ${i + 1}`} className="size-28 rounded-xl border object-cover" />
+            </a>
+          ))}
+        </div>
+      ) : null}
       {it.reason ? <p className="text-xs text-muted-foreground">Reason: {it.reason}</p> : null}
       {it.reports.filter(Boolean).length ? <p className="text-xs text-muted-foreground">Reports: {it.reports.filter(Boolean).join(" · ")}</p> : null}
       <div className="flex flex-wrap items-end gap-2">
@@ -94,5 +107,41 @@ export function CommunitySettingsForm({ initial }: { initial: CommunitySettings 
         router.refresh();
       })}>Save settings</Button></div>
     </div>
+  );
+}
+
+export type ProfileItem = { user_id: string; name: string; handle: string; pending_handle: string | null; bio: string | null; pending_bio: string | null; at: string };
+
+function ProfileRow({ it }: { it: ProfileItem }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [reason, setReason] = useState("");
+  const act = (ok: boolean) => start(async () => {
+    const r = await decideProfile(it.user_id, ok, reason);
+    if (!r.ok) return void toast.error(r.error);
+    toast.success(r.message);
+    router.refresh();
+  });
+  return (
+    <li className="grid gap-2 p-4">
+      <div className="flex flex-wrap items-center gap-2 text-sm"><b>{it.name}</b><span className="text-muted-foreground">@{it.handle} · asked {when(it.at)}</span></div>
+      {it.pending_handle ? <p className="text-sm">New @handle: <b>@{it.pending_handle}</b></p> : null}
+      {it.pending_bio ? <p className="whitespace-pre-wrap rounded-xl bg-muted px-3 py-2 text-sm">New bio: {it.pending_bio}</p> : null}
+      <div className="flex flex-wrap items-end gap-2">
+        <Button size="sm" disabled={pending} onClick={() => act(true)}>Allow</Button>
+        <input aria-label="Reason for the student" className={`${inputCls} max-w-xs`} placeholder="Reason for the student (optional)" value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} />
+        <Button size="sm" variant="outline" disabled={pending} onClick={() => act(false)}>Not allowed</Button>
+      </div>
+    </li>
+  );
+}
+
+export function ProfileList({ items }: { items: ProfileItem[] }) {
+  return (
+    <Panel title={`${items.length} waiting`} bodyClassName="p-0">
+      {items.length ? <ul className="divide-y">{items.map((it) => <ProfileRow key={it.user_id} it={it} />)}</ul> : (
+        <EmptyState title="Nothing waiting">New @handles and bios are checked by the AI in seconds. Anything it cannot decide shows here.</EmptyState>
+      )}
+    </Panel>
   );
 }
