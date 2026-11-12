@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../widgets/math_text.dart';
+import '../../widgets/fit_text.dart';
 import '../community/community_data.dart' show Json, asJson, asList;
 import 'gz_avatar.dart';
 import 'gz_data.dart';
@@ -381,7 +382,7 @@ class _Seat extends StatelessWidget {
         const SizedBox(height: 4),
         ConstrainedBox(
           constraints: BoxConstraints(maxWidth: size * 1.4),
-          child: Text(p['me'] == true ? 'YOU' : '${p['name']}'.toUpperCase(), maxLines: 1, overflow: TextOverflow.ellipsis, style: gzFont(size > 80 ? 16 : 12)),
+          child: FitText(p['me'] == true ? 'YOU' : '${p['name']}'.toUpperCase(), style: gzFont(size > 80 ? 16 : 12), minScale: .7),
         ),
       ],
     );

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../widgets/math_text.dart';
+import '../../widgets/fit_text.dart';
 import '../community/community_data.dart' show Json, asList;
 import 'gz_avatar.dart';
 import 'gz_data.dart';
@@ -471,7 +472,7 @@ class _Standing extends StatelessWidget {
         const SizedBox(width: 4),
         ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 60),
-          child: Text(name.toUpperCase(), maxLines: 1, overflow: TextOverflow.ellipsis, style: gzFont(12, shadow: 0)),
+          child: FitText(name.toUpperCase(), style: gzFont(12, shadow: 0), minScale: .7),
         ),
       ],
     ),

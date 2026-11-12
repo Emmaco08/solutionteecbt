@@ -446,7 +446,7 @@ class _WinnersCard extends StatelessWidget {
 Widget? _photo(Map<String, dynamic> p, double size) {
   final key = p['photo'] as String?;
   if (key == null || key.isEmpty) return null;
-  return R2Image(imageKey: key, decodeWidth: (size * 3).round(), semanticLabel: 'Photo of ${p['name']}');
+  return R2Image.face(imageKey: key, decodeWidth: (size * 3).round(), semanticLabel: 'Photo of ${p['name']}');
 }
 
 /// Top 3 (`.podium`): 2nd, 1st, 3rd, with gold, silver and bronze rings.

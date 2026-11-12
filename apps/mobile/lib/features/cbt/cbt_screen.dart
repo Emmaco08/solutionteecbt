@@ -90,8 +90,9 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
 
   /// Bank tests are past questions until the server says otherwise; mock-exam questions wait for the server.
   Widget _sourcePill(String id) {
-    final s = _src[id] ?? (_mock == null ? 'past' : null);
-    if (s == null) return const SizedBox.shrink();
+    // Challenges show no source label (owner, 13 Nov 2026).
+    if (_mock != null) return const SizedBox.shrink();
+    final s = _src[id] ?? 'past';
     return s == 'mock'
         ? Pill('SolutionTee Mock', kind: BadgeKind.gold, icon: PhosphorIcons.sparkle(PhosphorIconsStyle.fill))
         : Pill('Past Question', icon: PhosphorIcons.books(PhosphorIconsStyle.fill));
@@ -287,18 +288,36 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
     if (!mounted) return;
     Navigator.of(context).popUntil((r) => r is! PopupRoute);
     final router = GoRouter.of(context);
-    await Navigator.of(context).pushReplacement(
+    // The result sits on top of this (router) page. It used to *replace* it, which left the router's page list out of
+    // step, so "See the leaderboard" opened a blank screen (owner, 13 Nov 2026). Now leaving closes both.
+    var left = false;
+    void leave(BuildContext ctx, WidgetRef r, {bool board = false}) {
+      if (left) return;
+      left = true;
+      if (board) {
+        router.go('/test/challenges/$id/result');
+        return;
+      }
+      Ads.instance.breakPoint(r, 'challenge');
+      Navigator.of(ctx).pop();
+      if (router.canPop()) {
+        router.pop();
+      } else {
+        router.go('/test/challenges/$id');
+      }
+    }
+
+    await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (ctx) => Scaffold(
-          appBar: AppBar(title: const Text('JAMB mock'), automaticallyImplyLeading: false),
-          body: Consumer(
-            builder: (ctx, r, _) => MockResultView(
-              r: {...res, 'reason': ?reason},
-              onDone: () {
-                Ads.instance.breakPoint(r, 'challenge');
-                Navigator.of(ctx).pop();
-              },
-              leaderboard: () => router.go('/test/challenges/$id/result'),
+        builder: (ctx) => Consumer(
+          builder: (ctx, r, _) => PopScope(
+            canPop: false,
+            onPopInvokedWithResult: (did, _) {
+              if (!did) leave(ctx, r);
+            },
+            child: Scaffold(
+              appBar: AppBar(title: const Text('JAMB mock'), automaticallyImplyLeading: false),
+              body: MockResultView(r: {...res, 'reason': ?reason}, onDone: () => leave(ctx, r), leaderboard: () => leave(ctx, r, board: true)),
             ),
           ),
         ),

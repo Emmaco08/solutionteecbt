@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../widgets/r2_image.dart';
+import '../../widgets/fit_text.dart';
 import 'gz_theme.dart';
 
 // Players in the Game Zone (owner, D-157): the student's real photo when they have one (and allow it), otherwise the
@@ -138,7 +139,7 @@ class GzPortrait extends StatelessWidget {
             fit: StackFit.expand,
             children: [
               CustomPaint(painter: CartoonPainter(face.look, mood: mood)),
-              R2Image(imageKey: face.photo!, decodeWidth: (size * 2.5).round(), semanticLabel: name),
+              R2Image.face(imageKey: face.photo!, decodeWidth: (size * 2.5).round(), semanticLabel: name),
             ],
           )
         : CustomPaint(painter: CartoonPainter(face.look, mood: mood));
@@ -567,7 +568,7 @@ class GzPlayerBadge extends StatelessWidget {
       SizedBox(height: bot ? 10 : 6),
       ConstrainedBox(
         constraints: BoxConstraints(maxWidth: size * 1.6),
-        child: Text(name.toUpperCase(), maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: gzFont((size * .2).clamp(11, 22))),
+        child: FitText(name.toUpperCase(), textAlign: TextAlign.center, style: gzFont((size * .2).clamp(11, 22)), minScale: .7),
       ),
       if (sub != null)
         Text(

@@ -13,6 +13,7 @@ import '../../core/providers.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
 import '../../ui/kit.dart';
+import '../../widgets/fit_text.dart';
 import '../../widgets/phosphor.g.dart';
 import '../study/note_screens.dart' show NoteBody;
 import 'community_data.dart';
@@ -338,7 +339,7 @@ class _BigPost extends ConsumerWidget {
                       Row(
                         children: [
                           Flexible(
-                            child: Text('${p['name']}', style: context.ty.lg.bold, maxLines: 1, overflow: TextOverflow.ellipsis),
+                            child: Text('${p['name']}', style: context.ty.body.bold.copyWith(fontSize: 16), maxLines: 2, overflow: TextOverflow.ellipsis),
                           ),
                           if (p['badge'] != null) ...[const Gap(4), CBadge('${p['badge']}', size: 16)],
                         ],
@@ -508,17 +509,14 @@ class _ReplyTileState extends ConsumerState<_ReplyTile> {
                       children: [
                         Row(
                           children: [
-                            Flexible(
-                              child: Text('${r['name']}', style: context.ty.sm.bold, maxLines: 1, overflow: TextOverflow.ellipsis),
-                            ),
-                            if (r['badge'] != null) ...[const Gap(4), CBadge('${r['badge']}', size: 14)],
-                            const Gap(4),
                             Expanded(
-                              child: Text(
-                                '@${r['handle']} · ${agoText(r['created_at'])}',
-                                style: context.ty.sm.col(c.textMuted),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                              child: NameLine(
+                                name: '${r['name']}',
+                                nameStyle: context.ty.sm.bold,
+                                badge: r['badge'] != null ? CBadge('${r['badge']}', size: 14) : null,
+                                handle: '${r['handle']}',
+                                time: agoText(r['created_at']),
+                                metaStyle: context.ty.sm.col(c.textMuted),
                               ),
                             ),
                             InkResponse(

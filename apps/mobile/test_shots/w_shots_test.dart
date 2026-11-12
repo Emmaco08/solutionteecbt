@@ -1,0 +1,101 @@
+// ignore_for_file: invalid_use_of_visible_for_testing_member
+// Screenshots for the owner's 13 Nov 2026 fixes (names in full, menu on the right, countdown card). Not part of
+// `flutter test`. Run: flutter test test_shots/w_shots_test.dart --update-goldens
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:solutiontee_cbt/core/providers.dart';
+import 'package:solutiontee_cbt/features/community/community_data.dart';
+import 'package:solutiontee_cbt/features/community/community_widgets.dart';
+import 'package:solutiontee_cbt/features/home/countdown.dart';
+import 'package:solutiontee_cbt/theme/theme.dart';
+
+Future<void> _font(String family, List<String> files) async {
+  final l = FontLoader(family);
+  for (final f in files) {
+    l.addFont(Future.value(ByteData.sublistView(File(f).readAsBytesSync())));
+  }
+  await l.load();
+}
+
+Map<String, dynamic> _post(String id, String name, String handle, {String? badge, String? page, String body = 'Why is tomato red? @solutiontee'}) => {
+  'id': id,
+  'user_id': 'u$id',
+  'page_id': page,
+  'name': name,
+  'handle': handle,
+  'badge': badge,
+  'body': body,
+  'status': 'shown',
+  'images': const [],
+  'subject_id': null,
+  'likes': 2,
+  'replies': 4,
+  'reposts': 0,
+  'created_at': DateTime.now().subtract(const Duration(hours: 7)).toUtc().toIso8601String(),
+  'mine': false,
+  'liked': true,
+  'reposted': false,
+  'bookmarked': false,
+  'following': false,
+};
+
+Future<void> _shot(WidgetTester t, Widget w, String name, {double width = 360, List overrides = const []}) async {
+  t.view.physicalSize = Size(width * 3, 1500 * 3);
+  t.view.devicePixelRatio = 3;
+  await t.pumpWidget(
+    ProviderScope(
+      overrides: [
+        subjectsProvider.overrideWith((_) async => const []),
+        communityMeProvider.overrideWith((_) async => {'name': 'Tolu', 'handle': 'tolu'}),
+        ...overrides.cast(),
+      ],
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: buildTheme(Brightness.dark),
+        home: Scaffold(body: SafeArea(child: w)),
+      ),
+    ),
+  );
+  for (var i = 0; i < 20; i++) {
+    await t.pump(const Duration(milliseconds: 100));
+  }
+  await expectLater(find.byType(MaterialApp), matchesGoldenFile('shots/$name.png'));
+  await t.pumpWidget(const SizedBox());
+  await t.pump(const Duration(seconds: 6));
+}
+
+void main() {
+  setUpAll(() async {
+    await _font('PlusJakartaSans', ['assets/fonts/PlusJakartaSans-Medium.ttf', 'assets/fonts/PlusJakartaSans-Bold.ttf']);
+    await _font('PhosphorRegular', ['assets/fonts/Phosphor-Regular.ttf']);
+    await _font('PhosphorFill', ['assets/fonts/Phosphor-Fill.ttf']);
+    await _font('MaterialIcons', ['/opt/flutter/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf']);
+  });
+
+  final posts = ListView(
+    children: [
+      PostCell(post: _post('1', 'Emmanuel Akinbola', 'emmanuel25', badge: 'staff')),
+      PostCell(post: _post('2', 'SolutionTee', 'solutiontee', badge: 'official', page: 'pg', body: 'Just testing\n\nHello, everyone')),
+      PostCell(post: _post('3', 'Emmanuel Oluwanifemi Akinbola', 'emmanuel', badge: 'staff', body: 'Hello, I am new here.')),
+      PostCell(post: _post('4', 'Chidinma Okonkwo-Adebayo Oluwaseun', 'chidinma_okonkwo', body: 'A very long name.')),
+      PostCell(post: _post('5', 'Ada Obi', 'ada', body: 'Short name.')),
+    ],
+  );
+
+  testWidgets('posts 360', (t) async => _shot(t, posts, 'w_posts_360'));
+  testWidgets('posts 411', (t) async => _shot(t, posts, 'w_posts_411', width: 411));
+
+  testWidgets('countdown card', (t) async {
+    final cd = ExamCountdown(code: 'JAMB', label: 'UTME', date: DateTime.now().add(const Duration(days: 122)));
+    await _shot(
+      t,
+      const Padding(padding: EdgeInsets.all(20), child: Column(children: [CountdownChip()])),
+      'w_countdown',
+      overrides: [examCountdownProvider.overrideWithValue(cd)],
+    );
+  });
+}

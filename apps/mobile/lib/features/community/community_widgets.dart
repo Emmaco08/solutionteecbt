@@ -14,6 +14,7 @@ import '../../theme/tokens.g.dart';
 import '../../ui/kit.dart';
 import '../../widgets/math_text.dart';
 import '../../widgets/phosphor.g.dart';
+import '../../widgets/fit_text.dart';
 import '../../widgets/r2_image.dart';
 import 'community_data.dart';
 
@@ -67,7 +68,7 @@ class CAvatar extends StatelessWidget {
             Center(
               child: Text(Avatar.initials(name), style: context.ty.label.bold.copyWith(fontSize: size * .32, height: 1).col(fg)),
             ),
-            if (has) R2Image(imageKey: photo!, decodeWidth: (size * 3).round(), semanticLabel: name),
+            if (has) R2Image.face(imageKey: photo!, decodeWidth: (size * 3).round(), semanticLabel: name),
           ],
         ),
       );
@@ -388,16 +389,13 @@ class QuoteCard extends StatelessWidget {
               children: [
                 CAvatar(name: '${q['name']}', photo: q['avatar_path'] as String?, size: 20),
                 const Gap(6),
-                Flexible(
-                  child: Text('${q['name']}', style: context.ty.sm.bold, maxLines: 1, overflow: TextOverflow.ellipsis),
-                ),
-                const Gap(4),
                 Expanded(
-                  child: Text(
-                    '@${q['handle']} · ${agoText(q['created_at'])}',
-                    style: context.ty.sm.col(c.textMuted),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  child: NameLine(
+                    name: '${q['name']}',
+                    nameStyle: context.ty.sm.bold,
+                    handle: '${q['handle']}',
+                    time: agoText(q['created_at']),
+                    metaStyle: context.ty.sm.col(c.textMuted),
                   ),
                 ),
               ],
@@ -1023,26 +1021,18 @@ class PostCell extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: GestureDetector(
-                              onTap: openUser,
-                              child: Text('${p['name']}', style: context.ty.body.bold, maxLines: 1, overflow: TextOverflow.ellipsis),
-                            ),
-                          ),
-                          if (p['badge'] != null) ...[const Gap(4), CBadge('${p['badge']}')],
-                          const Gap(4),
-                          Expanded(
-                            child: Text(
-                              '@${p['handle'] ?? 'student'} · ${agoText(p['created_at'])}',
-                              style: context.ty.sm.col(c.textMuted),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          PostMenu(post: p, onGone: onGone),
-                        ],
+                      // The menu sits at the right edge (outside this column); the name gets the room first.
+                      Padding(
+                        padding: const EdgeInsets.only(top: 3),
+                        child: NameLine(
+                          name: '${p['name']}',
+                          nameStyle: context.ty.body.bold,
+                          badge: p['badge'] != null ? CBadge('${p['badge']}') : null,
+                          handle: '${p['handle'] ?? 'student'}',
+                          time: agoText(p['created_at']),
+                          metaStyle: context.ty.sm.col(c.textMuted),
+                          onName: openUser,
+                        ),
                       ),
                       if (subject != null) ...[const Gap(4), SubjectChip('$subject', id: p['subject_id'] as int?)],
                       if ('${p['body'] ?? ''}'.isNotEmpty) ...[const Gap(4), CText('${p['body']}', maxLines: 12)],
@@ -1079,6 +1069,7 @@ class PostCell extends ConsumerWidget {
                     ],
                   ),
                 ),
+                PostMenu(post: p, onGone: onGone),
               ],
             ),
           ],
@@ -1179,9 +1170,7 @@ class PersonRow extends ConsumerWidget {
                 children: [
                   Row(
                     children: [
-                      Flexible(
-                        child: Text('${p['name']}', style: context.ty.body.bold, maxLines: 1, overflow: TextOverflow.ellipsis),
-                      ),
+                      Flexible(child: FitText('${p['name']}', style: context.ty.body.bold)),
                       if (p['badge'] != null) ...[const Gap(4), CBadge('${p['badge']}')],
                     ],
                   ),

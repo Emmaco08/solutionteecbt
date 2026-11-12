@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/providers.dart';
 import '../../ui/kit.dart' show toast;
+import '../../widgets/fit_text.dart';
 import '../../widgets/phosphor.g.dart';
 import '../community/community_data.dart' show Json, asJson, asList;
 import 'gz_avatar.dart';
@@ -219,7 +220,7 @@ class _GzHubScreenState extends ConsumerState<GzHubScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('${me['name'] ?? 'You'}'.toUpperCase(), maxLines: 1, overflow: TextOverflow.ellipsis, style: gzFont(18)),
+                      FitText(rank.label.toUpperCase(), style: gzFont(15), minScale: .7),
                       const SizedBox(height: 3),
                       _Bar(value: rank.progress, color: GzC.mint),
                     ],
@@ -245,8 +246,27 @@ class _GzHubScreenState extends ConsumerState<GzHubScreen> {
             ),
           ),
           const SizedBox(height: 10),
-          Center(
-            child: GzTag('${rank.label} · ${gzNum(rating)} ★', color: GzC.navy, textColor: GzC.goldLight, border: GzC.brand, size: 15),
+          // Name plate: the whole name (owner: never cut a name), the rating under it.
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(16, 5, 16, 6),
+                decoration: BoxDecoration(
+                  color: GzC.navy,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: GzC.brand, width: 2.5),
+                  boxShadow: const [BoxShadow(color: GzC.ink, offset: Offset(0, 3))],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    FitText('${me['name'] ?? 'You'}'.toUpperCase(), style: gzFont(18, shadow: 0), minScale: .7, textAlign: TextAlign.center),
+                    Text('${rank.label} · ${gzNum(rating)} ★'.toUpperCase(), maxLines: 1, overflow: TextOverflow.ellipsis, style: gzFont(13, color: GzC.goldLight, shadow: 0)),
+                  ],
+                ),
+              ),
+            ),
           ),
           if (active != null)
             Padding(

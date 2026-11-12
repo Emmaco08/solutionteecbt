@@ -31,11 +31,18 @@ class GzSound with WidgetsBindingObserver {
 
   static const _musicVolume = 0.42;
 
+  /// Effects and music share the speaker: no player asks Android for audio focus. (With the default "gain" focus each
+  /// effect took focus from our own music player, which then stopped for good — owner report, 12 Nov 2026.)
+  static final AudioContext _mix = AudioContext(
+    android: const AudioContextAndroid(audioFocus: AndroidAudioFocus.none, usageType: AndroidUsageType.game, contentType: AndroidContentType.sonification),
+    iOS: AudioContextIOS(category: AVAudioSessionCategory.ambient, options: const {AVAudioSessionOptions.mixWithOthers}),
+  );
+
   void _start() {
     if (_started || !enabled) return;
     _started = true;
     WidgetsBinding.instance.addObserver(this);
-    AudioPlayer.global.setAudioContext(AudioContextConfig(focus: AudioContextConfigFocus.mixWithOthers).build()).catchError((_) {});
+    AudioPlayer.global.setAudioContext(_mix).catchError((_) {});
     for (final s in const [GzSfx.tap, GzSfx.correct, GzSfx.wrong, GzSfx.tick, GzSfx.count, GzSfx.go, GzSfx.flip, GzSfx.pair, GzSfx.pop]) {
       unawaited(_pool(s).then((_) {}, onError: (_) => _loading.remove(s)));
     }
@@ -44,7 +51,11 @@ class GzSound with WidgetsBindingObserver {
   Future<AudioPool> _pool(GzSfx s) {
     final ready = _pools[s];
     if (ready != null) return Future.value(ready);
-    return _loading[s] ??= AudioPool.create(source: AssetSource('sounds/${s.name}.ogg'), maxPlayers: s == GzSfx.tap || s == GzSfx.flip ? 4 : 2).then((p) {
+    return _loading[s] ??= AudioPool.create(
+      source: AssetSource('sounds/${s.name}.ogg'),
+      maxPlayers: s == GzSfx.tap || s == GzSfx.flip ? 4 : 2,
+      audioContext: _mix,
+    ).then((p) {
       _pools[s] = p;
       return p;
     });
@@ -96,9 +107,11 @@ class GzSound with WidgetsBindingObserver {
   }
 
   Future<void> _switchTo(String? track) async {
+    final fresh = _player == null;
     final p = _player ??= AudioPlayer(playerId: 'gz_music');
     _fade?.cancel();
     try {
+      if (fresh) await p.setAudioContext(_mix);
       if (track == null) {
         await _fadeTo(p, 0);
         await p.pause();
@@ -108,7 +121,7 @@ class GzSound with WidgetsBindingObserver {
       await _fadeTo(p, 0, ms: 250);
       await p.stop();
       await p.setVolume(0);
-      await p.play(AssetSource('sounds/music_$track.ogg'), volume: 0);
+      await p.play(AssetSource('sounds/music_$track.ogg'), volume: 0, ctx: _mix);
       await _fadeTo(p, _musicVolume, ms: 700);
     } catch (_) {}
   }

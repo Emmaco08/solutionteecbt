@@ -30,8 +30,15 @@ final r2BytesProvider = FutureProvider.family<Uint8List, R2Ref>((ref, a) async {
 
 /// Draws an R2 picture once it is ready (nothing while loading or on failure, so the gradient behind shows).
 class R2Image extends ConsumerWidget {
-  const R2Image({super.key, required this.imageKey, this.itemId, this.fit = BoxFit.cover, this.semanticLabel, this.decodeWidth = 720});
+  const R2Image({super.key, required this.imageKey, this.itemId, this.fit = BoxFit.cover, this.semanticLabel, this.decodeWidth = 720, this.alignment = Alignment.center});
+
+  /// A profile photo: cropped a little above the middle, where faces usually are in tall (9:16) photos.
+  const R2Image.face({super.key, required this.imageKey, this.semanticLabel, this.decodeWidth = 240})
+    : itemId = null,
+      fit = BoxFit.cover,
+      alignment = const Alignment(0, -.4);
   final String imageKey;
+  final Alignment alignment;
   final String? itemId;
   final BoxFit fit;
   final String? semanticLabel;
@@ -46,6 +53,7 @@ class R2Image extends ConsumerWidget {
     return Image.memory(
       bytes,
       fit: fit,
+      alignment: alignment,
       gaplessPlayback: true,
       cacheWidth: decodeWidth,
       semanticLabel: semanticLabel,

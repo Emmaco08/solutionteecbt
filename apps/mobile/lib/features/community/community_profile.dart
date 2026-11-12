@@ -206,7 +206,8 @@ class _Header extends ConsumerWidget {
           TextSpan(
             children: [
               TextSpan(text: n, style: context.ty.sm.bold),
-              TextSpan(text: ' $label', style: context.ty.sm.col(c.textMuted)),
+              const WidgetSpan(child: SizedBox(width: 5)),
+              TextSpan(text: label, style: context.ty.sm.col(c.textMuted)),
             ],
           ),
         ),
@@ -326,7 +327,7 @@ class _Header extends ConsumerWidget {
               _Meta(icon: PhosphorIcons.calendarBlank(), label: 'Joined', text: 'Joined ${monthYear(u['joined'])}'),
               const Gap(Space.s3),
               Wrap(
-                spacing: 22,
+                spacing: 28,
                 runSpacing: 4,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
@@ -338,13 +339,15 @@ class _Header extends ConsumerWidget {
                             TextSpan(
                               children: [
                                 TextSpan(text: countText(followers), style: context.ty.sm.bold),
-                                TextSpan(text: followers == 1 ? ' Follower' : ' Followers', style: context.ty.sm.col(c.textMuted)),
+                                const WidgetSpan(child: SizedBox(width: 5)),
+                                TextSpan(text: followers == 1 ? 'Follower' : 'Followers', style: context.ty.sm.col(c.textMuted)),
                               ],
                             ),
                           ),
                         )
                       : count(countText(followers), followers == 1 ? 'Follower' : 'Followers', 'followers'),
-                  if (streak > 0)
+                  // Streaks are for students; staff, the official page and other pages do not show one (owner, 13 Nov 2026).
+                  if (streak > 0 && (u['badge'] == null || u['badge'] == 'mod') && !page)
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [

@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../widgets/fit_text.dart';
 import '../../widgets/phosphor.g.dart';
 import '../community/community_data.dart' show Json, asJson, asList;
 import 'gz_avatar.dart';
@@ -187,7 +188,7 @@ class _Podium extends StatelessWidget {
           children: [
             pic.popIn(delay: (200 * (3 - place)).ms, calm: context.calm),
             const SizedBox(height: 4),
-            Text(r['me'] == true ? 'YOU' : '${r['name']}'.toUpperCase(), maxLines: 1, overflow: TextOverflow.ellipsis, style: gzFont(14)),
+            FitText(r['me'] == true ? 'YOU' : '${r['name']}'.toUpperCase(), style: gzFont(14), minScale: .7),
             Text(gzNum(gzMs(r['rating']) ?? 0), style: gzFont(13, color: GzC.goldLight)),
             const SizedBox(height: 4),
             Container(
@@ -245,7 +246,7 @@ class _Row extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(me ? 'YOU' : '${r['name']}'.toUpperCase(), maxLines: 1, overflow: TextOverflow.ellipsis, style: gzFont(15)),
+                  FitText(me ? 'YOU' : '${r['name']}'.toUpperCase(), style: gzFont(15), minScale: .7),
                   Text('${rank.label} · ${gzMs(r['won']) ?? 0} wins', style: gzBody(11, color: GzC.sub)),
                 ],
               ),

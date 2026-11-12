@@ -171,15 +171,16 @@ class ChallengeHero extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  LivePill(detail: '${c.joined} playing', dark: true),
-                  const Spacer(),
-                  if (mine != null) Pill(mine['status'] == 'disqualified' ? 'Disqualified' : 'You took part', kind: BadgeKind.success),
-                ],
-              ),
-              const Gap(Space.s3),
-              Text(c.title, style: context.ty.cap.bold.col(Palette.gold300)),
+              // No "LIVE · n playing" pill here (owner, 13 Nov 2026).
+              if (mine != null) ...[
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Pill(mine['status'] == 'disqualified' ? 'Disqualified' : 'You took part', kind: BadgeKind.success),
+                ),
+                const Gap(Space.s3),
+              ],
+              // The title shows once: small above the prize, or as the big line when there is no prize.
+              if (c.prizes.isNotEmpty || c.reward != null) Text(c.title, style: context.ty.cap.bold.col(Palette.gold300)),
               Text(c.prizes.isNotEmpty ? 'Win ${nairaWhole(c.prizes.first)}' : (c.reward ?? c.title), style: context.ty.h1.col(Colors.white)),
               Text(
                 '${c.questions} questions · ${c.seconds}s each · ${c.xpFee > 0 ? '${c.xpFee} XP to join' : 'free for everyone'}',

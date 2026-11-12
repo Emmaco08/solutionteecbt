@@ -23,7 +23,7 @@ class MyAvatar extends ConsumerWidget {
     return Avatar(
       name,
       size: size,
-      photo: key == null || key.isEmpty ? null : R2Image(imageKey: key, decodeWidth: (size * 3).round(), semanticLabel: 'Profile photo'),
+      photo: key == null || key.isEmpty ? null : R2Image.face(imageKey: key, decodeWidth: (size * 3).round(), semanticLabel: 'Profile photo'),
     );
   }
 }

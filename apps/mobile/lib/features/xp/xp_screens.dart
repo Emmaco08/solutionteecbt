@@ -65,7 +65,8 @@ class XpCoin extends StatelessWidget {
 
 /// Home header: the XP balance (tap → My XP). Hidden when XP is off.
 class XpChip extends ConsumerWidget {
-  const XpChip({super.key});
+  const XpChip({super.key, this.height = 36});
+  final double height;
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final d = ref.watch(myXpProvider).value;
@@ -79,7 +80,7 @@ class XpChip extends ConsumerWidget {
         child: GestureDetector(
           onTap: () => openRoute(context, '/me/xp'),
           child: Container(
-            height: 36,
+            height: height,
             padding: const EdgeInsets.symmetric(horizontal: 10),
             decoration: BoxDecoration(color: c.accentSoft, borderRadius: BorderRadius.circular(99)),
             child: Row(
