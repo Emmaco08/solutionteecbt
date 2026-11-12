@@ -6,6 +6,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../tutor/tutor_quiz.dart';
 import '../../core/ads.dart';
 import '../../core/nav.dart';
 import '../../core/providers.dart';
@@ -238,6 +239,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       const AdBanner(screen: 'home'),
       const DailyClaimCard(),
       if (ref.watch(challengesProvider).value?['on'] == true) ChallengeSection(key: _challengeKey),
+      const TutorQuizHomeCard(), // quizzes from the student's tutor (D-154); nothing when there are none
       Column(
         key: _startKey,
         crossAxisAlignment: CrossAxisAlignment.stretch,

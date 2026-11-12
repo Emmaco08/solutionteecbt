@@ -5,6 +5,7 @@ import 'core/ads.dart';
 import 'core/providers.dart';
 import 'core/secure_screen.dart';
 import 'core/updater.dart';
+import 'features/tutor/tutor_banner.dart';
 import 'router.dart';
 import 'theme/theme.dart';
 
@@ -36,7 +37,9 @@ class SolutionTeeApp extends ConsumerWidget {
         final mq = MediaQuery.of(context);
         return MediaQuery(
           data: mq.copyWith(disableAnimations: mq.disableAnimations || settings.reduceMotion, textScaler: mq.textScaler.clamp(maxScaleFactor: 1.4)),
-          child: UpdateGate(child: StickyAds(child: child!)),
+          child: UpdateGate(
+            child: StickyAds(child: TutorLiveBanner(child: child!)),
+          ),
         );
       },
     );

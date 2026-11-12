@@ -1541,3 +1541,33 @@ emoji, reactions, swipe to reply and a good voice recorder. They approved new de
 - **Sound:** the tutor desk / admin plays a short two-note tone (Web Audio, no file) for a new student message when the
   tab is hidden or another chat is open, and for a new paid request (admin).
 
+## D-154 — Tutor v4: fixes from the owner's test, photos and tutor quizzes (2026-11-12)
+**Found:** (1) the admin site's `Permissions-Policy: microphone=()` blocked voice notes on the tutor desk (the browser
+never asked); (2) an emoji-only message from a tutor failed: the student's notification must be 2+ characters and its
+error undid the whole send; (3) pushes waited for a 5-minute schedule; (4) the app read broadcast payloads at the
+wrong level (supabase_flutter passes `{type, event, payload}`); (5) a quick tap on the app's mic started a recording
+after the finger had already lifted, with no way to stop it.
+**Decisions:**
+- Admin pages allow `microphone=(self)`; public pages keep it off.
+- `tutor_message_send` pads a one-character notification body. Any notification written as due now wakes the push
+  sender at once (statement trigger → `private.push_now()` via pg_net; the sender takes each message once, so no
+  double sends); the `push-due` schedule runs every minute for planned ones.
+- Messages are broadcast by the database (`realtime.send`, trigger on `tutor_messages`) to the chat room
+  `tutor:<request>` (events `msg`, `msg_update`) and to the person's own private topic `user:<id>` (`tutor_msg` for the
+  student's in-app banner, `student_msg` for the tutor desk; `tutor_req` when the request status changes). Row changes
+  and polling stay as backups. `tutor_topic_ok` lets a user join only their own `user:` topic. The app opens its
+  `user:` channel only for students with a paid or active tutor plan (keeps realtime connections low).
+- In-app banner for tutor messages anywhere in the app, never on tutor screens or during tests, challenges or quizzes.
+- The "class is live" bar hides once the student taps Join (ids kept on the phone).
+- Web bubbles keep their React key when the server copy replaces the "sending" copy, enter with a short fade (no
+  sideways slide), and the chat follows new messages and typing only when the tutor is already at the bottom.
+- Photos: tutors upload a square 512 px JPEG (same private `a/<id>/` path as student photos); `can_view_avatar` lets any
+  signed-in user see an active tutor's photo and lets a tutor or admin see their students' photos.
+- Tutor quizzes: `tutor_quizzes`, `tutor_quiz_questions` (a snapshot of each past question, text-only ones without a
+  passage or picture, or the tutor's own), `tutor_quiz_attempts`; all through functions, RLS on with no direct access.
+  Answers are never sent to the app before submitting; scoring is on the server; the tutor sees score, time and every
+  answer; a system message and an email tell the tutor when it is done. Past questions in a tutor quiz are open to the
+  student even if that year is Premium-only, because the tutor chose them for a paying tutor student.
+- Home shows "From your tutor" (quizzes to do) only when there are some; Test shows "Tutor quizzes" only when there are
+  some. Nothing changes for students without a tutor.
+

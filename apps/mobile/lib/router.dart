@@ -45,6 +45,7 @@ import 'features/careers/careers.dart';
 import 'features/profile/badges.dart';
 import 'features/classes/classes.dart';
 import 'features/tutor/tutor.dart';
+import 'features/tutor/tutor_quiz.dart';
 import 'features/games/games.dart';
 import 'features/games/game_play.dart';
 import 'features/games/arena.dart';
@@ -303,6 +304,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/classes', builder: (_, _) => const ClassesScreen()),
       GoRoute(path: '/tutor', builder: (_, _) => const TutorScreen()),
       GoRoute(path: '/tutor/paid', builder: (_, _) => const TutorPaidScreen()),
+      GoRoute(path: '/tutor/quizzes', builder: (_, _) => const TutorQuizzesScreen()),
+      GoRoute(
+        path: '/tutor/quiz/:id',
+        builder: (_, s) => TutorQuizScreen(id: s.pathParameters['id']!),
+      ),
       GoRoute(path: '/games', builder: (_, _) => const GamesScreen()),
       GoRoute(path: '/community', builder: (_, _) => const CommunityScreen()),
       GoRoute(

@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../tutor/tutor_quiz.dart';
 import '../../core/nav.dart';
 import '../../core/api.dart';
 import '../../core/providers.dart';
@@ -206,6 +207,7 @@ class TestHubScreen extends ConsumerWidget {
           ),
         ],
       ),
+      const TutorQuizTestEntry(), // tutor quizzes (D-154); nothing when there are none
       if (ref.watch(challengesProvider).value?['on'] == true)
         modeCard(
           PhosphorIcons.trophy(PhosphorIconsStyle.fill),

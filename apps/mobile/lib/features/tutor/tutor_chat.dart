@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
@@ -244,6 +245,27 @@ bool emojiOnly(String t) {
   return n >= 1 && n <= 3;
 }
 
+/// A broadcast as supabase_flutter hands it over ({type, event, payload: {…}}) → the inner payload.
+Map<String, dynamic> broadcastPayload(Map<String, dynamic> p) => p['payload'] is Map ? Map<String, dynamic>.from(p['payload'] as Map) : p;
+
+/// Call links the student has already joined: the "class is live" bar hides for them (kept on the phone, D-154).
+final joinedCalls = ValueNotifier<Set<int>>(<int>{});
+const _joinedKey = 'tutor_joined_calls';
+const _store = FlutterSecureStorage(aOptions: AndroidOptions());
+Future<void> loadJoinedCalls() async {
+  try {
+    final v = await _store.read(key: _joinedKey);
+    if (v != null && v.isNotEmpty) joinedCalls.value = {for (final x in v.split(',')) ?int.tryParse(x)};
+  } catch (_) {}
+}
+
+void markJoined(int id) {
+  if (joinedCalls.value.contains(id)) return;
+  joinedCalls.value = {...joinedCalls.value, id};
+  final keep = joinedCalls.value.toList()..sort();
+  _store.write(key: _joinedKey, value: keep.skip(keep.length > 50 ? keep.length - 50 : 0).join(',')).catchError((_) {});
+}
+
 /// Short line for a notification-style preview.
 String chatPreview(ChatMsg m) => m.deleted
     ? 'This message was deleted'
@@ -354,6 +376,8 @@ class _TutorChatViewState extends ConsumerState<TutorChatView> {
     super.initState();
     _unreadFrom = _msgs.where((m) => !m.mine && m.role != 'system' && m.readAt == null).map((m) => m.id).firstOrNull;
     _scroll.addListener(_onScroll);
+    joinedCalls.addListener(_rebuild);
+    loadJoinedCalls();
     _connect();
     _resume = ResumeWatcher(() {
       _db?.restart();
@@ -375,8 +399,11 @@ class _TutorChatViewState extends ConsumerState<TutorChatView> {
     _merge([for (final m in widget.initial) ChatMsg.from(m)]);
   }
 
+  void _rebuild() => mounted ? setState(() {}) : null;
+
   @override
   void dispose() {
+    joinedCalls.removeListener(_rebuild);
     _db?.close();
     _room?.close();
     _resume?.dispose();
@@ -430,9 +457,13 @@ class _TutorChatViewState extends ConsumerState<TutorChatView> {
       private: true,
       presenceKey: 'student',
       (ch) => ch
+        // Instant (D-154): the database broadcasts each new or changed message to this room; the rows channel is the backup.
+        ..onBroadcast(event: 'msg', callback: (p) => _incoming(ChatMsg.from(broadcastPayload(p))))
+        ..onBroadcast(event: 'msg_update', callback: (p) => _merge([ChatMsg.from(broadcastPayload(p))]))
         ..onBroadcast(
           event: 'typing',
-          callback: (p) {
+          callback: (raw) {
+            final p = broadcastPayload(raw);
             if (!mounted || p['role'] == 'student') return;
             setState(() => (_typing = true, _peerDoing = p['what'] == 'voice' ? 'recording audio…' : 'typing…'));
             _typingTimer?.cancel();
@@ -632,13 +663,23 @@ class _TutorChatViewState extends ConsumerState<TutorChatView> {
   Duration get _recElapsed => _recDone + (_recStart != null && !_recPaused ? DateTime.now().difference(_recStart!) : Duration.zero);
   bool get _recording => _recStart != null || _recPaused;
 
+  /// The finger is on the microphone button (a quick tap lifts it before recording has even started).
+  bool _pressing = false;
+
   Future<void> _recBegin() async {
+    _pressing = true;
     if (_recording) return;
     try {
       if (!await _recorder.hasPermission()) return _say('Allow the microphone to send a voice note.');
+      if (!_pressing) return _say('Hold the microphone to record, then let go to send.'); // tapped, not held
       final dir = await getTemporaryDirectory();
       final path = '${dir.path}/voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
       await _recorder.start(const RecordConfig(encoder: AudioEncoder.aacLc, bitRate: 64000, sampleRate: 22050), path: path);
+      if (!_pressing) {
+        // Let go while the recorder was starting: stop at once, nothing is sent.
+        await _recorder.stop().catchError((_) => null);
+        return _say('Hold the microphone to record, then let go to send.');
+      }
       HapticFeedback.mediumImpact();
       setState(() {
         _recStart = DateTime.now();
@@ -676,6 +717,7 @@ class _TutorChatViewState extends ConsumerState<TutorChatView> {
   }
 
   void _recRelease() {
+    _pressing = false;
     if (!_recording || _recLocked) return;
     _recFinish(true);
   }
@@ -1088,7 +1130,9 @@ class _TutorChatViewState extends ConsumerState<TutorChatView> {
     final now = DateTime.now();
     for (final m in _msgs.reversed) {
       if (now.difference(m.at) > const Duration(minutes: 90)) return null;
-      if (m.kind == 'link' && !m.mine && !m.deleted && '${m.meta['url'] ?? ''}'.startsWith('https://')) return m;
+      if (m.kind == 'link' && !m.mine && !m.deleted && '${m.meta['url'] ?? ''}'.startsWith('https://')) {
+        return joinedCalls.value.contains(m.id) ? null : m; // gone once the student has tapped Join
+      }
     }
     return null;
   }
@@ -1484,7 +1528,10 @@ class _LiveClassBar extends StatelessWidget {
             ),
           ),
           FilledButton(
-            onPressed: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+            onPressed: () {
+              markJoined(m.id);
+              launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+            },
             style: FilledButton.styleFrom(
               backgroundColor: Palette.green500,
               foregroundColor: Colors.white,
@@ -2187,6 +2234,7 @@ class ChatBubble extends StatelessWidget {
             'voice' => _Voice(m: m, mine: mine),
             'file' => _FileCard(m: m, mine: mine),
             'link' => _CallCard(m: m, mine: mine, from: peer ?? who),
+            'ref' when m.ref?['type'] == 'quiz' => _QuizCard(m: m, mine: mine),
             'ref' => _RefCard(m: m, mine: mine),
             _ => _LinkText(m.body, style: context.ty.body.col(fg).copyWith(height: 1.38), linkColor: mine ? Palette.gold300 : c.link),
           };
@@ -2659,11 +2707,78 @@ class _CallCard extends StatelessWidget {
           Material(
             color: color,
             child: InkWell(
-              onTap: url.startsWith('https://') ? () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication) : null,
+              onTap: url.startsWith('https://')
+                  ? () {
+                      markJoined(m.id);
+                      launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+                    }
+                  : null,
               child: Container(
                 height: 44,
                 alignment: Alignment.center,
                 child: Text('Join with $name', style: context.ty.sm.bold.col(Colors.white)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A quiz from the tutor (D-154): tap to take it (or see the result once done).
+class _QuizCard extends StatelessWidget {
+  const _QuizCard({required this.m, required this.mine});
+  final ChatMsg m;
+  final bool mine;
+  @override
+  Widget build(BuildContext context) {
+    final cc = ChatColors.of(context);
+    final r = m.ref ?? const {};
+    final mins = (r['minutes'] as num?)?.toInt();
+    return Container(
+      width: 260,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(color: mine ? Colors.white.withValues(alpha: .12) : cc.quote, borderRadius: BorderRadius.circular(14)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(Space.s3),
+            child: Row(
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(color: Palette.gold400, borderRadius: BorderRadius.circular(12)),
+                  child: Icon(PhosphorIcons.exam(PhosphorIconsStyle.fill), color: Palette.navy900, size: 24),
+                ),
+                const Gap(Space.s3),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'QUIZ FROM YOUR TUTOR',
+                        style: context.ty.cap.bold.col(cc.dark ? Palette.gold400 : Palette.gold700).copyWith(fontSize: 10.5, letterSpacing: .4),
+                      ),
+                      Text('${r['title'] ?? m.body}', style: context.ty.sm.bold.col(cc.theirsText), maxLines: 2, overflow: TextOverflow.ellipsis),
+                      Text('${r['count'] ?? '?'} questions${mins != null ? ' · $mins min' : ''}', style: context.ty.cap.col(cc.theirsMeta)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Material(
+            color: Palette.gold400,
+            child: InkWell(
+              onTap: r['id'] == null ? null : () => context.push('/tutor/quiz/${r['id']}'),
+              child: Container(
+                height: 44,
+                alignment: Alignment.center,
+                child: Text('Open quiz', style: context.ty.sm.bold.col(Palette.navy900)),
               ),
             ),
           ),

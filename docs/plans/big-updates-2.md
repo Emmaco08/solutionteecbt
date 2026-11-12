@@ -97,14 +97,21 @@ Home and every non-tutor screen stay exactly as they are).
   plan row), paid, finding your tutor (live), tutor reveal (once, until the student says hello), chat.
 - Tutor profile: years teaching and qualification (shown on the reveal). Admin: summary cards and best-match tutors first.
 
-## Update 2 — Community v2 (D-154, after approval of 1)
+## Update 1c — Tutor v4: the owner's test round (D-154)
+
+- Tutor desk microphone (the site's Permissions-Policy blocked it), emoji-only messages (a notification rule undid
+  the send), instant messages (database broadcasts), instant pushes, in-app banner, no jumping bubbles, auto-scroll and
+  typing on the desk, Join bar hides after joining, voice-note quick-tap bug, tutor and student photos, tutor profile on
+  phones, tutor quizzes (past questions and/or the tutor's own; chat card, Home, Test; timer; review; tutor results).
+
+## Update 2 — Community v2 (D-155, after approval of 1)
 Own full-screen shell (no app bars): Home (For you / Following), Explore (subjects, trending), Notifications, Profile;
 compose as its own page (X-style: avatar, 280+ text, photos, maths preview, subject, @solutiontee); X-style post cells,
 threads, reposts/quote, bookmarks, profiles with header, follower lists, pull-to-refresh, haptic likes with animation.
 AI check relaxed: greetings and friendly chat allowed; still blocks sexual content, politics, sports betting/gossip,
 religion fights, bullying, contacts/links, scams, exam "expo".
 
-## Update 3 — Game Zone v2 (D-155, after approval of 2)
+## Update 3 — Game Zone v2 (D-156, after approval of 2)
 Quick Match (live opponent found automatically; bot if nobody within 15 s), Practice vs AI, Play a friend, and
 ranked. Subjects limited to the student's JAMB combination. Games: **JAMB Duel** (live 1v1, same question at the
 same time), **Speed Rush** (race track driven by fast correct answers), **Knowledge Survival** (up to 20, lives,
