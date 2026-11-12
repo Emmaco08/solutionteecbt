@@ -178,7 +178,7 @@ export function TutorWeb() {
     return (
       <div className="min-h-dvh bg-[#F4F6FA] dark:bg-[#060E1D]">
         {hero("Get a real tutor", "Log in with the email you use in the SolutionTee app. We send you a code.")}
-        <div className="mx-auto -mt-4 max-w-md px-4 pb-10">
+        <div className="relative z-10 mx-auto -mt-4 max-w-md px-4 pb-10">
           <motion.div {...rise(0.2)} className={card}>
             {codeLen === null ? (
               <form onSubmit={sendCode} className="space-y-3">
@@ -220,7 +220,7 @@ export function TutorWeb() {
       {hero(
         !r || r.status === "closed" ? "Learn with a real teacher" : r.status === "paid" ? "Payment received" : r.status === "matched" ? "Your tutor is ready" : r.status === "ended" ? "Renew your tutor plan" : "Finish paying for your tutor",
         !r || r.status === "closed" ? "Chat, voice notes and live classes with a tutor who knows your exam." : r.status === "paid" ? "A tutor will be assigned to you within 24 hours. This page and your app change by themselves." : r.status === "matched" ? "Chat with your tutor in the SolutionTee app." : fromApp ? "You will go straight back to the app when payment is done." : "Choose a plan and pay safely with Paystack.")}
-      <div className="mx-auto -mt-4 max-w-2xl space-y-3 px-4">
+      <div className="relative z-10 mx-auto -mt-4 max-w-2xl space-y-3 px-4">
         <AnimatePresence>{msg ? (
           <motion.p initial={rm ? false : { opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} role="status"
             className={`rounded-2xl px-4 py-3 text-sm font-bold ${msg.ok ? "bg-success-soft text-on-success-soft" : "bg-error-soft text-on-error-soft"}`}>{msg.text}</motion.p>
