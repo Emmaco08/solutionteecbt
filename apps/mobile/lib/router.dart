@@ -302,6 +302,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/badges', builder: (_, _) => const BadgesScreen()),
       GoRoute(path: '/classes', builder: (_, _) => const ClassesScreen()),
       GoRoute(path: '/tutor', builder: (_, _) => const TutorScreen()),
+      GoRoute(path: '/tutor/paid', builder: (_, _) => const TutorPaidScreen()),
       GoRoute(path: '/games', builder: (_, _) => const GamesScreen()),
       GoRoute(path: '/community', builder: (_, _) => const CommunityScreen()),
       GoRoute(
@@ -338,7 +339,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         // Back from the payment website (D-116): solutiontee://app/paid?ref=…&plan=…
         path: '/paid',
-        builder: (_, s) => PaidReturnScreen(reference: s.uri.queryParameters['ref'] ?? '', plan: s.uri.queryParameters['plan']),
+        builder: (_, s) =>
+            PaidReturnScreen(reference: s.uri.queryParameters['ref'] ?? '', plan: s.uri.queryParameters['plan'], kind: s.uri.queryParameters['kind']),
       ),
       GoRoute(
         path: '/pay-success',

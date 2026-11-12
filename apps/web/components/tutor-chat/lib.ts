@@ -1,6 +1,6 @@
 "use client";
 // Shared helpers for the tutor chat (D-152): types, formatting, signed file links and uploads.
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
 
 export type Role = "student" | "tutor" | "admin" | "system";
 export type Kind = "text" | "image" | "voice" | "file" | "link" | "ref";
@@ -8,22 +8,145 @@ export type Msg = {
   id: number; role: Role; kind: Kind; body: string; attachment: string | null; at: string; read_at: string | null;
   meta: { url?: string; type?: string; duration?: number; size?: number; name?: string; mime?: string } | null;
   ref: { type: "pq" | "lesson"; title?: string; subtitle?: string; kind?: string; id?: string; exam_id?: number; subject_id?: number; year?: number; number?: number; snippet?: string } | null;
+  /** v3 (D-153): reply, reactions (one per side), delete for everyone, my star. */
+  reply_to?: number | null; reply?: Quote | null; reactions?: Partial<Record<Role, string>>; deleted?: boolean; starred?: boolean;
   pending?: boolean; failed?: boolean;
 };
+export type Quote = { id: number; role: Role; kind: Kind; body: string; deleted?: boolean; meta?: Msg["meta"] };
 export type Chat = {
   id: string; user_id: string; name: string; status: string; level: string; subject: string | null; tutor_id: string | null; tutor: string | null;
   paid_at: string | null; created_at: string; custom_note: string | null; custom_price_kobo: number | null; custom_days: number | null;
   goals: string; times: string | null; plan: string | null; last: Msg | null; unread: number; sort: string;
 };
-export type TutorOpt = { id: string; name: string; subjects: string | null; active: boolean; user_id: string | null };
+export type TutorOpt = { id: string; name: string; subjects: string | null; active: boolean; user_id: string | null; last_seen_at?: string | null };
 
 /** A database row (tutor_messages) in the chat's shape. */
 export function fromRow(r: Record<string, unknown>): Msg {
+  const deleted = r.deleted === true || (r.deleted_at !== undefined && r.deleted_at !== null);
+  const reactions = Object.fromEntries(Object.entries((r.reactions ?? {}) as Record<string, string>).filter(([, v]) => Boolean(v))) as Msg["reactions"];
   return {
-    id: Number(r.id), role: (r.sender_role ?? r.role) as Role, kind: (r.kind ?? "text") as Kind, body: String(r.body ?? ""),
-    attachment: (r.attachment_path ?? r.attachment ?? null) as string | null, at: String(r.created_at ?? r.at), read_at: (r.read_at ?? null) as string | null,
-    meta: (r.meta ?? null) as Msg["meta"], ref: (r.ref ?? null) as Msg["ref"],
+    id: Number(r.id), role: (r.sender_role ?? r.role) as Role, kind: (deleted ? "text" : (r.kind ?? "text")) as Kind, body: deleted ? "" : String(r.body ?? ""),
+    attachment: deleted ? null : ((r.attachment_path ?? r.attachment ?? null) as string | null), at: String(r.created_at ?? r.at), read_at: (r.read_at ?? null) as string | null,
+    meta: deleted ? null : ((r.meta ?? null) as Msg["meta"]), ref: deleted ? null : ((r.ref ?? null) as Msg["ref"]),
+    reply_to: (r.reply_to ?? null) as number | null, reply: (r.reply ?? undefined) as Quote | undefined, reactions, deleted,
+    starred: r.starred === undefined ? undefined : r.starred === true,
   };
+}
+
+/** A newer copy of a known message (a raw Realtime row has no reply copy or star: keep ours). */
+export function mergeMsg(old: Msg, n: Msg): Msg {
+  return { ...old, ...n, reply: n.reply ?? old.reply, starred: n.starred ?? old.starred, read_at: n.read_at ?? old.read_at, pending: false, failed: false };
+}
+
+/** Adds new messages and updates known ones (ticks, reactions, deletes), in id order. Our "sending" copies are replaced. */
+export function mergeAll(ms: Msg[], fresh: Msg[], myRole: Role): Msg[] {
+  const byId = new Map(ms.map((m) => [m.id, m]));
+  const added: Msg[] = [];
+  for (const n of fresh) {
+    const o = byId.get(n.id);
+    if (o) byId.set(n.id, mergeMsg(o, n));
+    else added.push(n);
+  }
+  let out = [...byId.values()];
+  if (added.length) {
+    out = out.filter((x) => !(x.pending && added.some((n) => n.role === myRole && n.kind === x.kind && n.body === x.body)));
+    out.push(...added);
+  }
+  const quote = (id: number): Quote | null => { const o = out.find((x) => x.id === id); return o ? { id: o.id, role: o.role, kind: o.kind, body: o.body, deleted: o.deleted, meta: o.meta } : null; };
+  return out.map((m) => (m.reply_to && !m.reply ? { ...m, reply: quote(m.reply_to) } : m)).sort((a, b) => (a.pending ? 2 ** 52 : a.id) - (b.pending ? 2 ** 52 : b.id));
+}
+
+/** Short label for a quoted message. */
+export function quoteText(q: Quote | null | undefined) {
+  if (!q) return "Message";
+  if (q.deleted) return "This message was deleted";
+  switch (q.kind) {
+    case "image": return "Photo";
+    case "voice": return `Voice note${q.meta?.duration ? ` (${fmtDur(q.meta.duration)})` : ""}`;
+    case "file": return q.meta?.name ?? "File";
+    case "link": return q.body || "Call link";
+    case "ref": return q.body || "Study link";
+    default: return q.body;
+  }
+}
+
+/** Which call service a link is: meet, whatsapp, zoom or video. */
+export function callType(meta: Msg["meta"]): CallType {
+  const t = meta?.type;
+  if (t === "meet" || t === "whatsapp" || t === "zoom") return t;
+  let host = "";
+  try { host = new URL(meta?.url ?? "").host; } catch {}
+  if (host.includes("meet.google")) return "meet";
+  if (host.includes("zoom.us")) return "zoom";
+  if (host.includes("wa.me") || host.includes("whatsapp")) return "whatsapp";
+  return "video";
+}
+
+/** The real marks (public/third-party, D-153). */
+export const LOGOS: Record<CallType, string | null> = { meet: "/third-party/google-meet.svg", whatsapp: "/third-party/whatsapp.svg", zoom: "/third-party/zoom.svg", video: null };
+export const CALL_COLOR: Record<CallType, string> = { meet: "#1A73E8", whatsapp: "#1FAF5A", zoom: "#0B5CFF", video: "#2563B3" };
+
+export const QUICK = ["👍", "❤️", "😂", "😮", "🙏", "🔥"];
+export const EMOJI: [string, string[]][] = [
+  ["Smileys", ["😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "🙂", "😉", "😊", "😇", "🥰", "😍", "🤩", "😘", "😋", "😎", "🤓", "🧐", "🤔", "🤗", "🤭", "🤫", "😐", "😑", "😶", "🙄", "😏", "😮", "😯", "😲", "😴", "😌", "😛", "😜", "🥲", "😢", "😭", "😤", "😩", "😫", "🥺", "😬", "😰", "😓", "🤯", "😳", "🥳", "😷"]],
+  ["Hands", ["👍", "👎", "👏", "🙌", "🙏", "🤝", "👋", "✋", "👌", "✌️", "🤞", "🤟", "🤙", "👈", "👉", "👆", "👇", "☝️", "💪", "✍️", "🫡", "🫶"]],
+  ["Study", ["📚", "📖", "📝", "✏️", "🖊️", "📐", "📏", "🧮", "🔬", "🧪", "🧬", "⚗️", "🔭", "🌍", "💡", "🧠", "🎯", "🏆", "🥇", "📅", "⏰", "✅", "❌", "❓", "❗", "💯", "🎓", "🏫"]],
+  ["Hearts", ["❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "💖", "💗", "💓", "💞", "💕", "✨", "⭐", "🌟", "🔥", "🎉", "🎊", "🙌"]],
+];
+
+/** "last seen today at 6:40 pm". */
+export function lastSeen(iso?: string | null, now = new Date()) {
+  if (!iso) return "";
+  const l = dayLabel(iso, now);
+  return l === "Today" || l === "Yesterday" ? `last seen ${l.toLowerCase()} at ${timeOf(iso)}` : `last seen ${l}`;
+}
+
+/** Seconds to wait before joining a channel again: 1, 2, 4, 8, 16, 30… */
+export const backoff = (fails: number) => Math.min(30, 2 ** Math.min(fails, 5));
+
+/**
+ * A Realtime channel that joins again by itself (D-153). The first join of a private channel can fail on the server
+ * while Realtime wakes up, and supabase-js does not join a failed channel again: messages then showed only after a
+ * reload. [setup] adds the listeners; [onUp] runs on every (re)join (fetch what was missed, track presence).
+ */
+export function liveChannel(sb: SupabaseClient, topic: string, opts: { private?: boolean; presenceKey?: string }, setup: (ch: RealtimeChannel) => void,
+  onUp?: (ch: RealtimeChannel) => void, onDown?: () => void) {
+  let closed = false, fails = 0, ch: RealtimeChannel | null = null, timer: ReturnType<typeof setTimeout> | null = null;
+  const open = () => {
+    if (closed) return;
+    const c = sb.channel(topic, { config: { private: Boolean(opts.private), broadcast: { self: false }, ...(opts.presenceKey ? { presence: { key: opts.presenceKey } } : {}) } });
+    setup(c);
+    ch = c;
+    c.subscribe((s) => {
+      if (closed || ch !== c) return;
+      if (s === "SUBSCRIBED") { fails = 0; onUp?.(c); return; }
+      onDown?.();
+      if (timer) return;
+      timer = setTimeout(() => { timer = null; if (closed || ch !== c) return; ch = null; void sb.removeChannel(c); open(); }, backoff(fails++) * 1000);
+    });
+  };
+  if (opts.private) void sb.realtime.setAuth().finally(open); else open();
+  return {
+    get channel() { return ch; },
+    close() { closed = true; if (timer) clearTimeout(timer); if (ch) void sb.removeChannel(ch); ch = null; },
+  };
+}
+
+/** A soft two-note ping for a new message (only when the tab is in the background or another chat is open). */
+export function ping() {
+  try {
+    const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const ctx = new Ctx();
+    [880, 1320].forEach((f, i) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.frequency.value = f; o.type = "sine";
+      g.gain.setValueAtTime(0.0001, ctx.currentTime + i * 0.12);
+      g.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + i * 0.12 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + i * 0.12 + 0.18);
+      o.connect(g).connect(ctx.destination); o.start(ctx.currentTime + i * 0.12); o.stop(ctx.currentTime + i * 0.12 + 0.2);
+    });
+    setTimeout(() => void ctx.close(), 600);
+  } catch {}
 }
 
 export const naira = (k: number) => `₦${Math.round(k / 100).toLocaleString("en-NG")}`;
@@ -47,6 +170,7 @@ export function listTime(iso: string | undefined, now = new Date()) {
 
 export function preview(m: Msg | null) {
   if (!m) return "No messages yet";
+  if (m.deleted) return "This message was deleted";
   switch (m.kind) {
     case "image": return "📷 Photo";
     case "voice": return `🎤 Voice note${m.meta?.duration ? ` (${fmtDur(m.meta.duration)})` : ""}`;
@@ -113,7 +237,7 @@ export function linkParts(text: string): { t: string; href?: string }[] {
 
 export const CALLS = {
   meet: { label: "Google Meet", prefix: "https://meet.google.com/" },
-  whatsapp: { label: "WhatsApp call", prefix: "https://call.whatsapp.com/" },
+  whatsapp: { label: "WhatsApp", prefix: "https://call.whatsapp.com/" },
   zoom: { label: "Zoom", prefix: "https://zoom.us/j/" },
   video: { label: "Video link", prefix: "https://" },
 } as const;

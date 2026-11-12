@@ -8,15 +8,20 @@ import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
 import '../../ui/kit.dart';
 import '../../widgets/phosphor.g.dart';
+import '../tutor/tutor.dart';
 import 'payments.dart';
 
 /// Back from the payment website (D-116): the browser opens solutiontee://app/paid?ref=st_…&plan=…
-/// The app asks the server about that payment (the server asks Paystack), then shows the normal "Premium is on" screen.
+/// The app asks the server about that payment (the server asks Paystack), then shows the normal "Premium is on" screen,
+/// or the tutor screen "Your tutor plan is on!" for a tutor plan (D-153: a tutor payment is never called Premium).
 /// Nothing is trusted from the link itself: only the server's answer for this signed-in student counts.
 class PaidReturnScreen extends ConsumerStatefulWidget {
-  const PaidReturnScreen({super.key, required this.reference, this.plan});
+  const PaidReturnScreen({super.key, required this.reference, this.plan, this.kind});
   final String reference;
   final String? plan;
+
+  /// "tutor" from the website's link back; the server's own answer wins when it gives one.
+  final String? kind;
   @override
   ConsumerState<PaidReturnScreen> createState() => _PaidReturnScreenState();
 }
@@ -47,7 +52,13 @@ class _PaidReturnScreenState extends ConsumerState<PaidReturnScreen> {
     final r = await p.check(widget.reference);
     if (!mounted) return;
     switch (r) {
-      case PaySuccess(:final expiresAt):
+      case PaySuccess(:final expiresAt, :final kind):
+        if ((kind ?? widget.kind) == 'tutor') {
+          ref.invalidate(tutorProvider);
+          context.go('/tutor');
+          context.push('/tutor/paid');
+          return;
+        }
         refreshPlan(ref);
         context.go('/pay-success', extra: {'plan': widget.plan ?? 'Premium', 'expires_at': expiresAt});
       case PayFailed(:final message, :final code) when code == 'failed' || code == 'review' || code == 'refunded':

@@ -5,3 +5,4 @@
 - `opay_mark.svg`: the same file with only the viewBox changed so the ring symbol on its left fills a square tile. It is cropped, not redrawn.
 - `zap_icon.png`: the app icon of "Zap by Paystack" (seller: Paystack Payments Limited), from Apple's public App Store lookup (app id 6463129864), resized to 256 px.
 These show students which way they are paying (OPay, Zap) in our payment list and loading screen, as payment pages do. They are not changed, and are used only for that.
+- `google_meet.png`, `whatsapp.png`, `zoom.png` (D-153): the official Google Meet icon, WhatsApp logo and Zoom wordmark from Wikimedia Commons (the files Google, Meta and Zoom publish: "Google Meet icon (2020).svg", "WhatsApp.svg", "Zoom Communications Logo.svg" (2022)), rendered unchanged to PNG with a clear background. They mark tutor call links in the tutor chat (Join with Google Meet / WhatsApp / Zoom), as those services' brand guides allow for "join" links. Not redrawn.

@@ -40,8 +40,8 @@ function Row({ icon: Icon, children, copy }: { icon: typeof Fire; children: Reac
   );
 }
 
-export function Details({ sb, chat, mode, tutors, onClose, onChanged }: {
-  sb: SupabaseClient; chat: Chat; mode: "tutor" | "admin"; tutors?: TutorOpt[]; onClose: () => void; onChanged: () => void;
+export function Details({ sb, chat, chats, mode, tutors, onClose, onChanged }: {
+  sb: SupabaseClient; chat: Chat; chats?: Chat[]; mode: "tutor" | "admin"; tutors?: TutorOpt[]; onClose: () => void; onChanged: () => void;
 }) {
   const [p, setP] = useState<Profile | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -49,6 +49,13 @@ export function Details({ sb, chat, mode, tutors, onClose, onChanged }: {
   const [tutor, setTutor] = useState(chat.tutor_id ?? "");
   const [price, setPrice] = useState(chat.custom_price_kobo ? String(chat.custom_price_kobo / 100) : "");
   const [days, setDays] = useState(String(chat.custom_days ?? 30));
+  const [now, setNow] = useState(0);
+  useEffect(() => {
+    const tick = () => setNow(Date.now());
+    queueMicrotask(tick);
+    const t = setInterval(tick, 30_000);
+    return () => clearInterval(t);
+  }, []);
 
   useEffect(() => {
     let live = true;
@@ -71,16 +78,68 @@ export function Details({ sb, chat, mode, tutors, onClose, onChanged }: {
   const strong = p ? [...p.topics].sort((a, b) => b.pct - a.pct).slice(0, 5) : [];
   const weak = p ? p.topics.filter((t) => t.pct < 60).slice(0, 5) : [];
   const plan = planInfo(chat.plan);
+  const subjects = (chat.subject ?? "").toLowerCase().split(/,\s*/).filter(Boolean);
+  // Best match first: tutors who teach the subjects, then online now, then the fewest students.
+  const ranked = (tutors ?? []).filter((t) => t.active || t.id === chat.tutor_id).map((t) => ({
+    ...t,
+    load: (chats ?? []).filter((c) => c.tutor_id === t.id && c.status === "matched").length,
+    has: subjects.filter((x) => (t.subjects ?? "").toLowerCase().includes(x)).length,
+    onlineNow: Boolean(t.last_seen_at && now - new Date(t.last_seen_at).getTime() < 120_000),
+  })).sort((a, b) => b.has - a.has || Number(b.onlineNow) - Number(a.onlineNow) || a.load - b.load);
 
   return (
-    <aside className="flex h-full flex-col bg-card">
+    <aside className="flex h-full flex-col bg-card dark:bg-[#081224]">
       <div className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
         <b className="flex-1">Student details</b>
         <button type="button" onClick={onClose} className="rounded-full p-2 hover:bg-muted" aria-label="Close details"><X size={20} /></button>
       </div>
       <div className="flex-1 space-y-5 overflow-y-auto p-4">
+        {mode === "admin" ? (
+          <section className="space-y-3 rounded-2xl border p-3">
+            <h4 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">{chat.status === "paid" ? "Choose a tutor · best match first" : "Tutor"}</h4>
+            {["paid", "matched"].includes(chat.status) ? (
+              <>
+                <ul className="space-y-2">
+                  {ranked.map((t) => (
+                    <li key={t.id}>
+                      <button type="button" disabled={!t.user_id} onClick={() => setTutor(t.id)}
+                        className={cn("flex w-full items-center gap-3 rounded-2xl border p-2.5 text-left transition-colors disabled:opacity-50", tutor === t.id ? "border-2 border-[#F2B233] bg-[#FDF3E0] dark:bg-[#10284D]" : "hover:bg-muted")}>
+                        <span className="relative grid size-10 shrink-0 place-items-center rounded-full bg-[#F2B233] text-sm font-bold text-[#0B1F44]">
+                          {initials(t.name)}{t.onlineNow ? <span className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-card bg-emerald-500" /> : null}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <b className="block truncate text-sm">{t.name}{t.id === chat.tutor_id ? " (now)" : ""}</b>
+                          <span className="block truncate text-xs text-muted-foreground">{[t.subjects, `${t.load} student${t.load === 1 ? "" : "s"}`, t.onlineNow ? "online" : t.user_id ? null : "no login yet"].filter(Boolean).join(" · ")}</span>
+                        </span>
+                        {t.has > 0 ? <span className="shrink-0 rounded-md bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-[#0F3B26] dark:text-[#7FD8A6]">{t.has === subjects.length && subjects.length > 1 ? "All subjects" : "Subject match"}</span> : null}
+                      </button>
+                    </li>
+                  ))}
+                  {!ranked.length ? <li className="text-sm text-muted-foreground">No tutors yet. Invite one in Staff with the Tutor role.</li> : null}
+                </ul>
+                <p className="text-xs text-muted-foreground">The student&apos;s app switches to &ldquo;Tutor assigned&rdquo; the moment you press Assign. The tutor gets an email.</p>
+                <Button className="w-full bg-[#F2B233] font-bold text-[#0B1F44] hover:bg-[#F6C970]" disabled={pending || !tutor || tutor === chat.tutor_id}
+                  onClick={() => act(() => sb.rpc("admin_tutor_assign", { p_request: chat.id, p_tutor: tutor }), "Tutor assigned. The student sees it now; the tutor got an email.")}>
+                  {tutor && tutor !== chat.tutor_id ? `Assign ${ranked.find((t) => t.id === tutor)?.name ?? "tutor"}` : "Choose a tutor"}
+                </Button>
+              </>
+            ) : <p className="text-sm text-muted-foreground">You can assign a tutor after the student pays.</p>}
+            <div className="grid gap-1 border-t pt-3 text-sm">
+              <span className="font-medium">Custom price {chat.custom_note ? "" : "(only if they asked)"}</span>
+              {chat.custom_note ? <p className="rounded-lg bg-muted px-2 py-1.5 text-xs">&ldquo;{chat.custom_note}&rdquo;</p> : null}
+              <div className="flex gap-2">
+                <input aria-label="Price in naira" type="number" min={50} placeholder="₦" className="h-10 w-28 rounded-xl border bg-background px-2" value={price} onChange={(e) => setPrice(e.target.value)} />
+                <input aria-label="Days" type="number" min={1} max={366} className="h-10 w-20 rounded-xl border bg-background px-2" value={days} onChange={(e) => setDays(e.target.value)} />
+                <span className="self-center text-xs text-muted-foreground">days</span>
+                <Button variant="outline" disabled={pending || !price} onClick={() => act(() => sb.rpc("admin_tutor_quote", { p_request: chat.id, p_price_kobo: Math.round(Number(price) * 100), p_days: Number(days) }), "Price sent to the student.")}>Send</Button>
+              </div>
+              {chat.custom_price_kobo ? <p className="text-xs text-muted-foreground">Current: {naira(chat.custom_price_kobo)} for {chat.custom_days} days</p> : null}
+            </div>
+            <Button variant="ghost" className="text-red-600" disabled={pending} onClick={() => { if (confirm("Close this request? The student can start a new one.")) act(() => sb.rpc("admin_tutor_close", { p_request: chat.id }), "Request closed."); }}>Close request</Button>
+          </section>
+        ) : null}
         <div className="text-center">
-          <div className="mx-auto grid size-20 place-items-center rounded-full bg-gradient-to-br from-[#2563B3] to-[#0B1F44] text-2xl font-bold text-white shadow">{initials(chat.name)}</div>
+          <div className="mx-auto grid size-20 place-items-center rounded-full bg-[#2563B3] text-2xl font-bold text-white shadow">{initials(chat.name)}</div>
           <h3 className="mt-2 text-lg font-bold">{chat.name}</h3>
           <p className="text-sm text-muted-foreground">{[p?.age ? `${p.age} years` : null, p?.state, p?.premium ? "Premium" : null].filter(Boolean).join(" · ")}</p>
         </div>
@@ -143,33 +202,6 @@ export function Details({ sb, chat, mode, tutors, onClose, onChanged }: {
             ) : null}
           </>
         )}
-        {mode === "admin" ? (
-          <section className="space-y-3 rounded-2xl border p-3">
-            <h4 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Admin</h4>
-            <div className="grid gap-1 text-sm">
-              <label htmlFor="assign" className="font-medium">Tutor</label>
-              <div className="flex gap-2">
-                <select id="assign" className="h-10 flex-1 rounded-xl border bg-background px-2" value={tutor} onChange={(e) => setTutor(e.target.value)}>
-                  <option value="">Choose a tutor</option>
-                  {(tutors ?? []).filter((t) => t.active || t.id === chat.tutor_id).map((t) => <option key={t.id} value={t.id} disabled={!t.user_id}>{t.name}{t.subjects ? ` · ${t.subjects}` : ""}{t.user_id ? "" : " (no login)"}</option>)}
-                </select>
-                <Button disabled={pending || !tutor || tutor === chat.tutor_id} onClick={() => act(() => sb.rpc("admin_tutor_assign", { p_request: chat.id, p_tutor: tutor }), "Tutor assigned. They got an email.")}>Assign</Button>
-              </div>
-              {!["paid", "matched"].includes(chat.status) ? <p className="text-xs text-muted-foreground">You can assign a tutor after the student pays.</p> : null}
-            </div>
-            <div className="grid gap-1 text-sm">
-              <span className="font-medium">Custom price {chat.custom_note ? "" : "(only if they asked)"}</span>
-              <div className="flex gap-2">
-                <input aria-label="Price in naira" type="number" min={50} placeholder="₦" className="h-10 w-28 rounded-xl border bg-background px-2" value={price} onChange={(e) => setPrice(e.target.value)} />
-                <input aria-label="Days" type="number" min={1} max={366} className="h-10 w-20 rounded-xl border bg-background px-2" value={days} onChange={(e) => setDays(e.target.value)} />
-                <span className="self-center text-xs text-muted-foreground">days</span>
-                <Button variant="outline" disabled={pending || !price} onClick={() => act(() => sb.rpc("admin_tutor_quote", { p_request: chat.id, p_price_kobo: Math.round(Number(price) * 100), p_days: Number(days) }), "Price sent to the student.")}>Send</Button>
-              </div>
-              {chat.custom_price_kobo ? <p className="text-xs text-muted-foreground">Current: {naira(chat.custom_price_kobo)} for {chat.custom_days} days</p> : null}
-            </div>
-            <Button variant="ghost" className="text-red-600" disabled={pending} onClick={() => { if (confirm("Close this request? The student can start a new one.")) act(() => sb.rpc("admin_tutor_close", { p_request: chat.id }), "Request closed."); }}>Close request</Button>
-          </section>
-        ) : null}
       </div>
     </aside>
   );

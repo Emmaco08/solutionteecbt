@@ -3526,17 +3526,68 @@ export type Database = {
         }
         Relationships: []
       }
+      tutor_message_reports: {
+        Row: {
+          created_at: string
+          id: number
+          message_id: number
+          reason: string
+          request_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          message_id: number
+          reason: string
+          request_id: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          message_id?: number
+          reason?: string
+          request_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tutor_message_stars: {
+        Row: {
+          created_at: string
+          message_id: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          message_id: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          message_id?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       tutor_messages: {
         Row: {
           attachment_path: string | null
           body: string
           created_at: string
+          deleted_at: string | null
           from_staff: boolean
           id: number
           kind: string
           meta: Json | null
+          reactions: Json
           read_at: string | null
           ref: Json | null
+          reply_to: number | null
           request_id: string
           sender_id: string | null
           sender_role: string
@@ -3545,12 +3596,15 @@ export type Database = {
           attachment_path?: string | null
           body: string
           created_at?: string
+          deleted_at?: string | null
           from_staff?: boolean
           id?: number
           kind?: string
           meta?: Json | null
+          reactions?: Json
           read_at?: string | null
           ref?: Json | null
+          reply_to?: number | null
           request_id: string
           sender_id?: string | null
           sender_role?: string
@@ -3559,12 +3613,15 @@ export type Database = {
           attachment_path?: string | null
           body?: string
           created_at?: string
+          deleted_at?: string | null
           from_staff?: boolean
           id?: number
           kind?: string
           meta?: Json | null
+          reactions?: Json
           read_at?: string | null
           ref?: Json | null
+          reply_to?: number | null
           request_id?: string
           sender_id?: string | null
           sender_role?: string
@@ -3624,6 +3681,7 @@ export type Database = {
           plan_id: string | null
           status: string
           subject_id: number | null
+          subject_ids: number[] | null
           times: string | null
           tutor_emailed_at: string | null
           tutor_id: string | null
@@ -3643,6 +3701,7 @@ export type Database = {
           plan_id?: string | null
           status?: string
           subject_id?: number | null
+          subject_ids?: number[] | null
           times?: string | null
           tutor_emailed_at?: string | null
           tutor_id?: string | null
@@ -3662,6 +3721,7 @@ export type Database = {
           plan_id?: string | null
           status?: string
           subject_id?: number | null
+          subject_ids?: number[] | null
           times?: string | null
           tutor_emailed_at?: string | null
           tutor_id?: string | null
@@ -3710,9 +3770,11 @@ export type Database = {
           name: string
           phone: string | null
           photo_path: string | null
+          qualification: string | null
           subjects: string | null
           user_id: string | null
           whatsapp: string | null
+          years_teaching: number | null
         }
         Insert: {
           active?: boolean
@@ -3723,9 +3785,11 @@ export type Database = {
           name: string
           phone?: string | null
           photo_path?: string | null
+          qualification?: string | null
           subjects?: string | null
           user_id?: string | null
           whatsapp?: string | null
+          years_teaching?: number | null
         }
         Update: {
           active?: boolean
@@ -3736,9 +3800,11 @@ export type Database = {
           name?: string
           phone?: string | null
           photo_path?: string | null
+          qualification?: string | null
           subjects?: string | null
           user_id?: string | null
           whatsapp?: string | null
+          years_teaching?: number | null
         }
         Relationships: []
       }
@@ -5595,12 +5661,17 @@ export type Database = {
       tutor_custom_request: { Args: { p_request: string; p_note: string }; Returns: Json }
       tutor_file_ok: { Args: { p_request: string }; Returns: boolean }
       tutor_mark_read: { Args: { p_request: string }; Returns: number }
-      tutor_message_send: { Args: { p_request: string; p_body: string; p_kind?: string; p_attachment?: string; p_meta?: Json; p_ref?: Json }; Returns: Json }
+      tutor_message_delete: { Args: { p_message: number }; Returns: Json }
+      tutor_message_react: { Args: { p_message: number; p_emoji: string }; Returns: Json }
+      tutor_message_report: { Args: { p_message: number; p_reason: string }; Returns: Json }
+      tutor_message_send: { Args: { p_request: string; p_body: string; p_kind?: string; p_attachment?: string; p_meta?: Json; p_ref?: Json; p_reply_to?: number }; Returns: Json }
+      tutor_message_star: { Args: { p_message: number; p_on: boolean }; Returns: Json }
       tutor_messages_before: { Args: { p_request: string; p_before: number; p_limit?: number }; Returns: Json }
       tutor_overview: { Args: never; Returns: Json }
-      tutor_profile_save: { Args: { p_name: string; p_subjects: string; p_bio: string }; Returns: Json }
+      tutor_profile_save: { Args: { p_name: string; p_subjects: string; p_bio: string; p_years?: number; p_qualification?: string }; Returns: Json }
       tutor_ref_search: { Args: { p_kind: string; p_q?: string; p_subject?: number }; Returns: Json }
-      tutor_request_create: { Args: { p_subject: number; p_level: string; p_goals: string; p_times: string }; Returns: Json }
+      tutor_request_create: { Args: { p_subject: number; p_level: string; p_goals: string; p_times: string; p_subjects?: number[] }; Returns: Json }
+      tutor_starred: { Args: { p_request: string }; Returns: Json }
       tutor_student_profile: { Args: { p_request: string }; Returns: Json }
       undo_import: { Args: { p_batch: string }; Returns: number }
       winners_wall_list: { Args: never; Returns: Json }

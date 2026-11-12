@@ -5,7 +5,7 @@ import { requireStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader, PageSkeleton } from "@/components/admin/ui";
 import { ChatApp } from "@/components/tutor-chat/chat-app";
-import type { Chat, TutorOpt } from "@/components/tutor-chat/lib";
+import { naira, type Chat, type TutorOpt } from "@/components/tutor-chat/lib";
 import { TutorAdmin } from "./tutors-ui";
 
 export const metadata: Metadata = { title: "Tutor requests" };
@@ -17,17 +17,34 @@ export default function Page() {
 async function Tutors() {
   await requireStaff(["super_admin", "admin"]);
   const supabase = await createClient();
-  const [chats, tutors, plans] = await Promise.all([
+  const month = new Date(); month.setDate(1); month.setHours(0, 0, 0, 0);
+  const [chats, tutors, plans, paid] = await Promise.all([
     supabase.rpc("tutor_chats", { p_scope: "all" }),
     supabase.from("tutors").select("*").order("name"),
     supabase.from("tutor_plans").select("*").order("sort").order("price_kobo"),
+    supabase.from("payments").select("amount_kobo").eq("item_kind", "tutor").eq("status", "success").gte("verified_at", month.toISOString()),
   ]);
+  const list = (chats.data ?? []) as unknown as Chat[];
+  const stats: [string, string, boolean][] = [
+    ["Paid, need a tutor", String(list.filter((c) => c.status === "paid").length), list.some((c) => c.status === "paid")],
+    ["Custom, need a price", String(list.filter((c) => c.custom_note && !c.custom_price_kobo && ["new", "quoted"].includes(c.status)).length), false],
+    ["Active students", String(list.filter((c) => c.status === "matched").length), false],
+    ...(paid.error ? [] : [["This month", naira((paid.data ?? []).reduce((n, p) => n + Number(p.amount_kobo ?? 0), 0)), false] as [string, string, boolean]]),
+  ];
   return (
     <>
       <PageHeader title="Tutor requests"
         description="Students pick a plan (or ask for a custom one) and pay; you get a push and an email. Assign a tutor within 24 hours: the tutor gets an email and chats with the student from their own dashboard. You can read and join any chat here." />
+      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {stats.map(([k, v, hot]) => (
+          <div key={k} className="rounded-2xl border bg-card p-4">
+            <p className="text-xs text-muted-foreground">{k}</p>
+            <p className={hot ? "text-2xl font-bold tabular-nums text-[#8C600F] dark:text-[#F2B233]" : "text-2xl font-bold tabular-nums"}>{v}</p>
+          </div>
+        ))}
+      </div>
       <div className="mb-4 overflow-hidden rounded-2xl border shadow-[var(--shadow-1)]">
-        <ChatApp mode="admin" initialChats={(chats.data ?? []) as unknown as Chat[]} tutors={(tutors.data ?? []) as TutorOpt[]} className="h-[calc(100dvh-12rem)] min-h-[560px]" />
+        <ChatApp mode="admin" initialChats={list} tutors={(tutors.data ?? []) as TutorOpt[]} className="h-[calc(100dvh-12rem)] min-h-[560px]" />
       </div>
       <p className="mb-4 text-sm text-muted-foreground">Tutors sign in at <Link className="underline" href="/admin/tutor">admin.solutiontee.com/admin/tutor</Link>. Invite a tutor in <Link className="underline" href="/admin/staff">Staff</Link> with the Tutor role.</p>
       <TutorAdmin tutors={tutors.data ?? []} plans={plans.data ?? []} />

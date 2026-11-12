@@ -103,9 +103,12 @@ sealed class PayResult {
 }
 
 class PaySuccess extends PayResult {
-  const PaySuccess(this.expiresAt, {this.free = false});
+  const PaySuccess(this.expiresAt, {this.free = false, this.kind});
   final DateTime? expiresAt;
   final bool free;
+
+  /// What was bought, when the server says (plan, xp, tutor, class…), D-153.
+  final String? kind;
 }
 
 /// Paid or paying, but the server has not confirmed it yet (Paystack tab still open, bank transfer,
@@ -364,7 +367,7 @@ class PaystackProvider implements PaymentProvider {
     try {
       final r = await _call({'action': 'check', 'reference': reference});
       return switch (r['status']) {
-        'success' => PaySuccess(_date(r['expires_at'])),
+        'success' => PaySuccess(_date(r['expires_at']), kind: r['kind'] as String?),
         'failed' => const PayFailed('The payment did not go through. You were not charged. Try again or use another way to pay.', code: 'failed'),
         'needs_review' => const PayFailed(
           'We are checking this payment. If you were charged, Premium turns on after our check, or contact support.',
