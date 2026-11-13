@@ -1375,7 +1375,10 @@ class _MentionSuggestionsState extends State<MentionSuggestions> {
     final start = m.start + m.group(1)!.length;
     final insert = '@${r['handle']} ';
     final text = before.substring(0, start) + insert + v.text.substring(cur);
-    widget.controller.value = TextEditingValue(text: text, selection: TextSelection.collapsed(offset: start + insert.length));
+    widget.controller.value = TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: start + insert.length),
+    );
     setState(() {
       _q = null;
       _rows = const [];

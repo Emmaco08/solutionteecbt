@@ -976,6 +976,54 @@ class _IconPainter extends CustomPainter {
           if (col == Colors.white) c.drawCircle(Offset.zero, 6, Paint()..color = GzC.brand);
           c.restore();
         }
+      case 'reading':
+        // An open book with a magnifying glass.
+        shape(
+          Path()
+            ..moveTo(40, 16)
+            ..cubicTo(32, 10, 18, 10, 8, 14)
+            ..lineTo(8, 52)
+            ..cubicTo(18, 48, 32, 48, 40, 54)
+            ..close(),
+          GzC.cream,
+        );
+        shape(
+          Path()
+            ..moveTo(40, 16)
+            ..cubicTo(48, 10, 62, 10, 72, 14)
+            ..lineTo(72, 52)
+            ..cubicTo(62, 48, 48, 48, 40, 54)
+            ..close(),
+          Colors.white,
+        );
+        for (final y in const <double>[24, 31, 38]) {
+          c.drawLine(
+            Offset(15, y),
+            Offset(33, y - 1),
+            Paint()
+              ..color = GzC.sub
+              ..strokeWidth = 2.5
+              ..strokeCap = StrokeCap.round,
+          );
+        }
+        c.drawLine(const Offset(62, 50), const Offset(74, 62), ink..strokeWidth = 6);
+        c.drawLine(
+          const Offset(62, 50),
+          const Offset(74, 62),
+          Paint()
+            ..color = GzC.goldDeep
+            ..strokeWidth = 3
+            ..strokeCap = StrokeCap.round,
+        );
+        shape(Path()..addOval(Rect.fromCircle(center: const Offset(54, 38), radius: 12)), GzC.ice.withValues(alpha: .9));
+        c.drawCircle(
+          const Offset(54, 38),
+          12,
+          Paint()
+            ..color = GzC.goldLight
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 3,
+        );
       case 'relay':
         c.save();
         c.translate(40, 34);

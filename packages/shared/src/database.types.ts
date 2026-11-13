@@ -3008,6 +3008,69 @@ export type Database = {
         }
         Relationships: []
       }
+      gz_passage_questions: {
+        Row: {
+          answer: string
+          body: string
+          id: number
+          kind: string
+          options: Json
+          passage_id: number
+          sort: number
+        }
+        Insert: {
+          answer: string
+          body: string
+          id?: number
+          kind?: string
+          options: Json
+          passage_id: number
+          sort?: number
+        }
+        Update: {
+          answer?: string
+          body?: string
+          id?: number
+          kind?: string
+          options?: Json
+          passage_id?: number
+          sort?: number
+        }
+        Relationships: []
+      }
+      gz_passages: {
+        Row: {
+          active: boolean
+          batch: string | null
+          body: string
+          created_at: string
+          created_by: string | null
+          difficulty: string
+          id: number
+          title: string
+        }
+        Insert: {
+          active?: boolean
+          batch?: string | null
+          body: string
+          created_at?: string
+          created_by?: string | null
+          difficulty?: string
+          id?: number
+          title?: string
+        }
+        Update: {
+          active?: boolean
+          batch?: string | null
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          difficulty?: string
+          id?: number
+          title?: string
+        }
+        Relationships: []
+      }
       gz_questions: {
         Row: {
           active: boolean

@@ -107,10 +107,12 @@ void main() {
     await t.pump(const Duration(milliseconds: 100));
     expect(find.text('BATTLE!'), findsOneWidget);
     expect(find.text('BIOLOGY'), findsOneWidget);
+    await t.ensureVisible(find.text('VS AI'));
+    await t.pump(const Duration(milliseconds: 100));
     await t.tap(find.text('VS AI'));
     await t.pump(const Duration(milliseconds: 300));
-    expect(find.text('PRACTISE'), findsOneWidget);
-    expect(find.text('HARD'), findsOneWidget);
+    expect(find.text('PRACTISE', skipOffstage: false), findsOneWidget);
+    expect(find.text('HARD', skipOffstage: false), findsOneWidget);
     await t.pumpWidget(const SizedBox());
   });
 

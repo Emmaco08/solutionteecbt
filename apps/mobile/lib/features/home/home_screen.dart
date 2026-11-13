@@ -328,33 +328,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           Text('${_greeting()},', maxLines: 1, overflow: TextOverflow.ellipsis, softWrap: false, style: context.ty.cap.col(c.textMuted)),
                           FitText(first.isEmpty ? 'Student' : first, style: context.ty.h3, minScale: .75),
                           const Gap(6),
-                            Row(
-                              key: _chipsKey,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const XpChip(height: 32),
-                                Semantics(
-                                  button: true,
-                                  label: '$streakDays-day streak',
-                                  child: GestureDetector(
-                                    onTap: () => openRoute(context, '/me/streak'),
-                                    child: Container(
-                                      height: 32,
-                                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                                      decoration: BoxDecoration(color: c.accentSoft, borderRadius: BorderRadius.circular(99)),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(PhosphorIcons.fire(PhosphorIconsStyle.fill), size: 18, color: Palette.gold500),
-                                          const SizedBox(width: 4),
-                                          Text('$streakDays', style: context.ty.label.bold.tnum.col(c.onAccentSoft)),
-                                        ],
-                                      ),
+                          Row(
+                            key: _chipsKey,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const XpChip(height: 32),
+                              Semantics(
+                                button: true,
+                                label: '$streakDays-day streak',
+                                child: GestureDetector(
+                                  onTap: () => openRoute(context, '/me/streak'),
+                                  child: Container(
+                                    height: 32,
+                                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                                    decoration: BoxDecoration(color: c.accentSoft, borderRadius: BorderRadius.circular(99)),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(PhosphorIcons.fire(PhosphorIconsStyle.fill), size: 18, color: Palette.gold500),
+                                        const SizedBox(width: 4),
+                                        Text('$streakDays', style: context.ty.label.bold.tnum.col(c.onAccentSoft)),
+                                      ],
                                     ),
                                   ),
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
+                          ),
                         ],
                       ),
                     ),

@@ -15,6 +15,7 @@ import 'package:solutiontee_cbt/features/gamezone/gz_match.dart';
 import 'package:solutiontee_cbt/features/gamezone/gz_memory.dart';
 import 'package:solutiontee_cbt/features/gamezone/gz_race.dart';
 import 'package:solutiontee_cbt/features/gamezone/gz_ranks.dart';
+import 'package:solutiontee_cbt/features/gamezone/gz_reading.dart';
 import 'package:solutiontee_cbt/features/gamezone/gz_result.dart';
 import 'package:solutiontee_cbt/features/gamezone/gz_sync.dart';
 import 'package:solutiontee_cbt/theme/theme.dart';
@@ -583,5 +584,63 @@ void main() {
       ),
       '17_underline',
     );
+  });
+
+  const passage =
+      'Mama Bisi has sold pepper and tomatoes at Oja Oba market for twenty-two years. For most of that time she kept her accounts in her head. '
+      'She knew who owed her, who paid on time and who always begged for small reduction. Then, three years ago, her granddaughter Tolani gave her '
+      'a cheap exercise book and taught her to write down every sale. At first Mama Bisi laughed. My memory is my bank, she said. But after one month '
+      'the book told a story her memory had hidden. On rainy days she sold far less, yet she still bought the same quantity of tomatoes from the farmers.';
+
+  testWidgets('18 reading passage', (t) async {
+    final players = [_p(1, 'Emmanuel Oluwanifemi', me: true, avatar: _me), _p(2, 'Ngozi', bot: true)];
+    final s = _match('reading', players, rounds: 5);
+    s['starts_at'] = _now - 26000;
+    s['answer_at'] = _now + 18000;
+    s['ends_at'] = _now + 93000;
+    s['passage'] = {'title': 'The Market Ledger', 'body': passage, 'words': 110, 'read_ms': 44000};
+    await _shot(
+      t,
+      Scaffold(
+        body: GzReadingPlay(m: _m(s), onLeave: () {}),
+      ),
+      '18_reading_passage',
+    );
+  });
+
+  testWidgets('19 reading questions', (t) async {
+    final players = [_p(1, 'Emmanuel Oluwanifemi', me: true, avatar: _me), _p(2, 'Ngozi', bot: true, pos: 3)];
+    final s = _match('reading', players, rounds: 5);
+    s['starts_at'] = _now - 60000;
+    s['answer_at'] = _now - 16000;
+    s['ends_at'] = _now + 59000;
+    s['passage'] = {'title': 'The Market Ledger', 'words': 110, 'read_ms': 44000};
+    final m = _m(s)
+      ..racePos = 2
+      ..raceCorrect = 2
+      ..raceItem = {
+        'body': "'My memory is my bank' suggests that Mama Bisi",
+        'kind': 'vocab',
+        'options': [
+          {'key': 'A', 'text': 'kept her money in a bank'},
+          {'key': 'B', 'text': 'forgot most of her sales'},
+          {'key': 'C', 'text': 'trusted her memory to keep her accounts'},
+          {'key': 'D', 'text': 'wanted to open a bank'},
+        ],
+      };
+    await _shot(
+      t,
+      Scaffold(
+        body: GzReadingPlay(m: m, onLeave: () {}),
+      ),
+      '19_reading_questions',
+    );
+  });
+
+  test('reading parts', () {
+    final parts = gzReadingParts(passage);
+    expect(parts.length, greaterThan(2));
+    expect(parts.first.at, 0);
+    expect(parts.last.at, lessThan(1));
   });
 }

@@ -51,14 +51,11 @@ class GzSound with WidgetsBindingObserver {
   Future<AudioPool> _pool(GzSfx s) {
     final ready = _pools[s];
     if (ready != null) return Future.value(ready);
-    return _loading[s] ??= AudioPool.create(
-      source: AssetSource('sounds/${s.name}.ogg'),
-      maxPlayers: s == GzSfx.tap || s == GzSfx.flip ? 4 : 2,
-      audioContext: _mix,
-    ).then((p) {
-      _pools[s] = p;
-      return p;
-    });
+    return _loading[s] ??=
+        AudioPool.create(source: AssetSource('sounds/${s.name}.ogg'), maxPlayers: s == GzSfx.tap || s == GzSfx.flip ? 4 : 2, audioContext: _mix).then((p) {
+          _pools[s] = p;
+          return p;
+        });
   }
 
   /// Plays an effect at once (it is ignored when effects are off).

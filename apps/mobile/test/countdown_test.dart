@@ -97,7 +97,10 @@ void main() {
         ),
       ),
     );
-    await t.pumpAndSettle();
+    // The chip keeps moving (hourglass, shine): pump a while instead of waiting for it to settle.
+    for (var i = 0; i < 12; i++) {
+      await t.pump(const Duration(milliseconds: 200));
+    }
     expect(find.textContaining('143 days'), findsOneWidget);
     expect(find.textContaining('UTME'), findsOneWidget);
   });

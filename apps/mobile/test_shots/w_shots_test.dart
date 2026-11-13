@@ -79,8 +79,12 @@ void main() {
   final posts = ListView(
     children: [
       PostCell(post: _post('1', 'Emmanuel Akinbola', 'emmanuel25', badge: 'staff')),
-      PostCell(post: _post('2', 'SolutionTee', 'solutiontee', badge: 'official', page: 'pg', body: 'Just testing\n\nHello, everyone')),
-      PostCell(post: _post('3', 'Emmanuel Oluwanifemi Akinbola', 'emmanuel', badge: 'staff', body: 'Hello, I am new here.')),
+      PostCell(
+        post: _post('2', 'SolutionTee', 'solutiontee', badge: 'official', page: 'pg', body: 'Just testing\n\nHello, everyone'),
+      ),
+      PostCell(
+        post: _post('3', 'Emmanuel Oluwanifemi Akinbola', 'emmanuel', badge: 'staff', body: 'Hello, I am new here.'),
+      ),
       PostCell(post: _post('4', 'Chidinma Okonkwo-Adebayo Oluwaseun', 'chidinma_okonkwo', body: 'A very long name.')),
       PostCell(post: _post('5', 'Ada Obi', 'ada', body: 'Short name.')),
     ],
@@ -93,7 +97,10 @@ void main() {
     final cd = ExamCountdown(code: 'JAMB', label: 'UTME', date: DateTime.now().add(const Duration(days: 122)));
     await _shot(
       t,
-      const Padding(padding: EdgeInsets.all(20), child: Column(children: [CountdownChip()])),
+      const Padding(
+        padding: EdgeInsets.all(20),
+        child: Column(children: [CountdownChip()]),
+      ),
       'w_countdown',
       overrides: [examCountdownProvider.overrideWithValue(cd)],
     );

@@ -15,6 +15,7 @@ import 'gz_fx.dart';
 import 'gz_hub.dart';
 import 'gz_memory.dart';
 import 'gz_race.dart';
+import 'gz_reading.dart';
 import 'gz_result.dart';
 import 'gz_scenes.dart';
 import 'gz_sound.dart';
@@ -176,6 +177,7 @@ class _GzMatchScreenState extends State<GzMatchScreen> {
 
   Widget _play() => switch (_m.game) {
     'rush' || 'blitz' => GzRacePlay(m: _m, onLeave: _leaveNow),
+    'reading' => GzReadingPlay(m: _m, onLeave: _leaveNow),
     'memory' => GzMemoryPlay(m: _m, onLeave: _leaveNow),
     _ => GzSyncPlay(m: _m, onLeave: _leaveNow),
   };
@@ -239,6 +241,7 @@ String gzRules(GzMatch m) => switch (m.game) {
   'relay' => 'Blue team vs red team · every right answer adds to your team',
   'rush' => 'First to ${m.target} right answers · a wrong answer spins you out for 2 seconds',
   'blitz' => '60 seconds of quick maths · right answers in a row build your combo',
+  'reading' => 'Read the passage fast · it disappears · then ${m.rounds} questions · most right wins, then the faster finish',
   _ => '3 levels · remember the cards, then match them',
 };
 

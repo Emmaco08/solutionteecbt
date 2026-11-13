@@ -283,7 +283,7 @@ class GzGame {
   /// Text on this card colour is navy (gold card).
   final bool dark;
 
-  bool get isRace => id == 'rush' || id == 'blitz';
+  bool get isRace => id == 'rush' || id == 'blitz' || id == 'reading';
   bool get isSync => id == 'duel' || id == 'words' || id == 'survival' || id == 'relay';
   bool get group => id == 'survival' || id == 'relay' || id == 'rush';
 
@@ -292,6 +292,14 @@ class GzGame {
 
   static const all = [
     GzGame('duel', 'JAMB Duel', 'JAMB\nDUEL', GzC.blue, 'Same question, same moment. The faster right answer scores more.', '1 v 1'),
+    GzGame(
+      'reading',
+      'Comprehension Clash',
+      'READING\nCLASH',
+      Color(0xFF8E3FD9),
+      'Same passage, shown fast. Then 5 questions. Most right wins; ties go to the faster finish.',
+      '1 v 1',
+    ),
     GzGame('rush', 'Speed Rush', 'SPEED\nRUSH', GzC.green, 'Each right answer drives your car on. First to 10 wins.', '2 to 6'),
     GzGame('survival', 'Knowledge Survival', 'SURVIVAL', GzC.red, '3 hearts each. Wrong or late costs a heart. Last one standing wins.', 'Up to 20'),
     GzGame('blitz', 'Maths Blitz', 'MATHS\nBLITZ', GzC.brand, '60 seconds of quick maths. Right answers in a row build your combo.', '1 v 1', dark: true),

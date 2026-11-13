@@ -262,7 +262,12 @@ class _GzHubScreenState extends ConsumerState<GzHubScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     FitText('${me['name'] ?? 'You'}'.toUpperCase(), style: gzFont(18, shadow: 0), minScale: .7, textAlign: TextAlign.center),
-                    Text('${rank.label} · ${gzNum(rating)} ★'.toUpperCase(), maxLines: 1, overflow: TextOverflow.ellipsis, style: gzFont(13, color: GzC.goldLight, shadow: 0)),
+                    Text(
+                      '${rank.label} · ${gzNum(rating)} ★'.toUpperCase(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: gzFont(13, color: GzC.goldLight, shadow: 0),
+                    ),
                   ],
                 ),
               ),

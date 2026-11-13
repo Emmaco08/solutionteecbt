@@ -345,7 +345,7 @@ class GzMatch extends ChangeNotifier {
     }
     if (nr?['mine'] != null && result == null) result = asJson(nr!['mine']);
     final m = me;
-    final isRace = game == 'rush' || game == 'blitz';
+    final isRace = game == 'rush' || game == 'blitz' || game == 'reading';
     if (isRace && m.isNotEmpty) {
       final pos = gzMs(m['pos']) ?? 0;
       if (pos >= racePos || raceItem == null) {
@@ -385,7 +385,11 @@ class GzMatch extends ChangeNotifier {
       } else {
         at = (gzMs(r['close_at']) ?? t) + 450;
       }
-    } else if (game == 'rush' || game == 'blitz') {
+    } else if (game == 'reading' && t < (gzMs(s?['answer_at']) ?? 0)) {
+      // Comprehension Clash: fetch the first question just before the passage closes.
+      at = (gzMs(s?['answer_at']) ?? t) - 1200;
+      if (at <= t) at = t + 300;
+    } else if (game == 'rush' || game == 'blitz' || game == 'reading') {
       at = t + 1500;
       if (endsAt > 0 && endsAt < at) at = endsAt + 400;
     } else if (game == 'memory') {
