@@ -9,6 +9,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../theme/theme.dart';
 import '../theme/tokens.g.dart';
 import '../widgets/phosphor.g.dart';
+import '../core/platform.dart';
 
 // ---------------------------------------------------------------- typography (.t-*)
 TextStyle _t(({double size, double line, int weight, double tracking}) s, Color c) => TextStyle(
@@ -1140,6 +1141,8 @@ Future<T?> showSheet<T>(BuildContext context, {required Widget Function(BuildCon
       showDragHandle: false,
       backgroundColor: context.c.surface,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.sheet))),
+      // Desktop (D-166): a sheet the width of a phone, not of the whole page.
+      constraints: isDesktop ? const BoxConstraints(maxWidth: 640) : null,
       builder: (ctx) => ConstrainedBox(
         constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(ctx).height * .92),
         child: Column(
@@ -1223,6 +1226,9 @@ Future<T?> showAppDialog<T>(
 
 /// Prototype toast: navy-950 pill above the bottom nav, with an icon.
 /// [above] lifts it over a bottom bar (CBT bottom bar, footer buttons) so it never covers controls.
+/// Desktop (D-166): toasts stay about 520 px wide in the middle instead of spanning the page.
+double _toastSide(BuildContext context) => isDesktop ? ((MediaQuery.sizeOf(context).width - 520) / 2).clamp(16.0, 4000.0) : 16;
+
 void toast(BuildContext context, String text, {IconData? icon, double above = 0}) {
   final m = ScaffoldMessenger.of(context);
   m.hideCurrentSnackBar();
@@ -1230,7 +1236,7 @@ void toast(BuildContext context, String text, {IconData? icon, double above = 0}
     SnackBar(
       behavior: SnackBarBehavior.floating,
       backgroundColor: Palette.navy950,
-      margin: EdgeInsets.fromLTRB(16, 0, 16, 16 + above),
+      margin: EdgeInsets.fromLTRB(_toastSide(context), 0, _toastSide(context), 16 + above),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Radii.md)),
       content: Row(
         children: [

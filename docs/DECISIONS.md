@@ -1880,3 +1880,28 @@ Owner: "COMMUNITY IS APPROVED, only few changes…" (same day as D-155).
 - **Sound:** a different, original trap beat (150 BPM) and a different free voice (Kokoro af_bella, Apache-2.0). Same
   pronunciation fixes; checked by speech recognition. −14 LUFS.
 - **Same rules as D-164:** real brand files only, Google Play as text, prize terms line, disclaimer at the end.
+
+## D-166 — Windows desktop app (14 Nov 2026)
+
+- **Same Flutter app, built for Windows** on GitHub's Windows machine (Windows apps cannot be built on Linux), so every
+  screen and feature of the Android app comes along and uses the same backend.
+- **Desktop layout:** a persistent navy sidebar replaces the bottom tabs (Learn: Home, Study, Test, AI Tutor; Play &
+  connect: Game Zone, Community, Leaderboard; More: Live classes, Request a tutor, News, Careers; Premium card; profile
+  with streak, XP, notifications and settings). Pages get a comfortable width (dashboards 1280, lists 980, reading and
+  forms 860, community 820, AI and tutor 1040). Exams and games open in focus mode; Game Zone plays in a centred stage
+  over a game backdrop. Sign-in screens sit next to a brand panel. Home is a two-column dashboard; the CBT keeps the
+  question palette open on the right with keys A–E, Left/Right, F, C/Shift+C and Ctrl+Enter. Grids get more columns,
+  sheets and toasts keep a phone-like width, the mouse can drag-scroll, Esc and the mouse back button go back, Ctrl+K
+  searches. A snapped half-window (under 900 px) uses the phone layout.
+- **Android-only parts on Windows:** Paystack opens in the default browser and a "Finish paying in your browser" screen
+  confirms with the server every 3 s (same check as the phone, cancel asks first); Google sign-in runs in the browser
+  through a one-off local page (http://localhost:53682) and stays hidden until the admin turns on "Also on the Windows
+  app" after adding that redirect URL in Supabase; no Firebase push or AdMob ads (no Windows SDKs; the in-app
+  notifications list and live toasts remain); screenshots and screen sharing are blocked with Windows
+  "exclude from capture" following the same admin switch; the device check uses the hashed Windows MachineGuid;
+  photos for the AI tutor come from the file picker; app updates download the new installer and run it silently.
+- **Installer:** Inno Setup, per user (no administrator prompt), Start menu and desktop shortcuts, uninstaller, Visual
+  C++ runtime included, Windows 10 or newer. CI opens the built app, checks it keeps running, installs the installer
+  silently and opens the installed app before publishing to cbt.solutiontee.com/download/windows.
+- **Not code-signed yet (owner decision):** Windows SmartScreen shows "Windows protected your PC → More info → Run
+  anyway" until the installer is signed (code-signing certificate) or listed in the Microsoft Store.

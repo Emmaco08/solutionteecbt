@@ -563,3 +563,14 @@ Notes:
 - Windows (days kept on Supabase) are in `app_settings.archive`. The mover runs nightly at 02:15, 02:25 and 02:35
   Lagos (cron `archive-mover`); its runs are in the `archive_runs` table. Keep `batch` at 1000: the free Edge
   Function plan stops a call that does much more than 20 batches.
+
+## Windows app (D-166)
+- Download: https://cbt.solutiontee.com/download/windows (the newest installer). Built by GitHub with every
+  `[release]`, or alone with `[windows]` in a commit message, or by hand (Actions → Android app → Run).
+- First run on a laptop: Windows SmartScreen may say "Windows protected your PC". Click **More info → Run anyway**.
+  This goes away once the installer is code-signed (a code-signing certificate, about $200–400 a year) or the app is
+  listed in the Microsoft Store (one-time $19 developer account). Owner decision.
+- Google sign-in on Windows (optional): Supabase → Authentication → URL Configuration → Redirect URLs → add
+  `http://localhost:53682/**`, then Admin → Flags & settings → Sign in with Google → turn on "Also on the Windows app".
+  Until then Windows users sign in with email and password.
+- Paystack on Windows opens in the student's browser; nothing to set up.

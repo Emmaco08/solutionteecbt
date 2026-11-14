@@ -176,7 +176,7 @@ class _DesktopPayScreenState extends State<DesktopPayScreen> {
                       children: [
                         Icon(PhosphorIcons.lockSimple(PhosphorIconsStyle.fill), size: 16, color: c.textSubtle),
                         const Gap(Space.s2),
-                        Text('Secured by Paystack · we never see your card', style: context.ty.cap.col(c.textSubtle)),
+                        Flexible(child: Text('Secured by Paystack · we never see your card', style: context.ty.cap.col(c.textSubtle))),
                       ],
                     ),
                   ],

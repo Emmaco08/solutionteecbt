@@ -78,33 +78,20 @@ DesktopMode desktopModeFor(String path) {
   return focus ? DesktopMode.focus : DesktopMode.normal;
 }
 
-/// Content width for a route: dashboards and feeds get room, reading and form pages stay readable.
+/// Game Zone pages are designed tall like a phone: on desktop they play in a centred stage over a game backdrop.
+bool _isGame(String path) => path == '/games' || path.startsWith('/games/');
+
+/// Content width for a route: dashboards get room, lists a medium width, reading and form pages stay readable.
 double desktopWidthFor(String path, DesktopMode mode) {
-  if (mode == DesktopMode.focus) return double.infinity;
   if (mode == DesktopMode.auth) return 560;
-  const wide = [
-    '/home',
-    '/test',
-    '/study',
-    '/me',
-    '/community',
-    '/games',
-    '/leaderboard',
-    '/classes',
-    '/news',
-    '/careers',
-    '/badges',
-    '/downloads',
-    '/history',
-    '/study/',
-  ];
-  final exactNarrow = path.startsWith('/news/') || path.startsWith('/community/post/') || path.startsWith('/study/note/') || path.startsWith('/study/novel/');
-  if (exactNarrow) return 860;
-  if (path == '/ai' || path == '/ai/history' || path.startsWith('/tutor')) return 1040;
-  if (path == '/community' || path.startsWith('/community/')) return 820; // a readable feed, like other social apps on desktop
-  for (final w in wide) {
-    if (path == w || path.startsWith('$w/')) return 1280;
-  }
+  if (_isGame(path)) return 620;
+  if (mode == DesktopMode.focus) return double.infinity;
+  bool under(String p) => path == p || path.startsWith('$p/');
+  if (path.startsWith('/news/') || path.startsWith('/community/post/') || path.startsWith('/study/note/') || path.startsWith('/study/novel/')) return 860;
+  if (under('/community')) return 820; // a readable feed, like other social apps on desktop
+  if (path == '/ai' || path == '/ai/history' || under('/tutor')) return 1040;
+  if (['/home', '/test', '/study', '/me'].any((p) => path == p) || path.startsWith('/study/')) return 1280;
+  if (['/leaderboard', '/classes', '/news', '/careers', '/badges', '/downloads', '/history', '/test/challenges'].any(under)) return 980;
   return 860;
 }
 
@@ -179,34 +166,41 @@ class _DesktopFrameState extends State<DesktopFrame> {
           child: _Keys(
             router: router,
             child: Material(
-              color: c.bg,
-              child: Row(
-                children: [
-                  left,
-                  Expanded(
-                    child: TweenAnimationBuilder<double>(
-                      tween: Tween(end: maxW.isFinite ? maxW : 100000),
-                      duration: context.reduceMotion ? Duration.zero : const Duration(milliseconds: 260),
-                      curve: Curves.easeOutCubic,
-                      builder: (context, w, kid) => LayoutBuilder(
-                        builder: (context, box) {
-                          final colW = w.clamp(320.0, box.maxWidth);
-                          final mq = MediaQuery.of(context);
-                          return Center(
-                            child: SizedBox(
-                              width: colW,
-                              child: MediaQuery(
-                                data: mq.copyWith(size: Size(colW, mq.size.height)),
-                                child: kid!,
+              color: _isGame(path) ? const Color(0xFF15124A) : c.bg,
+              child: Container(
+                decoration: _isGame(path)
+                    ? const BoxDecoration(
+                        gradient: RadialGradient(center: Alignment(0, -0.3), radius: 1.2, colors: [Color(0xFF2A2A8F), Color(0xFF15124A), Color(0xFF0B0A2E)]),
+                      )
+                    : null,
+                child: Row(
+                  children: [
+                    left,
+                    Expanded(
+                      child: TweenAnimationBuilder<double>(
+                        tween: Tween(end: maxW.isFinite ? maxW : 100000),
+                        duration: context.reduceMotion ? Duration.zero : const Duration(milliseconds: 260),
+                        curve: Curves.easeOutCubic,
+                        builder: (context, w, kid) => LayoutBuilder(
+                          builder: (context, box) {
+                            final colW = w.clamp(320.0, box.maxWidth);
+                            final mq = MediaQuery.of(context);
+                            return Center(
+                              child: SizedBox(
+                                width: colW,
+                                child: MediaQuery(
+                                  data: mq.copyWith(size: Size(colW, mq.size.height)),
+                                  child: kid!,
+                                ),
                               ),
-                            ),
-                          );
-                        },
+                            );
+                          },
+                        ),
+                        child: child,
                       ),
-                      child: child,
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
