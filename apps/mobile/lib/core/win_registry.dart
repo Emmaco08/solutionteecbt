@@ -32,3 +32,20 @@ abstract final class WinRegistry {
     }
   }
 }
+
+/// Whether Windows has any audio output (speakers, headphones, HDMI audio). A PC without one cannot play sounds, and
+/// trying makes the audio plugin report errors, so game sounds stay off there (D-167). winmm waveOutGetNumDevs.
+abstract final class WinAudio {
+  static bool? _has;
+
+  static bool get hasOutput {
+    final known = _has;
+    if (known != null) return known;
+    try {
+      final f = DynamicLibrary.open('winmm.dll').lookupFunction<Uint32 Function(), int Function()>('waveOutGetNumDevs');
+      return _has = f() > 0;
+    } catch (_) {
+      return _has = true; // unknown: try to play as usual
+    }
+  }
+}

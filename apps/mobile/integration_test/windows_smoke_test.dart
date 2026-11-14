@@ -77,7 +77,17 @@ void main() {
   });
 
   test('game sounds and music play (MP3 on Windows)', () async {
-    for (final name in ['tap', 'correct', 'wrong', 'win', 'music_hub', 'music_battle']) {
+    final names = ['tap', 'correct', 'wrong', 'win', 'music_hub', 'music_battle'];
+    for (final name in names) {
+      expect((await rootBundle.load('assets/sounds/$name.mp3')).lengthInBytes, greaterThan(1000), reason: '$name.mp3 is in the app');
+    }
+    if (!WinAudio.hasOutput) {
+      // GitHub's Windows machines have no sound card; the app keeps sounds off on such a PC instead of erroring.
+      // ignore: avoid_print
+      print('no audio output on this machine: sounds checked as files only');
+      return;
+    }
+    for (final name in names) {
       final p = AudioPlayer();
       await p.setSource(AssetSource('sounds/$name.mp3')).timeout(const Duration(seconds: 15));
       final d = await p.getDuration();
@@ -97,7 +107,7 @@ void main() {
     await doc.close();
   });
 
-  test('video lessons play', () async {
+  test('video lessons play (picture; sound needs speakers)', () async {
     final v = VideoPlayerController.file(File('$fixtures${Platform.pathSeparator}clip.mp4'));
     await v.initialize().timeout(const Duration(seconds: 20));
     expect(v.value.isInitialized, isTrue);

@@ -4,6 +4,8 @@ import 'dart:io' show Platform;
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../core/win_registry.dart';
+
 // Game Zone sound (D-157): effects and two music loops, all made by design/scripts/gz_sounds.py (ours, no licences).
 // Effects play from small low-latency pools; music loops, fades between tracks, pauses when the app goes to the
 // background, and mixes with other apps. Both are switched in the hub (speaker button) and remembered.
@@ -12,6 +14,9 @@ enum GzSfx { tap, correct, wrong, tick, count, go, whoosh, flip, pair, coin, fou
 
 /// Sound files: OGG on phones; MP3 on Windows, which plays OGG only with an optional Microsoft add-on (D-166).
 String get _ext => Platform.isWindows ? 'mp3' : 'ogg';
+
+/// A Windows PC with no speakers or headphones cannot play anything: sounds stay off there instead of erroring (D-167).
+bool get _canPlay => !Platform.isWindows || WinAudio.hasOutput;
 
 class GzSound with WidgetsBindingObserver {
   GzSound._();
@@ -42,7 +47,7 @@ class GzSound with WidgetsBindingObserver {
   );
 
   void _start() {
-    if (_started || !enabled) return;
+    if (_started || !enabled || !_canPlay) return;
     _started = true;
     WidgetsBinding.instance.addObserver(this);
     AudioPlayer.global.setAudioContext(_mix).catchError((_) {});
@@ -63,7 +68,7 @@ class GzSound with WidgetsBindingObserver {
 
   /// Plays an effect at once (it is ignored when effects are off).
   void play(GzSfx s, {double volume = 1}) {
-    if (!sounds || !enabled) return;
+    if (!sounds || !enabled || !_canPlay) return;
     _start();
     final p = _pools[s];
     if (p != null) {
@@ -107,6 +112,7 @@ class GzSound with WidgetsBindingObserver {
   }
 
   Future<void> _switchTo(String? track) async {
+    if (!_canPlay) return;
     final fresh = _player == null;
     final p = _player ??= AudioPlayer(playerId: 'gz_music');
     _fade?.cancel();

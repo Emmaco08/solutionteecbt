@@ -1927,7 +1927,8 @@ you have done in android", "compare all window features to android features". Fu
   sends the flag `vm` ("Windows in a virtual machine" on the fraud page). A normal computer sends no flag, because any
   flag lists the account under "Warning signs".
 - **Game sounds:** Windows plays OGG only with an optional Microsoft add-on, so Windows plays MP3 copies of the 19
-  sounds (+504 KB in every build); phones keep OGG.
+  sounds (+504 KB in every build); phones keep OGG. A PC with no audio output at all (no speakers, headphones or HDMI
+  audio, like GitHub's Windows machines) keeps game sounds off instead of erroring (winmm waveOutGetNumDevs).
 - **Windows check on GitHub** (`integration_test/windows_smoke_test.dart`, step "Windows check"): inside the real Windows
   app on a real Windows machine, every build: device ids, database, secure storage, folders, sounds, PDF, video,
   notification channel, screenshot blocking, microphone, speech, links, keep-awake, connectivity. A failure stops the
