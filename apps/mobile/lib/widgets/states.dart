@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../core/connectivity.dart';
 
 import '../theme/theme.dart';
 import '../theme/tokens.g.dart';
@@ -9,17 +12,7 @@ import 'phosphor.g.dart';
 
 /// Empty / error / offline states (prototype `.state`: 112 art tile, title, text, action). Every screen has them.
 abstract final class StateView {
-  static Widget offline({VoidCallback? onRetry}) => Center(
-    child: SingleChildScrollView(
-      child: StateBlock(
-        icon: PhosphorIcons.wifiSlash(PhosphorIconsStyle.fill),
-        tone: Tone.gold,
-        title: 'You are offline',
-        text: 'Connect to the internet to load this. Tests already on your phone still work.',
-        action: onRetry == null ? null : Btn('Try again', leading: PhosphorIcons.arrowClockwise(), onPressed: onRetry),
-      ),
-    ),
-  );
+  static Widget offline({VoidCallback? onRetry}) => OfflineView(onRetry: onRetry);
 
   static Widget error(Object error, {VoidCallback? onRetry}) => Center(
     child: SingleChildScrollView(
@@ -32,6 +25,81 @@ abstract final class StateView {
       ),
     ),
   );
+}
+
+/// No internet (owner, 14 Nov 2026: a better no-internet mode): a gently floating wifi badge, what still works, a link
+/// to downloaded tests, and it reloads by itself the moment the internet is back.
+class OfflineView extends ConsumerWidget {
+  const OfflineView({super.key, this.onRetry});
+  final VoidCallback? onRetry;
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen(onlineProvider, (prev, next) {
+      if (prev?.value == false && next.value == true) onRetry?.call();
+    });
+    final c = context.c;
+    Widget badge = Container(
+      width: 96,
+      height: 96,
+      decoration: BoxDecoration(color: c.accentSoft, borderRadius: BorderRadius.circular(28)),
+      child: Icon(PhosphorIcons.wifiSlash(PhosphorIconsStyle.fill), size: 44, color: Palette.gold500),
+    );
+    if (!context.reduceMotion) {
+      badge = badge.animate(onPlay: (a) => a.repeat(reverse: true)).moveY(begin: 3, end: -4, duration: 1600.ms, curve: Curves.easeInOut);
+    }
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(Space.s6),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            badge,
+            const Gap(Space.s4),
+            Text('No internet right now', style: context.ty.h2, textAlign: TextAlign.center),
+            const Gap(Space.s2),
+            Text(
+              'Check your data or Wi-Fi. This page loads by itself when you are back online.',
+              style: context.ty.sm.col(c.textMuted),
+              textAlign: TextAlign.center,
+            ),
+            const Gap(Space.s4),
+            Container(
+              padding: const EdgeInsets.all(Space.s3),
+              decoration: BoxDecoration(color: c.surfaceSunken, borderRadius: BorderRadius.circular(Radii.md)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Still works offline', style: context.ty.cap.bold.col(c.textMuted)),
+                  const SizedBox(height: 6),
+                  for (final t in const ['Tests you downloaded', 'Saved videos and notes', 'Your bookmarks', 'Finished tests are sent when you are back'])
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Row(
+                        children: [
+                          Icon(PhosphorIcons.checkCircle(PhosphorIconsStyle.fill), size: 16, color: c.success),
+                          const SizedBox(width: 8),
+                          Expanded(child: Text(t, style: context.ty.sm)),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const Gap(Space.s4),
+            Wrap(
+              spacing: Space.s2,
+              runSpacing: Space.s2,
+              alignment: WrapAlignment.center,
+              children: [
+                if (onRetry != null) Btn('Try again', leading: PhosphorIcons.arrowClockwise(), onPressed: onRetry),
+                Btn('My downloads', kind: BtnKind.outline, leading: PhosphorIcons.downloadSimple(), onPressed: () => GoRouter.of(context).push('/downloads')),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 /// Shimmering placeholder block for loading skeletons (`.sk`). Still (no shimmer) when reduce motion is on.

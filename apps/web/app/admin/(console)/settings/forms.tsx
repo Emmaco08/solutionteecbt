@@ -37,8 +37,10 @@ export function FlagRow({ k, enabled, description }: { k: string; enabled: boole
 
 type V = Record<string, Record<string, unknown> | string>;
 const get = (v: V, k: string, f: string) => String((v[k] as Record<string, unknown> | undefined)?.[f] ?? "");
+/** A stored time → the "yyyy-mm-ddThh:mm" a datetime-local field wants, in Lagos time (UTC+1). */
+const lagos = (iso: string) => { const t = Date.parse(iso); return Number.isFinite(t) ? new Date(t + 3600e3).toISOString().slice(0, 16) : ""; };
 
-export function SettingsForm({ values: v }: { values: V }) {
+export function SettingsForm({ values: v, builds = {} }: { values: V; builds?: { play?: number | null; direct?: number | null } }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const input = "h-10 w-full rounded-xl border border-input bg-card px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
@@ -48,14 +50,26 @@ export function SettingsForm({ values: v }: { values: V }) {
   return (
     <form action={(f) => start(async () => { const r = await saveSettings(f); if (r.ok) { toast.success("Settings saved."); router.refresh(); } else toast.error(r.error); })}
       className="grid items-start gap-4 lg:grid-cols-2">
-      <Panel title="App version and maintenance">
+      <Panel title="Maintenance mode">
         <div className="space-y-4">
-          {field("min_android", "Minimum Android app version", get(v, "min_app_version", "android") || "1.0.0", { className: `${input} font-mono` })}
-          <label className="flex items-center justify-between gap-3 text-sm"><span><b>Force update</b><br /><span className="text-muted-foreground">Older versions must update before they can continue.</span></span>
-            <Switch name="force_update" defaultChecked={get(v, "min_app_version", "force") === "true"} /></label>
-          <label className="flex items-center justify-between gap-3 text-sm"><span><b>Maintenance mode</b><br /><span className="text-muted-foreground">Students see your message. Downloaded tests still work offline.</span></span>
+          <label className="flex items-center justify-between gap-3 text-sm"><span><b>Maintenance mode</b><br /><span className="text-muted-foreground">Every app shows a “We are making SolutionTee better” screen with your message. It opens again by itself when you switch this off (within a minute).</span></span>
             <Switch name="maintenance" defaultChecked={get(v, "maintenance", "enabled") === "true"} /></label>
-          {field("maintenance_message", "Maintenance message", get(v, "maintenance", "message"))}
+          {field("maintenance_message", "Message students see", get(v, "maintenance", "message"))}
+          {field("maintenance_until", "Back by (Lagos time, optional)", lagos(get(v, "maintenance", "until")), { type: "datetime-local" })}
+          <label className="flex items-center justify-between gap-3 text-sm"><span><b>Staff can still use the app</b><br /><span className="text-muted-foreground">So you and your team can test while students wait. Tutors are not included.</span></span>
+            <Switch name="maintenance_staff" defaultChecked={get(v, "maintenance", "staff_bypass") !== "false"} /></label>
+        </div>
+      </Panel>
+      <Panel title="App updates (Play Store app and every app)">
+        <div className="space-y-4">
+          <label className="flex items-center justify-between gap-3 text-sm"><span><b>Show the update pop-up</b><br /><span className="text-muted-foreground">When Google Play has a newer version, students see a pop-up that opens the Play Store. “Later” hides it for a day.</span></span>
+            <Switch name="play_prompt" defaultChecked={get(v, "play_update", "prompt") !== "false"} /></label>
+          <label className="flex items-center justify-between gap-3 text-sm"><span><b>Students must update (Play Store app)</b><br /><span className="text-muted-foreground">When Google Play has a newer version, the app is blocked until they update. Turn on only after the new version is live on Play.</span></span>
+            <Switch name="play_force" defaultChecked={get(v, "play_update", "force") === "true"} /></label>
+          <div className="space-y-1.5"><Label htmlFor="play_notes">What&apos;s new (optional, one point per line)</Label>
+            <textarea id="play_notes" name="play_notes" rows={3} defaultValue={get(v, "play_update", "notes")} placeholder={"New Game Zone games\nFaster question bank"} className="w-full rounded-xl border border-input bg-card px-3 py-2.5 text-sm" /></div>
+          {field("min_build", "Minimum build (every app, 0 = off)", get(v, "min_build", "build") || "0", { type: "number", min: 0, inputMode: "numeric", className: `${input} font-mono` })}
+          <p className="text-xs text-muted-foreground">Any app (Play Store or website) with a lower build number must update before it opens. Newest builds: Play Store {builds.play ? <b className="font-mono">{builds.play}</b> : "not known"} · website app {builds.direct ? <b className="font-mono">{builds.direct}</b> : "not known"}. Use the Play number only after that version is live on Google Play.</p>
         </div>
       </Panel>
       <Panel title="Support and company">

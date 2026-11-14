@@ -9,10 +9,7 @@ import '../../core/ads.dart';
 import '../../core/house_ads.dart';
 import '../../widgets/phosphor.g.dart';
 
-import 'package:url_launcher/url_launcher.dart';
-
 import '../../core/nav.dart';
-import '../../core/config.dart';
 import '../../core/engagement.dart';
 import '../../core/providers.dart';
 import '../../core/tab_scroll.dart';
@@ -272,9 +269,7 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
         if (mounted) askBirthYearOnce(this.context, ref);
       });
     }
-    final settings = ref.watch(appSettingsProvider).value ?? const {};
-    final gate = _gate(settings);
-    if (gate != null) return gate;
+    // Maintenance and forced updates are handled for the whole app by AppGate (core/app_gate.dart).
 
     final tabs = (ref.watch(tabsProvider).value ?? const []).where((t) => _branchOf.containsKey(t['type'])).toList();
     final items = tabs.isEmpty
@@ -313,55 +308,6 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
         ),
       ),
     );
-  }
-
-  /// Maintenance mode and forced updates come from the admin (app_settings).
-  Widget? _gate(Map<String, dynamic> settings) {
-    final m = settings['maintenance'];
-    if (m is Map && m['enabled'] == true) {
-      return Scaffold(
-        body: SafeArea(
-          child: Center(
-            child: StateBlock(
-              icon: PhosphorIcons.wrench(PhosphorIconsStyle.fill),
-              tone: Tone.gold,
-              title: 'We are improving SolutionTee',
-              text: (m['message'] as String?) ?? 'Please check back soon. Tests you downloaded still work offline.',
-            ),
-          ),
-        ),
-      );
-    }
-    final v = settings['min_app_version'];
-    if (v is Map && v['force'] == true && _older(Config.appVersion, (v['android'] as String?) ?? '0.0.0')) {
-      return Scaffold(
-        body: SafeArea(
-          child: Center(
-            child: StateBlock(
-              icon: PhosphorIcons.arrowCircleUp(PhosphorIconsStyle.fill),
-              title: 'Please update SolutionTee',
-              text: 'This version is too old. Update to keep practising with the latest questions.',
-              action: Btn(
-                'Update now',
-                onPressed: () =>
-                    launchUrl(Uri.parse('https://play.google.com/store/apps/details?id=com.solutiontee.cbt'), mode: LaunchMode.externalApplication),
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-    return null;
-  }
-
-  static bool _older(String a, String b) {
-    List<int> p(String s) => s.split('.').map((x) => int.tryParse(x) ?? 0).toList();
-    final x = p(a), y = p(b);
-    for (var i = 0; i < 3; i++) {
-      final d = (i < x.length ? x[i] : 0) - (i < y.length ? y[i] : 0);
-      if (d != 0) return d < 0;
-    }
-    return false;
   }
 }
 

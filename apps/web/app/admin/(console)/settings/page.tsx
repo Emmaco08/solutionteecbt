@@ -24,7 +24,9 @@ async function Settings() {
   if (flags.error || settings.error) return <ErrorState message={(flags.error ?? settings.error)!.message} />;
   const v = Object.fromEntries((settings.data ?? []).map((r) => [r.key, r.value])) as Record<string, Record<string, unknown> | string>;
   const sw = (k: string, f: string, def: boolean) => { const o = v[k]; return o && typeof o === "object" && f in o ? o[f] === true : def; };
-  const apk = hasR2() ? await readJson<ApkInfo>("apk/latest.json").catch(() => null) : null;
+  const [apk, play] = hasR2()
+    ? await Promise.all([readJson<ApkInfo>("apk/latest.json").catch(() => null), readJson<ApkInfo>("apk/play.json").catch(() => null)])
+    : [null, null];
   return (
     <>
       <PageHeader title="Flags & settings" description="Turn features on or off and change app settings without an app update. Every change is logged." />
@@ -68,7 +70,7 @@ async function Settings() {
         </div>
       </div>
       <div className="mt-4">
-        <SettingsForm values={v} />
+        <SettingsForm values={v} builds={{ play: play?.build ?? null, direct: apk?.build ?? null }} />
       </div>
     </>
   );

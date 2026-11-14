@@ -196,23 +196,29 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                     }),
                     child: AnimatedContainer(
                       duration: Motion.fast,
-                      constraints: const BoxConstraints(minHeight: 56),
-                      padding: const EdgeInsets.symmetric(horizontal: Space.s2, vertical: Space.s2),
+                      constraints: const BoxConstraints(minHeight: 72),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: Space.s2),
                       decoration: BoxDecoration(
                         color: x == exam ? c.secondarySoft : c.surface,
                         borderRadius: BorderRadius.circular(Radii.md),
                         border: Border.all(color: x == exam ? c.secondary : c.border, width: x == exam ? 2 : 1),
                       ),
-                      child: Row(
+                      // Logo above the name so the whole name always shows (owner, 14 Nov 2026: no "J…", "Ch…").
+                      child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           if (x == challengesBoard)
-                            Icon(PhosphorIcons.trophy(PhosphorIconsStyle.fill), size: 20, color: c.accent)
+                            SizedBox(
+                              height: 32,
+                              child: Center(child: Icon(PhosphorIcons.trophy(PhosphorIconsStyle.fill), size: 24, color: c.accent)),
+                            )
                           else
                             ExamLogo(x, size: LogoSize.sm),
-                          const Gap(Space.s2),
-                          Flexible(
-                            child: Text(x == challengesBoard ? 'Challenges' : x, style: context.ty.sm.bold, overflow: TextOverflow.ellipsis),
+                          const SizedBox(height: 6),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(x == challengesBoard ? 'Challenges' : x, style: context.ty.sm.bold, maxLines: 1, softWrap: false),
                           ),
                         ],
                       ),

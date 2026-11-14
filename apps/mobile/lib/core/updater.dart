@@ -13,7 +13,7 @@ import '../theme/tokens.g.dart';
 import '../ui/kit.dart';
 import '../widgets/phosphor.g.dart';
 import 'config.dart';
-import 'providers.dart';
+import 'app_gate.dart' show appGateProvider;
 
 /// In-app update of the direct (website) app (owner, D-080). The app asks the website for the newest build, compares
 /// it with its own versionCode (minutes since 1970, set by GitHub), downloads it inside the app and opens Android's
@@ -210,11 +210,13 @@ final appUpdateProvider = FutureProvider<UpdateInfo?>((ref) async {
   if (!rel.newerThan(mine)) return null;
   // Updating is optional (owner, 2026-11-07): the student updates from Me → App update or the small card.
   // Only when the admin sets app_update.force = true does the full "Update needed" screen block the app.
+  // It is also a must when this build is older than the admin's minimum build (Admin → Settings, owner 14 Nov 2026).
   var force = false;
   try {
-    final s = await ref.read(appSettingsProvider.future);
-    final u = s['app_update'];
+    final g = await ref.read(appGateProvider.future);
+    final u = g['app_update'];
     if (u is Map && u['force'] == true) force = true;
+    if (((g['min_build'] as num?)?.toInt() ?? 0) > mine) force = true;
   } catch (_) {}
   return UpdateInfo(rel, force: force);
 });

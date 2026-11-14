@@ -16,12 +16,15 @@ export async function setFlag(key: string, enabled: boolean): Promise<ActionResu
   return { ok: true };
 }
 
-const version = z.string().trim().regex(/^\d+\.\d+\.\d+$/, "Version looks like 1.0.0");
 const Settings = z.object({
-  min_android: version,
-  force_update: z.enum(["on"]).optional(),
   maintenance: z.enum(["on"]).optional(),
+  maintenance_staff: z.enum(["on"]).optional(),
   maintenance_message: z.string().trim().min(5, "Write a short maintenance message").max(300),
+  maintenance_until: z.union([z.literal(""), z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, "Pick a date and time")]).default(""),
+  play_prompt: z.enum(["on"]).optional(),
+  play_force: z.enum(["on"]).optional(),
+  play_notes: z.string().trim().max(500, "What's new: 500 letters at most").default(""),
+  min_build: z.coerce.number().int("Build number is a whole number").min(0).max(99999999).default(0),
   whatsapp: z.string().trim().regex(/^\+?[0-9 ]{7,20}$/, "WhatsApp number looks wrong"),
   support_email: z.union([z.literal(""), z.string().trim().email("Support email looks wrong")]),
   company_name: z.string().trim().min(2).max(120),
@@ -39,8 +42,11 @@ export async function saveSettings(form: FormData): Promise<ActionResult> {
   const s = p.data;
   const digits = s.whatsapp.replace(/\D/g, "");
   const rows = [
-    { key: "min_app_version", value: { android: s.min_android, force: s.force_update === "on" } },
-    { key: "maintenance", value: { enabled: s.maintenance === "on", message: s.maintenance_message } },
+    // "Back by" is typed in Lagos time (UTC+1, no daylight saving).
+    { key: "maintenance", value: { enabled: s.maintenance === "on", message: s.maintenance_message, staff_bypass: s.maintenance_staff === "on",
+      until: s.maintenance_until ? new Date(`${s.maintenance_until}:00+01:00`).toISOString() : null } },
+    { key: "play_update", value: { prompt: s.play_prompt === "on", force: s.play_force === "on", notes: s.play_notes } },
+    { key: "min_build", value: { build: s.min_build } },
     { key: "support", value: { whatsapp: `+${digits}`, whatsapp_link: `https://wa.me/${digits}`, email: s.support_email || null } },
     { key: "company", value: { name: s.company_name, rc_number: s.rc_number, address: s.address, website: s.website, web_app: s.web_app } },
     { key: "disclaimer", value: s.disclaimer },

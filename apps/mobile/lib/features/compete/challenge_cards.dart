@@ -645,7 +645,6 @@ class ChallengeListCard extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Container(width: 4, color: c.live ? _red : cc.secondary),
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.all(Space.s3),

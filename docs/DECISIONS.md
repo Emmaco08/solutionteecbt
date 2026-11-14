@@ -1800,3 +1800,28 @@ Owner: "COMMUNITY IS APPROVED, only few changes…" (same day as D-155).
   `(select ...)`, so the check runs once per query. Same rules, same answers: tested that a student and a staff member
   without two-step sign-in still read 0 rows, and a signed-in super admin reads all. Added an index for the newest-first
   list. The same query now takes 0.08 s. New policies must use the `(select private.…())` form.
+
+## D-162 — Updates, maintenance, no-internet mode and a scaling pass (14 Nov 2026)
+
+- **Leaderboard:** exam chips show the logo above the full name (no "J…", "Ch…"). **Challenge list rows:** the
+  coloured edge on the left is removed (owner).
+- **Play Store update pop-up:** Google Play's own update check (`in_app_update`) says when a newer version is live. The
+  pop-up follows the owner's example: "Discover a new version", the version in gold, a rocket picture, a short note,
+  and Ignore / Update now. Update now opens the Play Store; Ignore hides it for a day.
+- **Admin → Flags & settings:**
+  - **Maintenance:** message, "Back by" time (Lagos), and "staff can still use the app" (not tutors). The app checks
+    every 30 s while showing it and opens again by itself.
+  - **Play app:** show the pop-up, or make the update a must.
+  - **Minimum build:** every app (Play and website) below that build number must update. This replaces the old
+    "minimum version 1.0.0" check, which compared a version name the release build never set.
+  - All of it comes from one small call, `public.app_gate()`. The checks wrap the whole app, so signed-out screens
+    are covered too.
+- **No internet:**
+  - A real check (the phone says "connected", and one tiny request to our server confirms it), re-checked every 10 s
+    while offline.
+  - A small banner at the top ("No internet · downloaded tests still work") that shrinks to "Offline", and a green
+    "Back online" when the connection returns.
+  - Offline screens list what still works, link to My downloads, and reload by themselves when the internet is back.
+- **Scaling:** `my_open_years` made 20–30× faster (same answers, tested), 87 foreign-key indexes added, 4 duplicate
+  indexes dropped, scheduled-job history trimmed nightly. Compute-size advice for busy times is in docs/SCALING.md
+  (owner's pricing decision).

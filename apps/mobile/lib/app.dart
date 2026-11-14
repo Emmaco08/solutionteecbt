@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/ads.dart';
+import 'core/app_gate.dart';
 import 'core/providers.dart';
 import 'core/secure_screen.dart';
 import 'core/updater.dart';
@@ -38,7 +39,9 @@ class SolutionTeeApp extends ConsumerWidget {
         return MediaQuery(
           data: mq.copyWith(disableAnimations: mq.disableAnimations || settings.reduceMotion, textScaler: appTextScaler(mq)),
           child: UpdateGate(
-            child: StickyAds(child: TutorLiveBanner(child: child!)),
+            child: AppGate(
+              child: StickyAds(child: TutorLiveBanner(child: child!)),
+            ),
           ),
         );
       },
