@@ -7,12 +7,13 @@ import { friendlyError, type ActionResult } from "@/lib/result";
 
 // Game Zone v2 admin (D-157): settings and XP per game, and the Word War / Memory Flash content.
 
-const GAMES = ["duel", "rush", "survival", "blitz", "words", "memory", "relay"] as const;
+const GAMES = ["duel", "reading", "rush", "survival", "blitz", "words", "memory", "relay"] as const;
 const n = (min: number, max: number) => z.coerce.number().int().min(min).max(max);
 /** Blank means "use the default". */
 const opt = (min: number, max: number) => z.union([z.literal("").transform(() => undefined), z.null().transform(() => undefined), n(min, max)]).optional();
 
 const Game = z.object({ on: z.boolean(), xp_play: opt(0, 500), xp_win: opt(0, 500), seconds: opt(5, 300), rounds: opt(3, 30) });
+// Comprehension Clash takes 3 to 6 questions (the server clamps it too).
 
 const Settings = z.object({
   queue_seconds: n(5, 60),
@@ -29,14 +30,23 @@ export async function saveGzSettings(input: unknown): Promise<ActionResult> {
   await requireStaff(["super_admin", "admin"]);
   const p = Settings.safeParse(input);
   if (!p.success) return { ok: false, error: p.error.issues[0]?.message ?? "Check the numbers" };
-  const games = Object.fromEntries(
-    Object.entries(p.data.games).map(([k, v]) => [k, Object.fromEntries(Object.entries(v).filter(([, x]) => x !== undefined))]),
-  );
   const supabase = await createClient();
   const { data: cur } = await supabase.from("app_settings").select("value").eq("key", "games").maybeSingle();
   const value = (cur?.value ?? {}) as Record<string, unknown>;
+  // Keys this form does not edit (e.g. Comprehension Clash reading speed) stay.
+  const old = (((value.gz ?? {}) as Record<string, unknown>).games ?? {}) as Record<string, Record<string, unknown>>;
+  const FORM_KEYS = ["on", "xp_play", "xp_win", "seconds", "rounds"];
+  const games = Object.fromEntries(
+    Object.entries(p.data.games).map(([k, v]) => [
+      k,
+      {
+        ...Object.fromEntries(Object.entries(old[k] ?? {}).filter(([x]) => !FORM_KEYS.includes(x))),
+        ...Object.fromEntries(Object.entries(v).filter(([, x]) => x !== undefined)),
+      },
+    ]),
+  );
   const gz = { ...((value.gz ?? {}) as Record<string, unknown>), ...p.data, games };
-  const { error } = await supabase.from("app_settings").upsert({ key: "games", value: { ...value, gz } });
+  const { error } = await supabase.from("app_settings").upsert({ key: "games", value: JSON.parse(JSON.stringify({ ...value, gz })) });
   if (error) return { ok: false, error: friendlyError(error) };
   revalidatePath("/admin/games");
   return { ok: true, message: "Saved. The app uses the new settings from the next game." };
