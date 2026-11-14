@@ -1714,3 +1714,40 @@ Owner: "COMMUNITY IS APPROVED, only few changes…" (same day as D-155).
   Students are never told the source: items carry no source field. If a subject has fewer own questions than a game needs,
   past questions fill the gap so a game always starts. To cut repeats, `gz_seen` remembers each question a student got
   (30 days); questions seen in the last 21 days go to the back of the queue.
+
+## D-158 · Owner corrections and new features, 13 Nov 2026 (Game Zone, Community, Home, ratings, onboarding)
+- **Names in full.** A shared `FitText` / `NameLine` (apps/mobile/lib/widgets/fit_text.dart) shows a name whole, sets it up
+  to 15–25% smaller when it is a little long, and only then ends a really long name with "…". In posts the @handle gives way
+  first and the time always shows; the "…" menu now sits in its own column at the right edge. Home shows the first name with
+  XP and streak under it; the Game Zone hub shows the name on a plate under the header.
+- **Game music stopped after a sound effect:** every effect asked Android for audio focus ("gain"), which made our own music
+  player lose focus for good. All Game Zone players now use AudioFocus none / iOS ambient + mix, so music and effects share.
+- **Profile photos** crop a little above the middle (faces in 9:16 photos); staff, the official page and pages show no
+  streak; "0 Following  1 Follower" spacing.
+- **Challenges** show no "Past Question / SolutionTee Mock" label (owner's call; the legal list in D-120 asked for it — it
+  stays in normal practice). The challenge card has no "LIVE · n playing" pill. The JAMB mock result no longer *replaces* the
+  router page (that left go_router's page list out of step, so "See the leaderboard" opened a blank screen).
+- **Countdown:** back to the small one-line chip, "122 days to your UTME (15 Mar 2027)", number counts up, hourglass turns,
+  a gold shine passes (owner preferred the small chip to a big card). The full-screen daily countdown is unchanged.
+- **Community:** @ suggestions while typing (pages first, then people you follow, then handles, then names); SolutionTee AI
+  replies read the post, its pictures (vision model), the quoted post and the last 16 replies; likes, reposts and reply likes
+  now push (one per post an hour, on by default, switchable); opening a notification or the post a push opened marks it read
+  at once (`community_note_open`).
+- **Comprehension Clash** (game `reading`, race engine): same passage for both players, shown part by part for words ÷ wpm
+  (Admin, default 240, 20 s–3 min); answers are refused until the passage closes and the passage text is withheld after it;
+  3–6 questions (main idea, writer's purpose, word in context, deduction, detail); most right wins, ties to the earlier finish;
+  2 points a second left. Bots get their whole answering time. Passages: our own (`gz_passages` + questions, CSV in Admin,
+  8 original starter passages) and/or JAMB comprehension passages (free-tier years for free players), following the English
+  source setting. Answers under 1.5 s count as guesses.
+- **Admin → Games** is now tabs: Overview (stats, settings, XP, question source), one tab per game (how it works, best content,
+  its CSV format), Classic games. CSV for Word War words, Memory Flash cards and Comprehension Clash passages (one row per
+  question, grouped by passage title), all checked in the browser (`gz-csv-check.ts`) and again on the server.
+- **Home:** "Play and connect" cards for Game Zone and Community just before News (painted, light, motion off with reduce motion).
+- **App rating + reviews:** our own rating card (stars + comment; `app_ratings`, one per 20 days) after N days/opens, then every
+  N days; staff read it in Admin → App ratings. Google's in-app review is asked at a happy moment (score ≥ 60% on 10+
+  questions, a game win), separately and for everyone: Play forbids asking an opinion first or showing Google's box only to
+  happy users. Feature suggestions (Game Zone, Community, Request a tutor) rotate, skip features opened in 7 days; at most
+  one pop-up an app open, never on top of the countdown, a badge or the daily XP. All timings in Admin.
+- **Onboarding:** slides for Game Zone, Community and Request a tutor (painted art), new order; the tour has a "Play and
+  connect" step. **Play listing:** new short/full description, store images 8–10 from the app's own renders, feature
+  graphic, screenshot order, data safety line, what's new text (docs/play-console/README.md).

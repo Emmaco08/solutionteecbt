@@ -131,7 +131,13 @@ void main() {
 
   for (final k in ['games', 'community', 'tutor']) {
     testWidgets('onboarding $k', (t) async {
-      await _shot(t, Center(child: SizedBox(width: 340, height: 340, child: SlideArt(kind: k, current: true))), 'w_onb_$k');
+      await _shot(
+        t,
+        Center(
+          child: SizedBox(width: 340, height: 340, child: SlideArt(kind: k, current: true)),
+        ),
+        'w_onb_$k',
+      );
     });
   }
 
@@ -146,9 +152,35 @@ void main() {
         'replies': 6,
         'likes': 24,
       },
-      {..._post('b', 'Tobi Adeyemi', 'tobi', body: 'Just won 3 games of Comprehension Clash in a row. Read the passage fast, then answer 5 questions. Who wants a rematch tonight?'), 'likes': 132, 'replies': 41},
-      {..._post('c', 'Musa Ibrahim', 'musa_i', body: 'Finished my first full JAMB mock today: 268! My target is 300 by March. Who wants to practise Physics together? #JAMB2027'), 'likes': 57, 'replies': 12},
-      {..._post('d', 'Chioma Okafor', 'chioma', body: 'Tip: do one comprehension passage every morning against a timer. My English score went up by 15 marks.'), 'likes': 88},
+      {
+        ..._post(
+          'b',
+          'Tobi Adeyemi',
+          'tobi',
+          body: 'Just won 3 games of Comprehension Clash in a row. Read the passage fast, then answer 5 questions. Who wants a rematch tonight?',
+        ),
+        'likes': 132,
+        'replies': 41,
+      },
+      {
+        ..._post(
+          'c',
+          'Musa Ibrahim',
+          'musa_i',
+          body: 'Finished my first full JAMB mock today: 268! My target is 300 by March. Who wants to practise Physics together? #JAMB2027',
+        ),
+        'likes': 57,
+        'replies': 12,
+      },
+      {
+        ..._post(
+          'd',
+          'Chioma Okafor',
+          'chioma',
+          body: 'Tip: do one comprehension passage every morning against a timer. My English score went up by 15 marks.',
+        ),
+        'likes': 88,
+      },
     ];
     await t.pumpWidget(
       ProviderScope(
@@ -169,7 +201,10 @@ void main() {
                     children: [
                       const Icon(Icons.arrow_back_ios_new, size: 20),
                       const Spacer(),
-                      Text('Community', style: const TextStyle(fontFamily: 'PlusJakartaSans', fontSize: 22, fontWeight: FontWeight.w700)),
+                      Text(
+                        'Community',
+                        style: const TextStyle(fontFamily: 'PlusJakartaSans', fontSize: 22, fontWeight: FontWeight.w700),
+                      ),
                       const Spacer(),
                       const CircleAvatar(radius: 16, child: Text('T')),
                     ],
@@ -181,7 +216,10 @@ void main() {
                       Expanded(
                         child: Column(
                           children: [
-                            Text(x, style: TextStyle(fontFamily: 'PlusJakartaSans', fontSize: 16, fontWeight: i == 0 ? FontWeight.w700 : FontWeight.w500)),
+                            Text(
+                              x,
+                              style: TextStyle(fontFamily: 'PlusJakartaSans', fontSize: 16, fontWeight: i == 0 ? FontWeight.w700 : FontWeight.w500),
+                            ),
                             const SizedBox(height: 8),
                             Container(height: 3, width: 70, color: i == 0 ? const Color(0xFFF2B233) : Colors.transparent),
                           ],
@@ -190,7 +228,12 @@ void main() {
                   ],
                 ),
                 const Divider(height: 1),
-                Expanded(child: ListView(physics: const NeverScrollableScrollPhysics(), children: [for (final p in feed) PostCell(post: p)])),
+                Expanded(
+                  child: ListView(
+                    physics: const NeverScrollableScrollPhysics(),
+                    children: [for (final p in feed) PostCell(post: p)],
+                  ),
+                ),
               ],
             ),
           ),
