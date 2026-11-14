@@ -140,7 +140,10 @@ export function checkGzCsv(text: string): { rows: Row[]; issues: Issue[]; header
   return { rows, issues, headers: parsed.headers };
 }
 
-export function GzQuestions({ subjects }: { subjects: Subject[] }) {
+const GAME_NAMES: Record<string, string> = { duel: "JAMB Duel", rush: "Speed Rush", survival: "Knowledge Survival", relay: "Team Relay" };
+
+/** [game]: the quiz game tab this panel is in (its list shows what that game can use, and new uploads can be for it only). */
+export function GzQuestions({ subjects, game }: { subjects: Subject[]; game?: string }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [subject, setSubject] = useState<number>(subjects[0]?.id ?? 2);
@@ -149,13 +152,14 @@ export function GzQuestions({ subjects }: { subjects: Subject[] }) {
   const [list, setList] = useState<{ rows: GzQuestionRow[]; total: number; batches: { batch: string; n: number }[] } | null>(null);
   const [q, setQ] = useState("");
   const [page, setPage] = useState(0);
+  const [scope, setScope] = useState<"game" | "all">("all");
   const name = (id: number) => subjects.find((s) => s.id === id)?.name ?? `Subject ${id}`;
 
   const load = useCallback(async () => {
-    const r = await listGzQuestions(subject, q, page);
+    const r = await listGzQuestions(subject, q, page, game);
     if (r.ok) setList(r.data ?? null);
     else toast.error(r.error);
-  }, [subject, q, page]);
+  }, [subject, q, page, game]);
   useEffect(() => {
     const t = setTimeout(load, 250);
     return () => clearTimeout(t);
@@ -191,6 +195,15 @@ export function GzQuestions({ subjects }: { subjects: Subject[] }) {
               {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
+          {game ? (
+            <div className="min-w-56">
+              <Label htmlFor="gzq-scope">New questions are for</Label>
+              <select id="gzq-scope" className={inputCls} value={scope} onChange={(e) => setScope(e.target.value as "game" | "all")}>
+                <option value="all">All 4 quiz games (Duel, Rush, Survival, Relay)</option>
+                <option value="game">{GAME_NAMES[game] ?? game} only</option>
+              </select>
+            </div>
+          ) : null}
           <Button variant="outline" onClick={template}><DownloadSimple size={16} weight="bold" /> CSV template</Button>
           <input ref={input} type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) pick(f); e.target.value = ""; }} />
           <Button onClick={() => input.current?.click()}><UploadSimple size={16} weight="bold" /> Choose CSV for {name(subject)}</Button>
@@ -209,7 +222,7 @@ export function GzQuestions({ subjects }: { subjects: Subject[] }) {
               <div className="ml-auto flex gap-2">
                 <Button variant="ghost" onClick={() => setFile(null)}>Cancel</Button>
                 <Button disabled={pending || !file.rows.length || blocking.length > 0}
-                  onClick={() => act(async () => { const r = await importGzQuestions(subject, file.name, file.rows); if (r.ok) setFile(null); return r; })}>
+                  onClick={() => act(async () => { const r = await importGzQuestions(subject, file.name, file.rows, game && scope === "game" ? [game] : null); if (r.ok) setFile(null); return r; })}>
                   Add {file.rows.length.toLocaleString("en-NG")} questions
                 </Button>
               </div>
@@ -257,6 +270,8 @@ export function GzQuestions({ subjects }: { subjects: Subject[] }) {
                     {Object.entries(r.options).map(([o, v]) => (o === r.answer ? `✓ ${o}. ${v}` : `${o}. ${v}`)).join("   ")} · {r.difficulty}
                   </p>
                 </div>
+                <Pill tone={r.difficulty === "hard" ? "error" : r.difficulty === "easy" ? "ok" : "info"}>{r.difficulty}</Pill>
+                <Pill tone="neutral">{r.games?.length ? r.games.map((g) => GAME_NAMES[g] ?? g).join(", ") : "All quiz games"}</Pill>
                 <Pill tone={r.active ? "ok" : "neutral"}>{r.active ? "Live" : "Hidden"}</Pill>
                 <Button size="sm" variant="outline" disabled={pending} onClick={() => act(() => setGzQuestion(r.id, !r.active))}>{r.active ? "Hide" : "Show"}</Button>
                 <Button size="sm" variant="ghost" disabled={pending} onClick={() => { if (confirm("Delete this question?")) act(() => deleteGzQuestion(r.id)); }}>Delete</Button>

@@ -318,7 +318,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, s) => GzHubScreen(game: s.uri.queryParameters['game']),
       ),
       GoRoute(path: '/games/classic', builder: (_, _) => const GamesScreen()),
-      GoRoute(path: '/games/ranks', builder: (_, _) => const GzRanksScreen()),
+      GoRoute(
+        path: '/games/ranks',
+        builder: (_, st) => GzRanksScreen(game: st.uri.queryParameters['game']),
+      ),
       GoRoute(
         path: '/games/find',
         builder: (_, s) => GzFindScreen(

@@ -8,7 +8,7 @@ import { ArenaList, GamesSettingsForm, type AdminArena, type GamesSettings } fro
 import { GzCards, GzSettingsForm, GzWords, type GzCard, type GzWord } from "./gamezone-ui";
 import { GZ_GAMES } from "./gamezone-shared";
 import { GzQuestions, GzSourceForm } from "./gz-questions-ui";
-import { GzAdminTabs, GzCardsCsv, GzGuide, GzPassages, GzPassagesCsv, GzReadingForm, GzWordsCsv } from "./gz-content-ui";
+import { GzAdminTabs, GzCardsCsv, GzGuide, GzInstructions, GzPassages, GzPassagesCsv, GzReadingForm, GzWordsCsv } from "./gz-content-ui";
 
 export const metadata: Metadata = { title: "Games" };
 
@@ -24,7 +24,7 @@ function since() {
 async function Games() {
   const staff = await requireStaff(["super_admin", "admin", "editor"]);
   const supabase = await createClient();
-  const [arenas, players, settings, stats, cat, gzStats, words, cards, gzCounts] = await Promise.all([
+  const [arenas, players, settings, stats, cat, gzStats, words, cards, gzCounts, gzDiff] = await Promise.all([
     supabase.from("arenas").select("id, title, exam_id, subject_id, starts_at, q_count, seconds, gap, max_players, status, rewarded_at").gte("starts_at", since()).order("starts_at"),
     supabase.from("arena_players").select("arena_id"),
     supabase.from("app_settings").select("value").eq("key", "games").maybeSingle(),
@@ -34,6 +34,7 @@ async function Games() {
     supabase.from("gz_words").select("id, kind, word, answer, wrong, active").order("active").order("id"),
     supabase.from("gz_cards").select("id, subject_id, front, back, active").order("active").order("subject_id").order("id"),
     supabase.rpc("admin_gz_question_counts"),
+    supabase.rpc("admin_gz_difficulty"),
   ]);
   if (arenas.error) return <ErrorState message={arenas.error.message} />;
   const count = new Map<string, number>();
@@ -51,15 +52,18 @@ async function Games() {
     <div className="rounded-2xl border bg-card p-4"><p className="text-xs text-muted-foreground">{label}</p><p className="text-2xl font-bold tabular-nums">{value}</p></div>
   );
   const wpm = num(gz.games?.reading?.wpm, 240);
-  const QUESTION_GAMES = "These SolutionTee questions are shared by JAMB Duel, Speed Rush, Knowledge Survival and Team Relay. Where they come from (JAMB, ours or both) is set in Overview.";
+  type Counts = { easy?: number; medium?: number; hard?: number };
+  const diff = (gzDiff.data ?? {}) as { questions?: Record<string, Counts>; reading?: Counts; words?: Counts; memory?: Counts };
+  const QUESTION_GAMES = "Questions can be for this game only or shared by all 4 quiz games (JAMB Duel, Speed Rush, Knowledge Survival, Team Relay). Where they come from (JAMB, ours or both) is set in Overview.";
   const gameStat = (id: string) => (
     <p className="text-xs text-muted-foreground">Matches in the last 7 days: <b>{(gs.by_game?.[id] ?? 0).toLocaleString("en-NG")}</b>. On/off, XP, seconds and rounds for this game are in Overview → settings.</p>
   );
   const questions = (id: "duel" | "rush" | "survival" | "relay") => (
     <>
       <GzGuide game={id} shared={QUESTION_GAMES} />
+      <GzInstructions game={id} counts={diff.questions?.[id]} />
       {gameStat(id)}
-      <GzQuestions subjects={subjectList} />
+      <GzQuestions subjects={subjectList} game={id} />
     </>
   );
   const overview = (
@@ -121,6 +125,7 @@ async function Games() {
           id: "reading", label: "Comprehension Clash", content: (
             <>
               <GzGuide game="reading" />
+              <GzInstructions game="reading" counts={diff.reading} />
               {gameStat("reading")}
               {isAdmin ? <GzReadingForm wpm={wpm} /> : null}
               <GzPassagesCsv />
@@ -130,11 +135,12 @@ async function Games() {
         },
         { id: "rush", label: "Speed Rush", content: questions("rush") },
         { id: "survival", label: "Knowledge Survival", content: questions("survival") },
-        { id: "blitz", label: "Maths Blitz", content: (<><GzGuide game="blitz" />{gameStat("blitz")}</>) },
+        { id: "blitz", label: "Maths Blitz", content: (<><GzGuide game="blitz" /><GzInstructions game="blitz" />{gameStat("blitz")}</>) },
         {
           id: "words", label: "Word War", content: (
             <>
               <GzGuide game="words" />
+              <GzInstructions game="words" counts={diff.words} />
               {gameStat("words")}
               <GzWordsCsv />
               <GzWords words={(words.data ?? []) as GzWord[]} />
@@ -145,6 +151,7 @@ async function Games() {
           id: "memory", label: "Memory Flash", content: (
             <>
               <GzGuide game="memory" />
+              <GzInstructions game="memory" counts={diff.memory} />
               {gameStat("memory")}
               <GzCardsCsv subjects={cat.subjects.map((x) => ({ id: x.id, name: x.name, code: x.code }))} />
               <GzCards cards={(cards.data ?? []) as GzCard[]} subjects={subjectList} />

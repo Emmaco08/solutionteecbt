@@ -14,13 +14,23 @@ export function columns(headers: string[], want: Record<string, string[]>) {
 
 export type Checked<T> = { rows: T[]; issues: Issue[]; summary?: string };
 
-export type WordRow = { kind: "synonym" | "antonym" | "spelling"; word: string; answer: string; wrong: string[] };
+export type Difficulty = "easy" | "medium" | "hard";
+export type WordRow = { kind: "synonym" | "antonym" | "spelling"; word: string; answer: string; wrong: string[]; difficulty: Difficulty };
+
+/** "easy" / "medium" / "hard" (also 1–3, e, m, h); anything else or empty is medium. */
+export function readDifficulty(v: string | undefined): Difficulty {
+  const d = (v ?? "").trim().toLowerCase();
+  if (d === "easy" || d === "e" || d === "1") return "easy";
+  if (d === "hard" || d === "h" || d === "3") return "hard";
+  return "medium";
+}
 
 export function checkWordsCsv(text: string): Checked<WordRow> {
   const p = parseCsv(text);
   const c = columns(p.headers, {
     kind: ["kind", "type"], word: ["word"], answer: ["answer", "rightanswer", "correct"],
     w1: ["wrong1", "wronganswer1", "option2"], w2: ["wrong2", "wronganswer2", "option3"], w3: ["wrong3", "wronganswer3", "option4"],
+    difficulty: ["difficulty", "level"],
   });
   const issues: Issue[] = [...p.parseErrors];
   for (const k of ["kind", "answer", "w1", "w2", "w3"]) if (!c[k]) issues.push({ row: 1, message: `Missing column: ${k.startsWith("w") ? `wrong_${k[1]}` : k}` });
@@ -39,16 +49,16 @@ export function checkWordsCsv(text: string): Checked<WordRow> {
     if (!answer || wrong.some((w) => !w)) return void issues.push({ row: line, message: "Add the right answer and 3 wrong answers" });
     if ([word, answer, ...wrong].some((x) => x.length > 40)) return void issues.push({ row: line, message: "Keep each word under 40 letters" });
     if (new Set([answer, ...wrong].map((x) => x.toLowerCase())).size < 4) return void issues.push({ row: line, message: "The 4 options must all be different" });
-    rows.push({ kind, word, answer, wrong });
+    rows.push({ kind, word, answer, wrong, difficulty: readDifficulty(c.difficulty ? r[c.difficulty] : undefined) });
   });
   return { rows, issues };
 }
 
-export type CardRow = { subject_id: number; front: string; back: string };
+export type CardRow = { subject_id: number; front: string; back: string; difficulty: Difficulty };
 
 export function checkCardsCsv(text: string, subjects: Subject[]): Checked<CardRow> {
   const p = parseCsv(text);
-  const c = columns(p.headers, { subject: ["subject", "subjectname", "subjectcode"], front: ["front", "term", "side1"], back: ["back", "meaning", "side2"] });
+  const c = columns(p.headers, { subject: ["subject", "subjectname", "subjectcode"], front: ["front", "term", "side1"], back: ["back", "meaning", "side2"], difficulty: ["difficulty", "level"] });
   const issues: Issue[] = [...p.parseErrors];
   for (const k of ["subject", "front", "back"]) if (!c[k]) issues.push({ row: 1, message: `Missing column: ${k}` });
   if (issues.some((i) => i.row === 1)) return { rows: [], issues };
@@ -63,7 +73,7 @@ export function checkCardsCsv(text: string, subjects: Subject[]): Checked<CardRo
     if (!front || !back) return void issues.push({ row: line, message: "Add both sides" });
     if (front.length > 30 || back.length > 30) return void issues.push({ row: line, message: "Keep each side to 30 letters" });
     if (front.toLowerCase() === back.toLowerCase()) return void issues.push({ row: line, message: "The two sides must be different" });
-    rows.push({ subject_id: sub.id, front, back });
+    rows.push({ subject_id: sub.id, front, back, difficulty: readDifficulty(c.difficulty ? r[c.difficulty] : undefined) });
   });
   return { rows, issues };
 }

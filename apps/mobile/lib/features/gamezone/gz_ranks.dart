@@ -17,13 +17,16 @@ import 'gz_theme.dart';
 // Game Zone ranks (D-157): the best ratings, for all games or one game, with a podium for the top three.
 
 class GzRanksScreen extends ConsumerStatefulWidget {
-  const GzRanksScreen({super.key});
+  const GzRanksScreen({super.key, this.game});
+
+  /// Opens on this game's board (from the hub); all games when null.
+  final String? game;
   @override
   ConsumerState<GzRanksScreen> createState() => _GzRanksScreenState();
 }
 
 class _GzRanksScreenState extends ConsumerState<GzRanksScreen> {
-  String? _game;
+  late String? _game = GzGame.all.any((g) => g.id == widget.game) ? widget.game : null;
 
   @override
   Widget build(BuildContext context) {

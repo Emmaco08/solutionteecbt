@@ -16,6 +16,7 @@ const WordRow = z.object({
   word: z.string().trim().max(40),
   answer: z.string().trim().min(1).max(40),
   wrong: z.array(z.string().trim().min(1).max(40)).length(3),
+  difficulty: z.enum(["easy", "medium", "hard"]).default("medium"),
 });
 
 export async function importGzWords(rows: unknown[]): Promise<ActionResult<{ inserted: number }>> {
@@ -38,7 +39,12 @@ export async function importGzWords(rows: unknown[]): Promise<ActionResult<{ ins
   return { ok: true, message: `${clean.length} words added. They are live in Word War now.`, data: { inserted: clean.length } };
 }
 
-const CardRow = z.object({ subject_id: z.number().int().positive(), front: z.string().trim().min(1).max(30), back: z.string().trim().min(1).max(30) });
+const CardRow = z.object({
+  subject_id: z.number().int().positive(),
+  front: z.string().trim().min(1).max(30),
+  back: z.string().trim().min(1).max(30),
+  difficulty: z.enum(["easy", "medium", "hard"]).default("medium"),
+});
 
 export async function importGzCards(rows: unknown[]): Promise<ActionResult<{ inserted: number }>> {
   await requireStaff([...EDITORS]);

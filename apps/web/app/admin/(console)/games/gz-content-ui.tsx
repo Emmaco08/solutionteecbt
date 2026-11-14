@@ -146,10 +146,10 @@ export function GzWordsCsv() {
     <CsvBox
       title="Add Word War words by CSV"
       templateName="word-war-template.csv"
-      template={"type,word,answer,wrong_1,wrong_2,wrong_3\nsynonym,Benevolent,Kind,Cruel,Lazy,Proud\nantonym,Scarce,Plentiful,Rare,Little,Small\nspelling,,Accommodate,Acommodate,Accomodate,Acomodate\n"}
-      help={<>Columns: <b>type</b> (synonym, antonym or spelling), <b>word</b> (leave empty for spelling), <b>answer</b>, <b>wrong_1, wrong_2, wrong_3</b>. Up to 3,000 rows a file.</>}
+      template={"type,word,answer,wrong_1,wrong_2,wrong_3,difficulty\nsynonym,Benevolent,Kind,Cruel,Lazy,Proud,medium\nantonym,Scarce,Plentiful,Rare,Little,Small,easy\nspelling,,Accommodate,Acommodate,Accomodate,Acomodate,hard\n"}
+      help={<>Columns: <b>type</b> (synonym, antonym or spelling), <b>word</b> (leave empty for spelling), <b>answer</b>, <b>wrong_1, wrong_2, wrong_3</b>, difficulty (easy, medium or hard; empty = medium). Up to 3,000 rows a file.</>}
       check={checkWordsCsv}
-      preview={(r) => <span><b>{r.kind}</b>{r.word ? ` · ${r.word}` : ""} → <b>{r.answer}</b> <span className="text-muted-foreground">(not {r.wrong.join(", ")})</span></span>}
+      preview={(r) => <span><b>{r.kind}</b>{r.word ? ` · ${r.word}` : ""} → <b>{r.answer}</b> <span className="text-muted-foreground">(not {r.wrong.join(", ")}) · {r.difficulty}</span></span>}
       onImport={(_, rows) => importGzWords(rows)}
     />
   );
@@ -163,10 +163,10 @@ export function GzCardsCsv({ subjects }: { subjects: Subject[] }) {
     <CsvBox
       title="Add Memory Flash cards by CSV"
       templateName="memory-flash-template.csv"
-      template={"subject,front,back\nChemistry,Na,Sodium\nBiology,Mitochondrion,Respiration\nEconomics,GDP,Gross Domestic Product\n"}
-      help={<>Columns: <b>subject</b> (its name, e.g. Chemistry), <b>front</b>, <b>back</b>. 30 letters at most a side. Up to 3,000 rows a file.</>}
+      template={"subject,front,back,difficulty\nChemistry,Na,Sodium,easy\nBiology,Mitochondrion,Respiration,medium\nEconomics,GDP,Gross Domestic Product,hard\n"}
+      help={<>Columns: <b>subject</b> (its name, e.g. Chemistry), <b>front</b>, <b>back</b>, difficulty (easy, medium or hard; empty = medium). 30 letters at most a side. Up to 3,000 rows a file.</>}
       check={(t) => checkCardsCsv(t, subjects)}
-      preview={(r) => <span><b>{name(r.subject_id)}</b>: {r.front} ↔ {r.back}</span>}
+      preview={(r) => <span><b>{name(r.subject_id)}</b>: {r.front} ↔ {r.back} <span className="text-muted-foreground">· {r.difficulty}</span></span>}
       onImport={(_, rows) => importGzCards(rows)}
     />
   );
@@ -319,5 +319,82 @@ export function GzPassages() {
         ) : null}
       </div>
     </Panel>
+  );
+}
+
+// ---------------------------------------------------------------- instructions in each tab
+
+type Counts = { easy?: number; medium?: number; hard?: number };
+
+const STEPS: Record<string, string[]> = {
+  questions: [
+    "Choose the subject, and whether the new questions are for this game only or for all 4 quiz games.",
+    "Click CSV template. Open it in Excel or Google Sheets and type one question per row (keep the first row as it is).",
+    "Fill question, option_a to option_d (option_e is optional), answer (A–E) and difficulty (easy, medium or hard).",
+    "Save as CSV (Excel: File → Save As → CSV UTF-8) and click Choose CSV. Fix any rows listed as problems, then click Add.",
+    "The questions are live at once. Use Undo next to the file name to remove a whole upload.",
+  ],
+  passages: [
+    "Click CSV template and open it in Excel or Google Sheets.",
+    "Write one row per question. Give every row of the same passage the same passage_title; put the passage text on its first row.",
+    "Set difficulty for the passage (easy, medium or hard) and type for each question (main idea, writer's purpose, word in context, deduction, detail).",
+    "Save as CSV, click Choose CSV, check the preview (passages and questions found), then click Add.",
+    "Open a passage in the list below to read it again, hide it, or delete it. Undo removes a whole file.",
+  ],
+  words: [
+    "Click CSV template and open it in Excel or Google Sheets.",
+    "One word per row: type (synonym, antonym or spelling), the word, the right answer, three wrong answers and difficulty.",
+    "For spelling, leave word empty: the right spelling goes in answer and three wrong spellings in wrong_1 to wrong_3.",
+    "Save as CSV, click Choose CSV, fix any problems, then click Add. You can also add or edit one word at a time in the list.",
+  ],
+  cards: [
+    "Click CSV template and open it in Excel or Google Sheets.",
+    "One pair per row: subject (its name, e.g. Chemistry), front, back (30 letters at most each) and difficulty.",
+    "Save as CSV, click Choose CSV, fix any problems, then click Add. Cards of the student's subject are used first.",
+  ],
+  auto: ["Nothing to upload: the server makes new sums for every game. You can change its time and XP in Overview → settings."],
+};
+
+/** "How to add content" and "Difficulty and ranks", with how much content each difficulty has. */
+export function GzInstructions({ game, counts }: { game: GzGameId; counts?: Counts }) {
+  const kind = GZ_GUIDE[game].content;
+  const total = (counts?.easy ?? 0) + (counts?.medium ?? 0) + (counts?.hard ?? 0);
+  const unit = kind === "passages" ? "passages" : kind === "words" ? "words" : kind === "cards" ? "card pairs" : "SolutionTee questions";
+  return (
+    <div className="grid gap-3 md:grid-cols-2">
+      <div className="rounded-2xl border bg-card p-4">
+        <p className="mb-2 font-bold">How to add content</p>
+        <ol className="grid list-decimal gap-1 pl-5 text-sm text-muted-foreground">{STEPS[kind].map((x) => <li key={x}>{x}</li>)}</ol>
+      </div>
+      <div className="rounded-2xl border bg-card p-4">
+        <p className="mb-2 font-bold">Difficulty and ranks</p>
+        {kind === "auto" ? (
+          <p className="text-sm text-muted-foreground">The sums get no harder by rank; the bot gets faster as the student&apos;s rating rises.</p>
+        ) : (
+          <>
+            <ul className="grid list-disc gap-1 pl-5 text-sm text-muted-foreground">
+              <li><b>Bronze</b> students get mostly easy and medium {kind === "passages" ? "passages" : "content"}; <b>Silver</b> mostly medium; <b>Gold</b> medium and hard; <b>Platinum</b> and <b>Diamond</b> mostly hard.</li>
+              <li>In <b>VS AI</b> the level the student picks decides it: Easy → easy, Medium → medium, Hard/Expert → harder, Legend → hardest.</li>
+              {kind === "passages" ? <li>Higher ranks also read faster: 90% of the reading speed for Bronze up to 120% for Diamond.</li> : null}
+              <li>The bot also gets stronger as the student&apos;s rating rises. Aim for about 30% easy, 40% medium and 30% hard.</li>
+            </ul>
+            {counts ? (
+              <div className="mt-3 grid gap-1">
+                <p className="text-xs font-bold">{total.toLocaleString("en-NG")} live {unit}{kind === "questions" ? " this game can use" : ""}</p>
+                <div className="flex h-3 overflow-hidden rounded-full bg-muted">
+                  {(["easy", "medium", "hard"] as const).map((d) => (
+                    <span key={d} className={d === "easy" ? "bg-emerald-500" : d === "medium" ? "bg-sky-500" : "bg-rose-500"} style={{ width: total ? `${(100 * (counts[d] ?? 0)) / total}%` : 0 }} />
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Easy {counts.easy ?? 0} · Medium {counts.medium ?? 0} · Hard {counts.hard ?? 0}
+                  {total > 0 && (["easy", "medium", "hard"] as const).some((d) => (counts[d] ?? 0) < 20) ? " · add more of the small ones so games do not repeat" : ""}
+                </p>
+              </div>
+            ) : null}
+          </>
+        )}
+      </div>
+    </div>
   );
 }

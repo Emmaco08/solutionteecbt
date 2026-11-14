@@ -1751,3 +1751,21 @@ Owner: "COMMUNITY IS APPROVED, only few changes…" (same day as D-155).
 - **Onboarding:** slides for Game Zone, Community and Request a tutor (painted art), new order; the tour has a "Play and
   connect" step. **Play listing:** new short/full description, store images 8–10 from the app's own renders, feature
   graphic, screenshot order, data safety line, what's new text (docs/play-console/README.md).
+
+## D-159 — Game Zone: harder with rank, difficulty per game bank, teleprompter reading, board per game (14 Nov 2026)
+
+- **Harder as you rank up:** `private.gz_target(match)` gives a difficulty target from 0 (easy) to 2 (hard): in ranked and
+  quick games from the players' average rating (Bronze ≈ easy/medium, Silver medium, Gold/Platinum medium-hard, Diamond
+  hard); in VS AI from the level picked (Easy → easy … Legend → hardest). Questions, words, cards and passages are
+  picked closest to the target (still preferring ones not seen in 21 days, so content never runs out). Bots were already
+  stronger with rating. Comprehension Clash also scrolls faster: 90% of the admin reading speed for beginners up to 120%.
+- **Difficulty in every game's bank:** game questions (with an optional "this game only" list), words, card pairs and
+  passages each have easy/medium/hard; the CSV templates have a `difficulty` column (blank = medium).
+  `admin_gz_difficulty()` counts each level per game; each Admin → Games tab shows step-by-step "How to add content",
+  a "Difficulty and ranks" box, and a bar of easy/medium/hard with a warning when a level has fewer than 20.
+- **Teleprompter reading (owner):** the passage moves up by itself at a steady pace from the first line to the last,
+  synced to the match clock, inside a window of about 7 lines with fades, and a gold reading line. Nobody can scroll it
+  or see the whole passage. Painted with one laid-out TextPainter per frame (no rebuilds) to stay smooth on 3 GB phones.
+  Shows the words-a-minute speed, the word count and both readers.
+- **Board per game:** the hub shows the selected game's leaderboard (top 3 + your rank and rating in that game); RANKS and
+  SEE ALL open the ranks screen on that game's tab (all-games tab still there).

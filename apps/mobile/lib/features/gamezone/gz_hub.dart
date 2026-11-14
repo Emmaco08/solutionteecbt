@@ -465,7 +465,7 @@ class _GzHubScreenState extends ConsumerState<GzHubScreen> {
                   child: GameButton(
                     color: GzC.purple,
                     height: 52,
-                    onTap: () => context.push('/games/ranks'),
+                    onTap: () => context.push('/games/ranks?game=$_game'),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -478,6 +478,12 @@ class _GzHubScreenState extends ConsumerState<GzHubScreen> {
                 ),
               ],
             ),
+          ),
+          const SizedBox(height: 16),
+          // This game's own leaderboard (owner, 14 Nov 2026): top three and your rating in it.
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _GameBoard(game: g),
           ),
           const SizedBox(height: 16),
           Padding(
@@ -1308,4 +1314,94 @@ class _Toggle extends StatelessWidget {
       ],
     ),
   );
+}
+
+/// The selected game's leaderboard on the hub: the top three, your rating in this game, and a button to see all.
+class _GameBoard extends ConsumerWidget {
+  const _GameBoard({required this.game});
+  final GzGame game;
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final d = ref.watch(gzLeadersProvider(game.id)).value;
+    if (d == null) return const SizedBox.shrink();
+    final rows = asList(d['rows']);
+    final me = asJson(d['me']);
+    final mine = rows.where((r) => r['me'] == true).firstOrNull;
+    final rating = gzMs(me['rating']) ?? 1000;
+    final played = gzMs(me['played']) ?? 0;
+    final rank = GzRank.of(rating);
+    return GzPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(PhosphorIcons.trophy(PhosphorIconsStyle.fill), color: GzC.goldLight, size: 20),
+              const SizedBox(width: 6),
+              Expanded(child: FitText('${game.name.toUpperCase()} LEADERBOARD', style: gzFont(15), minScale: .7)),
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => context.push('/games/ranks?game=${game.id}'),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+                  child: Text('SEE ALL', style: gzFont(13, color: GzC.goldLight, shadow: 0)),
+                ),
+              ),
+            ],
+          ),
+          if (rows.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text('Nobody on this board yet. Play 3 ${game.name} games to be first!', style: gzBody(13, color: GzC.subLight)),
+            )
+          else
+            for (final r in rows.take(3))
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 26,
+                      child: Text('${r['rank']}', style: gzFont(15, color: GzC.subLight, shadow: 0)),
+                    ),
+                    GzPortrait(face: GzFace.from(r['avatar']), size: 32, ring: GzRank.of(gzMs(r['rating']) ?? 1000).color, name: '${r['name']}'),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: FitText(
+                        r['me'] == true ? 'YOU' : '${r['name']}',
+                        style: gzBody(14, color: Colors.white, weight: FontWeight.w700),
+                        minScale: .7,
+                      ),
+                    ),
+                    Text(gzNum(gzMs(r['rating']) ?? 1000), style: gzFont(15, color: GzC.goldLight, shadow: 0)),
+                  ],
+                ),
+              ),
+          const SizedBox(height: 4),
+          Container(
+            padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+            decoration: BoxDecoration(
+              color: GzC.navy2,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: GzC.brand, width: 1.5),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    played < 3
+                        ? 'You: play ${3 - played} more ranked ${game.name} games to join.'
+                        : 'You: ${mine != null ? '#${mine['rank']} · ' : ''}${rank.label}. Higher rank, tougher questions and bots.',
+                    style: gzBody(12.5, color: Colors.white, weight: FontWeight.w600),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(gzNum(rating), style: gzFont(17, color: GzC.goldLight, shadow: 0)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

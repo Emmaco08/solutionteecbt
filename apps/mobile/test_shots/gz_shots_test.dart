@@ -134,6 +134,28 @@ Map<String, dynamic> _match(
 
 GzMatch _m(Map<String, dynamic> s) => GzMatch('m1')..s = s;
 
+Map<String, dynamic> _leaders() => {
+  'rows': [
+    for (var i = 0; i < 9; i++)
+      {
+        'rank': i + 1,
+        'name': ['Amaka', 'Chidi', 'Tolu', 'Zainab', 'Emeka', 'Fola', 'Ibrahim', 'Ngozi', 'Seyi'][i],
+        'me': i == 2,
+        'avatar': i == 2
+            ? _me
+            : _avatar(
+                ['#5C3A1E', '#C68642', '#F1C27D'][i % 3],
+                ['bun', 'fade', 'afro', 'hijab', 'cap', 'braids'][i % 6],
+                ['#E0335A', '#1FA463', '#7A4FD6'][i % 3],
+              ),
+        'rating': 1720 - i * 60,
+        'played': 20,
+        'won': 14 - i,
+      },
+  ],
+  'me': {'rating': 1600, 'played': 20},
+};
+
 Future<void> _shot(
   WidgetTester t,
   Widget w,
@@ -141,8 +163,9 @@ Future<void> _shot(
   Map<String, dynamic>? home,
   Map<String, dynamic>? leaders,
   Duration settle = const Duration(milliseconds: 1600),
+  double height = 2532,
 }) async {
-  t.view.physicalSize = const Size(1170, 2532);
+  t.view.physicalSize = Size(1170, height);
   t.view.devicePixelRatio = 3;
   await t.pumpWidget(
     ProviderScope(
@@ -200,7 +223,7 @@ void main() {
     ],
   };
 
-  testWidgets('01 hub', (t) async => _shot(t, const GzHubScreen(), '01_hub', home: home));
+  testWidgets('01 hub', (t) async => _shot(t, const GzHubScreen(), '01_hub', home: home, leaders: _leaders()));
 
   testWidgets(
     '02 finding',
@@ -499,27 +522,7 @@ void main() {
   });
 
   testWidgets('15 ranks', (t) async {
-    final leaders = {
-      'rows': [
-        for (var i = 0; i < 9; i++)
-          {
-            'rank': i + 1,
-            'name': ['Amaka', 'Chidi', 'Tolu', 'Zainab', 'Emeka', 'Fola', 'Ibrahim', 'Ngozi', 'Seyi'][i],
-            'me': i == 2,
-            'avatar': i == 2
-                ? _me
-                : _avatar(
-                    ['#5C3A1E', '#C68642', '#F1C27D'][i % 3],
-                    ['bun', 'fade', 'afro', 'hijab', 'cap', 'braids'][i % 6],
-                    ['#E0335A', '#1FA463', '#7A4FD6'][i % 3],
-                  ),
-            'rating': 1720 - i * 60,
-            'played': 20,
-            'won': 14 - i,
-          },
-      ],
-      'me': {'rating': 1600, 'played': 20},
-    };
+    final leaders = _leaders();
     await _shot(t, const GzRanksScreen(), '15_ranks', leaders: leaders);
   });
 
@@ -598,7 +601,7 @@ void main() {
     s['starts_at'] = _now - 26000;
     s['answer_at'] = _now + 18000;
     s['ends_at'] = _now + 93000;
-    s['passage'] = {'title': 'The Market Ledger', 'body': passage, 'words': 110, 'read_ms': 44000};
+    s['passage'] = {'title': 'The Market Ledger', 'body': passage, 'words': 110, 'read_ms': 44000, 'wpm': 240};
     await _shot(
       t,
       Scaffold(
@@ -637,10 +640,11 @@ void main() {
     );
   });
 
-  test('reading parts', () {
-    final parts = gzReadingParts(passage);
-    expect(parts.length, greaterThan(2));
-    expect(parts.first.at, 0);
-    expect(parts.last.at, lessThan(1));
+  test('teleprompter moves the passage up at a steady pace', () {
+    double top(double f) => gzPromptTop(frac: f, textH: 600, lineH: 30, view: 200, lineAt: .5);
+    expect(top(0), 85); // first line on the reading line
+    expect(top(1), 85 - 570); // last line on the reading line
+    expect(top(.5), closeTo((top(0) + top(1)) / 2, .001));
+    expect(top(2), top(1));
   });
 }

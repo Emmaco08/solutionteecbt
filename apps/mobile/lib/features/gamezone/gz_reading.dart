@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart' show Ticker;
 import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../widgets/fit_text.dart';
@@ -14,43 +15,17 @@ import 'gz_match.dart';
 import 'gz_sound.dart';
 import 'gz_theme.dart';
 
-// Comprehension Clash (owner, 13 Nov 2026). Both players get the same passage. It appears quickly, a part at a time, on a
-// paper card; when the reading time ends it disappears and the questions come (main idea, the writer's purpose, a word in
+// Comprehension Clash (owner, 13 Nov 2026). Both players get the same passage. It scrolls up by itself like a teleprompter
+// (a few lines show at a time, faster at higher ranks); when the reading time ends it disappears and the questions come (main idea, the writer's purpose, a word in
 // context, a deduction, a detail). Most right answers wins; on a tie, who finished first. Trains the time-hungry Use of
 // English comprehension section.
 
-/// The passage split into parts of about one or two sentences, with the share of reading time each part starts at.
-List<({String text, double at})> gzReadingParts(String body) {
-  final sentences = body.replaceAll(RegExp(r'\s+'), ' ').trim().split(RegExp(r'(?<=[.!?…])\s+(?=[A-Z"“‘\x27(])'));
-  final parts = <String>[];
-  var cur = '';
-  for (final s in sentences) {
-    cur = cur.isEmpty ? s : '$cur $s';
-    if (cur.split(' ').length >= 14) {
-      parts.add(cur);
-      cur = '';
-    }
-  }
-  if (cur.isNotEmpty) {
-    if (parts.isNotEmpty && cur.split(' ').length < 6) {
-      parts[parts.length - 1] = '${parts.last} $cur';
-    } else {
-      parts.add(cur);
-    }
-  }
-  final total = math.max(1, parts.fold<int>(0, (n, p) => n + p.split(' ').length));
-  var before = 0;
-  return [
-    for (final p in parts)
-      (
-        text: p,
-        at: () {
-          final a = before / total;
-          before += p.split(' ').length;
-          return a;
-        }(),
-      ),
-  ];
+/// Teleprompter: where the passage's top sits in a window of height [view] when [frac] of the reading time has gone.
+/// The first line starts on the reading line ([lineAt] of the window) and the last line ends on it, at a steady pace,
+/// so the student can only see a few lines at a time (owner, 14 Nov 2026).
+double gzPromptTop({required double frac, required double textH, required double lineH, required double view, double lineAt = .42}) {
+  final line = view * lineAt - lineH / 2;
+  return line - frac.clamp(0.0, 1.0) * math.max(0, textH - lineH);
 }
 
 /// Name of the question type, shown above each question.
@@ -74,15 +49,11 @@ class GzReadingPlay extends StatefulWidget {
 class _GzReadingPlayState extends State<GzReadingPlay> {
   GzMatch get m => widget.m;
   Timer? _tick;
-  final _scroll = ScrollController();
-  int _shown = -1;
   bool _wasReading = true;
   ({String key, bool ok})? _flash;
   String? _pop;
   bool _good = false;
   int _fx = 0;
-  List<({String text, double at})> _parts = const [];
-  String _body = '';
 
   @override
   void initState() {
@@ -95,7 +66,6 @@ class _GzReadingPlayState extends State<GzReadingPlay> {
   @override
   void dispose() {
     _tick?.cancel();
-    _scroll.dispose();
     super.dispose();
   }
 
@@ -126,11 +96,6 @@ class _GzReadingPlayState extends State<GzReadingPlay> {
       _wasReading = false;
       GzFeel.sfx(GzSfx.go, volume: .8);
     }
-    final body = '${_passage?['body'] ?? ''}';
-    if (body.isNotEmpty && body != _body) {
-      _body = body;
-      _parts = gzReadingParts(body);
-    }
     return Stack(
       children: [
         const Positioned.fill(child: _LibraryBackdrop()),
@@ -160,21 +125,30 @@ class _GzReadingPlayState extends State<GzReadingPlay> {
   Widget _read(BuildContext context, int t) {
     final readMs = gzMs(_passage?['read_ms']) ?? math.max(1, _answerAt - m.startsAt);
     final frac = ((t - m.startsAt) / math.max(1, readMs)).clamp(0.0, 1.0);
-    var cur = -1;
-    for (final (i, p) in _parts.indexed) {
-      if (frac >= p.at) cur = i;
-    }
-    if (cur != _shown) {
-      _shown = cur;
-      if (cur > 0) GzFeel.sfx(GzSfx.flip, volume: .25);
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_scroll.hasClients) {
-          _scroll.animateTo(_scroll.position.maxScrollExtent, duration: const Duration(milliseconds: 380), curve: Curves.easeOutCubic);
-        }
-      });
-    }
     final left = ((_answerAt - t) / 1000).ceil();
     final title = '${_passage?['title'] ?? ''}'.trim();
+    final body = '${_passage?['body'] ?? ''}'.replaceAll(RegExp(r'\s+'), ' ').trim();
+    final wpm = gzMs(_passage?['wpm']);
+    final words = gzMs(_passage?['words']) ?? (body.isEmpty ? 0 : body.split(' ').length);
+    Widget chip(IconData icon, String text) => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: .1),
+        borderRadius: BorderRadius.circular(99),
+        border: Border.all(color: Colors.white.withValues(alpha: .18)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: GzC.goldLight),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: gzBody(12.5, color: Colors.white, weight: FontWeight.w700),
+          ),
+        ],
+      ),
+    );
     return Column(
       children: [
         GzTopBar(
@@ -201,22 +175,69 @@ class _GzReadingPlayState extends State<GzReadingPlay> {
           ),
         ),
         Expanded(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
-            child: _Paper(
-              child: _parts.isEmpty
-                  ? Center(
-                      child: Text('Get ready to read…', style: gzBody(16, color: GzC.navy)),
-                    )
-                  : ListView(
-                      controller: _scroll,
-                      padding: const EdgeInsets.fromLTRB(18, 18, 18, 40),
-                      children: [
-                        for (final (i, p) in _parts.indexed)
-                          if (i <= cur) _Part(text: p.text, now: i == cur, key: ValueKey(i)),
+          child: LayoutBuilder(
+            builder: (context, c) {
+              // About 7 lines: enough to read smoothly, never the whole passage.
+              final win = math.max(120.0, math.min(c.maxHeight - 64, _Prompter.lineH * 7 + 24));
+              final roomy = c.maxHeight - win > 220;
+              final opp = m.players.where((p) => p['me'] != true).firstOrNull;
+              Widget reader(Json p, String name, Color ring) => Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  GzPortrait(face: GzFace.from(p['avatar']), size: 54, ring: ring, name: name, bot: p['bot'] == true, mood: 'focus'),
+                  const SizedBox(height: 4),
+                  SizedBox(
+                    width: 110,
+                    child: FitText(name, style: gzFont(13, shadow: 0), minScale: .7, textAlign: TextAlign.center),
+                  ),
+                ],
+              );
+              return Align(
+                alignment: const Alignment(0, -.35),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (roomy && opp != null) ...[
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            reader(m.players.where((p) => p['me'] == true).firstOrNull ?? m.me, 'YOU', GzC.gold),
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(14, 0, 14, 22),
+                              child: Text('BOTH READING', style: gzFont(12, color: GzC.subLight, shadow: 0)),
+                            ),
+                            reader(opp, '${opp['name'] ?? 'Rival'}', GzC.cyan),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
                       ],
-                    ),
-            ),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        alignment: WrapAlignment.center,
+                        children: [
+                          if (wpm != null) chip(Icons.speed_rounded, '$wpm words a minute'),
+                          if (words > 0) chip(Icons.notes_rounded, 'Word ${math.min(words, (frac * words).round() + 1)} of $words'),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        height: win,
+                        child: _Paper(
+                          child: body.isEmpty
+                              ? Center(
+                                  child: Text('Get ready to read…', style: gzBody(16, color: GzC.navy)),
+                                )
+                              : _Prompter(text: body, now: m.now, from: m.startsAt, readMs: readMs),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
         ),
         Padding(
@@ -227,7 +248,7 @@ class _GzReadingPlayState extends State<GzReadingPlay> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'The passage disappears in ${math.max(0, left)}s. Then ${m.rounds} questions: main idea, purpose, words, deductions, details.',
+                  'Read along the gold line. The passage is gone in ${math.max(0, left)}s, then ${m.rounds} questions: main idea, purpose, words, deductions, details.',
                   style: gzBody(12.5, color: GzC.subLight, weight: FontWeight.w600),
                 ),
               ),
@@ -380,33 +401,131 @@ class _Paper extends StatelessWidget {
   );
 }
 
-/// One part of the passage: the newest is bold with a gold marker; earlier parts fade to grey.
-class _Part extends StatelessWidget {
-  const _Part({super.key, required this.text, required this.now});
+/// The passage moving up on its own at a steady pace, synced to the match clock. It cannot be scrolled by hand. The text
+/// is laid out once and painted at a new offset each frame (no rebuilds), so it stays smooth on small phones.
+class _Prompter extends StatefulWidget {
+  const _Prompter({required this.text, required this.now, required this.from, required this.readMs});
   final String text;
-  final bool now;
+  final int Function() now;
+  final int from, readMs;
+  static const fontSize = 19.0, height = 1.6, lineH = fontSize * height;
   @override
-  Widget build(BuildContext context) {
-    final style = TextStyle(
-      fontFamily: 'PlusJakartaSans',
-      fontSize: 17,
-      height: 1.55,
-      fontWeight: now ? FontWeight.w700 : FontWeight.w500,
-      color: now ? GzC.navy : const Color(0xFF6B7690),
-    );
-    final w = AnimatedContainer(
-      duration: const Duration(milliseconds: 350),
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
-      decoration: BoxDecoration(
-        color: now ? const Color(0x33F2B233) : Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
-        border: Border(left: BorderSide(color: now ? GzC.brand : Colors.transparent, width: 4)),
-      ),
-      child: Text(text, style: style),
-    );
-    return now ? w.animate().fadeIn(duration: 260.ms).slideY(begin: .25, curve: Curves.easeOutCubic) : w;
+  State<_Prompter> createState() => _PrompterState();
+}
+
+class _PrompterState extends State<_Prompter> with SingleTickerProviderStateMixin {
+  late final Ticker _ticker;
+  final _frac = ValueNotifier(0.0);
+  TextPainter? _tp;
+  String _key = '';
+
+  double _now() => ((widget.now() - widget.from) / math.max(1, widget.readMs)).clamp(0.0, 1.0);
+
+  @override
+  void initState() {
+    super.initState();
+    _frac.value = _now();
+    _ticker = createTicker((_) {
+      final f = _now();
+      if (f != _frac.value) _frac.value = f;
+    })..start();
   }
+
+  @override
+  void dispose() {
+    _ticker.dispose();
+    _frac.dispose();
+    _tp?.dispose();
+    super.dispose();
+  }
+
+  TextPainter _layout(double w) {
+    final k = '$w|${widget.text}';
+    if (k != _key || _tp == null) {
+      _key = k;
+      _tp?.dispose();
+      _tp = TextPainter(
+        text: TextSpan(
+          text: widget.text,
+          style: const TextStyle(
+            fontFamily: 'PlusJakartaSans',
+            fontSize: _Prompter.fontSize,
+            height: _Prompter.height,
+            fontWeight: FontWeight.w600,
+            color: GzC.navy,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout(maxWidth: w);
+    }
+    return _tp!;
+  }
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+    child: LayoutBuilder(
+      builder: (context, c) {
+        final tp = _layout(c.maxWidth - 44);
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            RepaintBoundary(child: CustomPaint(painter: _PromptPainter(tp, _frac))),
+            // Soft fades so lines come in from below and leave at the top.
+            Align(
+              alignment: Alignment.topCenter,
+              child: Container(
+                height: c.maxHeight * .34,
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [GzC.cream, Color(0x00FFF7E6)]),
+                ),
+              ),
+            ),
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: Container(
+                height: c.maxHeight * .3,
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter, colors: [GzC.cream, Color(0x00FFF7E6)]),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    ),
+  );
+}
+
+class _PromptPainter extends CustomPainter {
+  _PromptPainter(this.tp, this.frac) : super(repaint: frac);
+  final TextPainter tp;
+  final ValueNotifier<double> frac;
+  static const lineAt = .42;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const lh = _Prompter.lineH;
+    canvas.clipRect(Offset.zero & size);
+    // The reading line: a gold band with a marker on the left.
+    final y = size.height * lineAt;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(Rect.fromLTWH(10, y - lh / 2 - 2, size.width - 20, lh + 4), const Radius.circular(8)),
+      Paint()..color = const Color(0x40F2B233),
+    );
+    canvas.drawPath(
+      Path()
+        ..moveTo(4, y - 8)
+        ..lineTo(14, y)
+        ..lineTo(4, y + 8)
+        ..close(),
+      Paint()..color = GzC.brand,
+    );
+    final top = gzPromptTop(frac: frac.value, textH: tp.height, lineH: lh, view: size.height, lineAt: lineAt);
+    tp.paint(canvas, Offset(22, top));
+  }
+
+  @override
+  bool shouldRepaint(covariant _PromptPainter old) => old.tp != tp;
 }
 
 class _Pips extends StatelessWidget {

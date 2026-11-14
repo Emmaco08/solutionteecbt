@@ -33,9 +33,13 @@ const Row = z.object({
   difficulty: z.enum(["easy", "medium", "hard"]),
 });
 
-/** Adds checked rows from a CSV as live game questions for one subject (one batch, so it can be undone). */
-export async function importGzQuestions(subjectId: number, file: string, rows: unknown[]): Promise<ActionResult<{ inserted: number; batch: string }>> {
+const QUIZ_GAMES = ["duel", "rush", "survival", "relay"] as const;
+
+/** Adds checked rows from a CSV as live game questions for one subject (one batch, so it can be undone). [games]: the
+ *  quiz games that may use them (empty or null = all four). */
+export async function importGzQuestions(subjectId: number, file: string, rows: unknown[], games: string[] | null = null): Promise<ActionResult<{ inserted: number; batch: string }>> {
   const staff = await requireStaff(["super_admin", "admin", "editor"]);
+  const only = (games ?? []).filter((g): g is (typeof QUIZ_GAMES)[number] => (QUIZ_GAMES as readonly string[]).includes(g));
   if (!Number.isInteger(subjectId) || subjectId < 1) return { ok: false, error: "Choose a subject" };
   if (!Array.isArray(rows) || !rows.length) return { ok: false, error: "No questions to add" };
   if (rows.length > 5000) return { ok: false, error: "At most 5,000 questions per file. Split the file." };
@@ -50,7 +54,7 @@ export async function importGzQuestions(subjectId: number, file: string, rows: u
   const supabase = await createClient();
   let inserted = 0;
   for (let i = 0; i < clean.length; i += 500) {
-    const chunk = clean.slice(i, i + 500).map((r) => ({ ...r, subject_id: subjectId, batch, created_by: staff.id, active: true }));
+    const chunk = clean.slice(i, i + 500).map((r) => ({ ...r, subject_id: subjectId, batch, created_by: staff.id, active: true, games: only.length && only.length < 4 ? only : null }));
     const { error } = await supabase.from("gz_questions").insert(chunk);
     if (error) return { ok: false, error: `${friendlyError(error)} (${inserted} were added before this)` };
     inserted += chunk.length;
@@ -59,13 +63,15 @@ export async function importGzQuestions(subjectId: number, file: string, rows: u
   return { ok: true, message: `${inserted} questions added. They are live in games now.`, data: { inserted, batch } };
 }
 
-export type GzQuestionRow = { id: number; subject_id: number; body: string; options: Record<string, string>; answer: string; difficulty: string; active: boolean; batch: string | null };
+export type GzQuestionRow = { id: number; subject_id: number; body: string; options: Record<string, string>; answer: string; difficulty: string; active: boolean; batch: string | null; games: string[] | null };
 
-export async function listGzQuestions(subjectId: number | null, search: string, page: number): Promise<ActionResult<{ rows: GzQuestionRow[]; total: number; batches: { batch: string; n: number }[] }>> {
+export async function listGzQuestions(subjectId: number | null, search: string, page: number, game?: string): Promise<ActionResult<{ rows: GzQuestionRow[]; total: number; batches: { batch: string; n: number }[] }>> {
   await requireStaff(["super_admin", "admin", "editor"]);
   const supabase = await createClient();
-  let q = supabase.from("gz_questions").select("id, subject_id, body, options, answer, difficulty, active, batch", { count: "exact" });
+  let q = supabase.from("gz_questions").select("id, subject_id, body, options, answer, difficulty, active, batch, games", { count: "exact" });
   if (subjectId) q = q.eq("subject_id", subjectId);
+  // A game's tab lists the questions that game can use: its own plus the ones for all quiz games.
+  if (game && (QUIZ_GAMES as readonly string[]).includes(game)) q = q.or(`games.is.null,games.cs.{${game}}`);
   const s = search.trim().replace(/[%,()]/g, " ");
   if (s) q = q.ilike("body", `%${s}%`);
   const { data, count, error } = await q.order("id", { ascending: false }).range(page * 50, page * 50 + 49);

@@ -3013,6 +3013,7 @@ export type Database = {
           active: boolean
           back: string
           created_at: string
+          difficulty: string
           front: string
           id: number
           subject_id: number
@@ -3021,6 +3022,7 @@ export type Database = {
           active?: boolean
           back: string
           created_at?: string
+          difficulty?: string
           front: string
           id?: number
           subject_id: number
@@ -3029,6 +3031,7 @@ export type Database = {
           active?: boolean
           back?: string
           created_at?: string
+          difficulty?: string
           front?: string
           id?: number
           subject_id?: number
@@ -3107,6 +3110,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           difficulty: string
+          games: string[] | null
           id: number
           options: Json
           subject_id: number
@@ -3119,6 +3123,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           difficulty?: string
+          games?: string[] | null
           id?: number
           options: Json
           subject_id: number
@@ -3131,6 +3136,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           difficulty?: string
+          games?: string[] | null
           id?: number
           options?: Json
           subject_id?: number
@@ -3160,6 +3166,7 @@ export type Database = {
           active: boolean
           answer: string
           created_at: string
+          difficulty: string
           id: number
           kind: string
           word: string
@@ -3169,6 +3176,7 @@ export type Database = {
           active?: boolean
           answer: string
           created_at?: string
+          difficulty?: string
           id?: number
           kind: string
           word: string
@@ -3178,6 +3186,7 @@ export type Database = {
           active?: boolean
           answer?: string
           created_at?: string
+          difficulty?: string
           id?: number
           kind?: string
           word?: string
@@ -5605,6 +5614,7 @@ export type Database = {
       }
       admin_fraud: { Args: never; Returns: Json }
       admin_games_stats: { Args: never; Returns: Json }
+      admin_gz_difficulty: { Args: never; Returns: Json }
       admin_gz_question_counts: { Args: never; Returns: Json }
       admin_gz_stats: { Args: never; Returns: Json }
       admin_leaderboard_held: { Args: { p_season?: number }; Returns: Json }
