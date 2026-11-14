@@ -13,9 +13,19 @@ const SHOTS: Record<string, { title: string; text: string; screen: React.ReactNo
   // and XP); "6-cash"/"7-cash" are for when the admin turns cash prizes on (approval first).
   "6": { title: "Invite friends & earn", text: "Up to 100% off Premium, plus XP for every friend", screen: <InviteScreen play={false} /> },
   "7": { title: "Practise in challenges & win", text: "Free to join · win Premium days and XP", screen: <ChallengeScreen play={false} /> },
+  // 13 Nov 2026: Game Zone, Comprehension Clash and Community, drawn from the app's own screens (Flutter renders).
+  "8": { title: "Play live exam games", text: "Beat a student or the bot · 8 games · win XP", screen: <AppShot src="/store-kit/game-zone.jpg" alt="Game Zone" /> },
+  "9": { title: "Comprehension Clash", text: "Read fast, answer smart · JAMB Use of English", screen: <AppShot src="/store-kit/reading-questions.jpg" alt="Comprehension Clash" /> },
+  "10": { title: "A friendly student community", text: "Ask, share tips · SolutionTee AI answers", screen: <AppShot src="/store-kit/community.jpg" alt="Community" /> },
   "6-cash": { title: "Invite friends & earn", text: "Premium discounts, XP and cash rewards", screen: <InviteScreen play={false} cash /> },
   "7-cash": { title: "Practise in challenges & win", text: "Free to join · win cash, Premium and XP", screen: <ChallengeScreen play={false} cash /> },
 };
+
+/** A real app screen (rendered from the Flutter app at 390 × 844) shown inside the phone. */
+function AppShot({ src, alt }: { src: string; alt: string }) {
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={src} alt={alt} width={390} height={844} style={{ display: "block", width: 390, height: 844, objectFit: "cover" }} />;
+}
 
 export function Shot({ id }: { id: string }) {
   if (id === "feature") return <Feature />;
@@ -50,10 +60,10 @@ function Feature() {
             <span className="text-[44px] font-bold tracking-tight">SolutionTee <span className="text-[#F2B233]">CBT</span></span>
           </div>
           <p className="mt-6 text-[40px] font-bold leading-[1.1]">Practise like it’s the real exam.</p>
-          <p className="mt-4 text-[22px] text-[#C9D5EA]">JAMB · WAEC · NECO CBT practice with every answer explained and an AI tutor.</p>
+          <p className="mt-4 text-[22px] text-[#C9D5EA]">JAMB · WAEC · NECO CBT practice, live exam games, a student community and an AI tutor.</p>
         </div>
       </div>
-      <div className="absolute right-[150px] top-[40px] rotate-[6deg]"><Phone3D width={250} tilt={false} float={false}><ResultScreen play={false} /></Phone3D></div>
+      <div className="absolute right-[150px] top-[40px] rotate-[6deg]"><Phone3D width={250} tilt={false} float={false}><AppShot src="/store-kit/game-zone.jpg" alt="Game Zone" /></Phone3D></div>
       <div className="absolute right-[-20px] top-[70px] rotate-[-4deg]"><Phone3D width={250} tilt={false} float={false}><CbtScreen play={false} /></Phone3D></div>
     </div>
   );

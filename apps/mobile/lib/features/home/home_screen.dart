@@ -100,7 +100,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  final _startKey = GlobalKey(), _upgradeKey = GlobalKey(), _topKey = GlobalKey(), _challengeKey = GlobalKey(), _chipsKey = GlobalKey();
+  final _startKey = GlobalKey(), _upgradeKey = GlobalKey(), _topKey = GlobalKey(), _challengeKey = GlobalKey(), _chipsKey = GlobalKey(), _playKey = GlobalKey();
   late final _scroll = ref.read(tabScrollProvider(0));
   OverlayEntry? _tour;
 
@@ -153,6 +153,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             icon: PhosphorIcons.play(PhosphorIconsStyle.fill),
             title: 'Start a test here',
             text: 'Tap JAMB, WAEC or NECO to start a timed CBT practice.',
+          ),
+          TourStep(
+            key: _playKey,
+            icon: PhosphorIcons.gameController(PhosphorIconsStyle.fill),
+            title: 'Play and connect',
+            text: 'Game Zone: live games against students or the bot, including Comprehension Clash for JAMB English. Community: ask questions, share tips and tag @solutiontee for help.',
           ),
           TourStep(
             rect: () => _navRect(ctx, 'study'),
@@ -273,7 +279,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
       if (ref.watch(qotdProvider).isLoading || ref.watch(qotdProvider).value?.question != null) const QotdCard(),
       const InviteCard(),
-      const PlayConnectSection(), // Game Zone and Community, just before News (owner, 13 Nov 2026)
+      PlayConnectSection(key: _playKey), // Game Zone and Community, just before News (owner, 13 Nov 2026)
       if (news.isNotEmpty)
         Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

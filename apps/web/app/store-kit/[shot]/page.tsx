@@ -5,7 +5,7 @@ import { Shot } from "./shot";
 export const metadata: Metadata = { title: "Store image", robots: { index: false, follow: false } };
 
 export function generateStaticParams() {
-  return ["1", "2", "3", "4", "5", "6", "7", "6-cash", "7-cash", "feature", "icon"].map((shot) => ({ shot }));
+  return ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "6-cash", "7-cash", "feature", "icon"].map((shot) => ({ shot }));
 }
 
 async function ShotFor({ params }: { params: Promise<{ shot: string }> }) {

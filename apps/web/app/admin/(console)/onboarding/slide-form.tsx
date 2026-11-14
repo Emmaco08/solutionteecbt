@@ -29,7 +29,7 @@ export function SlideForm({ slide: s }: { slide: Slide }) {
       <div className="grid grid-cols-[1fr_80px_auto] items-end gap-3">
         <div className="space-y-1.5"><Label htmlFor={`a${k}`}>Animation</Label>
           <select id={`a${k}`} name="animation" defaultValue={s.animation ?? ""} className={inputCls}>
-            {["", "cbt", "trophy", "study", "ai", "progress", "classes"].map((a) => <option key={a} value={a}>{a || "None"}</option>)}
+            {["", "cbt", "games", "ai", "community", "tutor", "trophy", "study", "progress", "classes"].map((a) => <option key={a} value={a}>{a || "None"}</option>)}
           </select></div>
         <div className="space-y-1.5"><Label htmlFor={`o${k}`}>Order</Label><input id={`o${k}`} name="sort" type="number" min={0} max={99} defaultValue={s.sort} className={inputCls} /></div>
         <label className="flex h-10 items-center gap-2 text-sm"><Switch name="enabled" defaultChecked={s.enabled} /> Shown</label>

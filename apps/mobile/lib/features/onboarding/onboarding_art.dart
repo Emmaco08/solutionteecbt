@@ -9,6 +9,7 @@ import '../../ui/kit.dart';
 import '../../widgets/exam_logo.dart';
 import '../../widgets/math_text.dart';
 import '../../widgets/phosphor.g.dart';
+import '../gamezone/gz_scenes.dart' show GameIcon;
 
 /// Onboarding pictures, ported from prototype/js/screens-onboard.js (slides[].art) and the
 /// "Onboarding art motion" keyframes in prototype/css/app.css:
@@ -29,6 +30,9 @@ class SlideArt extends StatelessWidget {
       'ai' => (Tone.gold, _ai(context, run)),
       'progress' => (Tone.navy, _progress(context, run)),
       'classes' => (Tone.blue, _classes(context, run)),
+      'games' => (Tone.navy, _games(context, run)),
+      'community' => (Tone.blue, _community(context, run)),
+      'tutor' => (Tone.gold, _tutor(context, run)),
       _ => (Tone.navy, _cbt(context, run)),
     };
     return SizedBox.expand(
@@ -603,6 +607,172 @@ class SlideArt extends StatelessWidget {
                   _Students(run: run, style: ty.cap.bold.tnum),
                 ],
               ),
+            ),
+          ),
+        ),
+      ),
+    ];
+  }
+
+  // ---- Game Zone (owner, 13 Nov 2026): game badges float around a VS tag.
+  List<Widget> _games(BuildContext context, bool run) {
+    final ty = context.ty;
+    Widget badge(String id, double size) => Container(
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: const Color(0xFF13306A),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFF06132B), width: 3),
+      ),
+      child: GameIcon(id, size: size),
+    );
+    return [
+      Positioned(
+        left: 34,
+        top: 56,
+        child: _layer(context, 1, _Float(run: run, rotate: -10, child: badge('duel', 64))),
+      ),
+      Positioned(
+        right: 34,
+        top: 50,
+        child: _layer(context, 2, _Float(run: run, rotate: 8, delay: -1.2, child: badge('reading', 64))),
+      ),
+      Positioned(
+        left: 54,
+        bottom: 52,
+        child: _layer(context, 3, _Float(run: run, rotate: 6, delay: -2.1, child: badge('rush', 58))),
+      ),
+      Positioned(
+        right: 50,
+        bottom: 60,
+        child: _layer(context, 2, _Float(run: run, rotate: -6, delay: -.6, child: badge('memory', 54))),
+      ),
+      _layer(
+        context,
+        1,
+        _Pulse(
+          run: run,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+            decoration: BoxDecoration(
+              color: Palette.gold400,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFF06132B), width: 3),
+            ),
+            child: Text(
+              'VS',
+              style: ty.h1.copyWith(fontFamily: 'LilitaOne', fontWeight: FontWeight.w400).col(Palette.navy900),
+            ),
+          ),
+        ),
+      ),
+    ];
+  }
+
+  // ---- Community: a question, SolutionTee AI's answer and a thank-you, like a real thread.
+  List<Widget> _community(BuildContext context, bool run) {
+    final c = context.c, ty = context.ty;
+    Widget msg(String who, String text, {bool ai = false}) => Mini(
+      width: 230,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 14,
+            backgroundColor: ai ? Palette.gold400 : Palette.blue600,
+            child: ai
+                ? Icon(PhosphorIcons.sparkle(PhosphorIconsStyle.fill), size: 14, color: Palette.navy900)
+                : Text(who[0], style: ty.cap.bold.col(Colors.white)),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(who, style: ty.cap.bold.col(ai ? Palette.gold600 : c.text)),
+                Text(text, style: ty.cap.col(c.textMuted)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+    return [
+      Positioned(
+        top: 52,
+        left: 30,
+        child: _layer(context, 1, _Float(run: run, rotate: -3, child: msg('Kemi', 'How do I find the gradient of a line?'))),
+      ),
+      Positioned(
+        top: 132,
+        right: 26,
+        child: _layer(
+          context,
+          2,
+          _Float(run: run, rotate: 2, delay: -1, child: msg('SolutionTee AI', 'Gradient = rise ÷ run. Here it is 6 ÷ 3 = 2.', ai: true)),
+        ),
+      ),
+      Positioned(
+        bottom: 54,
+        right: 30,
+        child: _layer(context, 3, _Float(run: run, rotate: -2, delay: -2, child: msg('Musa', 'Thanks! That helped 🙌'))),
+      ),
+    ];
+  }
+
+  // ---- Request a tutor: a real teacher in a chat.
+  List<Widget> _tutor(BuildContext context, bool run) {
+    final c = context.c, ty = context.ty;
+    return [
+      Positioned(
+        top: 70,
+        child: _layer(
+          context,
+          1,
+          Mini(
+            width: 250,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    IconTile(PhosphorIcons.chalkboardTeacher(PhosphorIconsStyle.fill), tone: Tone.gold, size: 44, radius: 12),
+                    const SizedBox(width: Space.s3),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Your tutor', style: ty.sm.bold),
+                          Text('Mathematics · online', style: ty.cap.col(c.success)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: Space.s3),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(color: c.surfaceSunken, borderRadius: BorderRadius.circular(12)),
+                  child: Text('Let us do quadratic equations step by step. Ready?', style: ty.cap),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      Positioned(
+        bottom: 66,
+        right: 46,
+        child: _layer(
+          context,
+          2,
+          _Float(
+            run: run,
+            delay: -1,
+            child: Mini(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Text('Yes, I am ready! 💪', style: ty.cap.bold),
             ),
           ),
         ),
