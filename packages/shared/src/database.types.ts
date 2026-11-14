@@ -767,6 +767,33 @@ export type Database = {
         }
         Relationships: []
       }
+      app_ratings: {
+        Row: {
+          app_version: string | null
+          comment: string | null
+          created_at: string
+          id: number
+          stars: number
+          user_id: string
+        }
+        Insert: {
+          app_version?: string | null
+          comment?: string | null
+          created_at?: string
+          id?: number
+          stars: number
+          user_id: string
+        }
+        Update: {
+          app_version?: string | null
+          comment?: string | null
+          created_at?: string
+          id?: number
+          stars?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           description: string | null
@@ -5489,6 +5516,7 @@ export type Database = {
         Returns: Json
       }
       admin_ai_safety_list: { Args: never; Returns: Json }
+      admin_app_ratings: { Args: { p_stars?: number; p_offset?: number }; Returns: Json }
       admin_archive_codes: {
         Args: { p_batch: string; p_id: string }
         Returns: number
@@ -5795,6 +5823,7 @@ export type Database = {
       am_content_editor: { Args: never; Returns: boolean }
       am_money_admin: { Args: never; Returns: boolean }
       am_notifier: { Args: never; Returns: boolean }
+      app_rating_submit: { Args: { p_stars: number; p_comment?: string; p_version?: string }; Returns: Json }
       arena_answer: { Args: { p_arena: string; p_index: number; p_choice: string }; Returns: Json }
       arena_join: { Args: { p_arena: string }; Returns: Json }
       arena_state: { Args: { p_arena: string }; Returns: Json }

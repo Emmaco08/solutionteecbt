@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../ai/ai_screen.dart' show askAiAbout;
+import '../../core/engagement.dart';
 import '../../core/ads.dart';
 import '../../core/providers.dart';
 import '../../data/db.dart';
@@ -109,6 +110,13 @@ class ResultsScreen extends ConsumerWidget {
       Future<void>.delayed(const Duration(milliseconds: 1200), () async {
         if (context.mounted) await checkBadgeWins(context, ref);
         if (context.mounted) offerEarnVideo(context, ref, 'test');
+        // A good score is a happy moment: maybe ask for a Play Store review a little later.
+        final sc = ref.read(attemptViewProvider(attemptId)).value?.score;
+        final q = (sc?['questions'] as num?)?.toInt() ?? 0, ok = (sc?['correct'] as num?)?.toInt() ?? 0;
+        if (q >= 10 && ok / q >= .6) {
+          await Future<void>.delayed(const Duration(seconds: 6));
+          if (context.mounted) await Engagement.happyMoment(context);
+        }
       });
     }
     return PopScope(

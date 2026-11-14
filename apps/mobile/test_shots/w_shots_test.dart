@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:solutiontee_cbt/core/engagement.dart';
 import 'package:solutiontee_cbt/core/providers.dart';
 import 'package:solutiontee_cbt/features/community/community_data.dart';
 import 'package:solutiontee_cbt/features/community/community_widgets.dart';
@@ -110,5 +111,20 @@ void main() {
 
   testWidgets('play and connect', (t) async {
     await _shot(t, const SingleChildScrollView(padding: EdgeInsets.all(20), child: PlayConnectSection()), 'w_play_connect');
+  });
+
+  Widget opener(Future<void> Function(BuildContext, WidgetRef) open) => Consumer(
+    builder: (context, ref, _) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => open(context, ref));
+      return const SizedBox.expand();
+    },
+  );
+
+  testWidgets('rating sheet', (t) async {
+    await _shot(t, opener((c, r) => showRatingSheet(c, r)), 'w_rating');
+  });
+
+  testWidgets('nudge games', (t) async {
+    await _shot(t, opener((c, r) => showNudgeSheet(c, 'games')), 'w_nudge_games');
   });
 }

@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/engagement.dart';
 import '../../core/providers.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
@@ -164,6 +165,7 @@ class _TutorScreenState extends ConsumerState<TutorScreen> {
   void initState() {
     super.initState();
     final uid = _uid();
+    Engagement.visited(context, 'tutor');
     if (uid != null) {
       // Payment confirmed, tutor assigned, plan ended: the request row changes and this screen follows at once.
       _live = LiveChannel(

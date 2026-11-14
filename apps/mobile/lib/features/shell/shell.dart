@@ -13,6 +13,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/nav.dart';
 import '../../core/config.dart';
+import '../../core/engagement.dart';
 import '../../core/providers.dart';
 import '../../core/tab_scroll.dart';
 
@@ -140,10 +141,12 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
   Future<void> _dailyPopups() async {
     if (_popupsShown || !mounted) return;
     _popupsShown = true;
+    await Engagement.countOpen(ref).catchError((_) {});
     // A new student sees the app tour first: the countdown and the other pop-ups wait for their next open (D-154).
-    if (!ref.read(settingsProvider).toured) return;
-    // The exam countdown first (once a day, D-135), then the milestone or daily claim.
-    await maybeShowDailyCountdown(context, ref);
+    if (!ref.read(settingsProvider).toured || !mounted) return;
+    // The exam countdown first (once a day, D-135), then the milestone or daily claim; when none of them showed, maybe
+    // the app rating card or a suggestion (owner, 13 Nov 2026). One pop-up an open at most.
+    final countdown = await maybeShowDailyCountdown(context, ref);
     if (!mounted) return;
     // Badge levels won since the last visit (D-142), celebrated once.
     await checkBadgeWins(context, ref);
@@ -158,13 +161,15 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
         return;
       }
       final xp = st['xp'];
-      if (xp is! Map || xp['enabled'] != true || xp['claimed_today'] == true) return;
       final db = ref.read(dbProvider);
       final now = DateTime.now(), today = '${now.year}-${now.month}-${now.day}';
-      if (await db.kvGet('claim_sheet_day') == today || !mounted) return;
-      await db.kvSet('claim_sheet_day', today);
-      if (mounted) await showDailyClaim(context, ref, st);
+      if (xp is Map && xp['enabled'] == true && xp['claimed_today'] != true && await db.kvGet('claim_sheet_day') != today && mounted) {
+        await db.kvSet('claim_sheet_day', today);
+        if (mounted) await showDailyClaim(context, ref, st);
+        return;
+      }
     } catch (_) {}
+    if (!countdown && mounted) await Engagement.maybeShowOne(context, ref).catchError((_) => false);
   }
 
   /// One account per phone and bans (D-078): save this phone (hashed id) and ask the server about this account.

@@ -7,6 +7,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/engagement.dart';
 import '../../core/ads.dart' show AdNativeCard;
 import '../../core/providers.dart';
 import '../../theme/theme.dart';
@@ -39,6 +40,7 @@ class _CommunityShellState extends ConsumerState<CommunityShell> {
   void initState() {
     super.initState();
     _seen.add(_tab);
+    Engagement.visited(context, 'community');
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       loadUnread(ref);

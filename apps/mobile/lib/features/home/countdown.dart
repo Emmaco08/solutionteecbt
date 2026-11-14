@@ -79,20 +79,21 @@ final examCountdownProvider = Provider<ExamCountdown?>((ref) {
 });
 
 /// Once a day, on the first open: the full-screen countdown (when the admin left "show every day" on).
-Future<void> maybeShowDailyCountdown(BuildContext context, WidgetRef ref) async {
+Future<bool> maybeShowDailyCountdown(BuildContext context, WidgetRef ref) async {
   try {
     await ref.read(appSettingsProvider.future).timeout(const Duration(seconds: 8));
     await ref.read(profileProvider.future).timeout(const Duration(seconds: 8));
   } catch (_) {}
-  if (!context.mounted) return;
+  if (!context.mounted) return false;
   final s = ref.read(countdownSettingsProvider);
   final c = ref.read(examCountdownProvider);
-  if (c == null || s['daily'] == false) return;
+  if (c == null || s['daily'] == false) return false;
   final db = ref.read(dbProvider);
   final now = DateTime.now(), today = '${now.year}-${now.month}-${now.day}';
-  if (await db.kvGet('countdown_day') == today || !context.mounted) return;
+  if (await db.kvGet('countdown_day') == today || !context.mounted) return false;
   await db.kvSet('countdown_day', today);
   if (context.mounted) await showExamCountdown(context);
+  return true;
 }
 
 Future<void> showExamCountdown(BuildContext context) => Navigator.of(context, rootNavigator: true).push(

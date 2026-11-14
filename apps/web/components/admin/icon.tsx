@@ -2,14 +2,14 @@
 import {
   Article, BellRinging, Books, Briefcase, ChalkboardTeacher, ChatsCircle, Circle, Medal, Coins, Database, EnvelopeSimple, DeviceMobile, Exam, FileCsv, Gift, IdentificationBadge, Layout, Lightbulb, ListChecks,
   MagnifyingGlass, Megaphone, Newspaper, PlusCircle, Quotes, Ranking, Receipt, Robot, Scales, ShieldWarning, SlidersHorizontal, Sparkle, SquaresFour, Storefront, Strategy,
-  ChatsTeardrop, GameController, Ticket, ToggleRight, Trophy, Users, Wrench, type IconWeight,
+  ChatsTeardrop, GameController, Star, Ticket, ToggleRight, Trophy, Users, Wrench, type IconWeight,
 } from "@phosphor-icons/react";
 
 // Only the icons the admin uses, so the bundle stays small.
 const ICONS = {
   Article, BellRinging, Books, Briefcase, ChalkboardTeacher, ChatsCircle, Coins, Medal, Database, EnvelopeSimple, DeviceMobile, Exam, FileCsv, Gift, IdentificationBadge, Layout, Lightbulb, ListChecks, MagnifyingGlass,
   Megaphone, Newspaper, PlusCircle, Quotes, Ranking, Receipt, Robot, Scales, ShieldWarning, SlidersHorizontal, Sparkle, SquaresFour, Storefront, Strategy, Ticket, ToggleRight,
-  ChatsTeardrop, GameController, Trophy, Users, Wrench,
+  ChatsTeardrop, GameController, Star, Trophy, Users, Wrench,
 };
 
 export function Icon({ name, size = 18, weight = "regular", className }: { name: string; size?: number; weight?: IconWeight; className?: string }) {

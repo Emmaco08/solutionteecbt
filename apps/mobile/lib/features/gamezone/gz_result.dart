@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../core/engagement.dart';
 import '../../ui/confetti.dart';
 import '../../ui/kit.dart' show toast;
 import '../../widgets/math_text.dart';
@@ -35,6 +36,10 @@ class _GzResultsState extends State<GzResults> {
     super.initState();
     if (_win) {
       GzFeel.win();
+      // A happy moment: maybe ask for a Play Store review (Engagement decides; never right after our own rating card).
+      Future<void>.delayed(const Duration(seconds: 4), () {
+        if (mounted) Engagement.happyMoment(context);
+      });
     } else {
       GzFeel.sfx(GzSfx.lose);
     }

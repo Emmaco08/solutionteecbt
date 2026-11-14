@@ -40,6 +40,7 @@ export const NAV: NavGroup[] = [
       { href: "/admin/tutors", label: "Tutor requests", icon: "ChatsCircle", roles: ADMINS },
       { href: "/admin/community", label: "Community", icon: "ChatsTeardrop", roles: ADMINS },
       { href: "/admin/community/feed", label: "Community feed", icon: "Users", roles: ["super_admin", "admin", "editor", "teacher"] },
+      { href: "/admin/ratings", label: "App ratings", icon: "Star", roles: ADMINS },
     ],
   },
   {

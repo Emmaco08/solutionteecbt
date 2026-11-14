@@ -6,6 +6,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/engagement.dart';
 import '../../core/providers.dart';
 import '../../ui/kit.dart' show toast;
 import '../../widgets/fit_text.dart';
@@ -40,6 +41,7 @@ class _GzHubScreenState extends ConsumerState<GzHubScreen> {
   void initState() {
     super.initState();
     final st = ref.read(settingsProvider);
+    Engagement.visited(context, 'games');
     GzSound.instance.sounds = st.gameSounds;
     GzSound.instance.setMusic(st.gameMusic);
     GzUserFeed.instance.hold();
