@@ -2,6 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/services.dart';
 
+import 'platform.dart';
+import 'win_capture.dart';
+
 /// Screenshots and screen recording (Android FLAG_SECURE), as the admin decides (D-080, Admin → Flags & settings):
 /// "whole app" and "tests, challenges and Premium videos". Screens that need it call [on] / [off]; [policy] comes
 /// from the server settings. Implemented in android/app/src/main/kotlin/.../MainActivity.kt.
@@ -32,6 +35,10 @@ abstract final class SecureScreen {
   }
 
   static Future<void> _apply() async {
+    if (isWindows) {
+      WinCapture.set(protecting); // Windows: exclude the window from screenshots and recording (D-166)
+      return;
+    }
     try {
       await _ch.invokeMethod<void>('set', protecting);
     } catch (_) {

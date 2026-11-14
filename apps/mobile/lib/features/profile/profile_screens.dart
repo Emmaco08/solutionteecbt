@@ -32,6 +32,7 @@ import '../premium/payments.dart';
 import '../notifications/turn_on_sheet.dart';
 import 'me_extras.dart';
 import '../auth/auth_screens.dart' show CodeBoxes;
+import '../../desktop/desktop_frame.dart';
 
 const _supportEmailFallback = 'support@mail.solutiontee.com';
 
@@ -266,7 +267,7 @@ class ProfileScreen extends ConsumerWidget {
                   else
                     const UpgradeBanner(title: 'Upgrade to Premium', text: 'Every year, videos, notes, novels and more AI help.'),
                   GridView.count(
-                    crossAxisCount: 2,
+                    crossAxisCount: gridCols(context, 2),
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     mainAxisSpacing: Space.s3,

@@ -10,6 +10,8 @@ import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
 import '../../ui/kit.dart';
 import '../../widgets/phosphor.g.dart';
+import '../../core/platform.dart';
+import 'desktop_pay.dart';
 import 'pay_ui.dart';
 import 'payments.dart';
 
@@ -55,12 +57,13 @@ Future<void> openOutside(Uri u) async {
 /// Paystack's web checkout inside our own screen: OPay, PocketApp, Zap and bank apps are only offered there.
 /// Our top bar and back button, a "Secured by Paystack" strip, a loading bar, and a check every 4 seconds
 /// that closes the screen as soon as the server confirms the payment. Links to bank / wallet apps open the app.
-Future<PayResult?> showPaystackWeb(BuildContext context, PayWeb w, PaystackProvider pay, {required String what, String? via}) =>
-    Navigator.of(context, rootNavigator: true).push<PayResult>(
-      MaterialPageRoute(
-        builder: (_) => PaystackWebScreen(w: w, pay: pay, what: what, via: via),
-      ),
-    );
+Future<PayResult?> showPaystackWeb(BuildContext context, PayWeb w, PaystackProvider pay, {required String what, String? via}) => isDesktop
+    ? showDesktopPay(context, w, pay, what: what, via: via) // Windows: Paystack in the browser, this app confirms (D-166)
+    : Navigator.of(context, rootNavigator: true).push<PayResult>(
+        MaterialPageRoute(
+          builder: (_) => PaystackWebScreen(w: w, pay: pay, what: what, via: via),
+        ),
+      );
 
 /// Paystack's checkout has no link that opens it on OPay / Zap / Bank directly, so once it has loaded we tap that
 /// option for the student (behind our own "Opening OPay…" cover). [via] is the name we look for ("OPay", "Zap",

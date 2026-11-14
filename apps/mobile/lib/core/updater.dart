@@ -13,6 +13,7 @@ import '../theme/tokens.g.dart';
 import '../ui/kit.dart';
 import '../widgets/phosphor.g.dart';
 import 'config.dart';
+import 'platform.dart';
 import 'app_gate.dart' show appGateProvider;
 
 /// In-app update of the direct (website) app (owner, D-080). The app asks the website for the newest build, compares
@@ -59,6 +60,7 @@ abstract final class Updater {
   /// This app's versionCode (0 if unknown).
   /// The installed version name, e.g. "0.3.0-202611070721".
   static Future<String> myName() async {
+    if (isDesktop) return desktopBuild > 0 ? '${Config.appVersion}-$desktopBuild' : Config.appVersion;
     try {
       final m = await _ch.invokeMapMethod<String, Object?>('version');
       return '${m?['name'] ?? ''}';
@@ -68,6 +70,7 @@ abstract final class Updater {
   }
 
   static Future<int> myCode() async {
+    if (isDesktop) return desktopBuild;
     try {
       final m = await _ch.invokeMapMethod<String, Object?>('version');
       return (m?['code'] as num?)?.toInt() ?? 0;
@@ -77,6 +80,7 @@ abstract final class Updater {
   }
 
   static Future<bool> canInstall() async {
+    if (isDesktop) return true;
     try {
       return await _ch.invokeMethod<bool>('canInstall') ?? false;
     } catch (_) {
@@ -85,19 +89,29 @@ abstract final class Updater {
   }
 
   static Future<void> allowInstall() async {
+    if (isDesktop) return;
     try {
       await _ch.invokeMethod<bool>('allowInstall');
     } catch (_) {}
   }
 
-  static Future<void> install(File apk) => _ch.invokeMethod<bool>('install', apk.path);
+  static Future<void> install(File apk) async {
+    if (isWindows) {
+      // The Inno Setup installer updates in place and opens the app again (D-166). The app closes so files can be replaced.
+      await Process.start(apk.path, const ['/SILENT', '/SP-', '/NOCANCEL', '/NORESTART', '/CLOSEAPPLICATIONS'], mode: ProcessStartMode.detached);
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+      exit(0);
+    }
+    await _ch.invokeMethod<bool>('install', apk.path);
+  }
 
   /// Downloads the APK, reporting 0..1. Android's download manager does the work (owner, 2026-11-07): it keeps going
   /// when the app is minimised or closed and shows its own notification; the same download is picked up again when
   /// the student comes back (its id is kept in a small file). Falls back to downloading inside the app if the phone's
   /// download manager is not available.
   static Future<File> download(AppRelease r, void Function(double) onProgress) async {
-    final name = 'solutiontee-${r.build ?? r.version}.apk';
+    final name = 'solutiontee-${r.build ?? r.version}.${isWindows ? 'exe' : 'apk'}';
+    if (isDesktop) return _inAppDownload(r, name, onProgress);
     try {
       return await _bgDownload(r, name, onProgress);
     } on _NoDownloadManager {
@@ -202,9 +216,11 @@ class _NoDownloadManager implements Exception {}
 
 /// Is a newer direct app ready? null = up to date, Play build, offline or not known.
 final appUpdateProvider = FutureProvider<UpdateInfo?>((ref) async {
-  if (appFlavor == 'play' || !Platform.isAndroid) return null;
+  if (appFlavor == 'play' || !(Platform.isAndroid || isWindows)) return null;
   final mine = await Updater.myCode();
-  final r = await http.get(Uri.parse('${Config.apiBase}/api/app/latest'), headers: {'cache-control': 'no-cache'}).timeout(const Duration(seconds: 10));
+  final r = await http
+      .get(Uri.parse('${Config.apiBase}/api/app/latest${isWindows ? '?channel=windows' : ''}'), headers: {'cache-control': 'no-cache'})
+      .timeout(const Duration(seconds: 10));
   if (r.statusCode != 200) return null;
   final rel = AppRelease.fromJson(Map<String, dynamic>.from(jsonDecode(r.body) as Map));
   if (!rel.newerThan(mine)) return null;
@@ -388,7 +404,13 @@ class _UpdateScreenState extends State<UpdateScreen> {
               onPressed: f.busy ? null : () => f.run(r),
             ),
             const Gap(Space.s3),
-            Text('Android will ask you to confirm the update. It only takes a minute.', style: context.ty.cap.col(c.textSubtle), textAlign: TextAlign.center),
+            Text(
+              isDesktop
+                  ? 'The update installs by itself and SolutionTee opens again. It only takes a minute.'
+                  : 'Android will ask you to confirm the update. It only takes a minute.',
+              style: context.ty.cap.col(c.textSubtle),
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),
@@ -541,7 +563,9 @@ class _AppUpdateScreenState extends ConsumerState<AppUpdateScreen> {
               ),
               const Gap(Space.s3),
               Text(
-                'Your account, XP and saved tests stay. Android will ask you to confirm.',
+                isDesktop
+                    ? 'Your account, XP and saved tests stay. SolutionTee opens again by itself.'
+                    : 'Your account, XP and saved tests stay. Android will ask you to confirm.',
                 style: context.ty.cap.col(c.textSubtle),
                 textAlign: TextAlign.center,
               ),

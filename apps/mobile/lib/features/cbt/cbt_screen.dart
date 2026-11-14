@@ -27,6 +27,7 @@ import '../compete/results_screens.dart' show openChallengeBoard;
 import 'calculator.dart';
 import 'exam_clock.dart';
 import '../../core/fair_play.dart';
+import '../../core/platform.dart';
 
 class _Q {
   _Q(this.row) : options = Map<String, String>.from(jsonDecode(row.optionsJson) as Map);
@@ -206,7 +207,7 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
         }
       });
     } catch (e) {
-      setState(() => _error = e);
+      if (mounted) setState(() => _error = e);
     }
   }
 
@@ -536,146 +537,144 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
     );
   }
 
-  void _openPalette() {
+  void _openPalette() => showSheet<void>(context, builder: (ctx) => _paletteContent(ctx, close: () => Navigator.pop(ctx)));
+
+  /// The question palette: in a sheet on phones, always open on the right on desktop (D-166).
+  Widget _paletteContent(BuildContext ctx, {VoidCallback? close}) {
     final sid = _qs[_i].row.subjectId;
     final idx = [
       for (var i = 0; i < _qs.length; i++)
         if (_qs[i].row.subjectId == sid) i,
     ];
     final n = _counts(sid);
-    showSheet<void>(
-      context,
-      builder: (ctx) {
-        final c = ctx.c;
-        Widget legend(Color? fill, Color? ring, String label, {bool dot = false}) => Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 12,
-              height: 12,
-              decoration: BoxDecoration(
-                color: fill,
-                borderRadius: BorderRadius.circular(dot ? 6 : 4),
-                border: ring == null ? null : Border.all(color: ring, width: 2),
-              ),
-            ),
-            const SizedBox(width: 6),
-            Text(label, style: ctx.ty.cap.col(c.textMuted)),
-          ],
-        );
-        Widget tile(int k) => Builder(
-          builder: (context) {
-            final q = _qs[idx[k]].row.id;
-            final ans = _answers.containsKey(q), flag = _flags.contains(q), cur = idx[k] == _i;
-            return Semantics(
-              button: true,
-              label: 'Question ${k + 1}${ans ? ', answered' : ''}${flag ? ', flagged' : ''}',
-              child: GestureDetector(
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _go(idx[k]);
-                },
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Container(
-                      alignment: Alignment.center,
+    final c = ctx.c;
+    Widget legend(Color? fill, Color? ring, String label, {bool dot = false}) => Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(
+            color: fill,
+            borderRadius: BorderRadius.circular(dot ? 6 : 4),
+            border: ring == null ? null : Border.all(color: ring, width: 2),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(label, style: ctx.ty.cap.col(c.textMuted)),
+      ],
+    );
+    Widget tile(int k) => Builder(
+      builder: (context) {
+        final q = _qs[idx[k]].row.id;
+        final ans = _answers.containsKey(q), flag = _flags.contains(q), cur = idx[k] == _i;
+        return Semantics(
+          button: true,
+          label: 'Question ${k + 1}${ans ? ', answered' : ''}${flag ? ', flagged' : ''}',
+          child: GestureDetector(
+            onTap: () {
+              close?.call();
+              _go(idx[k]);
+            },
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: ans ? c.answered : c.surface,
+                    borderRadius: BorderRadius.circular(9),
+                    border: cur
+                        ? Border.all(color: c.current, width: 2.5)
+                        : ans
+                        ? null
+                        : Border.all(color: c.unanswered, width: 1.5),
+                  ),
+                  child: Text('${k + 1}', style: ctx.ty.sm.bold.tnum.col(ans ? Colors.white : (cur ? c.text : c.textMuted))),
+                ),
+                if (flag)
+                  Positioned(
+                    top: -3,
+                    right: -3,
+                    child: Container(
+                      width: 10,
+                      height: 10,
                       decoration: BoxDecoration(
-                        color: ans ? c.answered : c.surface,
-                        borderRadius: BorderRadius.circular(9),
-                        border: cur
-                            ? Border.all(color: c.current, width: 2.5)
-                            : ans
-                            ? null
-                            : Border.all(color: c.unanswered, width: 1.5),
+                        color: c.flagged,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: c.surface, width: 2),
                       ),
-                      child: Text('${k + 1}', style: ctx.ty.sm.bold.tnum.col(ans ? Colors.white : (cur ? c.text : c.textMuted))),
                     ),
-                    if (flag)
-                      Positioned(
-                        top: -3,
-                        right: -3,
-                        child: Container(
-                          width: 10,
-                          height: 10,
-                          decoration: BoxDecoration(
-                            color: c.flagged,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: c.surface, width: 2),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-        Widget grid(List<Widget> children) => GridView.count(
-          crossAxisCount: 8,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: 7,
-          crossAxisSpacing: 7,
-          children: children,
-        );
-        // Group the numbers by section (JAMB English); other papers stay one grid.
-        final groups = <({String label, int from, int to})>[];
-        for (var k = 0; k < idx.length; k++) {
-          final sec = _sections.at(idx[k]);
-          final label = sec == null || sec.key == 'more' ? 'More questions' : sec.label;
-          if (groups.isNotEmpty && groups.last.label == label) {
-            groups[groups.length - 1] = (label: label, from: groups.last.from, to: k + 1);
-          } else {
-            groups.add((label: label, from: k, to: k + 1));
-          }
-        }
-        if (_sections.isEmpty) groups.clear();
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Expanded(child: Text(_short(sid), style: ctx.ty.h3)),
-                Text('${n.a} answered · ${n.u} left', style: ctx.ty.sm.tnum.col(c.textMuted)),
+                  ),
               ],
             ),
-            const Gap(Space.s3),
-            Wrap(
-              spacing: 14,
-              runSpacing: 6,
-              children: [
-                legend(c.answered, null, 'Answered'),
-                legend(null, c.unanswered, 'Not answered'),
-                legend(c.flagged, null, 'Flagged', dot: true),
-                legend(null, c.current, 'Current'),
-              ],
-            ),
-            const Gap(Space.s4),
-            if (groups.length > 1)
-              for (final g in groups) ...[
-                Padding(
-                  padding: const EdgeInsets.only(bottom: Space.s2),
-                  child: Text(g.label, style: ctx.ty.cap.bold.col(c.textMuted)),
-                ),
-                grid([for (var k = g.from; k < g.to; k++) tile(k)]),
-                const Gap(Space.s3),
-              ]
-            else
-              grid([for (var k = 0; k < idx.length; k++) tile(k)]),
-            const Gap(Space.s6),
-            Btn(
-              'Submit exam',
-              kind: BtnKind.outline,
-              block: true,
-              onPressed: () {
-                Navigator.pop(ctx);
-                _submit();
-              },
-            ),
-          ],
+          ),
         );
       },
+    );
+    Widget grid(List<Widget> children) => GridView.count(
+      crossAxisCount: 8,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: 7,
+      crossAxisSpacing: 7,
+      children: children,
+    );
+    // Group the numbers by section (JAMB English); other papers stay one grid.
+    final groups = <({String label, int from, int to})>[];
+    for (var k = 0; k < idx.length; k++) {
+      final sec = _sections.at(idx[k]);
+      final label = sec == null || sec.key == 'more' ? 'More questions' : sec.label;
+      if (groups.isNotEmpty && groups.last.label == label) {
+        groups[groups.length - 1] = (label: label, from: groups.last.from, to: k + 1);
+      } else {
+        groups.add((label: label, from: k, to: k + 1));
+      }
+    }
+    if (_sections.isEmpty) groups.clear();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(child: Text(_short(sid), style: ctx.ty.h3)),
+            Text('${n.a} answered · ${n.u} left', style: ctx.ty.sm.tnum.col(c.textMuted)),
+          ],
+        ),
+        const Gap(Space.s3),
+        Wrap(
+          spacing: 14,
+          runSpacing: 6,
+          children: [
+            legend(c.answered, null, 'Answered'),
+            legend(null, c.unanswered, 'Not answered'),
+            legend(c.flagged, null, 'Flagged', dot: true),
+            legend(null, c.current, 'Current'),
+          ],
+        ),
+        const Gap(Space.s4),
+        if (groups.length > 1)
+          for (final g in groups) ...[
+            Padding(
+              padding: const EdgeInsets.only(bottom: Space.s2),
+              child: Text(g.label, style: ctx.ty.cap.bold.col(c.textMuted)),
+            ),
+            grid([for (var k = g.from; k < g.to; k++) tile(k)]),
+            const Gap(Space.s3),
+          ]
+        else
+          grid([for (var k = 0; k < idx.length; k++) tile(k)]),
+        const Gap(Space.s6),
+        Btn(
+          'Submit exam',
+          kind: BtnKind.outline,
+          block: true,
+          onPressed: () {
+            close?.call();
+            _submit();
+          },
+        ),
+      ],
     );
   }
 
@@ -763,6 +762,9 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
     final name = (ref.watch(profileProvider).value?['full_name'] as String?) ?? 'Candidate';
     final title = ((jsonDecode(_a!.configJson) as Map)['title'] as String?) ?? _a!.examCode;
     final rm = context.reduceMotion;
+    final wide = isDesktop && MediaQuery.sizeOf(context).width >= 1100;
+    // Desktop: the question sits in a readable column next to the palette.
+    final qPad = wide ? ((MediaQuery.sizeOf(context).width - 360 - 880) / 2).clamp(Space.s6, 400.0) : Space.s4;
     final sectionHere = _sections.at(_i);
     // Passage: questions that share it, numbered within the subject.
     final passageNums = q.row.passageId == null
@@ -801,277 +803,369 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
         if (didPop) return;
         if (await _confirmLeave() && context.mounted) context.go('/home');
       },
-      child: Scaffold(
-        body: SafeArea(
-          bottom: false,
-          child: Column(
-            children: [
-              // Top bar: logo, candidate + test, timer, Submit
-              Container(
-                padding: const EdgeInsets.fromLTRB(Space.s4, Space.s2, Space.s3, Space.s2),
-                decoration: BoxDecoration(
-                  color: c.surface,
-                  border: Border(bottom: BorderSide(color: c.border)),
-                ),
-                child: Row(
-                  children: [
-                    ExamLogo(_a!.examCode, size: LogoSize.sm),
-                    const Gap(Space.s2),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            name,
-                            style: context.ty.sm.bold.copyWith(fontSize: 14, height: 18 / 14),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          Text(title, style: context.ty.cap.copyWith(fontSize: 11).col(c.textMuted), maxLines: 1, overflow: TextOverflow.ellipsis),
-                        ],
-                      ),
+      child: _desktopKeys(
+        q,
+        Scaffold(
+          body: _withSidePanel(
+            wide,
+            SafeArea(
+              bottom: false,
+              child: Column(
+                children: [
+                  // Top bar: logo, candidate + test, timer, Submit
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(Space.s4, Space.s2, Space.s3, Space.s2),
+                    decoration: BoxDecoration(
+                      color: c.surface,
+                      border: Border(bottom: BorderSide(color: c.border)),
                     ),
-                    if (_clock.timed) ...[timer, const Gap(Space.s2)],
-                    Pressable(
-                      onTap: _submitting ? null : () => _submit(),
-                      borderRadius: BorderRadius.circular(99),
-                      child: Ink(
-                        height: 36,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(color: c.error, borderRadius: BorderRadius.circular(99)),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(PhosphorIcons.paperPlaneTilt(PhosphorIconsStyle.fill), size: 16, color: Colors.white),
-                            const SizedBox(width: 6),
-                            Text('Submit', style: context.ty.sm.bold.col(Colors.white)),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // Subject tabs with answered/total
-              if (sids.length > 1)
-                Container(
-                  height: 54,
-                  decoration: BoxDecoration(
-                    color: c.surface,
-                    border: Border(bottom: BorderSide(color: c.border)),
-                  ),
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: Space.s3, vertical: Space.s2),
-                    children: [
-                      for (final s in sids)
-                        Padding(
-                          padding: const EdgeInsets.only(right: 6),
-                          child: Builder(
-                            builder: (context) {
-                              final on = q.row.subjectId == s;
-                              final n = _counts(s);
-                              return Semantics(
-                                selected: on,
-                                button: true,
-                                child: InkWell(
-                                  borderRadius: BorderRadius.circular(10),
-                                  onTap: () => _go(firstOf[s]!),
-                                  child: AnimatedContainer(
-                                    duration: Motion.fast,
-                                    height: 38,
-                                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                                    decoration: BoxDecoration(color: on ? c.primary : Colors.transparent, borderRadius: BorderRadius.circular(10)),
-                                    child: Row(
-                                      children: [
-                                        Text(_short(s), style: context.ty.sm.bold.col(on ? c.onPrimary : c.textMuted)),
-                                        const SizedBox(width: 6),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                                          decoration: BoxDecoration(
-                                            color: on ? Colors.white.withValues(alpha: .18) : c.surfaceSunken,
-                                            borderRadius: BorderRadius.circular(99),
-                                          ),
-                                          child: Text(
-                                            '${n.a}/${n.total}',
-                                            style: context.ty.cap.copyWith(fontSize: 11).tnum.col(on ? c.onPrimary : c.textMuted),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              // Passage (collapsible)
-              if (q.row.passageBody != null)
-                AnimatedContainer(
-                  duration: Motion.base,
-                  curve: Motion.out,
-                  constraints: BoxConstraints(maxHeight: _passageOpen ? MediaQuery.sizeOf(context).height * .42 : 48),
-                  decoration: BoxDecoration(
-                    color: c.surfaceAlt,
-                    border: Border(bottom: BorderSide(color: c.border)),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      InkWell(
-                        onTap: () => setState(() => _passageOpen = !_passageOpen),
-                        child: SizedBox(
-                          height: 48,
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(Space.s4, 0, Space.s3, 0),
-                            child: Row(
-                              children: [
-                                Icon(PhosphorIcons.article(PhosphorIconsStyle.fill), size: 18, color: c.text),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    passageNums.length > 1
-                                        ? 'Read the passage and answer questions ${passageNums.first} to ${passageNums.last}'
-                                        : 'Read the passage',
-                                    style: context.ty.sm.bold,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                AnimatedRotation(turns: _passageOpen ? 0 : .5, duration: Motion.base, child: Icon(PhosphorIcons.caretUp(), size: 18)),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      if (_passageOpen)
-                        Flexible(
-                          child: SingleChildScrollView(
-                            padding: const EdgeInsets.fromLTRB(Space.s4, 0, Space.s4, Space.s4),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // A title that is only the first words of the passage (common in imported papers) is not repeated.
-                                if (q.row.passageTitle != null && !_titleRepeats(q.row.passageTitle!, q.row.passageBody!)) ...[
-                                  Text(q.row.passageTitle!.replaceFirst('[SAMPLE] ', ''), style: context.ty.sm.bold),
-                                  const Gap(Space.s2),
-                                ],
-                                MathText(q.row.passageBody!, style: context.ty.body.copyWith(height: 24 / 15)),
-                              ],
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              // Question area
-              Expanded(
-                child: ListView(
-                  key: ValueKey(_i),
-                  padding: const EdgeInsets.fromLTRB(Space.s4, Space.s4, Space.s4, Space.s6),
-                  children: [
-                    Row(
+                    child: Row(
                       children: [
-                        Text.rich(
-                          TextSpan(
-                            style: context.ty.label,
+                        ExamLogo(_a!.examCode, size: LogoSize.sm),
+                        const Gap(Space.s2),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const TextSpan(text: 'Question '),
-                              TextSpan(text: '$nInSubject', style: context.ty.label.tnum),
-                              TextSpan(
-                                text: ' of $total',
-                                style: context.ty.label.copyWith(fontWeight: FontWeight.w500).col(c.textMuted),
+                              Text(
+                                name,
+                                style: context.ty.sm.bold.copyWith(fontSize: 14, height: 18 / 14),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
+                              Text(title, style: context.ty.cap.copyWith(fontSize: 11).col(c.textMuted), maxLines: 1, overflow: TextOverflow.ellipsis),
                             ],
                           ),
                         ),
-                        const Gap(Space.s2),
-                        Flexible(child: _sourcePill(q.row.id)),
-                        const Spacer(),
-                        flagged
-                            ? Pill('Flagged', kind: BadgeKind.warning, icon: PhosphorIcons.flag(PhosphorIconsStyle.fill))
-                            : Text(
-                                sectionHere != null && sectionHere.hasInstruction ? sectionHere.label : _short(q.row.subjectId),
-                                style: context.ty.cap.col(c.textMuted),
-                              ),
+                        if (_clock.timed) ...[timer, const Gap(Space.s2)],
+                        Pressable(
+                          onTap: _submitting ? null : () => _submit(),
+                          borderRadius: BorderRadius.circular(99),
+                          child: Ink(
+                            height: 36,
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(color: c.error, borderRadius: BorderRadius.circular(99)),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(PhosphorIcons.paperPlaneTilt(PhosphorIconsStyle.fill), size: 16, color: Colors.white),
+                                const SizedBox(width: 6),
+                                Text('Submit', style: context.ty.sm.bold.col(Colors.white)),
+                              ],
+                            ),
+                          ),
+                        ),
                       ],
                     ),
-                    if (sectionHere != null && sectionHere.start == _i && sectionHere.hasInstruction) ...[
-                      const Gap(Space.s3),
-                      SectionCard(section: sectionHere, position: _sections.position(sectionHere)),
-                    ],
-                    const Gap(Space.s3),
-                    _swap(
-                      rm,
-                      MathText(
-                        q.row.body,
-                        style: context.ty.body.copyWith(fontSize: TypeScale.question.size, height: TypeScale.question.line / TypeScale.question.size),
+                  ),
+                  // Subject tabs with answered/total
+                  if (sids.length > 1)
+                    Container(
+                      height: 54,
+                      decoration: BoxDecoration(
+                        color: c.surface,
+                        border: Border(bottom: BorderSide(color: c.border)),
                       ),
-                    ),
-                    if (q.row.imagePath != null) ...[const Gap(Space.s3), QuestionImage(imageKey: q.row.imagePath!)],
-                    const Gap(Space.s5),
-                    Semantics(
-                      container: true,
-                      label: 'Options',
-                      child: Column(
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: Space.s3, vertical: Space.s2),
                         children: [
-                          for (final k in q.options.keys.toList()..sort()) ...[
-                            OptionRow(letter: k, text: q.options[k]!, state: chosen == k ? OptState.selected : OptState.none, onTap: () => _choose(k)),
-                            const SizedBox(height: 10),
-                          ],
+                          for (final s in sids)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 6),
+                              child: Builder(
+                                builder: (context) {
+                                  final on = q.row.subjectId == s;
+                                  final n = _counts(s);
+                                  return Semantics(
+                                    selected: on,
+                                    button: true,
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(10),
+                                      onTap: () => _go(firstOf[s]!),
+                                      child: AnimatedContainer(
+                                        duration: Motion.fast,
+                                        height: 38,
+                                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                                        decoration: BoxDecoration(color: on ? c.primary : Colors.transparent, borderRadius: BorderRadius.circular(10)),
+                                        child: Row(
+                                          children: [
+                                            Text(_short(s), style: context.ty.sm.bold.col(on ? c.onPrimary : c.textMuted)),
+                                            const SizedBox(width: 6),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                              decoration: BoxDecoration(
+                                                color: on ? Colors.white.withValues(alpha: .18) : c.surfaceSunken,
+                                                borderRadius: BorderRadius.circular(99),
+                                              ),
+                                              child: Text(
+                                                '${n.a}/${n.total}',
+                                                style: context.ty.cap.copyWith(fontSize: 11).tnum.col(on ? c.onPrimary : c.textMuted),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
                         ],
                       ),
                     ),
-                  ],
-                ),
-              ),
-              // Bottom bar: Prev · calculator · palette · flag · Next/Submit
-              Container(
-                padding: EdgeInsets.fromLTRB(Space.s3, Space.s2, Space.s3, Space.s3 + MediaQuery.paddingOf(context).bottom),
-                decoration: BoxDecoration(
-                  color: c.surface,
-                  border: Border(top: BorderSide(color: c.border)),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Btn('Prev', kind: BtnKind.outline, sm: true, leading: PhosphorIcons.caretLeft(), onPressed: _i == 0 ? null : () => _go(_i - 1)),
+                  // Passage (collapsible)
+                  if (q.row.passageBody != null)
+                    AnimatedContainer(
+                      duration: Motion.base,
+                      curve: Motion.out,
+                      constraints: BoxConstraints(maxHeight: _passageOpen ? MediaQuery.sizeOf(context).height * .42 : 48),
+                      decoration: BoxDecoration(
+                        color: c.surfaceAlt,
+                        border: Border(bottom: BorderSide(color: c.border)),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          InkWell(
+                            onTap: () => setState(() => _passageOpen = !_passageOpen),
+                            child: SizedBox(
+                              height: 48,
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(Space.s4, 0, Space.s3, 0),
+                                child: Row(
+                                  children: [
+                                    Icon(PhosphorIcons.article(PhosphorIconsStyle.fill), size: 18, color: c.text),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        passageNums.length > 1
+                                            ? 'Read the passage and answer questions ${passageNums.first} to ${passageNums.last}'
+                                            : 'Read the passage',
+                                        style: context.ty.sm.bold,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    AnimatedRotation(turns: _passageOpen ? 0 : .5, duration: Motion.base, child: Icon(PhosphorIcons.caretUp(), size: 18)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          if (_passageOpen)
+                            Flexible(
+                              child: SingleChildScrollView(
+                                padding: const EdgeInsets.fromLTRB(Space.s4, 0, Space.s4, Space.s4),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // A title that is only the first words of the passage (common in imported papers) is not repeated.
+                                    if (q.row.passageTitle != null && !_titleRepeats(q.row.passageTitle!, q.row.passageBody!)) ...[
+                                      Text(q.row.passageTitle!.replaceFirst('[SAMPLE] ', ''), style: context.ty.sm.bold),
+                                      const Gap(Space.s2),
+                                    ],
+                                    MathText(q.row.passageBody!, style: context.ty.body.copyWith(height: 24 / 15)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
-                    IconBtn(PhosphorIcons.calculator(), label: 'Calculator', onPressed: () => showCalculator(context)),
-                    IconBtn(PhosphorIcons.squaresFour(), label: 'Question palette', onPressed: _openPalette),
-                    IconBtn(
-                      PhosphorIcons.flag(flagged ? PhosphorIconsStyle.fill : PhosphorIconsStyle.regular),
-                      label: flagged ? 'Remove flag' : 'Flag question',
-                      color: flagged ? c.warning : null,
-                      onPressed: _toggleFlag,
+                  // Question area
+                  Expanded(
+                    child: ListView(
+                      key: ValueKey(_i),
+                      padding: EdgeInsets.fromLTRB(qPad, wide ? Space.s7 : Space.s4, qPad, Space.s6),
+                      children: [
+                        Row(
+                          children: [
+                            Text.rich(
+                              TextSpan(
+                                style: context.ty.label,
+                                children: [
+                                  const TextSpan(text: 'Question '),
+                                  TextSpan(text: '$nInSubject', style: context.ty.label.tnum),
+                                  TextSpan(
+                                    text: ' of $total',
+                                    style: context.ty.label.copyWith(fontWeight: FontWeight.w500).col(c.textMuted),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Gap(Space.s2),
+                            Flexible(child: _sourcePill(q.row.id)),
+                            const Spacer(),
+                            flagged
+                                ? Pill('Flagged', kind: BadgeKind.warning, icon: PhosphorIcons.flag(PhosphorIconsStyle.fill))
+                                : Text(
+                                    sectionHere != null && sectionHere.hasInstruction ? sectionHere.label : _short(q.row.subjectId),
+                                    style: context.ty.cap.col(c.textMuted),
+                                  ),
+                          ],
+                        ),
+                        if (sectionHere != null && sectionHere.start == _i && sectionHere.hasInstruction) ...[
+                          const Gap(Space.s3),
+                          SectionCard(section: sectionHere, position: _sections.position(sectionHere)),
+                        ],
+                        const Gap(Space.s3),
+                        _swap(
+                          rm,
+                          MathText(
+                            q.row.body,
+                            style: context.ty.body.copyWith(fontSize: TypeScale.question.size, height: TypeScale.question.line / TypeScale.question.size),
+                          ),
+                        ),
+                        if (q.row.imagePath != null) ...[const Gap(Space.s3), QuestionImage(imageKey: q.row.imagePath!)],
+                        const Gap(Space.s5),
+                        Semantics(
+                          container: true,
+                          label: 'Options',
+                          child: Column(
+                            children: [
+                              for (final k in q.options.keys.toList()..sort()) ...[
+                                OptionRow(letter: k, text: q.options[k]!, state: chosen == k ? OptState.selected : OptState.none, onTap: () => _choose(k)),
+                                const SizedBox(height: 10),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    Expanded(
-                      child: Align(
-                        alignment: Alignment.centerRight,
-                        child: last
-                            ? Btn(
-                                'Submit',
-                                kind: BtnKind.danger,
-                                sm: true,
-                                leading: PhosphorIcons.paperPlaneTilt(PhosphorIconsStyle.fill),
-                                onPressed: _submitting ? null : () => _submit(),
-                              )
-                            : Btn('Next', sm: true, icon: PhosphorIcons.caretRight(), onPressed: () => _go(_i + 1)),
-                      ),
+                  ),
+                  // Bottom bar: Prev · calculator · palette · flag · Next/Submit
+                  Container(
+                    padding: EdgeInsets.fromLTRB(Space.s3, Space.s2, Space.s3, Space.s3 + MediaQuery.paddingOf(context).bottom),
+                    decoration: BoxDecoration(
+                      color: c.surface,
+                      border: Border(top: BorderSide(color: c.border)),
                     ),
-                  ],
-                ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Btn(
+                              'Prev',
+                              kind: BtnKind.outline,
+                              sm: true,
+                              leading: PhosphorIcons.caretLeft(),
+                              onPressed: _i == 0 ? null : () => _go(_i - 1),
+                            ),
+                          ),
+                        ),
+                        IconBtn(PhosphorIcons.calculator(), label: 'Calculator', onPressed: () => showCalculator(context)),
+                        IconBtn(PhosphorIcons.squaresFour(), label: 'Question palette', onPressed: _openPalette),
+                        IconBtn(
+                          PhosphorIcons.flag(flagged ? PhosphorIconsStyle.fill : PhosphorIconsStyle.regular),
+                          label: flagged ? 'Remove flag' : 'Flag question',
+                          color: flagged ? c.warning : null,
+                          onPressed: _toggleFlag,
+                        ),
+                        Expanded(
+                          child: Align(
+                            alignment: Alignment.centerRight,
+                            child: last
+                                ? Btn(
+                                    'Submit',
+                                    kind: BtnKind.danger,
+                                    sm: true,
+                                    leading: PhosphorIcons.paperPlaneTilt(PhosphorIconsStyle.fill),
+                                    onPressed: _submitting ? null : () => _submit(),
+                                  )
+                                : Btn('Next', sm: true, icon: PhosphorIcons.caretRight(), onPressed: () => _go(_i + 1)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
+    );
+  }
+
+  /// Desktop (D-166): the palette stays open on the right.
+  Widget _withSidePanel(bool wide, Widget main) {
+    if (!wide) return main;
+    final c = context.c;
+    Widget key(String k, String what) => Padding(
+      padding: const EdgeInsets.only(bottom: Space.s2),
+      child: Row(
+        children: [
+          Container(
+            constraints: const BoxConstraints(minWidth: 34),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: c.surfaceAlt,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: c.border),
+            ),
+            child: Text(k, textAlign: TextAlign.center, style: context.ty.cap.bold.col(c.text)),
+          ),
+          const Gap(Space.s3),
+          Expanded(child: Text(what, style: context.ty.sm.col(c.textMuted))),
+        ],
+      ),
+    );
+    return Row(
+      children: [
+        Expanded(child: main),
+        Container(
+          width: 360,
+          decoration: BoxDecoration(
+            color: c.surface,
+            border: Border(left: BorderSide(color: c.border)),
+          ),
+          child: SafeArea(
+            child: ListView(
+              padding: const EdgeInsets.all(Space.s5),
+              children: [
+                _paletteContent(context),
+                const Gap(Space.s6),
+                Text('Keyboard', style: context.ty.label.bold),
+                const Gap(Space.s3),
+                key('A – E', 'Choose an answer'),
+                key('Left / Right', 'Previous / next question'),
+                key('F', 'Flag or unflag'),
+                key('C', 'Calculator'),
+                key('Ctrl+Enter', 'Submit'),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Desktop keys while the exam is open: letters choose, arrows move, F flags, C calculator, Ctrl+Enter submits.
+  Widget _desktopKeys(_Q q, Widget child) {
+    if (!isDesktop) return child;
+    final keys = q.options.keys.toList()..sort();
+    final letters = {
+      LogicalKeyboardKey.keyA: 'A',
+      LogicalKeyboardKey.keyB: 'B',
+      LogicalKeyboardKey.keyC: 'C',
+      LogicalKeyboardKey.keyD: 'D',
+      LogicalKeyboardKey.keyE: 'E',
+    };
+    return CallbackShortcuts(
+      bindings: {
+        for (final e in letters.entries)
+          if (keys.contains(e.value) && e.value != 'C') SingleActivator(e.key): () => _choose(e.value),
+        // C is the calculator unless the question has an option C (then Shift+C opens the calculator).
+        if (keys.contains('C')) const SingleActivator(LogicalKeyboardKey.keyC): () => _choose('C'),
+        SingleActivator(LogicalKeyboardKey.keyC, shift: keys.contains('C')): () => showCalculator(context),
+        const SingleActivator(LogicalKeyboardKey.arrowRight): () => _go(_i + 1),
+        const SingleActivator(LogicalKeyboardKey.arrowLeft): () => _go(_i - 1),
+        const SingleActivator(LogicalKeyboardKey.keyF): _toggleFlag,
+        const SingleActivator(LogicalKeyboardKey.enter, control: true): () => _submit(),
+      },
+      child: Focus(autofocus: true, child: child),
     );
   }
 

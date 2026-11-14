@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/services.dart';
 
+import 'platform.dart';
+
 /// The phone's ids (hashed, never sent raw) and what the phone noticed — fair play and one account per phone
 /// (D-070, D-079). Implemented in MainActivity.kt.
 abstract final class DeviceCheck {
@@ -12,6 +14,7 @@ abstract final class DeviceCheck {
 
   /// The Android ID, hashed (different for each copy of the app; used by challenges).
   static Future<String?> hashedId() async {
+    if (isDesktop) return DesktopMachine.hashed('solutiontee:');
     try {
       final raw = await ch.invokeMethod<String>('id');
       if (raw == null || raw.isEmpty) return null;
@@ -31,6 +34,8 @@ abstract final class DeviceCheck {
 
   /// [phone-wide id (Widevine), Android ID] hashed, and the phone's flags ("clone:…", "emulator", …).
   static Future<DeviceIds> ids() async {
+    // Desktop (D-166): the computer's MachineGuid, hashed, in the Android-id slot.
+    if (isDesktop) return DeviceIds(null, await DesktopMachine.hashed('solutiontee:'), const ['desktop']);
     try {
       final m = Map<String, Object?>.from(await ch.invokeMethod<Map<Object?, Object?>>('ids') ?? const {});
       final drm = '${m['drm'] ?? ''}', android = '${m['android'] ?? ''}';

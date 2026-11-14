@@ -63,7 +63,7 @@ export async function saveSettings(form: FormData): Promise<ActionResult> {
 const SWITCHES: Record<string, string[]> = {
   screen_protection: ["whole_app", "exams"],
   app_update: ["force"],
-  google_auth: ["enabled"],
+  google_auth: ["enabled", "desktop"], // desktop: the Windows app (D-166)
   cash_prizes: ["on", "teens"], // D-110, D-121
   exam_logos: ["on"], // D-111
 };

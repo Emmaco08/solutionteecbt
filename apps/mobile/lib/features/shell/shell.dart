@@ -30,6 +30,8 @@ import '../home/countdown.dart';
 import '../premium/payments.dart';
 import '../setup/age_gate.dart';
 import '../profile/badges.dart';
+import '../../core/platform.dart';
+import '../../desktop/desktop_frame.dart';
 
 /// Branch order in router.dart: home, study, test, ai, me.
 const _branchOf = {'home': 0, 'study': 1, 'test': 2, 'ai_chat': 3, 'profile': 4};
@@ -88,6 +90,7 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
 
   /// Long-press on the app icon (D-136): Continue test, Practise now, Ask the AI tutor, Search.
   Future<void> _startShortcuts() async {
+    if (isDesktop) return; // app-icon shortcuts are a phone feature
     try {
       const qa = QuickActions();
       await qa.initialize((type) async {
@@ -296,16 +299,19 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
             Positioned(left: 0, right: 0, bottom: 0, child: ShellStickyBanner(hidden: widget.shell.currentIndex == _branchOf['ai_chat'])),
           ],
         ),
-        bottomNavigationBar: _BottomNav(
-          items: [for (final t in items) (type: t['type'] as String, title: t['title'] as String)],
-          current: current < 0 ? 0 : current,
-          onTap: (i) {
-            final b = _branchOf[items[i]['type']]!;
-            // Tapping the tab you are on: back to its first page and up to the top (D-136).
-            if (b == widget.shell.currentIndex) scrollTabToTop(ref, b);
-            widget.shell.goBranch(b, initialLocation: b == widget.shell.currentIndex);
-          },
-        ),
+        // Desktop (D-166): the sidebar takes the tabs' place.
+        bottomNavigationBar: DesktopScope.sidebar(context)
+            ? null
+            : _BottomNav(
+                items: [for (final t in items) (type: t['type'] as String, title: t['title'] as String)],
+                current: current < 0 ? 0 : current,
+                onTap: (i) {
+                  final b = _branchOf[items[i]['type']]!;
+                  // Tapping the tab you are on: back to its first page and up to the top (D-136).
+                  if (b == widget.shell.currentIndex) scrollTabToTop(ref, b);
+                  widget.shell.goBranch(b, initialLocation: b == widget.shell.currentIndex);
+                },
+              ),
       ),
     );
   }

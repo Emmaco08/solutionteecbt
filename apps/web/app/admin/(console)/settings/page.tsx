@@ -52,6 +52,8 @@ async function Settings() {
           <Panel title="Sign in with Google" bodyClassName="divide-y py-1">
             <AppSwitch k="google_auth" field="enabled" on={sw("google_auth", "enabled", false)} title="Show “Continue with Google”"
               text="On: students can create an account and log in with their Google account on the sign-up and log-in screens. Turn on only after the Google setup in SETUP §17 is done." />
+            <AppSwitch k="google_auth" field="desktop" on={sw("google_auth", "desktop", false)} title="Also on the Windows app"
+              text="The Windows app signs in with Google in the browser. Turn on only after adding http://localhost:53682/** under Supabase → Authentication → URL Configuration → Redirect URLs (SETUP §17)." />
             <GoogleClientId value={String((v.google_auth as Record<string, unknown> | undefined)?.web_client_id ?? "")} />
           </Panel>
           <Panel title="App updates (direct app)" bodyClassName="divide-y py-1">

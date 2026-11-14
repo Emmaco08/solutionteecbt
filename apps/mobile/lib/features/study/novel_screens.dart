@@ -14,6 +14,7 @@ import '../../widgets/phosphor.g.dart';
 import '../../widgets/states.dart';
 import '../premium/content_offer.dart';
 import 'study_widgets.dart';
+import '../../desktop/desktop_frame.dart';
 
 /// Recommended novels (prototype `novels`): a featured text, then a grid of covers.
 class NovelsScreen extends ConsumerWidget {
@@ -67,7 +68,7 @@ class NovelsScreen extends ConsumerWidget {
                   const Gap(Space.s5),
                   const SectTitle('More texts'),
                   GridView.count(
-                    crossAxisCount: 3,
+                    crossAxisCount: gridCols(context, 3),
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     crossAxisSpacing: Space.s3,

@@ -11,6 +11,7 @@ import '../../theme/tokens.g.dart';
 import '../../ui/kit.dart';
 import '../../widgets/phosphor.g.dart';
 import '../../widgets/r2_image.dart';
+import '../../core/platform.dart';
 
 /// The student's avatar: their photo when they added one, else initials (prototype `.avatar`).
 class MyAvatar extends ConsumerWidget {
@@ -43,7 +44,7 @@ Future<void> showPhotoSheet(BuildContext context, WidgetRef ref) async {
         const Gap(Space.s4),
         ListCard(
           children: [
-            ListRow(icon: PhosphorIcons.camera(PhosphorIconsStyle.fill), title: 'Take a photo', onTap: () => Navigator.pop(ctx, 'camera')),
+            if (!isDesktop) ListRow(icon: PhosphorIcons.camera(PhosphorIconsStyle.fill), title: 'Take a photo', onTap: () => Navigator.pop(ctx, 'camera')),
             ListRow(icon: PhosphorIcons.image(PhosphorIconsStyle.fill), title: 'Choose from gallery', onTap: () => Navigator.pop(ctx, 'gallery')),
             if (has)
               ListRow(icon: PhosphorIcons.trash(PhosphorIconsStyle.fill), title: 'Remove photo', danger: true, onTap: () => Navigator.pop(ctx, 'remove')),

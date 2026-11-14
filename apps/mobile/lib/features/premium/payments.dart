@@ -10,6 +10,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/providers.dart';
+import '../../core/platform.dart';
 
 /// Which shop this build sells through (D-061). Set at build time with `--flavor direct|play`.
 /// `direct` (APK from the website): Paystack. `play` (Play Store): Google Play Billing.
@@ -250,7 +251,7 @@ class PaystackProvider implements PaymentProvider {
   /// Paystack's sheet follows the app's light or dark look; the screen sets this before paying.
   bool dark = false;
 
-  static Future<bool> _openTab(Uri u) => launchUrl(u, mode: LaunchMode.inAppBrowserView);
+  static Future<bool> _openTab(Uri u) => launchUrl(u, mode: isDesktop ? LaunchMode.externalApplication : LaunchMode.inAppBrowserView);
 
   @override
   bool get takesCodes => true;

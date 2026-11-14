@@ -35,6 +35,7 @@ import 'qotd_card.dart';
 import 'top_card.dart';
 import 'tour.dart';
 import '../classes/classes.dart';
+import '../../desktop/desktop_frame.dart';
 
 /// The unfinished test on this phone (if any), for the "Continue your test" card.
 final unfinishedProvider = FutureProvider<LocalAttempt?>((ref) => ref.watch(dbProvider).unfinishedAttempt());
@@ -292,7 +293,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 itemCount: news.length.clamp(0, 4),
                 separatorBuilder: (_, _) => const Gap(Space.s3),
                 itemBuilder: (_, i) => SizedBox(
-                  width: MediaQuery.sizeOf(context).width * .82 - Space.s5,
+                  width: wideLayout(context) ? 330 : MediaQuery.sizeOf(context).width * .82 - Space.s5,
                   child: NewsTile(n: news[i]),
                 ),
               ),
@@ -306,6 +307,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       sections.insert(at, AdNativeCard(key: ValueKey('ad-home-$k'), placement: 'home'));
     }
 
+    final wide = wideLayout(context);
+    // Sections that render nothing (daily XP already claimed, challenges off) take no space,
+    // so the gap between two visible cards is always one Space.s5.
+    Widget stack(List<Widget> list, {int offset = 0}) => Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var i = 0; i < list.length; i++)
+          _SpaceAbove(
+            i > 0 ? Space.s5 : 0,
+            rm ? list[i] : list[i].animate(delay: Motion.stagger * (i + offset)).fadeIn(duration: Motion.slow).slideY(begin: .06, curve: Motion.out),
+          ),
+      ],
+    );
+
     return Scaffold(
       body: SafeArea(
         child: RefreshIndicator(
@@ -318,7 +333,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             children: [
               // Home head: avatar, greeting, name, streak
               Padding(
-                padding: const EdgeInsets.fromLTRB(Space.s5, Space.s2, Space.s5, Space.s3),
+                padding: EdgeInsets.fromLTRB(wide ? Space.s7 : Space.s5, wide ? Space.s6 : Space.s2, wide ? Space.s7 : Space.s5, wide ? Space.s5 : Space.s3),
                 child: Row(
                   children: [
                     Semantics(
@@ -406,19 +421,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: Space.s5),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Sections that render nothing (daily XP already claimed, challenges off) take no space,
-                    // so the gap between two visible cards is always one Space.s5.
-                    for (var i = 0; i < sections.length; i++)
-                      _SpaceAbove(
-                        i > 0 ? Space.s5 : 0,
-                        rm ? sections[i] : sections[i].animate(delay: Motion.stagger * i).fadeIn(duration: Motion.slow).slideY(begin: .06, curve: Motion.out),
-                      ),
-                  ],
-                ),
+                padding: EdgeInsets.symmetric(horizontal: wide ? Space.s7 : Space.s5),
+                child: wide
+                    // Desktop (D-166): the main feed on the left, the small cards in a right-hand column.
+                    ? Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: stack(sections.where((w) => !_isSide(w)).toList())),
+                          const Gap(Space.s6),
+                          SizedBox(width: 380, child: stack(sections.where(_isSide).toList(), offset: 3)),
+                        ],
+                      )
+                    : stack(sections),
               ),
             ],
           ),
@@ -426,6 +440,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
     );
   }
+
+  /// Small cards that go in the right-hand column on desktop.
+  static bool _isSide(Widget w) =>
+      w is CountdownChip || w is NextClassCard || w is DailyClaimCard || w is TutorQuizHomeCard || w is InviteCard || w is QotdCard || w is UpgradeBanner;
 
   /// Where a tab sits in the bottom bar (same list and order the bar is built from); null if it is hidden.
   Rect? _navRect(BuildContext context, String type) {

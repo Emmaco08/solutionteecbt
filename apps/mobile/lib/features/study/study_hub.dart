@@ -19,6 +19,7 @@ import '../classes/classes.dart';
 import '../tutor/tutor.dart';
 import '../games/games.dart';
 import '../community/community.dart';
+import '../../desktop/desktop_frame.dart';
 
 /// Default sections when app_settings.study_sections has not loaded (same as the seeded setting).
 const _defaultSections = [
@@ -107,12 +108,12 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
             _SearchField(onTap: () => context.push('/study/search')),
             const Gap(Space.s6),
             GridView.count(
-              crossAxisCount: 2,
+              crossAxisCount: gridCols(context, 2),
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               mainAxisSpacing: Space.s3,
               crossAxisSpacing: Space.s3,
-              childAspectRatio: 1.08,
+              childAspectRatio: wideLayout(context) ? 1.6 : 1.08,
               children: [
                 for (final (i, s) in sections.indexed)
                   Builder(

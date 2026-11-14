@@ -6,6 +6,8 @@ import 'core/app_gate.dart';
 import 'core/providers.dart';
 import 'core/secure_screen.dart';
 import 'core/updater.dart';
+import 'core/platform.dart';
+import 'desktop/desktop_frame.dart';
 import 'features/tutor/tutor_banner.dart';
 import 'router.dart';
 import 'theme/theme.dart';
@@ -33,6 +35,7 @@ class SolutionTeeApp extends ConsumerWidget {
       darkTheme: buildTheme(Brightness.dark),
       themeMode: settings.theme,
       routerConfig: router,
+      scrollBehavior: isDesktop ? const DesktopScrollBehavior() : null,
       // In-app "reduce motion" switch adds to the phone's own setting.
       builder: (context, child) {
         final mq = MediaQuery.of(context);
@@ -40,7 +43,11 @@ class SolutionTeeApp extends ConsumerWidget {
           data: mq.copyWith(disableAnimations: mq.disableAnimations || settings.reduceMotion, textScaler: appTextScaler(mq)),
           child: UpdateGate(
             child: AppGate(
-              child: StickyAds(child: TutorLiveBanner(child: child!)),
+              child: StickyAds(
+                child: TutorLiveBanner(
+                  child: DesktopFrame(router: router, child: child!),
+                ),
+              ),
             ),
           ),
         );

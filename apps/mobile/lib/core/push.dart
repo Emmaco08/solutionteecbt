@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../data/notifications_repo.dart';
 import 'config.dart';
 import 'providers.dart';
+import 'platform.dart';
 
 /// Push notifications through Firebase Cloud Messaging (milestone 4D, D-063).
 ///
@@ -33,6 +34,7 @@ class PushService {
   /// Starts Firebase once per app run. Safe to call often.
   Future<bool> init() async {
     if (_ready) return true;
+    if (isDesktop) return false; // Windows has no Firebase push: the in-app list and live toasts cover it (D-166)
     try {
       if (Firebase.apps.isEmpty) await Firebase.initializeApp();
       _ready = true;

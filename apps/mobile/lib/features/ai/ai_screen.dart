@@ -23,6 +23,7 @@ import '../premium/paywall.dart';
 import '../study/note_screens.dart' show NoteBody;
 import 'ai_cards.dart';
 import 'ai_actions.dart';
+import '../../core/platform.dart';
 
 /// One bubble in the chat.
 class _Msg {
@@ -704,36 +705,39 @@ class _AiScreenState extends ConsumerState<AiScreen> with WidgetsBindingObserver
   }
 
   Future<void> _pickPhoto() async {
-    final src = await showSheet<ImageSource>(
-      context,
-      builder: (ctx) => Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text('Add a photo', style: ctx.ty.h3),
-          const Gap(Space.s2),
-          Text('Snap your question so all of it is clear, well lit and not blurry. One photo uses 1 AI prompt.', style: ctx.ty.sm.col(ctx.c.textMuted)),
-          const Gap(Space.s4),
-          ListCard(
-            children: [
-              ListRow(
-                icon: PhosphorIcons.camera(PhosphorIconsStyle.fill),
-                title: 'Take a photo',
-                caption: 'Opens your camera',
-                onTap: () => Navigator.of(ctx).pop(ImageSource.camera),
-              ),
-              ListRow(
-                icon: PhosphorIcons.images(PhosphorIconsStyle.fill),
-                title: 'Choose from gallery',
-                caption: 'Screenshots and saved photos',
-                onTap: () => Navigator.of(ctx).pop(ImageSource.gallery),
-              ),
-            ],
-          ),
-          const Gap(Space.s3),
-          Text('Photos are shrunk on your phone before upload and are only used to answer your question.', style: ctx.ty.cap.col(ctx.c.textSubtle)),
-        ],
-      ),
-    );
+    // Desktop: laptops rarely have a document camera, so open the file picker straight away (D-166).
+    final src = isDesktop
+        ? ImageSource.gallery
+        : await showSheet<ImageSource>(
+            context,
+            builder: (ctx) => Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('Add a photo', style: ctx.ty.h3),
+                const Gap(Space.s2),
+                Text('Snap your question so all of it is clear, well lit and not blurry. One photo uses 1 AI prompt.', style: ctx.ty.sm.col(ctx.c.textMuted)),
+                const Gap(Space.s4),
+                ListCard(
+                  children: [
+                    ListRow(
+                      icon: PhosphorIcons.camera(PhosphorIconsStyle.fill),
+                      title: 'Take a photo',
+                      caption: 'Opens your camera',
+                      onTap: () => Navigator.of(ctx).pop(ImageSource.camera),
+                    ),
+                    ListRow(
+                      icon: PhosphorIcons.images(PhosphorIconsStyle.fill),
+                      title: 'Choose from gallery',
+                      caption: 'Screenshots and saved photos',
+                      onTap: () => Navigator.of(ctx).pop(ImageSource.gallery),
+                    ),
+                  ],
+                ),
+                const Gap(Space.s3),
+                Text('Photos are shrunk on your phone before upload and are only used to answer your question.', style: ctx.ty.cap.col(ctx.c.textSubtle)),
+              ],
+            ),
+          );
     if (src == null) return;
     try {
       final x = await ImagePicker().pickImage(source: src, maxWidth: 2048, maxHeight: 2048, imageQuality: 88);

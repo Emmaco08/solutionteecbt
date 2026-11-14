@@ -24,6 +24,7 @@ import '../../widgets/phosphor.g.dart';
 import '../../widgets/r2_image.dart';
 import '../study/study_widgets.dart' show studyPath;
 import 'tutor_live.dart';
+import '../../core/platform.dart';
 
 // The student's chat with their tutor, v3 (D-152, D-153): live messages that heal themselves (tutor_live.dart), reactions,
 // swipe or tap to reply, a long-press menu (react, reply, copy, star, delete for everyone, report), an emoji panel,
@@ -940,17 +941,18 @@ class _TutorChatViewState extends ConsumerState<TutorChatView> {
                 },
               ),
             ),
-            Expanded(
-              child: _AttachTile(
-                icon: PhosphorIcons.camera(PhosphorIconsStyle.fill),
-                color: const Color(0xFFE5484D),
-                label: 'Camera',
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _pickPhoto(ImageSource.camera);
-                },
+            if (!isDesktop)
+              Expanded(
+                child: _AttachTile(
+                  icon: PhosphorIcons.camera(PhosphorIconsStyle.fill),
+                  color: const Color(0xFFE5484D),
+                  label: 'Camera',
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _pickPhoto(ImageSource.camera);
+                  },
+                ),
               ),
-            ),
             Expanded(
               child: _AttachTile(
                 icon: PhosphorIcons.microphone(PhosphorIconsStyle.fill),
@@ -1302,7 +1304,8 @@ class _TutorChatViewState extends ConsumerState<TutorChatView> {
                                     ),
                                   ),
                                   _ComposerIcon(icon: PhosphorIcons.paperclip(), label: 'Send a photo', onTap: _attach),
-                                  if (!has) _ComposerIcon(icon: PhosphorIcons.camera(), label: 'Take a photo', onTap: () => _pickPhoto(ImageSource.camera)),
+                                  if (!has && !isDesktop)
+                                    _ComposerIcon(icon: PhosphorIcons.camera(), label: 'Take a photo', onTap: () => _pickPhoto(ImageSource.camera)),
                                 ],
                               ),
                             ),

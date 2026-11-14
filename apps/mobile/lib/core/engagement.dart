@@ -14,6 +14,7 @@ import '../ui/kit.dart';
 import '../widgets/phosphor.g.dart';
 import 'config.dart';
 import 'providers.dart';
+import 'platform.dart';
 
 // App rating and gentle suggestions (owner, 13 Nov 2026). Admin → App ratings sets when they show.
 // - Our own rating card (stars + a comment): after a few days and opens, then every N days. Staff read it in Admin.
@@ -120,6 +121,7 @@ abstract final class Engagement {
       final pop = _date(await db.kvGet('eng_last_popup'));
       if (_daysSince(first) < _int(s['after_days'], 5) || _daysSince(last) < _int(s['every_days'], 120)) return;
       if (pop != null && DateTime.now().difference(pop) < const Duration(hours: 12)) return;
+      if (isDesktop) return; // no Play review on Windows
       final r = InAppReview.instance;
       if (!await r.isAvailable()) return;
       await db.kvSet('eng_review_last', DateTime.now().toIso8601String());
