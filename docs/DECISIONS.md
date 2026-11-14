@@ -1790,3 +1790,13 @@ Owner: "COMMUNITY IS APPROVED, only few changes…" (same day as D-155).
   Community (a question types out, likes, AI typing then answering, a thank-you) and Request a tutor (a live lesson: the
   tutor writes the steps on a board, a tick, "Now I get it!"). Each loops while its slide shows and stands still with
   reduce motion. Shorter, clearer slide text (app fallback + Admin rows that still had the first text).
+
+## D-161 — Admin pages timing out: staff checks run once per query (14 Nov 2026)
+
+- /admin/questions always showed "canceling statement due to statement timeout". The staff read rule on `questions`
+  called `private.is_staff()` bare, so Postgres ran it for every row: 25 questions took 11.6 s (33,444 rows checked),
+  plus four exact counts, past the 8 s limit.
+- Every policy in `public` that called `private.is_staff(...)` or `private.can_edit(...)` bare now wraps it as
+  `(select ...)`, so the check runs once per query. Same rules, same answers: tested that a student and a staff member
+  without two-step sign-in still read 0 rows, and a signed-in super admin reads all. Added an index for the newest-first
+  list. The same query now takes 0.08 s. New policies must use the `(select private.…())` form.
