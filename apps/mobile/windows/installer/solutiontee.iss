@@ -7,7 +7,7 @@
   #define AppVersion "1.0.0"
 #endif
 #ifndef BuildDir
-  #define BuildDir "..\..\build\windows\x64\runner\Release"
+  #define BuildDir "..\..\build\windows\x64\direct\runner\Release"
 #endif
 #ifndef OutDir
   #define OutDir "..\..\build\installer"

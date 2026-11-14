@@ -328,15 +328,19 @@ jobs:
           # minutes-since-1970 build goes to the app as APP_BUILD.
           flutter build windows --release --build-name ${{ steps.ver.outputs.base }} --build-number ${{ github.run_number }} `
             --dart-define=APP_VERSION=${{ steps.ver.outputs.base }} --dart-define=APP_BUILD=${{ steps.ver.outputs.build }}
-          $out = "build\windows\x64\runner\Release"
-          if (-not (Test-Path "$out\SolutionTeeCBT.exe")) { throw "SolutionTeeCBT.exe was not built" }
+          # Flutter 3.47 builds into build\windows\x64\<flavor>\runner\Release (here "direct"); older ones skip the flavor.
+          $exe = Get-ChildItem build\windows\x64 -Recurse -Filter SolutionTeeCBT.exe | Where-Object { $_.DirectoryName -like '*\runner\Release' } | Select-Object -First 1
+          if (-not $exe) { throw "SolutionTeeCBT.exe was not built" }
+          $out = $exe.DirectoryName
+          "WIN_OUT=$out" >> $env:GITHUB_ENV
+          Write-Host "Built: $out"
           # The Visual C++ runtime next to the app, so it opens on a fresh Windows without installing anything else.
           foreach ($dll in 'msvcp140.dll', 'vcruntime140.dll', 'vcruntime140_1.dll') { Copy-Item "$env:WINDIR\System32\$dll" $out }
           Get-ChildItem $out | Format-Table Name, Length
 
       - name: Open the app and check it keeps running
         run: |
-          $exe = Resolve-Path "build\windows\x64\runner\Release\SolutionTeeCBT.exe"
+          $exe = "$env:WIN_OUT\SolutionTeeCBT.exe"
           $p = Start-Process -FilePath $exe -PassThru
           Start-Sleep -Seconds 30
           if ($p.HasExited) { throw "The app closed by itself (exit code $($p.ExitCode))" }
@@ -355,7 +359,7 @@ jobs:
         run: |
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress | Out-Null }
-          & $iscc /Qp "/DAppVersion=${{ steps.ver.outputs.name }}" "/DBuildDir=$(Resolve-Path build\windows\x64\runner\Release)" "/DOutDir=$env:RUNNER_TEMP\installer" windows\installer\solutiontee.iss
+          & $iscc /Qp "/DAppVersion=${{ steps.ver.outputs.name }}" "/DBuildDir=$env:WIN_OUT" "/DOutDir=$env:RUNNER_TEMP\installer" windows\installer\solutiontee.iss
           if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed" }
           Get-ChildItem "$env:RUNNER_TEMP\installer" | Format-Table Name, Length
 
