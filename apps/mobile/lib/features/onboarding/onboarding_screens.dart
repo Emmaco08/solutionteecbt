@@ -259,17 +259,21 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       'animation': 'trophy',
     },
     {
-      'title': 'Game Zone',
-      'body': 'Live games against students or the SolutionTee Bot: JAMB Duel, Comprehension Clash, Speed Rush and more. Learn while you play and win XP.',
+      'title': 'Game Zone: learn by playing',
+      'body': 'Battle other students or the SolutionTee Bot in fast exam games. Every game is real practice, and every win earns XP.',
       'animation': 'games',
     },
     {'title': 'SolutionTee AI tutor', 'body': 'Stuck on a question? Ask our AI tutor. It explains step by step, like a patient teacher.', 'animation': 'ai'},
     {
-      'title': 'A friendly student community',
-      'body': 'Ask questions, share tips and help others. Tag @solutiontee and SolutionTee AI joins the chat.',
+      'title': 'Learn together',
+      'body': 'Ask any question and get help fast from other students and SolutionTee AI. Share tips and help others too.',
       'animation': 'community',
     },
-    {'title': 'Request a real tutor', 'body': 'Chat one-to-one with a real teacher who explains any topic at your pace.', 'animation': 'tutor'},
+    {
+      'title': 'Your own real tutor',
+      'body': 'Book a real teacher for one-to-one lessons in chat. Any topic, explained step by step, at your pace.',
+      'animation': 'tutor',
+    },
     {
       'title': 'Past questions, videos and notes',
       'body': 'Every answer comes with a clear explanation. Watch video solutions and read simple lesson notes.',

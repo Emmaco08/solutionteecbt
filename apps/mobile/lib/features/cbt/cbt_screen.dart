@@ -23,6 +23,7 @@ import '../../widgets/phosphor.g.dart';
 import '../../widgets/question_image.dart';
 import '../home/home_screen.dart';
 import '../compete/mock_exam.dart' show MockResultView, mockApiProvider;
+import '../compete/results_screens.dart' show openChallengeBoard;
 import 'calculator.dart';
 import 'exam_clock.dart';
 import '../../core/fair_play.dart';
@@ -291,13 +292,9 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
     // The result sits on top of this (router) page. It used to *replace* it, which left the router's page list out of
     // step, so "See the leaderboard" opened a blank screen (owner, 13 Nov 2026). Now leaving closes both.
     var left = false;
-    void leave(BuildContext ctx, WidgetRef r, {bool board = false}) {
+    void leave(BuildContext ctx, WidgetRef r) {
       if (left) return;
       left = true;
-      if (board) {
-        router.go('/test/challenges/$id/result');
-        return;
-      }
       Ads.instance.breakPoint(r, 'challenge');
       Navigator.of(ctx).pop();
       if (router.canPop()) {
@@ -317,7 +314,7 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
             },
             child: Scaffold(
               appBar: AppBar(title: const Text('JAMB mock'), automaticallyImplyLeading: false),
-              body: MockResultView(r: {...res, 'reason': ?reason}, onDone: () => leave(ctx, r), leaderboard: () => leave(ctx, r, board: true)),
+              body: MockResultView(r: {...res, 'reason': ?reason}, onDone: () => leave(ctx, r), leaderboard: () => openChallengeBoard(ctx, id)),
             ),
           ),
         ),

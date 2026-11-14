@@ -315,7 +315,7 @@ class _Backdrop extends StatelessWidget {
 }
 
 /// The small countdown chip on Home: "122 days to your UTME (15 March 2027)" (owner, 13 Nov 2026: small, like before;
-/// the number counts up once and the hourglass turns over now and then). Tap: the full-screen countdown.
+/// the number counts up once and a soft shine passes now and then; the hourglass stays still). Tap: the full-screen countdown.
 class CountdownChip extends ConsumerWidget {
   const CountdownChip({super.key});
   @override
@@ -362,7 +362,11 @@ class CountdownChip extends ConsumerWidget {
                         builder: (_, v, _) => line(v.round()),
                       ),
               ),
-              _Glass(icon: PhosphorIcons.hourglassMedium(PhosphorIconsStyle.fill), still: rm),
+              // A plain, still hourglass: no turning and nothing behind it (owner, 14 Nov 2026).
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: Icon(PhosphorIcons.hourglassMedium(PhosphorIconsStyle.fill), size: 18, color: Palette.gold500),
+              ),
             ],
           ),
         ),
@@ -370,33 +374,5 @@ class CountdownChip extends ConsumerWidget {
     );
     if (rm) return chip;
     return chip.animate(onPlay: (c) => c.repeat()).shimmer(delay: 3.seconds, duration: 1400.ms, color: Palette.gold300.withValues(alpha: .22));
-  }
-}
-
-/// The hourglass turns over every few seconds.
-class _Glass extends StatelessWidget {
-  const _Glass({required this.icon, required this.still});
-  final IconData icon;
-  final bool still;
-  @override
-  Widget build(BuildContext context) {
-    final glass = Icon(icon, size: 18, color: Palette.gold500);
-    if (still) return SizedBox(width: 30, height: 30, child: Center(child: glass));
-    // The hourglass keeps turning over (half a turn, a short rest, again) with a soft gold glow breathing behind it.
-    return SizedBox(
-      width: 30,
-      height: 30,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Container(
-            width: 26,
-            height: 26,
-            decoration: BoxDecoration(shape: BoxShape.circle, color: Palette.gold400.withValues(alpha: .18)),
-          ).animate(onPlay: (c) => c.repeat(reverse: true)).scaleXY(begin: .7, end: 1.1, duration: 900.ms, curve: Curves.easeInOut).fade(begin: .5, end: 1),
-          glass.animate(onPlay: (c) => c.repeat()).rotate(begin: 0, end: .5, duration: 650.ms, delay: 650.ms, curve: Curves.easeInOutBack),
-        ],
-      ),
-    );
   }
 }

@@ -1769,3 +1769,24 @@ Owner: "COMMUNITY IS APPROVED, only few changes…" (same day as D-155).
   Shows the words-a-minute speed, the word count and both readers.
 - **Board per game:** the hub shows the selected game's leaderboard (top 3 + your rank and rating in that game); RANKS and
   SEE ALL open the ranks screen on that game's tab (all-games tab still there).
+
+## D-160 — Owner fixes 14 Nov 2026 (GAMES APPROVED)
+
+- **Home header:** XP and streak are back on the right of the name, as before; a very long first name is cut with "…"
+  (owner: showing names in full had broken the layout).
+- **JAMB mock "See the leaderboard" blank:** the leaderboard was opened by jumping from the full-screen mock page into
+  the Test tab through the router, which left a blank page. It now opens straight on top of the result
+  (`openChallengeBoard`), from both the end of the exam and the mock page; back returns to the result. Test with the
+  server's real answer: test/mock_board_test.dart.
+- **Community profile photo:** with a ring, the photo was inset by the ring but cut at the outer circle, so tall (9:16)
+  photos showed as a rounded square with dark corners. The ring is now outside and the photo is cut to its own circle.
+- **Countdown chip:** the hourglass is still, with nothing behind it.
+- **Challenge cards v2 (waiting for the owner's approval):** clean, not game-like (owner): LIVE pill with a beating dot +
+  "N playing" (counts up), prize or title, details, "You took part · #rank" / Disqualified / writing, countdown whose
+  numbers slide, a time bar that fills, and the app's gold button. A blue "Coming up" card counts down to the start.
+  Small Home cards and the Test → Challenges rows use the same look on the normal card surface. lib/features/compete/
+  challenge_cards.dart; screenshots from test_shots/cards_shots_test.dart.
+- **Onboarding films:** Game Zone (players slide in, VS lands, a question, the right answer, +100 and confetti),
+  Community (a question types out, likes, AI typing then answering, a thank-you) and Request a tutor (a live lesson: the
+  tutor writes the steps on a board, a tick, "Now I get it!"). Each loops while its slide shows and stands still with
+  reduce motion. Shorter, clearer slide text (app fallback + Admin rows that still had the first text).

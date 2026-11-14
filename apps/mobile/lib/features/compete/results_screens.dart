@@ -31,16 +31,27 @@ String _clock(String iso) {
   return '${two(t.hour)}:${two(t.minute)}:${two(t.second)}';
 }
 
+/// Opens the challenge leaderboard straight on top of the current page. Used after a JAMB mock: jumping from that
+/// full-screen page into the Test tab with the router left a blank screen on some phones (owner, 13 and 14 Nov 2026).
+Future<void> openChallengeBoard(BuildContext context, String id) =>
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ChallengeResultScreen(id: id, pushed: true)));
+
 /// Result while live (`challenge-result`) and the winners at close (`challenge-winners`): one screen, server data.
 class ChallengeResultScreen extends ConsumerWidget {
-  const ChallengeResultScreen({super.key, required this.id});
+  const ChallengeResultScreen({super.key, required this.id, this.pushed = false});
   final String id;
+
+  /// Opened with [openChallengeBoard]: back simply closes it.
+  final bool pushed;
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final v = ref.watch(challengeResultProvider(id));
     final c = context.c;
     return Scaffold(
-      appBar: TopBar(title: v.value?['title'] as String? ?? 'Result', onBack: () => context.canPop() ? context.pop() : context.go('/test/challenges')),
+      appBar: TopBar(
+        title: v.value?['title'] as String? ?? 'Result',
+        onBack: () => pushed ? Navigator.of(context).pop() : (context.canPop() ? context.pop() : context.go('/test/challenges')),
+      ),
       body: asyncView(
         v,
         (d) {

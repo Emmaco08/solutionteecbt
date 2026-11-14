@@ -16,7 +16,6 @@ import '../../data/notifications_repo.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
 import '../../ui/kit.dart';
-import '../../widgets/fit_text.dart';
 import '../../widgets/exam_logo.dart';
 import '../../widgets/phosphor.g.dart';
 import '../../widgets/states.dart';
@@ -328,43 +327,42 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       child: GestureDetector(onTap: () => context.go('/me'), child: MyAvatar(name)),
                     ),
                     const Gap(Space.s3),
-                    // The name gets the whole width (owner: never cut a name); XP and streak sit under it.
+                    // Name on the left (cut with … if very long), XP and streak on the right, as before (owner, 14 Nov 2026).
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('${_greeting()},', maxLines: 1, overflow: TextOverflow.ellipsis, softWrap: false, style: context.ty.cap.col(c.textMuted)),
-                          FitText(first.isEmpty ? 'Student' : first, style: context.ty.h3, minScale: .75),
-                          const Gap(6),
-                          Row(
-                            key: _chipsKey,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const XpChip(height: 32),
-                              Semantics(
-                                button: true,
-                                label: '$streakDays-day streak',
-                                child: GestureDetector(
-                                  onTap: () => openRoute(context, '/me/streak'),
-                                  child: Container(
-                                    height: 32,
-                                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                                    decoration: BoxDecoration(color: c.accentSoft, borderRadius: BorderRadius.circular(99)),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(PhosphorIcons.fire(PhosphorIconsStyle.fill), size: 18, color: Palette.gold500),
-                                        const SizedBox(width: 4),
-                                        Text('$streakDays', style: context.ty.label.bold.tnum.col(c.onAccentSoft)),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                          Text(first.isEmpty ? 'Student' : first, maxLines: 1, overflow: TextOverflow.ellipsis, softWrap: false, style: context.ty.h3),
                         ],
                       ),
+                    ),
+                    Row(
+                      key: _chipsKey,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const XpChip(),
+                        Semantics(
+                          button: true,
+                          label: '$streakDays-day streak',
+                          child: GestureDetector(
+                            onTap: () => openRoute(context, '/me/streak'),
+                            child: Container(
+                              height: 36,
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              decoration: BoxDecoration(color: c.accentSoft, borderRadius: BorderRadius.circular(99)),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(PhosphorIcons.fire(PhosphorIconsStyle.fill), size: 18, color: Palette.gold500),
+                                  const SizedBox(width: 4),
+                                  Text('$streakDays', style: context.ty.label.bold.tnum.col(c.onAccentSoft)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const Gap(Space.s1),
                     Consumer(

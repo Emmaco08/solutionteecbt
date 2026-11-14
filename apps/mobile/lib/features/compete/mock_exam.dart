@@ -8,7 +8,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/nav.dart';
 import '../../core/providers.dart';
 import '../../data/db.dart';
 import '../../theme/theme.dart';
@@ -18,6 +17,7 @@ import '../../ui/kit.dart';
 import '../../widgets/phosphor.g.dart';
 import '../premium/paywall.dart' show showPaywall;
 import 'compete_data.dart';
+import 'results_screens.dart' show openChallengeBoard;
 
 // JAMB mock challenges (D-099): the whole paper at once in our own CBT screen. Answers save to the server as they
 // are chosen; leaving the screen is logged and the admin's limits apply; marked on the server.
@@ -208,7 +208,7 @@ class _MockExamScreenState extends ConsumerState<MockExamScreen> {
         ? MockResultView(
             r: _result!,
             onDone: () => context.canPop() ? context.pop() : context.go('/test/challenges'),
-            leaderboard: () => openRoute(context, '/test/challenges/${widget.id}/result'),
+            leaderboard: () => openChallengeBoard(context, widget.id),
           )
         : _error != null
         ? Center(

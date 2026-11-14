@@ -53,23 +53,27 @@ class CAvatar extends StatelessWidget {
       final bg = _tones[name.codeUnits.fold<int>(0, (s, x) => s + x) % _tones.length];
       final fg = bg == Palette.gold400 || bg == Palette.blue400 ? Palette.navy900 : Colors.white;
       final has = photo != null && photo!.isNotEmpty;
+      // The ring sits outside, and the photo is cut to its own inner circle. Before, the photo was inset by the ring
+      // but cut at the outer edge, so a tall (9:16) photo showed as a rounded square with dark corners (owner, 14 Nov).
+      final rw = ring == null ? 0.0 : (size > 60 ? 4.0 : 2.0);
       a = Container(
         width: size,
         height: size,
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          color: bg,
-          shape: BoxShape.circle,
-          border: ring != null ? Border.all(color: ring!, width: size > 60 ? 4 : 2) : null,
-        ),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            Center(
-              child: Text(Avatar.initials(name), style: context.ty.label.bold.copyWith(fontSize: size * .32, height: 1).col(fg)),
+        padding: EdgeInsets.all(rw),
+        decoration: BoxDecoration(color: ring ?? bg, shape: BoxShape.circle),
+        child: ClipOval(
+          child: ColoredBox(
+            color: bg,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Center(
+                  child: Text(Avatar.initials(name), style: context.ty.label.bold.copyWith(fontSize: size * .32, height: 1).col(fg)),
+                ),
+                if (has) R2Image.face(imageKey: photo!, decodeWidth: (size * 3).round(), semanticLabel: name),
+              ],
             ),
-            if (has) R2Image.face(imageKey: photo!, decodeWidth: (size * 3).round(), semanticLabel: name),
-          ],
+          ),
         ),
       );
     }

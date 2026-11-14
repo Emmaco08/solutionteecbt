@@ -15,6 +15,7 @@ import '../../widgets/exam_logo.dart';
 import '../../widgets/phosphor.g.dart';
 import '../../widgets/r2_image.dart';
 import '../../widgets/states.dart';
+import 'challenge_cards.dart';
 import 'compete_data.dart';
 import 'mock_exam.dart';
 
@@ -153,63 +154,6 @@ class ChallengeBackdrop extends ConsumerWidget {
   }
 }
 
-/// Big navy card for a live challenge (prototype `.ch-hero`).
-class ChallengeHero extends StatelessWidget {
-  const ChallengeHero({super.key, required this.c});
-  final Challenge c;
-  @override
-  Widget build(BuildContext context) {
-    final mine = c.mine;
-    return Pressable(
-      onTap: () => openRoute(context, '/test/challenges/${c.id}'),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(Radii.lg),
-        child: ChallengeBackdrop(
-          c: c,
-          padding: const EdgeInsets.all(Space.s4),
-          fallback: const LinearGradient(colors: [Palette.navy900, Color(0xFF13306A)], begin: Alignment.topLeft, end: Alignment.bottomRight),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // No "LIVE · n playing" pill here (owner, 13 Nov 2026).
-              if (mine != null) ...[
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Pill(mine['status'] == 'disqualified' ? 'Disqualified' : 'You took part', kind: BadgeKind.success),
-                ),
-                const Gap(Space.s3),
-              ],
-              // The title shows once: small above the prize, or as the big line when there is no prize.
-              if (c.prizes.isNotEmpty || c.reward != null) Text(c.title, style: context.ty.cap.bold.col(Palette.gold300)),
-              Text(c.prizes.isNotEmpty ? 'Win ${nairaWhole(c.prizes.first)}' : (c.reward ?? c.title), style: context.ty.h1.col(Colors.white)),
-              Text(
-                '${c.questions} questions · ${c.seconds}s each · ${c.xpFee > 0 ? '${c.xpFee} XP to join' : 'free for everyone'}',
-                style: context.ty.sm.col(const Color(0xFFDCE4F2)),
-              ),
-              const Gap(Space.s3),
-              Row(
-                children: [
-                  Icon(PhosphorIcons.timer(PhosphorIconsStyle.fill), size: 16, color: const Color(0xFFAFC0DD)),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Ticker(builder: (_) => Text('Winners in ${untilShort(c.endsAt)}', style: context.ty.cap.col(const Color(0xFFAFC0DD)))),
-                  ),
-                  Btn(
-                    mine != null ? 'See result' : 'Play now',
-                    kind: BtnKind.accent,
-                    sm: true,
-                    onPressed: () => openRoute(context, '/test/challenges/${c.id}'),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 /// Home "Challenges & events" section (D-037): live first, else the next one, else a calm empty card.
 class ChallengeSection extends ConsumerWidget {
   const ChallengeSection({super.key});
@@ -217,45 +161,17 @@ class ChallengeSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final d = ref.watch(challengesProvider).value;
     if (d == null || d['on'] != true) return const SizedBox.shrink();
-    final c = context.c;
     final items = [for (final x in rows(d['items'])) Challenge(x)];
     final live = items.where((x) => x.live).toList();
     final up = items.where((x) => x.upcoming).toList()..sort((a, b) => a.startsAt.compareTo(b.startsAt));
     final featured = live.where((x) => x.kind == 'cash').firstOrNull ?? live.firstOrNull ?? up.firstOrNull;
     final others = items.where((x) => x != featured).toList();
-    final Widget top;
-    if (featured != null && featured.live) {
-      top = ChallengeHero(c: featured);
-    } else if (featured != null) {
-      top = AppCard(
-        onTap: () => openRoute(context, '/test/challenges/${featured.id}'),
-        pad: false,
-        clip: true,
-        child: ChallengeBackdrop(
-          c: featured,
-          strong: false,
-          padding: const EdgeInsets.all(Space.s4),
-          child: Row(
-            children: [
-              IconTile(challengeIcon(featured.icon), tone: Tone.blue, size: 48, radius: 14, iconSize: 24),
-              const Gap(Space.s3),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Ticker(builder: (_) => Text('Next: starts in ${untilShort(featured.startsAt)}', style: context.ty.cap.bold.col(c.onSecondarySoft))),
-                    Text(featured.title, style: context.ty.body.bold),
-                    Text('${featured.rewardText} · ${featured.entryText}', style: context.ty.cap.col(c.textMuted)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    } else {
-      top = const NoChallengeCard();
-    }
+    // Cards v2 (owner, 14 Nov 2026): LIVE + players, prize, countdown and time bar; a flip countdown before the start.
+    final Widget top = featured == null
+        ? const NoChallengeCard()
+        : featured.live
+        ? ChallengeLiveCard(c: featured)
+        : ChallengeSoonCard(c: featured);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -264,13 +180,16 @@ class ChallengeSection extends ConsumerWidget {
         if (others.isNotEmpty) ...[
           const Gap(Space.s4),
           SizedBox(
-            height: 150,
+            height: 168,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               clipBehavior: Clip.none,
               itemCount: others.length,
               separatorBuilder: (_, _) => const Gap(Space.s3),
-              itemBuilder: (_, i) => SizedBox(width: 220, child: _Mini(c: others[i])),
+              itemBuilder: (_, i) => SizedBox(
+                width: 232,
+                child: ChallengeMiniCard(c: others[i], index: i),
+              ),
             ),
           ),
         ],
@@ -397,64 +316,6 @@ class NoChallengeCard extends StatelessWidget {
   }
 }
 
-/// Small card (`.ch-mini`, D-041): icon + status on top, title, then Prize / Entry split by a line.
-class _Mini extends StatelessWidget {
-  const _Mini({required this.c});
-  final Challenge c;
-  @override
-  Widget build(BuildContext context) {
-    final cc = context.c;
-    return AppCard(
-      onTap: () => openRoute(context, '/test/challenges/${c.id}'),
-      pad: false,
-      clip: true,
-      child: ChallengeBackdrop(
-        c: c,
-        strong: false,
-        padding: const EdgeInsets.all(Space.s4),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                IconTile(challengeIcon(c.icon), tone: Tone.navy, size: 32, radius: 9, iconSize: 18),
-                const Spacer(),
-                _statusBadge(context, c),
-              ],
-            ),
-            const Gap(Space.s2),
-            Text(c.title, style: context.ty.sm.bold, maxLines: 1, overflow: TextOverflow.ellipsis),
-            const Spacer(),
-            Divider(height: Space.s3, color: cc.border),
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Prize', style: context.ty.cap.col(cc.textMuted)),
-                      Text(c.prizes.isNotEmpty ? nairaWhole(c.prizes.first) : (c.reward != null ? 'Reward' : 'Practice'), style: context.ty.sm.bold),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Entry', style: context.ty.cap.col(cc.textMuted)),
-                      Text(c.xpFee > 0 ? '${c.xpFee} XP' : 'Free', style: context.ty.sm.bold),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 /// Test → Challenges & events (prototype `compete`): live, coming up, Winners wall, past winners.
 class ChallengesScreen extends ConsumerWidget {
   const ChallengesScreen({super.key});
@@ -485,34 +346,7 @@ class ChallengesScreen extends ConsumerWidget {
           final past = [for (final x in rows(d['past'])) Challenge(x)];
           final live = items.where((x) => x.live).toList(), up = items.where((x) => x.upcoming).toList();
           final c = context.c;
-          Widget card(Challenge x) => AppCard(
-            onTap: () => openRoute(context, '/test/challenges/${x.id}'),
-            pad: false,
-            clip: true,
-            child: ChallengeBackdrop(
-              c: x,
-              strong: false,
-              padding: const EdgeInsets.all(Space.s4),
-              child: Row(
-                children: [
-                  IconTile(challengeIcon(x.icon), tone: x.kind == 'cash' ? Tone.gold : Tone.navy, size: 48, radius: 14, iconSize: 24),
-                  const Gap(Space.s3),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Wrap(spacing: Space.s2, runSpacing: Space.s1, children: [_statusBadge(context, x), _typeBadge(x), ?_modeBadge(x)]),
-                        const Gap(Space.s1),
-                        Text(x.title, style: context.ty.sm.bold),
-                        Text('${x.rewardText} · ${x.entryText}', style: context.ty.cap.col(c.textMuted)),
-                      ],
-                    ),
-                  ),
-                  Icon(PhosphorIcons.caretRight(), size: 18, color: c.textSubtle),
-                ],
-              ),
-            ),
-          );
+          Widget card(Challenge x, int i) => ChallengeListCard(c: x, index: i);
           final sections = <Widget>[
             if (live.isEmpty && up.isEmpty)
               StateBlock(
@@ -523,11 +357,11 @@ class ChallengesScreen extends ConsumerWidget {
               ),
             if (live.isNotEmpty) ...[
               const SectTitle('Live now'),
-              for (final x in live) ...[card(x), const Gap(Space.s2)],
+              for (final (i, x) in live.indexed) ...[card(x, i), const Gap(Space.s2)],
             ],
             if (up.isNotEmpty) ...[
               const SectTitle('Coming up'),
-              for (final x in up) ...[card(x), const Gap(Space.s2)],
+              for (final (i, x) in up.indexed) ...[card(x, live.length + i), const Gap(Space.s2)],
             ],
             AppCard(
               onTap: () => openRoute(context, '/test/winners-wall'),
