@@ -84,7 +84,7 @@ void main() {
     await Supabase.initialize(
       url: 'http://127.0.0.1:9',
       publishableKey: 'test',
-      authOptions: const FlutterAuthClientOptions(localStorage: _SignedIn(), autoRefreshToken: false),
+      authOptions: const FlutterAuthClientOptions(localStorage: _SignedIn(), autoRefreshToken: false, detectSessionInUri: false),
     );
   });
 
@@ -108,7 +108,9 @@ void main() {
     FlutterError.onError = (d) {
       final text = d.exceptionAsString();
       // Network failures are expected here (no server); everything else is a real problem.
+      // Plugins do not exist in widget tests (the real ones run in integration_test/windows_smoke_test.dart on Windows).
       if (text.contains('SocketException') || text.contains('ClientException') || text.contains('Connection refused')) return;
+      if (text.contains('MissingPluginException')) return;
       if (only.isNotEmpty) debugPrint('---- $current\n${d.toString()}');
       problems.putIfAbsent(current, () => text.split('\n').first);
     };
@@ -132,7 +134,8 @@ void main() {
           await Future<void>.delayed(const Duration(milliseconds: 30));
           await t.pump(const Duration(milliseconds: 100));
         }
-        final e = t.takeException();
+        final taken = t.takeException();
+        final e = taken != null && '$taken'.contains('MissingPluginException') ? null : taken;
         if (e != null && only.isNotEmpty) debugPrint('---- $p (thrown)\n$e\n${e is Error ? e.stackTrace : ''}');
         if (e != null) problems.putIfAbsent(p, () => '$e'.split('\n').first);
       }
