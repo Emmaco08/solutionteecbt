@@ -291,7 +291,7 @@ jobs:
     needs: [check]
     if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[release]') || contains(github.event.head_commit.message, '[windows]')
     runs-on: windows-latest
-    timeout-minutes: 60
+    timeout-minutes: 40
     outputs:
       name: ${{ steps.ver.outputs.name }}
       build: ${{ steps.ver.outputs.build }}
@@ -367,10 +367,17 @@ jobs:
         run: |
           $setup = Get-ChildItem "$env:RUNNER_TEMP\installer\*.exe" | Select-Object -First 1
           $dir = "$env:RUNNER_TEMP\installed"
-          $i = Start-Process -FilePath $setup.FullName -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/DIR=$dir" -PassThru -Wait
+          # Wait for the installer only: -Wait would also wait for the app the installer opens at the end, forever.
+          $i = Start-Process -FilePath $setup.FullName -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/DIR=$dir" -PassThru
+          if (-not $i.WaitForExit(120000)) { throw "The installer did not finish in 2 minutes" }
           if ($i.ExitCode -ne 0) { throw "Installer exit code $($i.ExitCode)" }
           if (-not (Test-Path "$dir\SolutionTeeCBT.exe")) { throw "Not installed" }
-          Get-Process SolutionTeeCBT -ErrorAction SilentlyContinue | Stop-Process -Force
+          # The installer opens the app when done; the in-app updater relies on this to come back after an update.
+          Start-Sleep -Seconds 5
+          $opened = Get-Process SolutionTeeCBT -ErrorAction SilentlyContinue
+          if (-not $opened) { throw "The installer did not open the app" }
+          $opened | Stop-Process -Force
+          Start-Sleep -Seconds 2
           $p = Start-Process -FilePath "$dir\SolutionTeeCBT.exe" -PassThru
           Start-Sleep -Seconds 20
           if ($p.HasExited) { throw "The installed app closed by itself (exit code $($p.ExitCode))" }
