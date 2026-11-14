@@ -161,3 +161,117 @@ export async function markSubmission(assignmentId: string, userId: string, score
   if (error) return { ok: false, error: friendlyError(error) };
   return { ok: true, message: "Marked. The student sees it in My classes." };
 }
+
+// ---------------------------------------------------------------- programmes (classes v2, D-163)
+
+const slugify = (s: string) => s.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 70);
+const dateOpt = z.string().trim().optional().transform((v) => (v ? v : null)).refine((v) => v === null || /^\d{4}-\d{2}-\d{2}$/.test(v), "Pick a date");
+const imageKey = z.string().trim().optional().transform((v) => (v ? v : null)).refine((v) => v === null || /^public\/classes\/[A-Za-z0-9/_.-]+$/.test(v), "Upload the picture again");
+
+const Program = z.object({
+  id: z.string().uuid().optional(),
+  title: z.string().trim().min(3, "Give the class a name").max(120),
+  slug: z.string().trim().max(80).optional(),
+  tagline: opt(200),
+  about: opt(6000),
+  highlights: z.string().max(3000).optional().transform((v) => (v ?? "").split("\n").map((l) => l.replace(/^[-•*]\s*/, "").trim()).filter(Boolean).slice(0, 12)),
+  exam: opt(12),
+  subjects: opt(200),
+  teacher: opt(80),
+  teacher_bio: opt(1200),
+  teacher_photo: imageKey,
+  flyer_path: imageKey,
+  schedule_note: opt(200),
+  access: z.enum(["free", "premium", "paid"]),
+  price_naira: z.coerce.number().min(0).max(1_000_000).optional(),
+  compare_naira: z.coerce.number().min(0).max(1_000_000).optional(),
+  seats: z.coerce.number().int().min(0).max(100000).optional(),
+  starts_on: dateOpt,
+  ends_on: dateOpt,
+  faq: z.array(z.object({ q: z.string().trim().min(3).max(200), a: z.string().trim().min(3).max(800) })).max(15),
+  status: z.enum(["draft", "published", "closed"]),
+  on_website: z.boolean(),
+  sort: z.coerce.number().int().min(0).max(999).optional(),
+}).refine((p) => p.access !== "paid" || (p.price_naira ?? 0) >= 50, { message: "A paid class needs a price of at least ₦50", path: ["price_naira"] })
+  .refine((p) => !p.starts_on || !p.ends_on || p.ends_on >= p.starts_on, { message: "The end date is before the start date", path: ["ends_on"] });
+
+/** Adds or saves a class programme: what students buy once and then attend every session of. */
+export async function saveProgram(input: unknown): Promise<ActionResult<{ id: string }>> {
+  await editors();
+  const p = Program.safeParse(input);
+  if (!p.success) return { ok: false, error: p.error.issues[0]?.message ?? "Check the form" };
+  const { id, price_naira, compare_naira, seats, slug, sort, ...rest } = p.data;
+  const row = {
+    ...rest,
+    // "me" and "img" are pages of their own on the website.
+    slug: ((x) => (["me", "img"].includes(x) ? `${x}-class` : x))(slugify(slug || rest.title) || `class-${Date.now()}`),
+    price_kobo: rest.access === "paid" ? Math.round((price_naira ?? 0) * 100) : null,
+    compare_kobo: rest.access === "paid" && compare_naira && compare_naira > (price_naira ?? 0) ? Math.round(compare_naira * 100) : null,
+    seats: seats ? seats : null,
+    sort: sort ?? 0,
+  };
+  const supabase = await createClient();
+  const r = id
+    ? await supabase.from("class_programs").update(row).eq("id", id).select("id").single()
+    : await supabase.from("class_programs").insert(row).select("id").single();
+  if (r.error) return { ok: false, error: r.error.code === "23505" ? "Another class already uses this web address. Change the short link." : friendlyError(r.error) };
+  // Sessions follow the programme's access (the price lives on the programme).
+  await supabase.from("classes").update({ access: row.access, price_kobo: null }).eq("program_id", r.data.id);
+  revalidatePath("/admin/classes");
+  updateTag("classes");
+  return { ok: true, data: { id: r.data.id }, message: row.status === "published" ? "Saved. Students see it in the app" + (row.access === "paid" && row.on_website ? " and on the website." : ".") : "Saved." };
+}
+
+export async function deleteProgram(id: string): Promise<ActionResult> {
+  await editors();
+  const supabase = await createClient();
+  const { count } = await supabase.from("class_enrollments").select("user_id", { count: "exact", head: true }).eq("program_id", id).not("payment_id", "is", null);
+  if (count) return { ok: false, error: "Students paid for this class. Close it instead (it stays for those who paid)." };
+  const { error } = await supabase.from("class_programs").delete().eq("id", id);
+  if (error) return { ok: false, error: friendlyError(error) };
+  revalidatePath("/admin/classes");
+  updateTag("classes");
+  return { ok: true, message: "Deleted." };
+}
+
+/** Students enrolled in a programme (name, email, paid). */
+export async function programStudents(id: string): Promise<ActionResult<{ name: string; email: string | null; enrolled_at: string; paid: boolean }[]>> {
+  await editors();
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_program_students", { p_program: id });
+  if (error) return { ok: false, error: friendlyError(error) };
+  return { ok: true, data: (data ?? []) as never };
+}
+
+/** Adds or saves one session of a programme (time, length, links). */
+export async function saveSession(input: unknown): Promise<ActionResult<{ id: string }>> {
+  await editors();
+  const p = z.object({
+    id: z.string().uuid().optional(),
+    program_id: z.string().uuid(),
+    title: z.string().trim().min(3, "Give the session a title").max(120),
+    about: opt(2000),
+    teacher: z.string().trim().min(2, "Write the teacher's name").max(80),
+    starts_at: z.string().min(10, "Choose the date and time"),
+    minutes: z.coerce.number().int().min(10, "At least 10 minutes").max(480),
+    status: z.enum(["draft", "published", "cancelled"]),
+    join_url: link,
+    recording_url: link,
+  }).safeParse(input);
+  if (!p.success) return { ok: false, error: p.error.issues[0]?.message ?? "Check the session" };
+  const { id, join_url, recording_url, starts_at, program_id, ...rest } = p.data;
+  const start = new Date(/[zZ]|[+-]\d\d:\d\d$/.test(starts_at) ? starts_at : `${starts_at}:00+01:00`);
+  if (Number.isNaN(start.getTime())) return { ok: false, error: "Choose the date and time" };
+  const supabase = await createClient();
+  const prog = await supabase.from("class_programs").select("access, exam").eq("id", program_id).single();
+  if (prog.error) return { ok: false, error: friendlyError(prog.error) };
+  const exam = prog.data.exam && /^[A-Z][A-Z0-9]{1,11}$/.test(prog.data.exam) ? prog.data.exam : null;
+  const row = { ...rest, program_id, starts_at: start.toISOString(), access: prog.data.access, price_kobo: null, exam, web_only: false };
+  const r = id ? await supabase.from("classes").update(row).eq("id", id).select("id").single() : await supabase.from("classes").insert(row).select("id").single();
+  if (r.error) return { ok: false, error: friendlyError(r.error) };
+  const l = await supabase.from("class_links").upsert({ class_id: r.data.id, join_url, recording_url, updated_at: new Date().toISOString() });
+  if (l.error) return { ok: false, error: friendlyError(l.error) };
+  revalidatePath("/admin/classes");
+  updateTag("classes");
+  return { ok: true, data: { id: r.data.id }, message: rest.status === "published" ? "Session saved. Enrolled students will be reminded before it starts." : "Session saved." };
+}

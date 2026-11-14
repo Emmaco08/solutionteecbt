@@ -1825,3 +1825,29 @@ Owner: "COMMUNITY IS APPROVED, only few changes…" (same day as D-155).
 - **Scaling:** `my_open_years` made 20–30× faster (same answers, tested), 87 foreign-key indexes added, 4 duplicate
   indexes dropped, scheduled-job history trimmed nightly. Compute-size advice for busy times is in docs/SCALING.md
   (owner's pricing decision).
+
+## D-163 — Online classes v2: pay once for a class, attend every session (14 Nov 2026)
+
+- **Class programmes.** The admin creates a class once (e.g. "JAMB Marathon Class"): title, tagline, flyer, about,
+  what you get, exam and subjects, teacher with photo and bio, timetable note, start and end dates, price (and an
+  optional "was" price), seats, FAQ, Draft / Published / Closed, and "show on the website". After that the admin only
+  adds **sessions** (title, time, length, link) to it. Students are reminded before every session.
+- **Pay once.** A student pays for the programme one time (Paystack, kind `class_program`) and is enrolled. Every
+  session of that programme then opens for them, past and future, with recordings. Paying again is refused
+  ("already bought"). Locked on the server: the join link and recordings are only given to enrolled students.
+- **Decisions I made (not asked):** access lasts until the programme's end date (no end date = for ever). Paid
+  programmes are **not** included in Premium, because they are separate products with their own teachers. Free and
+  Premium programmes are possible in the app but only paid ones are shown on the website (owner: "That site is only
+  for paid classes").
+- **Website `cbt.solutiontee.com/classes`:** a shop of paid classes with flyer cards (price, seats left, LIVE, next
+  session countdown), trust points (Paystack, real teachers, recordings, pay once), how it works, teachers and FAQ.
+  Each card opens `/classes/<slug>`: the flyer, everything the admin set, a live countdown to the next session (and to
+  its end while live), the timetable, the teacher, how joining works, FAQ, and **Pay** right on the page (email code,
+  then Paystack). A price bar stays at the bottom on phones. Flyers stay in the private bucket and are shown through
+  short signed links.
+- **App:** a Classes section with programme cards, a programme screen (flyer, countdown, price, timetable, FAQ, one
+  button: Pay once / You are in / Join live), session screens counting down to the start and then to the end with a
+  progress bar, and a new Home "Next live class" card with the countdown. Numbers slide; LIVE pulses; respects reduce
+  motion.
+- **Offline banner:** the double yellow underline under the no-internet messages is fixed (the banner had no Material
+  behind its text).

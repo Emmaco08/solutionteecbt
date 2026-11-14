@@ -7,7 +7,7 @@ import { CalendarBlank, CheckCircle, FileText, PlayCircle, SignOut, SpinnerGap, 
 import { createClient } from "@/lib/supabase/client";
 
 type Assignment = { id: string; title: string; instructions: string | null; due_at: string | null; max_score: number; answer: string | null; submitted_at: string | null; score: number | null; feedback: string | null };
-type Mine = { id: string; title: string; teacher: string; starts_at: string; minutes: number; access: string; status: string; registered: boolean; has_recording: boolean; materials: { title: string; url: string }[]; assignments: Assignment[] };
+type Mine = { id: string; title: string; program_title?: string | null; teacher: string; starts_at: string; minutes: number; access: string; status: string; registered: boolean; has_recording: boolean; materials: { title: string; url: string }[]; assignments: Assignment[] };
 type Pub = { id: string; title: string; teacher: string; starts_at: string; minutes: number; access: "free" | "premium" | "paid"; price_kobo: number | null; seats_left: number | null };
 
 const ngn = (kobo: number) => `₦${(kobo / 100).toLocaleString("en-NG")}`;
@@ -182,6 +182,7 @@ export function ClassDashboard() {
               <div key={c.id} className={box}>
                 <div className="flex flex-wrap items-start gap-3">
                   <div className="mr-auto">
+                    {c.program_title ? <p className="text-xs font-bold uppercase tracking-wider text-[#2563B3]">{c.program_title}</p> : null}
                     <p className="text-lg font-bold">{c.title}</p>
                     <p className="flex items-center gap-1.5 text-sm text-muted-foreground"><CalendarBlank size={16} /> {when(c.starts_at)} · {c.minutes} min · {c.teacher}</p>
                     {c.registered ? <p className="mt-1 flex items-center gap-1 text-xs font-bold text-success"><CheckCircle size={14} weight="fill" /> Registered</p> : null}

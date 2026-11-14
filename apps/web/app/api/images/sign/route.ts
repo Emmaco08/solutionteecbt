@@ -4,7 +4,7 @@ import { env, hasR2 } from "@/lib/env";
 import { presignGet } from "@/lib/r2";
 import { json } from "@/lib/auth-email";
 
-const Body = z.object({ key: z.string().min(3).max(300).regex(/^(q|n|a|c|t|public\/news|public\/winners|public\/challenges|public\/ads|public\/exams)\/[A-Za-z0-9/_.-]+$/) });
+const Body = z.object({ key: z.string().min(3).max(300).regex(/^(q|n|a|c|t|public\/news|public\/winners|public\/challenges|public\/classes|public\/ads|public\/exams)\/[A-Za-z0-9/_.-]+$/) });
 
 /**
  * POST /api/images/sign  { key: "q/jamb/2001/mth/7.webp" | "public/news/…" }   Authorization: Bearer <access token>
@@ -13,6 +13,7 @@ const Body = z.object({ key: z.string().min(3).max(300).regex(/^(q|n|a|c|t|publi
  * Winners wall receipts (public/winners/…) are signed when a published winners wall post uses that key (D-070).
  * Challenge background pictures (public/challenges/…) are signed when a published challenge uses that key.
  * Brand campaign files (public/ads/…, pictures and short videos) are signed while a running campaign uses them (D-105).
+ * Class flyers and teacher photos (public/classes/…) are signed when a published class programme uses them (D-163).
  * Exam logos (public/exams/…) are signed when an exam shown in the app uses that key (D-138).
  * News pictures are signed when a news post the student can read (RLS: published, due) uses that key.
  * Note pictures (n/…) are signed when a study item the student can open uses that key (can_view_note_image).
@@ -54,6 +55,8 @@ export async function POST(req: Request) {
     ? await asUser.from("winners_wall").select("id").eq("receipt_path", key).eq("published", true).limit(1).then((r) => ({ data: Boolean(r.data?.length), error: r.error }))
     : key.startsWith("public/ads/")
     ? await asUser.rpc("can_view_ad_file", { p_key: key })
+    : key.startsWith("public/classes/")
+    ? await asUser.rpc("can_view_class_image", { p_key: key })
     : key.startsWith("t/")
     ? await asUser.rpc("can_view_tutor_file", { p_key: key })
     : key.startsWith("c/")

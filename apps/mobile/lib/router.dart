@@ -389,6 +389,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, s) => ArenaScreen(id: s.pathParameters['id']!),
       ),
       GoRoute(
+        path: '/classes/program/:id',
+        builder: (_, s) => ProgramScreen(id: s.pathParameters['id']!),
+      ),
+      GoRoute(
         path: '/classes/:id',
         builder: (_, s) => ClassScreen(id: s.pathParameters['id']!),
       ),

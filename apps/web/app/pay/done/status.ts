@@ -41,7 +41,7 @@ export async function payStatus(reference: string): Promise<PayStatus> {
     p.plan_id ? svc.from("plans").select("name").eq("id", p.plan_id).maybeSingle() : Promise.resolve({ data: null }),
     p.entitlement_id ? svc.from("entitlements").select("expires_at").eq("id", p.entitlement_id).maybeSingle() : Promise.resolve({ data: null }),
   ]);
-  const kind = p.xp_pack ? "xp" : p.item_kind === "class" ? "class" : p.item_kind === "tutor" ? "tutor" : p.item_kind ? "item" : "plan";
+  const kind = p.xp_pack ? "xp" : p.item_kind === "class" || p.item_kind === "class_program" ? "class" : p.item_kind === "tutor" ? "tutor" : p.item_kind ? "item" : "plan";
   let tutor: Pick<PayStatus, "tutor_plan" | "tutor_until" | "sessions"> = {};
   if (kind === "tutor" && p.status === "success") {
     const [{ data: sub }, { data: tp }] = await Promise.all([

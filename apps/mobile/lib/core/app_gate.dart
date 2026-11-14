@@ -826,19 +826,24 @@ class _OfflineBannerState extends ConsumerState<_OfflineBanner> {
       top: top,
       left: 0,
       right: 0,
+      // Material gives the text its normal style: above the app's screens there is none, and Flutter then draws its
+      // "missing style" double yellow underline (owner, 14 Nov 2026).
       child: IgnorePointer(
-        child: Center(
-          child: AnimatedSwitcher(
-            duration: context.reduceMotion ? Duration.zero : const Duration(milliseconds: 300),
-            switchInCurve: Curves.easeOutBack,
-            transitionBuilder: (child, a) => FadeTransition(
-              opacity: a,
-              child: SlideTransition(
-                position: Tween(begin: const Offset(0, -.8), end: Offset.zero).animate(a),
-                child: child,
+        child: Material(
+          type: MaterialType.transparency,
+          child: Center(
+            child: AnimatedSwitcher(
+              duration: context.reduceMotion ? Duration.zero : const Duration(milliseconds: 300),
+              switchInCurve: Curves.easeOutBack,
+              transitionBuilder: (child, a) => FadeTransition(
+                opacity: a,
+                child: SlideTransition(
+                  position: Tween(begin: const Offset(0, -.8), end: Offset.zero).animate(a),
+                  child: child,
+                ),
               ),
+              child: pill,
             ),
-            child: pill,
           ),
         ),
       ),

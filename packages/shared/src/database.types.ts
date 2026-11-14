@@ -1885,6 +1885,27 @@ export type Database = {
         }
         Relationships: []
       }
+      class_enrollments: {
+        Row: {
+          created_at: string
+          payment_id: string | null
+          program_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          payment_id?: string | null
+          program_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          payment_id?: string | null
+          program_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       class_links: {
         Row: {
           class_id: string
@@ -1927,6 +1948,93 @@ export type Database = {
           id?: string
           title?: string
           url?: string
+        }
+        Relationships: []
+      }
+      class_programs: {
+        Row: {
+          about: string | null
+          access: string
+          compare_kobo: number | null
+          created_at: string
+          created_by: string | null
+          ends_on: string | null
+          exam: string | null
+          faq: Json
+          flyer_path: string | null
+          highlights: string[]
+          id: string
+          on_website: boolean
+          price_kobo: number | null
+          schedule_note: string | null
+          seats: number | null
+          slug: string
+          sort: number
+          starts_on: string | null
+          status: string
+          subjects: string | null
+          tagline: string | null
+          teacher: string | null
+          teacher_bio: string | null
+          teacher_photo: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          about?: string | null
+          access?: string
+          compare_kobo?: number | null
+          created_at?: string
+          created_by?: string | null
+          ends_on?: string | null
+          exam?: string | null
+          faq?: Json
+          flyer_path?: string | null
+          highlights?: string[]
+          id?: string
+          on_website?: boolean
+          price_kobo?: number | null
+          schedule_note?: string | null
+          seats?: number | null
+          slug: string
+          sort?: number
+          starts_on?: string | null
+          status?: string
+          subjects?: string | null
+          tagline?: string | null
+          teacher?: string | null
+          teacher_bio?: string | null
+          teacher_photo?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          about?: string | null
+          access?: string
+          compare_kobo?: number | null
+          created_at?: string
+          created_by?: string | null
+          ends_on?: string | null
+          exam?: string | null
+          faq?: Json
+          flyer_path?: string | null
+          highlights?: string[]
+          id?: string
+          on_website?: boolean
+          price_kobo?: number | null
+          schedule_note?: string | null
+          seats?: number | null
+          slug?: string
+          sort?: number
+          starts_on?: string | null
+          status?: string
+          subjects?: string | null
+          tagline?: string | null
+          teacher?: string | null
+          teacher_bio?: string | null
+          teacher_photo?: string | null
+          title?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1997,6 +2105,7 @@ export type Database = {
           id: string
           minutes: number
           price_kobo: number | null
+          program_id: string | null
           seats: number | null
           starts_at: string
           status: string
@@ -2015,6 +2124,7 @@ export type Database = {
           id?: string
           minutes?: number
           price_kobo?: number | null
+          program_id?: string | null
           seats?: number | null
           starts_at: string
           status?: string
@@ -2033,6 +2143,7 @@ export type Database = {
           id?: string
           minutes?: number
           price_kobo?: number | null
+          program_id?: string | null
           seats?: number | null
           starts_at?: string
           status?: string
@@ -5666,6 +5777,8 @@ export type Database = {
         Returns: Json
       }
       admin_prize_claims: { Args: never; Returns: Json }
+      admin_program_stats: { Args: never; Returns: Json }
+      admin_program_students: { Args: { p_program: string }; Returns: Json }
       admin_qotd_candidates: {
         Args: { p_limit?: number; p_search?: string; p_subject?: number }
         Returns: Json
@@ -5846,6 +5959,7 @@ export type Database = {
       can_view_ad_file: { Args: { p_key: string }; Returns: boolean }
       can_view_avatar: { Args: { p_key: string }; Returns: boolean }
       can_view_challenge_image: { Args: { p_key: string }; Returns: boolean }
+      can_view_class_image: { Args: { p_key: string }; Returns: boolean }
       can_view_community_image: { Args: { p_key: string }; Returns: boolean }
       can_view_note_image: { Args: { p_key: string }; Returns: boolean }
       can_view_question_image: { Args: { p_key: string }; Returns: boolean }
@@ -6235,7 +6349,12 @@ export type Database = {
         }
         Returns: Json
       }
+      program_detail: { Args: { p_program: string }; Returns: Json }
+      program_register: { Args: { p_program: string }; Returns: Json }
+      programs_list: { Args: never; Returns: Json }
       public_classes: { Args: never; Returns: Json }
+      public_program: { Args: { p_slug: string }; Returns: Json }
+      public_programs: { Args: never; Returns: Json }
       push_cron_ok: { Args: { p_token: string }; Returns: boolean }
       push_done: {
         Args: { p_error: string; p_id: string; p_sent: number }
