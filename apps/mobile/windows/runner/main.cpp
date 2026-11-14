@@ -49,13 +49,14 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   const bool maximise = work_w < 1400 || work_h < 820;
 
   FlutterWindow window(project);
+  // Shown on the first frame (flutter_window.cpp), maximised when the screen is small.
+  window.SetStartMaximised(maximise);
   Win32Window::Point origin(static_cast<int>(work.left / scale) + (work_w - w) / 2, static_cast<int>(work.top / scale) + (work_h - h) / 2);
   Win32Window::Size size(w, h);
   if (!window.Create(L"SolutionTee CBT", origin, size)) {
     return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);
-  if (maximise) ::ShowWindow(window.GetHandle(), SW_MAXIMIZE);
 
   ::MSG msg;
   while (::GetMessage(&msg, nullptr, 0, 0)) {

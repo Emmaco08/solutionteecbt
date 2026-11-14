@@ -344,6 +344,13 @@ jobs:
           $p = Start-Process -FilePath $exe -PassThru
           Start-Sleep -Seconds 30
           if ($p.HasExited) { throw "The app closed by itself (exit code $($p.ExitCode))" }
+          # The CI screen is 1024 x 768, so the window must open maximised (small screens, D-166).
+          Add-Type -Namespace W -Name U -MemberDefinition '[DllImport("user32.dll")] public static extern bool IsZoomed(System.IntPtr h); [DllImport("user32.dll")] public static extern bool IsWindowVisible(System.IntPtr h);'
+          $p.Refresh()
+          $h = $p.MainWindowHandle
+          Write-Host "Window visible: $([W.U]::IsWindowVisible($h)), maximised: $([W.U]::IsZoomed($h))"
+          if (-not [W.U]::IsWindowVisible($h)) { throw "The app window is not visible" }
+          if (-not [W.U]::IsZoomed($h)) { throw "The app window did not open maximised on a small screen" }
           New-Item -ItemType Directory -Force -Path "$env:RUNNER_TEMP\shots" | Out-Null
           try {
             Add-Type -AssemblyName System.Windows.Forms, System.Drawing
