@@ -13,6 +13,7 @@ Package name: **`com.solutiontee.cbt`**. Pages and files referred to below are a
 | Phone screenshots 1080 × 1920 (5) | `graphics/phone-1-cbt.png` … `graphics/phone-5-leaderboard.png` |
 | `graphics/phone-6-invite-friends.png` | Phone screenshot 6: invite friends and earn (Premium discount + XP) |
 | `graphics/phone-7-challenges.png` | Phone screenshot 7: practise in challenges and win (Premium days + XP) |
+| `graphics/phone-8-game-zone.png`, `phone-9-comprehension-clash.png`, `phone-10-community.png` | Phone screenshots 8–10 (13 Nov 2026): Game Zone, Comprehension Clash, Community, from the app's own screens |
 | `graphics/phone-6-invite-friends-cash.png`, `phone-7-challenges-cash.png` | Use instead of 6 and 7 **only** after cash prizes are approved and switched on |
 | Privacy Policy | https://cbt.solutiontee.com/privacy |
 | Terms of Service | https://cbt.solutiontee.com/terms |
@@ -118,7 +119,7 @@ Play Console → **Create app**:
 | Photos | Yes | No | Optional | App functionality (AI tutor question photos, profile photo) |
 | Other in-app messages (AI tutor chats) | Yes | No | Optional | App functionality |
 | App interactions | Yes | Yes (AdMob) | Required | App functionality, Analytics, Advertising or marketing, Fraud prevention |
-| Other user-generated content (answers, reports, appeals) | Yes | No | Optional | App functionality |
+| Other user-generated content (answers, reports, appeals, community posts and replies, app ratings and comments) | Yes | No | Optional | App functionality, Analytics (app ratings) |
 | Crash logs and Diagnostics (AdMob and Firebase SDKs) | Yes | Yes | Required | Analytics, Advertising or marketing, Fraud prevention |
 | Device or other IDs (advertising ID, push token, hashed device IDs) | Yes | Yes (advertising ID with AdMob) | Required | Advertising or marketing, Fraud prevention, App functionality |
 | Voice or sound recordings | **No** (the phone turns speech into text; the app receives text only) | | | |
@@ -135,13 +136,13 @@ Service providers acting for us (Supabase, Neon, Cloudflare, Brevo, Paystack, NV
 ## 5. Store listing (Grow → Store presence → Main store listing)
 
 - **App name:** `SolutionTee CBT – JAMB & WAEC`
-- **Short description (74/80):** `Practise JAMB, WAEC & NECO past questions in a real CBT, with an AI tutor.`
-- **Full description (2,445/4,000):**
+- **Short description (77/80):** `JAMB, WAEC & NECO CBT practice, exam games, a student community & an AI tutor`
+- **Full description (3,087/4,000):** (updated 13 Nov 2026 with Game Zone, Comprehension Clash, Community and tutors)
 
 ```
-Practise like it’s the real exam.
+Practise like it’s the real exam, then play, ask and learn.
 
-SolutionTee CBT helps Nigerian secondary-school students prepare for JAMB UTME, WAEC WASSCE and NECO SSCE with a computer-based test (CBT) that feels like exam day, clear explanations for every answer and an AI tutor that helps you understand.
+SolutionTee CBT helps Nigerian secondary-school students prepare for JAMB UTME, WAEC WASSCE and NECO SSCE with a computer-based test (CBT) that feels like exam day, clear explanations for every answer, live exam games, a friendly student community and an AI tutor.
 
 ★ A REAL CBT EXPERIENCE
 • Timed tests that look and work like the real computer-based exams
@@ -149,34 +150,42 @@ SolutionTee CBT helps Nigerian secondary-school students prepare for JAMB UTME, 
 • Full JAMB mocks (English + 3 subjects), quick tests, topic drills and custom exams
 • Auto-submit when time runs out; nothing is lost if your phone goes off
 
+★ GAME ZONE: LEARN WHILE YOU PLAY
+• 8 live games against students or the SolutionTee Bot, from Easy to Legend
+• JAMB Duel: same question, same moment, the faster right answer wins
+• Comprehension Clash: the same passage shown fast, then 5 questions on the main idea, the writer’s purpose, words in context and deductions. Built for JAMB Use of English
+• Speed Rush, Knowledge Survival, Maths Blitz, Word War, Memory Flash and Team Relay
+• Ranked games, friend codes, sound and music, XP and weekly ranks
+
+★ STUDENT COMMUNITY
+• Ask questions, answer others and share study tips with students across Nigeria
+• Tag @solutiontee and SolutionTee AI explains the post, even a photo of a question
+• Follow friends, like, repost and get notified when someone replies
+• Safe and friendly: every post is checked for our community rules
+
 ★ YOUR SCORE THE MOMENT YOU FINISH
 • Estimated JAMB score out of 400 and your score in each subject
-• Accuracy, time per question and progress over time
 • Every question with the right answer and a step-by-step explanation
 • Weak topics to practise next
 
-★ AI TUTOR FOR SCHOOLWORK
-• Type a question or snap a photo of it
-• Step-by-step working in simple English, with the final answer clearly marked
-• Ask it to explain again, give you a quick quiz or plan your study week
-• It only helps with schoolwork, so it is safe for students
+★ AI TUTOR AND REAL TUTORS
+• Type or snap a question and get step-by-step working in simple English
+• Request a real tutor and chat one-to-one with a teacher
+• Join live online JAMB classes
 
 ★ STUDY HUB
-• Past questions in study mode, with answers and explanations
-• Video solutions and topic lessons
-• Lesson notes with formulas, JAMB literature novels, the syllabus and brochures
+• Past questions in study mode, video solutions, lessons and notes
+• JAMB literature novels, the syllabus and brochures
 • Download to study offline
 
 ★ CHALLENGES, STREAKS AND LEADERBOARDS
 • Weekly challenges with the same questions for everyone
-• National and state leaderboards
-• Daily question, XP and streaks to keep you going
+• Countdown to your exam, daily question, XP and streaks
 • Win Premium days and XP
 
 ★ MADE FOR NIGERIAN STUDENTS
 • Works offline: practise without data and sync later
-• Data saver and small downloads
-• Light and dark mode
+• Data saver, small downloads, light and dark mode
 
 FREE AND PREMIUM
 SolutionTee CBT is free to use, with daily free practice and ads. Premium opens every past-question year, video solutions, lessons and notes, gives more AI tutor help and removes ads. Premium is a one-time purchase for the period you choose; it does not renew by itself.
@@ -192,7 +201,9 @@ SolutionTee CBT is an independent exam-practice platform and is not affiliated w
 ```
 
 - **App icon:** `graphics/app-icon-512.png` · **Feature graphic:** `graphics/feature-graphic-1024x500.png`
-- **Phone screenshots:** the 5 files `graphics/phone-*.png` (in order 1 → 5)
+- **Phone screenshots (Play takes up to 8), in this order:** `phone-1-cbt.png`, `phone-8-game-zone.png`,
+  `phone-9-comprehension-clash.png`, `phone-3-ai-tutor.png`, `phone-10-community.png`, `phone-2-results.png`,
+  `phone-7-challenges.png`, `phone-4-study.png`. (`phone-5-leaderboard.png` and `phone-6-invite-friends.png` are spares.)
 - Tablet screenshots: not needed (leave empty).
 - **Store settings:** Category **Education**; Tags: *Exam preparation*, *Study*, *Education* (choose what Play offers);
   Contact email **support@mail.solutiontee.com**, phone **+234 812 244 5948**, website **https://cbt.solutiontee.com**.
@@ -231,3 +242,13 @@ Then admin → Money → **Plans & prices**: put each ID in *Google Play product
 
 Push app changes as usual → GitHub builds → download the new .aab from /download/aab → Play Console → Production (or a
 testing track) → Create new release → upload → roll out. The version number goes up by itself.
+
+**What's new text for the 13 November 2026 update** (Release notes, at most 500 characters):
+
+```
+• New game: Comprehension Clash, read a passage fast, then beat your rival on 5 questions (great for JAMB Use of English)
+• Game Zone: music that keeps playing, full names, smoother play
+• Community: @mention suggestions, SolutionTee AI reads the whole post and photo, faster alerts
+• New Home cards for Game Zone and Community, a livelier exam countdown
+• Rate the app inside it, plus many fixes
+```
