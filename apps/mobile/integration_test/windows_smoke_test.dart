@@ -2,7 +2,7 @@
 //   flutter test integration_test/windows_smoke_test.dart -d windows --dart-define=FIXTURES=<abs path to fixtures>
 // Runs inside the real Windows app binary (with every plugin and our C++ runner) and uses each thing an Android
 // feature needs: device ids for one account per computer, the local database, secure storage, files, game sounds,
-// PDFs, video, notifications, screenshot blocking, the microphone, speech, links, keep-awake and connectivity.
+// PDFs, notifications, screenshot blocking, the microphone, speech, links, keep-awake and connectivity.
 import 'dart:io';
 
 import 'package:audioplayers/audioplayers.dart';
@@ -22,7 +22,6 @@ import 'package:solutiontee_cbt/core/win_registry.dart';
 import 'package:solutiontee_cbt/data/db.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:video_player/video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 const fixtures = String.fromEnvironment('FIXTURES');
@@ -105,18 +104,6 @@ void main() {
     expect(img?.bytes.isNotEmpty, isTrue);
     await page.close();
     await doc.close();
-  });
-
-  test('video lessons play (picture; sound needs speakers)', () async {
-    final v = VideoPlayerController.file(File('$fixtures${Platform.pathSeparator}clip.mp4'));
-    await v.initialize().timeout(const Duration(seconds: 20));
-    expect(v.value.isInitialized, isTrue);
-    expect(v.value.duration.inMilliseconds, greaterThan(500));
-    expect(v.value.size.width, 64);
-    await v.play();
-    await Future<void>.delayed(const Duration(milliseconds: 600));
-    await v.pause();
-    await v.dispose();
   });
 
   test('live notifications: the Windows channel answers', () async {

@@ -15,7 +15,7 @@ Windows version of that Google service exists. **Setup** = needs one step from t
 | Keyboard for CBT | Adapted (extra) | A–E choose, ←/→ move, F flag, C calculator, Ctrl+Enter submit |
 | Calculator in tests | Same | |
 | Results, review, explanations, JAMB score scaling | Same | |
-| Past questions, videos, notes, novels, PDF documents | Same | Video and PDF checked on real Windows |
+| Past questions, videos, notes, novels, PDF documents | Same | PDF checked on real Windows; video playback still to be confirmed on a real laptop (GitHub's Windows machines have no graphics card or speakers) |
 | Save videos and PDFs offline (Downloads) | Same | Stored in the app's Windows folder |
 | Bookmarks, study search, search everywhere | Same | Ctrl+K or Ctrl+F opens search |
 | Offline mode (questions, attempts, no-internet banner) | Same | Local database checked on real Windows |

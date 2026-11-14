@@ -365,11 +365,20 @@ jobs:
       - name: Windows check (every plugin inside the real app)
         timeout-minutes: 25
         run: |
-          # integration_test/windows_smoke_test.dart: device ids, database, secure storage, sounds, PDF, video,
-          # notifications, screenshot blocking, microphone, speech, links, keep-awake, connectivity (D-166).
+          # integration_test/windows_smoke_test.dart: device ids, database, secure storage, sounds, PDF,
+          # notifications, screenshot blocking, microphone, speech, links, keep-awake, connectivity (D-166, D-167).
           $fixtures = (Resolve-Path integration_test\fixtures).Path
           flutter test integration_test/windows_smoke_test.dart -d windows -r expanded --dart-define=FIXTURES=$fixtures
           if ($LASTEXITCODE -ne 0) { throw "Windows check failed" }
+
+      - name: Windows video check (information only on GitHub)
+        # Video needs a graphics card and sound output; GitHub's Windows machines have neither (D-167).
+        continue-on-error: true
+        timeout-minutes: 15
+        run: |
+          $fixtures = (Resolve-Path integration_test\fixtures).Path
+          flutter test integration_test/windows_video_test.dart -d windows -r expanded --dart-define=FIXTURES=$fixtures
+          if ($LASTEXITCODE -ne 0) { Write-Host "::warning::Video could not be checked on this machine (no graphics card / sound output). Check a video lesson on a real computer." ; exit 1 }
 
       - name: Make the installer
         run: |

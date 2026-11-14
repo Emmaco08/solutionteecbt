@@ -1930,9 +1930,11 @@ you have done in android", "compare all window features to android features". Fu
   sounds (+504 KB in every build); phones keep OGG. A PC with no audio output at all (no speakers, headphones or HDMI
   audio, like GitHub's Windows machines) keeps game sounds off instead of erroring (winmm waveOutGetNumDevs).
 - **Windows check on GitHub** (`integration_test/windows_smoke_test.dart`, step "Windows check"): inside the real Windows
-  app on a real Windows machine, every build: device ids, database, secure storage, folders, sounds, PDF, video,
+  app on a real Windows machine, every build: device ids, database, secure storage, folders, sounds, PDF,
   notification channel, screenshot blocking, microphone, speech, links, keep-awake, connectivity. A failure stops the
-  installer from being published.
+  installer from being published. Video is its own step (`windows_video_test.dart`), information only on GitHub:
+  GitHub's Windows machines have no graphics card or sound output and the video plugin stops the app there instead of
+  reporting an error. Video playback must be confirmed by the owner on a real computer.
 - **Not possible on Windows** (no Windows version exists): Google AdMob (so no ads and no "watch a video to unlock or
   earn"), Google Play Billing / in-app review / Play updates (Paystack + our own updater instead), the camera in
   image_picker (photos come from files), app-icon quick actions (Ctrl+K search instead), vibration.
