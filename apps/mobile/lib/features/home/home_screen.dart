@@ -31,6 +31,7 @@ import '../xp/streak_ui.dart';
 import '../xp/xp_screens.dart';
 import '../compete/compete_data.dart';
 import 'countdown.dart';
+import 'play_connect_cards.dart';
 import 'qotd_card.dart';
 import 'top_card.dart';
 import 'tour.dart';
@@ -272,6 +273,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
       if (ref.watch(qotdProvider).isLoading || ref.watch(qotdProvider).value?.question != null) const QotdCard(),
       const InviteCard(),
+      const PlayConnectSection(), // Game Zone and Community, just before News (owner, 13 Nov 2026)
       if (news.isNotEmpty)
         Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -11,6 +11,7 @@ import 'package:solutiontee_cbt/core/providers.dart';
 import 'package:solutiontee_cbt/features/community/community_data.dart';
 import 'package:solutiontee_cbt/features/community/community_widgets.dart';
 import 'package:solutiontee_cbt/features/home/countdown.dart';
+import 'package:solutiontee_cbt/features/home/play_connect_cards.dart';
 import 'package:solutiontee_cbt/theme/theme.dart';
 
 Future<void> _font(String family, List<String> files) async {
@@ -70,6 +71,7 @@ Future<void> _shot(WidgetTester t, Widget w, String name, {double width = 360, L
 
 void main() {
   setUpAll(() async {
+    await _font('LilitaOne', ['assets/fonts/LilitaOne-Regular.ttf']);
     await _font('PlusJakartaSans', ['assets/fonts/PlusJakartaSans-Medium.ttf', 'assets/fonts/PlusJakartaSans-Bold.ttf']);
     await _font('PhosphorRegular', ['assets/fonts/Phosphor-Regular.ttf']);
     await _font('PhosphorFill', ['assets/fonts/Phosphor-Fill.ttf']);
@@ -104,5 +106,9 @@ void main() {
       'w_countdown',
       overrides: [examCountdownProvider.overrideWithValue(cd)],
     );
+  });
+
+  testWidgets('play and connect', (t) async {
+    await _shot(t, const SingleChildScrollView(padding: EdgeInsets.all(20), child: PlayConnectSection()), 'w_play_connect');
   });
 }
