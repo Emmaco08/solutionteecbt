@@ -1226,6 +1226,22 @@ Future<T?> showAppDialog<T>(
 
 /// Prototype toast: navy-950 pill above the bottom nav, with an icon.
 /// [above] lifts it over a bottom bar (CBT bottom bar, footer buttons) so it never covers controls.
+/// Desktop (D-166): Enter sends a chat message, Shift+Enter starts a new line. Phones keep their keyboard's own key.
+class EnterToSend extends StatelessWidget {
+  const EnterToSend({super.key, required this.onSend, required this.child});
+  final VoidCallback? onSend;
+  final Widget child;
+  @override
+  Widget build(BuildContext context) {
+    final send = onSend;
+    if (!isDesktop || send == null) return child;
+    return CallbackShortcuts(
+      bindings: {const SingleActivator(LogicalKeyboardKey.enter): send, const SingleActivator(LogicalKeyboardKey.numpadEnter): send},
+      child: child,
+    );
+  }
+}
+
 /// Desktop (D-166): toasts stay about 520 px wide in the middle instead of spanning the page.
 double _toastSide(BuildContext context) => isDesktop ? ((MediaQuery.sizeOf(context).width - 520) / 2).clamp(16.0, 4000.0) : 16;
 

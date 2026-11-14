@@ -124,6 +124,7 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
       widget.shell.goBranch(0);
       return;
     }
+    if (isDesktop) return; // Esc on Home never closes the Windows app (the window's X does)
     final now = DateTime.now();
     if (_lastBack != null && now.difference(_lastBack!) < const Duration(seconds: 2)) {
       SystemNavigator.pop();

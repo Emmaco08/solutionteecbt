@@ -1277,30 +1277,33 @@ class _TutorChatViewState extends ConsumerState<TutorChatView> {
                                     },
                                   ),
                                   Expanded(
-                                    child: TextField(
-                                      controller: _text,
-                                      focusNode: _focus,
-                                      minLines: 1,
-                                      maxLines: 5,
-                                      maxLength: 4000,
-                                      textCapitalization: TextCapitalization.sentences,
-                                      style: context.ty.body,
-                                      onTap: () => _emoji ? setState(() => _emoji = false) : null,
-                                      decoration: InputDecoration(
-                                        hintText: 'Message',
-                                        hintStyle: context.ty.body.col(c.textSubtle),
-                                        counterText: '',
-                                        border: InputBorder.none,
-                                        enabledBorder: InputBorder.none,
-                                        focusedBorder: InputBorder.none,
-                                        filled: false,
-                                        isDense: true,
-                                        contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                                    child: EnterToSend(
+                                      onSend: _sendText,
+                                      child: TextField(
+                                        controller: _text,
+                                        focusNode: _focus,
+                                        minLines: 1,
+                                        maxLines: 5,
+                                        maxLength: 4000,
+                                        textCapitalization: TextCapitalization.sentences,
+                                        style: context.ty.body,
+                                        onTap: () => _emoji ? setState(() => _emoji = false) : null,
+                                        decoration: InputDecoration(
+                                          hintText: 'Message',
+                                          hintStyle: context.ty.body.col(c.textSubtle),
+                                          counterText: '',
+                                          border: InputBorder.none,
+                                          enabledBorder: InputBorder.none,
+                                          focusedBorder: InputBorder.none,
+                                          filled: false,
+                                          isDense: true,
+                                          contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                                        ),
+                                        onChanged: (_) {
+                                          setState(() {});
+                                          _onTyping();
+                                        },
                                       ),
-                                      onChanged: (_) {
-                                        setState(() {});
-                                        _onTyping();
-                                      },
                                     ),
                                   ),
                                   _ComposerIcon(icon: PhosphorIcons.paperclip(), label: 'Send a photo', onTap: _attach),
