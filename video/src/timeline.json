@@ -1,0 +1,739 @@
+{
+ "fps": 30,
+ "bpm": 120,
+ "duration": 60,
+ "voice": "Kokoro-82M af_heart (Apache-2.0)",
+ "scenes": [
+  {
+   "id": "cold",
+   "from": 0,
+   "to": 2
+  },
+  {
+   "id": "logos",
+   "from": 2,
+   "to": 4
+  },
+  {
+   "id": "ready",
+   "from": 4,
+   "to": 6
+  },
+  {
+   "id": "meet",
+   "from": 6,
+   "to": 8
+  },
+  {
+   "id": "cbt",
+   "from": 8,
+   "to": 12
+  },
+  {
+   "id": "result",
+   "from": 12,
+   "to": 16
+  },
+  {
+   "id": "ai",
+   "from": 16,
+   "to": 20
+  },
+  {
+   "id": "offline",
+   "from": 20,
+   "to": 24
+  },
+  {
+   "id": "games",
+   "from": 24,
+   "to": 28
+  },
+  {
+   "id": "cash",
+   "from": 28,
+   "to": 34
+  },
+  {
+   "id": "leader",
+   "from": 34,
+   "to": 38
+  },
+  {
+   "id": "classes",
+   "from": 38,
+   "to": 44
+  },
+  {
+   "id": "wall",
+   "from": 44,
+   "to": 48
+  },
+  {
+   "id": "outro",
+   "from": 48,
+   "to": 52
+  },
+  {
+   "id": "cta",
+   "from": 52,
+   "to": 60
+  }
+ ],
+ "vo": [
+  {
+   "id": "l01",
+   "at": 0.6,
+   "text": "Exam day is coming.",
+   "seconds": 1.246,
+   "words": [
+    [
+     "Exam",
+     0.6,
+     0.92
+    ],
+    [
+     "day",
+     0.92,
+     1.14
+    ],
+    [
+     "is",
+     1.14,
+     1.32
+    ],
+    [
+     "coming.",
+     1.32,
+     1.66
+    ]
+   ]
+  },
+  {
+   "id": "l02",
+   "at": 2.0,
+   "text": "JAMB.",
+   "seconds": 0.632,
+   "words": [
+    [
+     "Jam",
+     2.0,
+     2.4
+    ]
+   ]
+  },
+  {
+   "id": "l03",
+   "at": 2.75,
+   "text": "WAEC.",
+   "seconds": 0.639,
+   "words": [
+    [
+     "Wayak",
+     2.75,
+     3.25
+    ]
+   ]
+  },
+  {
+   "id": "l04",
+   "at": 3.5,
+   "text": "NECO.",
+   "seconds": 0.66,
+   "words": [
+    [
+     "Necco",
+     3.5,
+     4.1
+    ]
+   ]
+  },
+  {
+   "id": "l05",
+   "at": 4.4,
+   "text": "Are you ready?",
+   "seconds": 0.809,
+   "words": [
+    [
+     "Are",
+     4.4,
+     4.52
+    ],
+    [
+     "you",
+     4.52,
+     4.66
+    ],
+    [
+     "ready?",
+     4.66,
+     4.88
+    ]
+   ]
+  },
+  {
+   "id": "l06",
+   "at": 6.25,
+   "text": "Meet SolutionTee CBT.",
+   "seconds": 1.742,
+   "words": [
+    [
+     "Meet",
+     6.25,
+     6.45
+    ],
+    [
+     "Solution",
+     6.45,
+     6.89
+    ],
+    [
+     "TCBT.",
+     6.89,
+     7.69
+    ]
+   ]
+  },
+  {
+   "id": "l07",
+   "at": 8.3,
+   "text": "Practise real past questions, with the real exam timer.",
+   "seconds": 3.289,
+   "words": [
+    [
+     "Practice",
+     8.3,
+     8.64
+    ],
+    [
+     "real",
+     8.64,
+     8.92
+    ],
+    [
+     "past",
+     8.92,
+     9.2
+    ],
+    [
+     "questions",
+     9.2,
+     9.74
+    ],
+    [
+     "with",
+     9.74,
+     10.26
+    ],
+    [
+     "the",
+     10.26,
+     10.4
+    ],
+    [
+     "real",
+     10.4,
+     10.68
+    ],
+    [
+     "exam",
+     10.68,
+     11.04
+    ],
+    [
+     "timer.",
+     11.04,
+     11.42
+    ]
+   ]
+  },
+  {
+   "id": "l08",
+   "at": 12.3,
+   "text": "See your JAMB score the moment you submit.",
+   "seconds": 2.006,
+   "words": [
+    [
+     "See",
+     12.3,
+     12.48
+    ],
+    [
+     "your",
+     12.48,
+     12.62
+    ],
+    [
+     "JAM",
+     12.62,
+     12.92
+    ],
+    [
+     "score",
+     12.92,
+     13.14
+    ],
+    [
+     "the",
+     13.14,
+     13.34
+    ],
+    [
+     "moment",
+     13.34,
+     13.54
+    ],
+    [
+     "you",
+     13.54,
+     13.76
+    ],
+    [
+     "submit.",
+     13.76,
+     14.1
+    ]
+   ]
+  },
+  {
+   "id": "l09",
+   "at": 15.85,
+   "text": "Stuck on a question? Snap it. Your AI tutor explains it, step by step.",
+   "seconds": 4.354,
+   "words": [
+    [
+     "Stuck",
+     15.85,
+     16.09
+    ],
+    [
+     "on",
+     16.09,
+     16.21
+    ],
+    [
+     "a",
+     16.21,
+     16.31
+    ],
+    [
+     "question?",
+     16.31,
+     16.65
+    ],
+    [
+     "Snap",
+     17.17,
+     17.17
+    ],
+    [
+     "it.",
+     17.17,
+     17.45
+    ],
+    [
+     "Your",
+     17.83,
+     17.93
+    ],
+    [
+     "AI",
+     17.93,
+     18.29
+    ],
+    [
+     "tutor",
+     18.29,
+     18.47
+    ],
+    [
+     "explains",
+     18.47,
+     18.95
+    ],
+    [
+     "it",
+     18.95,
+     19.23
+    ],
+    [
+     "step",
+     19.23,
+     19.53
+    ],
+    [
+     "-by",
+     19.53,
+     19.73
+    ],
+    [
+     "-step.",
+     19.73,
+     20.05
+    ]
+   ]
+  },
+  {
+   "id": "l10",
+   "at": 20.4,
+   "text": "No data? No wahala. Download, and practise offline.",
+   "seconds": 3.484,
+   "words": [
+    [
+     "No",
+     20.4,
+     20.58
+    ],
+    [
+     "data,",
+     20.58,
+     20.9
+    ],
+    [
+     "no",
+     21.22,
+     21.26
+    ],
+    [
+     "wahala.",
+     21.26,
+     21.68
+    ],
+    [
+     "Download",
+     22.28,
+     22.42
+    ],
+    [
+     "and",
+     22.42,
+     22.84
+    ],
+    [
+     "practice",
+     22.84,
+     23.18
+    ],
+    [
+     "offline.",
+     23.18,
+     23.66
+    ]
+   ]
+  },
+  {
+   "id": "l11",
+   "at": 24.3,
+   "text": "Battle your friends live, in the Game Zone.",
+   "seconds": 2.021,
+   "words": [
+    [
+     "Battle",
+     24.3,
+     24.52
+    ],
+    [
+     "your",
+     24.52,
+     24.66
+    ],
+    [
+     "friends",
+     24.66,
+     24.86
+    ],
+    [
+     "live",
+     24.86,
+     25.16
+    ],
+    [
+     "in",
+     25.16,
+     25.52
+    ],
+    [
+     "the",
+     25.52,
+     25.64
+    ],
+    [
+     "Game",
+     25.64,
+     25.82
+    ],
+    [
+     "Zone.",
+     25.82,
+     26.08
+    ]
+   ]
+  },
+  {
+   "id": "l12",
+   "at": 28.4,
+   "text": "Join live challenges, and win cash prizes.",
+   "seconds": 2.707,
+   "words": [
+    [
+     "Join",
+     28.4,
+     28.68
+    ],
+    [
+     "live",
+     28.68,
+     28.92
+    ],
+    [
+     "challenges",
+     28.92,
+     29.48
+    ],
+    [
+     "and",
+     29.48,
+     29.96
+    ],
+    [
+     "win",
+     29.96,
+     30.14
+    ],
+    [
+     "cash",
+     30.14,
+     30.42
+    ],
+    [
+     "prizes.",
+     30.42,
+     30.88
+    ]
+   ]
+  },
+  {
+   "id": "l13",
+   "at": 34.3,
+   "text": "Climb the leaderboard. Keep your streak alive.",
+   "seconds": 2.29,
+   "words": [
+    [
+     "Climb",
+     34.3,
+     34.56
+    ],
+    [
+     "the",
+     34.56,
+     34.68
+    ],
+    [
+     "leaderboard,",
+     34.68,
+     35.16
+    ],
+    [
+     "keep",
+     35.54,
+     35.62
+    ],
+    [
+     "your",
+     35.62,
+     35.76
+    ],
+    [
+     "streak",
+     35.76,
+     36.0
+    ],
+    [
+     "alive.",
+     36.0,
+     36.34
+    ]
+   ]
+  },
+  {
+   "id": "l14",
+   "at": 38.3,
+   "text": "Live classes. Real tutors. And a community that learns with you.",
+   "seconds": 3.737,
+   "words": [
+    [
+     "Live",
+     38.3,
+     38.58
+    ],
+    [
+     "classes,",
+     38.58,
+     39.04
+    ],
+    [
+     "real",
+     39.56,
+     39.66
+    ],
+    [
+     "tutors,",
+     39.66,
+     40.14
+    ],
+    [
+     "and",
+     40.44,
+     40.54
+    ],
+    [
+     "a",
+     40.54,
+     40.64
+    ],
+    [
+     "community",
+     40.64,
+     40.92
+    ],
+    [
+     "that",
+     40.92,
+     41.26
+    ],
+    [
+     "learns",
+     41.26,
+     41.48
+    ],
+    [
+     "with",
+     41.48,
+     41.72
+    ],
+    [
+     "you.",
+     41.72,
+     41.94
+    ]
+   ]
+  },
+  {
+   "id": "l15",
+   "at": 44.2,
+   "text": "Everything you need to pass, in one app.",
+   "seconds": 1.98,
+   "words": [
+    [
+     "Everything",
+     44.2,
+     44.54
+    ],
+    [
+     "you",
+     44.54,
+     44.68
+    ],
+    [
+     "need",
+     44.68,
+     44.8
+    ],
+    [
+     "to",
+     44.8,
+     44.92
+    ],
+    [
+     "pass",
+     44.92,
+     45.24
+    ],
+    [
+     "in",
+     45.24,
+     45.6
+    ],
+    [
+     "one",
+     45.6,
+     45.8
+    ],
+    [
+     "app.",
+     45.8,
+     46.06
+    ]
+   ]
+  },
+  {
+   "id": "l16",
+   "at": 48.35,
+   "text": "SolutionTee CBT.",
+   "seconds": 1.57,
+   "words": [
+    [
+     "Solution",
+     48.35,
+     48.77
+    ],
+    [
+     "TCBT.",
+     48.77,
+     49.61
+    ]
+   ]
+  },
+  {
+   "id": "l17",
+   "at": 50.2,
+   "text": "Learn. Think. Solve.",
+   "seconds": 1.344,
+   "words": [
+    [
+     "Learn.",
+     50.2,
+     50.56
+    ],
+    [
+     "Think.",
+     50.8,
+     50.88
+    ],
+    [
+     "Solve.",
+     51.2,
+     51.48
+    ]
+   ]
+  },
+  {
+   "id": "l18",
+   "at": 52.6,
+   "text": "Download it free, today.",
+   "seconds": 1.264,
+   "words": [
+    [
+     "Download",
+     52.6,
+     52.92
+    ],
+    [
+     "it",
+     52.92,
+     53.1
+    ],
+    [
+     "free",
+     53.1,
+     53.26
+    ],
+    [
+     "today.",
+     53.26,
+     53.62
+    ]
+   ]
+  }
+ ]
+}

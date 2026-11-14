@@ -1851,3 +1851,21 @@ Owner: "COMMUNITY IS APPROVED, only few changes…" (same day as D-155).
   motion.
 - **Offline banner:** the double yellow underline under the no-internet messages is fixed (the banner had no Material
   behind its text).
+
+## D-164 — Intro advert (14 Nov 2026)
+
+- **What:** a 60 s vertical (9:16) advert in Remotion (`/video`): countdown cold open, the JAMB, WAEC and NECO logos
+  slamming in, "Are you ready?", brand reveal, then every big feature on the real app screens (CBT with timer, instant
+  JAMB score, AI tutor solving a photographed question, offline mode, Game Zone, cash challenges, leaderboard and
+  streak, live classes, tutors, community), a wall of all screens, and a white end card with the wordmark, "Learn.
+  Think. Solve.", Google Play, the website, the logos and the disclaimer.
+- **Voice:** Kokoro-82M `af_heart` (Apache-2.0, free for ads). The owner said any very good voice is fine. JAMB, WAEC
+  and NECO are forced to "jam", "WAY-ek", "NEH-koh"; checked by speech recognition.
+- **Sound:** free sound sites are blocked from the build machine, so the music (Afro-house/amapiano style, 120 BPM) and
+  every effect are synthesised in `video/tools/audio.py`. No licences to track. Mixed to −14 LUFS with the voice
+  9–11 dB above the music.
+- **Brand rules kept:** only real brand files, unchanged; Google Play as text (no badge artwork); "Eligibility and
+  terms apply" under cash prizes; the not-affiliated disclaimer on the end card. The CBT tap picks the right answer
+  (x = 2 or 3), the same one the AI tutor then explains.
+- **Not used:** Higgsfield (optional; two prompts in `video/README.md` if the owner wants live-action inserts).
+- **Not done yet:** 16:9 cut, a 30 s cut-down.

@@ -8,3 +8,4 @@ recordings/raw/
 *.mp4
 *.mov
 !public/**/*.mp4
+public/audio/
