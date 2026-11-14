@@ -10,6 +10,9 @@ import 'package:flutter/widgets.dart';
 
 enum GzSfx { tap, correct, wrong, tick, count, go, whoosh, flip, pair, coin, found, combo, pop, spin, win, lose, level }
 
+/// Sound files: OGG on phones; MP3 on Windows, which plays OGG only with an optional Microsoft add-on (D-166).
+String get _ext => Platform.isWindows ? 'mp3' : 'ogg';
+
 class GzSound with WidgetsBindingObserver {
   GzSound._();
   static final instance = GzSound._();
@@ -52,7 +55,7 @@ class GzSound with WidgetsBindingObserver {
     final ready = _pools[s];
     if (ready != null) return Future.value(ready);
     return _loading[s] ??=
-        AudioPool.create(source: AssetSource('sounds/${s.name}.ogg'), maxPlayers: s == GzSfx.tap || s == GzSfx.flip ? 4 : 2, audioContext: _mix).then((p) {
+        AudioPool.create(source: AssetSource('sounds/${s.name}.$_ext'), maxPlayers: s == GzSfx.tap || s == GzSfx.flip ? 4 : 2, audioContext: _mix).then((p) {
           _pools[s] = p;
           return p;
         });
@@ -118,7 +121,7 @@ class GzSound with WidgetsBindingObserver {
       await _fadeTo(p, 0, ms: 250);
       await p.stop();
       await p.setVolume(0);
-      await p.play(AssetSource('sounds/music_$track.ogg'), volume: 0, ctx: _mix);
+      await p.play(AssetSource('sounds/music_$track.$_ext'), volume: 0, ctx: _mix);
       await _fadeTo(p, _musicVolume, ms: 700);
     } catch (_) {}
   }

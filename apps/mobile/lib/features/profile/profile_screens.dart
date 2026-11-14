@@ -9,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../xp/streak_ui.dart' show myStreakProvider;
+import '../../core/platform.dart';
 import '../../core/ads.dart';
 import '../../core/nav.dart';
 import '../../core/config.dart';
@@ -1333,7 +1334,13 @@ class _NotificationSwitches extends ConsumerWidget {
               ),
           ],
         ),
-        if (!push.available) ...[
+        if (isDesktop) ...[
+          const Gap(Space.s2),
+          Text(
+            'On this computer, new messages pop up while SolutionTee CBT is open, even when it is minimised. They are always under Notifications.',
+            style: context.ty.cap.col(c.textMuted),
+          ),
+        ] else if (!push.available) ...[
           const Gap(Space.s2),
           Text('Push messages are not set up in this test version yet. Messages still appear under Notifications.', style: context.ty.cap.col(c.textMuted)),
         ],

@@ -1905,3 +1905,33 @@ Owner: "COMMUNITY IS APPROVED, only few changes…" (same day as D-155).
   silently and opens the installed app before publishing to cbt.solutiontee.com/download/windows.
 - **Not code-signed yet (owner decision):** Windows SmartScreen shows "Windows protected your PC → More info → Run
   anyway" until the installer is signed (code-signing certificate) or listed in the Microsoft Store.
+
+## D-167 — Windows: every Android feature that a computer can do (14 Nov 2026)
+Owner: "I need all possible features from android on the window", "prevent duplicate account on the windows just like
+you have done in android", "compare all window features to android features". Full table: `docs/desktop-parity.md`.
+- **Every screen:** `test/desktop_routes_test.dart` opens all 101 routes of `lib/router.dart` signed in, inside the real
+  router and desktop frame at 1366 × 768, and fails on any error or overflow. It found and we fixed: the sign-in brand
+  panel 6 px too tall on 768-pixel laptops (now scrolls), and a Results-screen read after the student left (phones too).
+- **Live notifications** (`lib/core/desktop_alerts.dart`, `windows/runner/flutter_window.cpp`): Windows has no Firebase
+  push, but every push is a row in `my_notifications`. While the app is open it checks every 45 s and when the window
+  comes back to the front; new messages give the phone's in-app toast, or, when the window is behind or minimised, a
+  real Windows notification (tray icon, app icon) and a flashing taskbar button. Clicking it opens the message.
+  Settings switches apply; messages from before the app opened are not announced. Why polling, not Realtime: the
+  inbox is a security-definer function over audiences (all/free/premium/user/staff), not a table a client may listen to.
+- **One account per computer:** like Android's two ids, Windows now sends the motherboard's SMBIOS UUID (as Windows
+  records it in `HKLM\SYSTEM\HardwareConfig\LastConfig`, survives a Windows reinstall) in the phone-wide slot and the
+  Windows MachineGuid in the Android-id slot, hashed with the same salts. The server (`device_check_in`,
+  `device_status`, sign-up check) is unchanged, so the second account, banned devices, appeals and "allow twice" work
+  the same. Placeholder UUIDs some makers ship (all zeros, all F, 03000200-…) are ignored so strangers never collide.
+  Registry is read through advapi32 `RegGetValueW` (no `reg.exe`, no console flash). Windows inside a virtual machine
+  sends the flag `vm` ("Windows in a virtual machine" on the fraud page). A normal computer sends no flag, because any
+  flag lists the account under "Warning signs".
+- **Game sounds:** Windows plays OGG only with an optional Microsoft add-on, so Windows plays MP3 copies of the 19
+  sounds (+504 KB in every build); phones keep OGG.
+- **Windows check on GitHub** (`integration_test/windows_smoke_test.dart`, step "Windows check"): inside the real Windows
+  app on a real Windows machine, every build: device ids, database, secure storage, folders, sounds, PDF, video,
+  notification channel, screenshot blocking, microphone, speech, links, keep-awake, connectivity. A failure stops the
+  installer from being published.
+- **Not possible on Windows** (no Windows version exists): Google AdMob (so no ads and no "watch a video to unlock or
+  earn"), Google Play Billing / in-app review / Play updates (Paystack + our own updater instead), the camera in
+  image_picker (photos come from files), app-icon quick actions (Ctrl+K search instead), vibration.

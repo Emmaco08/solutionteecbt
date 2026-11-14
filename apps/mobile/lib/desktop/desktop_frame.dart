@@ -726,45 +726,57 @@ class _BrandPanel extends StatelessWidget {
               decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFFF2B233).withValues(alpha: .18)),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(Space.s10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Row(children: [Mark(height: 44, onDark: true)]),
-                const Spacer(),
-                Text('Learn. Think. Solve.', style: context.ty.display.col(Colors.white)),
-                const Gap(Space.s3),
-                Text('The CBT practice app for Nigerian students, now on your computer.', style: context.ty.lg.col(const Color(0xFFC9D5EA))),
-                const Gap(Space.s8),
-                for (final (t, s) in points)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: Space.s4),
-                    child: Row(
+          // Scrolls instead of overflowing when the window is short (768-pixel laptops); Spacers still share the rest.
+          LayoutBuilder(
+            builder: (context, box) => SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: box.maxHeight),
+                child: IntrinsicHeight(
+                  child: Padding(
+                    padding: EdgeInsets.all(box.maxHeight < 800 ? Space.s8 : Space.s10),
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          width: 30,
-                          height: 30,
-                          decoration: const BoxDecoration(color: Color(0xFFF2B233), shape: BoxShape.circle),
-                          child: Icon(PhosphorIcons.check(PhosphorIconsStyle.bold), size: 18, color: Palette.navy900),
-                        ),
+                        const Row(children: [Mark(height: 44, onDark: true)]),
+                        const Gap(Space.s6),
+                        const Spacer(),
+                        Text('Learn. Think. Solve.', style: context.ty.display.col(Colors.white)),
                         const Gap(Space.s3),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(t, style: context.ty.label.bold.col(Colors.white)),
-                              Text(s, style: context.ty.sm.col(const Color(0xFFAFC0DD))),
-                            ],
+                        Text('The CBT practice app for Nigerian students, now on your computer.', style: context.ty.lg.col(const Color(0xFFC9D5EA))),
+                        const Gap(Space.s8),
+                        for (final (t, s) in points)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: Space.s4),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  width: 30,
+                                  height: 30,
+                                  decoration: const BoxDecoration(color: Color(0xFFF2B233), shape: BoxShape.circle),
+                                  child: Icon(PhosphorIcons.check(PhosphorIconsStyle.bold), size: 18, color: Palette.navy900),
+                                ),
+                                const Gap(Space.s3),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(t, style: context.ty.label.bold.col(Colors.white)),
+                                      Text(s, style: context.ty.sm.col(const Color(0xFFAFC0DD))),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
+                        const Spacer(),
+                        const Gap(Space.s4),
+                        Text(Config.disclaimer, style: context.ty.cap.col(const Color(0xFF8FA3C7))),
                       ],
                     ),
                   ),
-                const Spacer(),
-                Text(Config.disclaimer, style: context.ty.cap.col(const Color(0xFF8FA3C7))),
-              ],
+                ),
+              ),
             ),
           ),
         ],

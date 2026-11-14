@@ -34,8 +34,11 @@ abstract final class DeviceCheck {
 
   /// [phone-wide id (Widevine), Android ID] hashed, and the phone's flags ("clone:…", "emulator", …).
   static Future<DeviceIds> ids() async {
-    // Desktop (D-166): the computer's MachineGuid, hashed, in the Android-id slot.
-    if (isDesktop) return DeviceIds(null, await DesktopMachine.hashed('solutiontee:'), const ['desktop']);
+    // Windows (D-166): the computer's hardware id in the phone-wide slot, this Windows installation's id in the
+    // Android-id slot, so one account per computer works like one account per phone.
+    if (isDesktop) {
+      return DeviceIds(await DesktopMachine.hashedHardware('solutiontee:drm:'), await DesktopMachine.hashed('solutiontee:'), DesktopMachine.flags());
+    }
     try {
       final m = Map<String, Object?>.from(await ch.invokeMethod<Map<Object?, Object?>>('ids') ?? const {});
       final drm = '${m['drm'] ?? ''}', android = '${m['android'] ?? ''}';

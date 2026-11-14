@@ -362,6 +362,15 @@ jobs:
           Write-Host "Still running after 30 s (memory $([int]($p.WorkingSet64 / 1MB)) MB)"
           Stop-Process -Id $p.Id -Force
 
+      - name: Windows check (every plugin inside the real app)
+        timeout-minutes: 25
+        run: |
+          # integration_test/windows_smoke_test.dart: device ids, database, secure storage, sounds, PDF, video,
+          # notifications, screenshot blocking, microphone, speech, links, keep-awake, connectivity (D-166).
+          $fixtures = (Resolve-Path integration_test\fixtures).Path
+          flutter test integration_test/windows_smoke_test.dart -d windows -r expanded --dart-define=FIXTURES=$fixtures
+          if ($LASTEXITCODE -ne 0) { throw "Windows check failed" }
+
       - name: Make the installer
         run: |
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"

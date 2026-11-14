@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../data/notifications_repo.dart';
 import 'config.dart';
+import 'desktop_alerts.dart';
 import 'providers.dart';
 import 'platform.dart';
 
@@ -34,7 +35,7 @@ class PushService {
   /// Starts Firebase once per app run. Safe to call often.
   Future<bool> init() async {
     if (_ready) return true;
-    if (isDesktop) return false; // Windows has no Firebase push: the in-app list and live toasts cover it (D-166)
+    if (isDesktop) return false; // Windows has no Firebase push: DesktopAlerts covers it (desktop_alerts.dart, D-166)
     try {
       if (Firebase.apps.isEmpty) await Firebase.initializeApp();
       _ready = true;
@@ -53,11 +54,12 @@ class PushService {
     return true;
   }
 
-  void _opened(RemoteMessage m) {
+  void _opened(RemoteMessage m) => openLink('${m.data['id'] ?? ''}', '${m.data['link_type'] ?? ''}', '${m.data['link_target'] ?? ''}');
+
+  /// Opens a tapped message (a phone push, or a Windows notification, D-166): marks it read, then its link.
+  void openLink(String id, String type, String target) {
     ref.invalidate(notificationsProvider);
-    final id = m.data['id'];
-    if (id is String && id.isNotEmpty) ref.read(notificationsRepoProvider).markRead([id]).ignore();
-    final type = '${m.data['link_type'] ?? ''}', target = '${m.data['link_target'] ?? ''}';
+    if (id.isNotEmpty) ref.read(notificationsRepoProvider).markRead([id]).ignore();
     if (type == 'url' && target.startsWith('https://')) {
       launchUrl(Uri.parse(target), mode: LaunchMode.externalApplication).ignore();
       return;
@@ -67,6 +69,14 @@ class PushService {
 
   /// After sign-in: saves this phone's token and matches FCM topics to the student's switches and plan.
   Future<void> register({required bool premium}) async {
+    if (isDesktop) {
+      // Windows: live notifications while the app is open, from the same inbox (D-166).
+      ref.read(desktopAlertsProvider)
+        ..onOpen = openLink
+        ..onForeground = ((title) => onForeground?.call(title))
+        ..start();
+      return;
+    }
     if (!await init()) return;
     final fm = FirebaseMessaging.instance;
     final sb = ref.read(supabaseProvider);

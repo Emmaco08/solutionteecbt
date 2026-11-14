@@ -41,6 +41,20 @@ void main() {
     debugDefaultTargetPlatformOverride = null;
   });
 
+  test('one account per computer: hardware id cleaned, placeholders and virtual machines spotted', () {
+    expect(plat.DesktopMachine.cleanHardwareId('{4C4C4544-0042-3510-8051-B4C04F384E32}'), '4c4c4544-0042-3510-8051-b4c04f384e32');
+    expect(plat.DesktopMachine.cleanHardwareId('{00000000-0000-0000-0000-000000000000}'), isNull);
+    expect(plat.DesktopMachine.cleanHardwareId('FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF'), isNull);
+    expect(plat.DesktopMachine.cleanHardwareId('{03000200-0400-0500-0006-000700080009}'), isNull);
+    expect(plat.DesktopMachine.cleanHardwareId('not a uuid'), isNull);
+    expect(plat.DesktopMachine.cleanHardwareId(null), isNull);
+    expect(plat.DesktopMachine.isVirtualMachine('innotek GmbH VirtualBox'), isTrue);
+    expect(plat.DesktopMachine.isVirtualMachine('VMware, Inc. VMware7,1'), isTrue);
+    expect(plat.DesktopMachine.isVirtualMachine('Microsoft Corporation Virtual Machine'), isTrue);
+    expect(plat.DesktopMachine.isVirtualMachine('HP HP Laptop 15-dw3xxx'), isFalse);
+    expect(plat.DesktopMachine.isVirtualMachine('Dell Inc. Latitude 5420'), isFalse);
+  });
+
   test('routes: sidebar pages, focus pages (exams, games) and sign-in pages', () {
     expect(desktopModeFor('/home'), DesktopMode.normal);
     expect(desktopModeFor('/settings'), DesktopMode.normal);
@@ -71,10 +85,22 @@ void main() {
       initialLocation: start,
       navigatorKey: rootNavKey,
       routes: [
-        GoRoute(path: '/home', builder: (_, _) => const Scaffold(body: Text('HOME PAGE'))),
-        GoRoute(path: '/study', builder: (_, _) => const Scaffold(body: Text('STUDY PAGE'))),
-        GoRoute(path: '/cbt/:id', builder: (_, _) => const Scaffold(body: Text('EXAM'))),
-        GoRoute(path: '/search', builder: (_, _) => const Scaffold(body: Text('SEARCH PAGE'))),
+        GoRoute(
+          path: '/home',
+          builder: (_, _) => const Scaffold(body: Text('HOME PAGE')),
+        ),
+        GoRoute(
+          path: '/study',
+          builder: (_, _) => const Scaffold(body: Text('STUDY PAGE')),
+        ),
+        GoRoute(
+          path: '/cbt/:id',
+          builder: (_, _) => const Scaffold(body: Text('EXAM')),
+        ),
+        GoRoute(
+          path: '/search',
+          builder: (_, _) => const Scaffold(body: Text('SEARCH PAGE')),
+        ),
       ],
     );
     return ProviderScope(

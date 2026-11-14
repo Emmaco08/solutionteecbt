@@ -29,6 +29,7 @@ export type FraudData = { stats: Stats; shared_phones: Phone[]; banned_phones: B
 
 const FLAG: Record<string, string> = {
   "clone:second-user": "Dual app / second profile", "clone:data-dir": "Running inside a cloner", "clone:package": "Changed app", emulator: "Emulator",
+  vm: "Windows in a virtual machine",
 };
 const flagLabel = (f: string) => FLAG[f] ?? (f.startsWith("cloner-installed:") ? `Cloner installed (${f.split(":")[1]})` : f);
 const EVENT: Record<string, { label: string; icon: React.ReactNode; tone: string }> = {

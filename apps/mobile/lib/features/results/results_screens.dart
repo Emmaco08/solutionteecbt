@@ -110,6 +110,7 @@ class ResultsScreen extends ConsumerWidget {
       Future<void>.delayed(const Duration(milliseconds: 1200), () async {
         if (context.mounted) await checkBadgeWins(context, ref);
         if (context.mounted) offerEarnVideo(context, ref, 'test');
+        if (!context.mounted) return; // the student already left the results
         // A good score is a happy moment: maybe ask for a Play Store review a little later.
         final sc = ref.read(attemptViewProvider(attemptId)).value?.score;
         final q = (sc?['questions'] as num?)?.toInt() ?? 0, ok = (sc?['correct'] as num?)?.toInt() ?? 0;
