@@ -37,3 +37,7 @@ me; I will cut them in (best spots: the first 2 s, and 12.0–12.6 s before the 
    celebrates with a joyful fist pump while two friends cheer behind her, bright classroom, handheld camera, golden
    light, photoreal, vertical 9:16."
 Keep exam-body logos and readable text out of generated clips.
+
+## 30 s short (D-165)
+Plan: `docs/plans/advert-short.md`. Voice: `python tools/vo.py af_bella public/vo_short short`. Audio:
+`python tools/audio_short.py` → `public/audio/short.wav`. Video: `npx remotion render src/index.ts Short916 out/solutiontee-short-30s.mp4 --codec h264 --crf 16`.

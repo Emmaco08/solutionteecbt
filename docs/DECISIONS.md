@@ -1869,3 +1869,14 @@ Owner: "COMMUNITY IS APPROVED, only few changes…" (same day as D-155).
   (x = 2 or 3), the same one the AI tutor then explains.
 - **Not used:** Higgsfield (optional; two prompts in `video/README.md` if the owner wants live-action inserts).
 - **Not done yet:** 16:9 cut, a 30 s cut-down.
+
+## D-165 — 30 s short in a new style (14 Nov 2026)
+
+- **Style:** neo-brutalist "snap-scroll": one tall page that the camera swipes down a screen per beat, a gold trace line
+  that ties every screen together and ends in the real logo animation, stickers with thick outlines and hard shadows,
+  exercise-book paper, big editorial type. Bright where the intro was dark.
+- **Hook:** the question is on screen from the first frame ("What if JAMB… felt like practice?"), answered by the beat
+  drop at 2.4 s ("With SolutionTee CBT, it does.").
+- **Sound:** a different, original trap beat (150 BPM) and a different free voice (Kokoro af_bella, Apache-2.0). Same
+  pronunciation fixes; checked by speech recognition. −14 LUFS.
+- **Same rules as D-164:** real brand files only, Google Play as text, prize terms line, disclaimer at the end.

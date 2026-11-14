@@ -2,12 +2,13 @@
 
 Kokoro-82M (Apache-2.0) through kokoro-onnx. Exam-body names are given as phonemes so they are said the Nigerian way:
 JAMB = "jam" /dʒæm/, WAEC = "WAY-ek" /ˈweɪ.ɛk/, NECO = "NEH-koh" /ˈnɛkoʊ/. Run from a folder holding model.onnx and
-voices.npz:  python vo.py <voice> <out_dir>
+voices.npz:  python vo.py <voice> <out_dir> [intro|short]
 """
 import json, re, sys
 import numpy as np, soundfile as sf
 from kokoro_onnx import Kokoro
 
+SCRIPTS = {}
 LINES = [
     ("l01", "Exam day is coming.", 1.0),
     ("l02", "JAMB.", 0.95),
@@ -28,6 +29,22 @@ LINES = [
     ("l17", "Learn. Think. Solve.", 0.9),
     ("l18", "Download it free, today.", 1.0),
 ]
+SCRIPTS["intro"] = LINES
+SCRIPTS["short"] = [  # 30 s short (D-165)
+    ("s01", "What if JAMB...", 1.0),
+    ("s02", "felt like practice?", 1.0),
+    ("s03", "With SolutionTee CBT, it does.", 1.05),
+    ("s04", "JAMB. WAEC. NECO.", 1.0),
+    ("s05", "Real past questions.", 1.05),
+    ("s06", "The real exam timer.", 1.05),
+    ("s07", "Your score, instantly.", 1.05),
+    ("s08", "An AI tutor, step by step.", 1.05),
+    ("s09", "Practise offline.", 1.05),
+    ("s10", "Battle your friends.", 1.05),
+    ("s11", "And win cash prizes.", 1.0),
+    ("s12", "SolutionTee CBT.", 0.95),
+    ("s13", "Download free, today.", 1.0),
+]
 FIX = {"JAMB": "dʒˈæm", "WAEC": "wˈeɪɛk", "NECO": "nˈɛkoʊ", "wahala": "wɑːhˈɑːlɑ", "SolutionTee": "səlˈuːʃən tˈiː", "CBT": "sˌiː bˌiː tˈiː"}
 
 def phonemes(tok, text):
@@ -46,6 +63,7 @@ def trim(a, sr, db=-45):
 
 if __name__ == "__main__":
     voice, out = sys.argv[1], sys.argv[2]
+    LINES = SCRIPTS[sys.argv[3] if len(sys.argv) > 3 else "intro"]
     k = Kokoro("model.onnx", "voices.npz")
     meta = {}
     for key, text, speed in LINES:

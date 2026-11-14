@@ -1,0 +1,378 @@
+{
+ "fps": 30,
+ "bpm": 150,
+ "duration": 30,
+ "voice": "Kokoro-82M af_bella (Apache-2.0)",
+ "stations": [
+  {
+   "id": "hook",
+   "at": 0
+  },
+  {
+   "id": "brand",
+   "at": 2.4
+  },
+  {
+   "id": "exams",
+   "at": 5.0
+  },
+  {
+   "id": "past",
+   "at": 7.2
+  },
+  {
+   "id": "timer",
+   "at": 9.2
+  },
+  {
+   "id": "score",
+   "at": 11.2
+  },
+  {
+   "id": "ai",
+   "at": 13.2
+  },
+  {
+   "id": "offline",
+   "at": 15.6
+  },
+  {
+   "id": "battle",
+   "at": 17.6
+  },
+  {
+   "id": "cash",
+   "at": 19.6
+  },
+  {
+   "id": "outro",
+   "at": 22.0
+  }
+ ],
+ "vo": [
+  {
+   "id": "s01",
+   "at": 0.15,
+   "text": "What if JAMB...",
+   "seconds": 0.804,
+   "words": [
+    [
+     "What",
+     0.15,
+     0.29
+    ],
+    [
+     "if",
+     0.29,
+     0.41
+    ],
+    [
+     "Jam?",
+     0.41,
+     0.71
+    ]
+   ]
+  },
+  {
+   "id": "s02",
+   "at": 1.2,
+   "text": "felt like practice?",
+   "seconds": 1.132,
+   "words": [
+    [
+     "Felt",
+     1.2,
+     1.42
+    ],
+    [
+     "like",
+     1.42,
+     1.62
+    ],
+    [
+     "practice.",
+     1.62,
+     2.1
+    ]
+   ]
+  },
+  {
+   "id": "s03",
+   "at": 2.6,
+   "text": "With SolutionTee CBT, it does.",
+   "seconds": 2.29,
+   "words": [
+    [
+     "With",
+     2.6,
+     2.74
+    ],
+    [
+     "solution",
+     2.74,
+     3.1
+    ],
+    [
+     "TCBT,",
+     3.1,
+     3.9
+    ],
+    [
+     "it",
+     4.32,
+     4.44
+    ],
+    [
+     "does.",
+     4.44,
+     4.72
+    ]
+   ]
+  },
+  {
+   "id": "s04",
+   "at": 5.2,
+   "text": "JAMB. WAEC. NECO.",
+   "seconds": 1.575,
+   "words": [
+    [
+     "Jam",
+     5.2,
+     5.54
+    ],
+    [
+     "Wayek",
+     5.54,
+     6.18
+    ],
+    [
+     "Neko",
+     6.18,
+     6.74
+    ]
+   ]
+  },
+  {
+   "id": "s05",
+   "at": 7.4,
+   "text": "Real past questions.",
+   "seconds": 1.293,
+   "words": [
+    [
+     "Real",
+     7.4,
+     7.66
+    ],
+    [
+     "past",
+     7.66,
+     7.92
+    ],
+    [
+     "questions.",
+     7.92,
+     8.48
+    ]
+   ]
+  },
+  {
+   "id": "s06",
+   "at": 9.4,
+   "text": "The real exam timer.",
+   "seconds": 1.211,
+   "words": [
+    [
+     "The",
+     9.4,
+     9.5
+    ],
+    [
+     "real",
+     9.5,
+     9.72
+    ],
+    [
+     "exam",
+     9.72,
+     10.08
+    ],
+    [
+     "timer.",
+     10.08,
+     10.46
+    ]
+   ]
+  },
+  {
+   "id": "s07",
+   "at": 11.4,
+   "text": "Your score, instantly.",
+   "seconds": 1.24,
+   "words": [
+    [
+     "Your",
+     11.4,
+     11.54
+    ],
+    [
+     "score",
+     11.54,
+     11.84
+    ],
+    [
+     "instantly.",
+     11.84,
+     12.38
+    ]
+   ]
+  },
+  {
+   "id": "s08",
+   "at": 13.4,
+   "text": "An AI tutor, step by step.",
+   "seconds": 1.853,
+   "words": [
+    [
+     "An",
+     13.4,
+     13.52
+    ],
+    [
+     "AI",
+     13.52,
+     13.86
+    ],
+    [
+     "tutor,",
+     13.86,
+     14.16
+    ],
+    [
+     "step",
+     14.52,
+     14.6
+    ],
+    [
+     "by",
+     14.6,
+     14.78
+    ],
+    [
+     "step.",
+     14.78,
+     15.14
+    ]
+   ]
+  },
+  {
+   "id": "s09",
+   "at": 15.8,
+   "text": "Practise offline.",
+   "seconds": 0.997,
+   "words": [
+    [
+     "Practice",
+     15.8,
+     16.14
+    ],
+    [
+     "offline.",
+     16.14,
+     16.6
+    ]
+   ]
+  },
+  {
+   "id": "s10",
+   "at": 17.8,
+   "text": "Battle your friends.",
+   "seconds": 0.967,
+   "words": [
+    [
+     "Battle",
+     17.8,
+     18.02
+    ],
+    [
+     "your",
+     18.02,
+     18.2
+    ],
+    [
+     "friends.",
+     18.2,
+     18.46
+    ]
+   ]
+  },
+  {
+   "id": "s11",
+   "at": 19.8,
+   "text": "And win cash prizes.",
+   "seconds": 1.225,
+   "words": [
+    [
+     "and",
+     19.8,
+     19.92
+    ],
+    [
+     "win",
+     19.92,
+     20.04
+    ],
+    [
+     "cash",
+     20.04,
+     20.32
+    ],
+    [
+     "prizes.",
+     20.32,
+     20.8
+    ]
+   ]
+  },
+  {
+   "id": "s12",
+   "at": 22.8,
+   "text": "SolutionTee CBT.",
+   "seconds": 1.582,
+   "words": [
+    [
+     "Solution",
+     22.8,
+     23.22
+    ],
+    [
+     "TCBT.",
+     23.22,
+     24.08
+    ]
+   ]
+  },
+  {
+   "id": "s13",
+   "at": 25.4,
+   "text": "Download free, today.",
+   "seconds": 1.34,
+   "words": [
+    [
+     "Download",
+     25.4,
+     25.74
+    ],
+    [
+     "free",
+     25.74,
+     26.08
+    ],
+    [
+     "today.",
+     26.08,
+     26.54
+    ]
+   ]
+  }
+ ]
+}
