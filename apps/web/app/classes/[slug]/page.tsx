@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -21,7 +22,35 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 }
 
 /** cbt.solutiontee.com/classes/[slug] (D-163): everything about one paid class, its timetable, teacher, FAQ and Pay. */
-export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
+export default function Page({ params }: { params: Promise<{ slug: string }> }) {
+  return (
+    <Suspense fallback={<Loading />}>
+      <ProgramBody params={params} />
+    </Suspense>
+  );
+}
+
+/** Shown for a moment while the class loads (the page is built on request, then cached for minutes). */
+function Loading() {
+  return (
+    <>
+      <SiteNav links={[["/classes", "All classes"], ["/classes/me", "My classes"]]} />
+      <main className="bg-[#0B1F44] pb-12 pt-24 sm:pt-28">
+        <div className="mx-auto grid max-w-6xl gap-8 px-4 sm:px-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+          <div className="aspect-[4/5] animate-pulse rounded-3xl bg-white/10" />
+          <div className="space-y-4">
+            <div className="h-4 w-32 animate-pulse rounded bg-white/10" />
+            <div className="h-12 w-3/4 animate-pulse rounded-xl bg-white/10" />
+            <div className="h-6 w-2/3 animate-pulse rounded bg-white/10" />
+            <div className="h-40 animate-pulse rounded-2xl bg-white/10" />
+          </div>
+        </div>
+      </main>
+    </>
+  );
+}
+
+async function ProgramBody({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const p = await programData(slug);
   if (!p) notFound();
