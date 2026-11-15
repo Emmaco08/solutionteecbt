@@ -303,7 +303,7 @@ jobs:
           mv "$RUNNER_TEMP/play/universal.apk" "$RUNNER_TEMP/app-play-universal.apk"
           $BT build-apks --bundle="$AAB" --output="$RUNNER_TEMP/play-split.apks" "${KS[@]}"
           echo "Download size by phone (bytes):"; $BT get-size total --apks="$RUNNER_TEMP/play-split.apks" --dimensions=ABI | tee "$RUNNER_TEMP/size.csv"
-          MAXB=$(tail -n +2 "$RUNNER_TEMP/size.csv" | cut -d, -f3 | sort -n | tail -1)
+          MAXB=$(tail -n +2 "$RUNNER_TEMP/size.csv" | tr -d '\r ' | cut -d, -f3 | sort -n | tail -1)
           [ "$MAXB" -lt 157286400 ] || fail "Too big for Google Play (over 150 MB download)"
           # 16 KB memory pages (Google Play rule for target API 35+): every native library page-aligned in the APK
           # and its ELF LOAD segments aligned to at least 16 KB.
