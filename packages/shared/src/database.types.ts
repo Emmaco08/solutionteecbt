@@ -5743,20 +5743,27 @@ export type Database = {
         }[]
       }
       admin_list_users: {
-        Args: { p_limit?: number; p_offset?: number; p_search?: string }
+        Args: { p_limit?: number; p_offset?: number; p_search?: string; p_platform?: string; p_plan?: string }
         Returns: {
+          apps: Json
           banned_at: string
           created_at: string
           email: string
           full_name: string
           id: string
           is_premium: boolean
+          last_active: string
           last_sign_in_at: string
           phone: string
           premium_until: string
+          school: string
           staff_role: Database["public"]["Enums"]["staff_role"]
           state: string
+          subjects: string[]
+          target_exams: string[]
+          tests: number
           total: number
+          xp: number
         }[]
       }
       admin_news_comments: { Args: { p_filter?: string }; Returns: { id: string; post_id: string; post_title: string; user_id: string; name: string; body: string; created_at: string; reports: number; hidden_at: string | null; hidden_reason: string | null; reviewed_at: string | null }[] }
@@ -5821,7 +5828,9 @@ export type Database = {
         }
         Returns: number
       }
+      app_seen: { Args: { p_platform: string; p_flavor?: string; p_version?: string; p_build?: number }; Returns: undefined }
       admin_user_detail: { Args: { p_user: string }; Returns: Json }
+      admin_users_summary: { Args: never; Returns: Json }
       admin_welcome: { Args: never; Returns: Json }
       admin_welcome_save: { Args: { p: Json }; Returns: Json }
       admin_xp_adjust: {

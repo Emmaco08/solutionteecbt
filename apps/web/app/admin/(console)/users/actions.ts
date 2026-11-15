@@ -9,8 +9,12 @@ import { friendlyError, type ActionResult } from "@/lib/result";
 export type UserDetail = {
   id: string; email: string; created_at: string; last_sign_in_at: string | null; email_confirmed: boolean; is_premium: boolean;
   staff_role: string | null;
-  profile: { full_name: string | null; phone: string | null; state: string | null; school: string | null; target_exams: string[]; jamb_subjects: string[]; target_score: number | null; banned_at: string | null; ban_reason: string | null } | null;
+  profile: { full_name: string | null; phone: string | null; state: string | null; school: string | null; target_exams: string[]; jamb_subjects: string[]; target_score: number | null; banned_at: string | null; ban_reason: string | null; birth_year: number | null; referral_code: string | null } | null;
   entitlements: { id: string; source: string; plan: string | null; starts_at: string; expires_at: string; revoked_at: string | null; reason: string | null }[];
+  apps: { platform: string; flavor: string; version: string | null; build: number | null; first_seen: string; last_seen: string }[];
+  subjects: string[]; career: string | null; xp: number; devices: number;
+  streak: { current: number; longest: number };
+  tests: { count: number; average: number | null; best: number | null; last_at: string | null } | null;
 };
 
 async function admin() {

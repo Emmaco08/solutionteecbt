@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -31,6 +33,7 @@ import '../premium/payments.dart';
 import '../setup/age_gate.dart';
 import '../profile/badges.dart';
 import '../../core/platform.dart';
+import '../../core/updater.dart';
 import '../../desktop/desktop_frame.dart';
 
 /// Branch order in router.dart: home, study, test, ai, me.
@@ -173,6 +176,23 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
     if (!countdown && mounted) await Engagement.maybeShowOne(context, ref).catchError((_) => false);
   }
 
+  /// Which app this is, for Admin → Users (owner, 15 Nov 2026): website app, Play Store app or Windows app, and its build.
+  Future<void> _reportApp() async {
+    try {
+      await ref
+          .read(supabaseProvider)
+          .rpc(
+            'app_seen',
+            params: {
+              'p_platform': isWindows ? 'windows' : (Platform.isAndroid ? 'android' : defaultTargetPlatform.name),
+              'p_flavor': isDesktop ? 'desktop' : (appFlavor ?? 'unknown'),
+              'p_version': await Updater.myName(),
+              'p_build': await Updater.myCode(),
+            },
+          );
+    } catch (_) {}
+  }
+
   /// One account per phone and bans (D-078): save this phone (hashed id) and ask the server about this account.
   /// Offline or any error: carry on (the server still refuses a banned account's data).
   Future<void> _checkAccount() async {
@@ -182,6 +202,7 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
         if (mounted) context.go('/clone-blocked');
       }
       final j = await ref.read(supabaseProvider).rpc('device_check_in', params: {'p_ids': ids.list, 'p_flags': ids.flags}).timeout(const Duration(seconds: 15));
+      _reportApp().ignore();
       final st = Map<String, dynamic>.from(j as Map);
       ref.read(accountStatusProvider.notifier).set(st);
       if (!mounted || ids.clone) return;

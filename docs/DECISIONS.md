@@ -1948,3 +1948,17 @@ card, Me → App update), **Pop-up** ("Update now" downloads and installs inside
 build) or **Must update** (locked). Minimum build moved under "Advanced" with a warning. Saved as `mode` plus the old
 `force` / `prompt` fields so apps installed before this keep working. The pop-up scrolls on short screens and its
 "Ignore" button is now "Later" (owner's wording).
+
+## D-169 — Admin fixes and Users v2 (15 Nov 2026)
+- **Exams, Leaderboard and Tutors pages crashed** ("This page couldn't load"): each server page used a value (BUILT_IN,
+  normalise, naira) exported from a "use client" file, which on the server is a client reference, not the value. Moved
+  to shared files (`lib/exams.ts`, `leaderboard/lb-shared.ts`, `lib/money.ts`). A scan of every server file now finds no
+  other case. All 166 database functions and 70 tables the website uses exist, every read-only admin function runs, and
+  all 443 selected columns exist (checked against the live database).
+- **Users v2:** new `user_apps` table (website Android app / Play Store app / Windows app, version, build, first and last
+  seen), filled by `app_seen` when the app opens and back-filled from the one-account device records (older builds show
+  as "Android app" until they update). Admin → Users: summary cards, App and Plan filters, search by school, columns for
+  app, exams and subject combination, activity (last active, tests, XP); the drawer adds subjects, career goal, born,
+  referral code, tests (count, average, best, last), streak, devices and every app used.
+- **Leaderboard page:** live/hidden badge, summary cards, the live top 10 for JAMB this week, this month and Challenges
+  this week (as students see them), and the long explanation folded away.
