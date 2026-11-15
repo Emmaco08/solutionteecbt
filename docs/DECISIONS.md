@@ -1978,3 +1978,8 @@ expected string, received undefined"), while Word War and Memory Flash worked. C
 `z.record(z.enum(["A".."E"]), …)`; in zod 4 a record keyed by an enum needs every key, so any question without an
 option E failed. Now `z.partialRecord` with at least 2 options (as the browser check already allowed). Checked: both
 templates pass the browser and server checks, and 4-option rows insert into gz_questions / gz_passage_questions.
+
+## D-172 — No "Past Question" pill on questions (15 Nov 2026)
+Owner: remove the "Past Question" pill from questions in the app. Tests (CBT, mocks) and AI quiz cards no longer show it;
+SolutionTee's own mock and AI-written questions keep their gold "SolutionTee Mock" pill, so the two kinds stay
+distinguishable (D-120). The question of the day keeps its line "Subject · Past Question, JAMB 2019" (plain text).

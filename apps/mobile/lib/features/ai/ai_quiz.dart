@@ -185,12 +185,12 @@ class _QuizCardState extends State<QuizCard> with AutomaticKeepAliveClientMixin 
                 children: [
                   Text('${widget.card['subject'] ?? 'Quiz'} quiz', style: context.ty.body.bold),
                   const Gap(2),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: _ai
-                        ? Pill('SolutionTee Mock · AI-written', kind: BadgeKind.gold, icon: PhosphorIcons.sparkle(PhosphorIconsStyle.fill))
-                        : Pill('Past Question', icon: PhosphorIcons.books(PhosphorIconsStyle.fill)),
-                  ),
+                  // Past questions carry no pill (owner, 15 Nov 2026); AI-written ones stay marked.
+                  if (_ai)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Pill('SolutionTee Mock · AI-written', kind: BadgeKind.gold, icon: PhosphorIcons.sparkle(PhosphorIconsStyle.fill)),
+                    ),
                 ],
               ),
             ),

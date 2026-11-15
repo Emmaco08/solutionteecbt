@@ -456,7 +456,7 @@ void main() {
       ),
     );
     await settle(t);
-    expect(find.text('Past Question'), findsOneWidget);
+    expect(find.text('Past Question'), findsNothing); // no pill on past questions (owner, 15 Nov 2026)
     await t.tap(find.textContaining('Mass'));
     await settle(t);
     await t.tap(find.text('Explain with AI'));

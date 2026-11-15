@@ -94,10 +94,9 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
   Widget _sourcePill(String id) {
     // Challenges show no source label (owner, 13 Nov 2026).
     if (_mock != null) return const SizedBox.shrink();
-    final s = _src[id] ?? 'past';
-    return s == 'mock'
-        ? Pill('SolutionTee Mock', kind: BadgeKind.gold, icon: PhosphorIcons.sparkle(PhosphorIconsStyle.fill))
-        : Pill('Past Question', icon: PhosphorIcons.books(PhosphorIconsStyle.fill));
+    // Past questions carry no pill (owner, 15 Nov 2026); only our own mock questions are marked.
+    if (_src[id] != 'mock') return const SizedBox.shrink();
+    return Pill('SolutionTee Mock', kind: BadgeKind.gold, icon: PhosphorIcons.sparkle(PhosphorIconsStyle.fill));
   }
 
   static bool _titleRepeats(String title, String body) {
