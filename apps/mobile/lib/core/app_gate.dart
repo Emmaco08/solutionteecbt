@@ -41,6 +41,16 @@ final appGateProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   }
 });
 
+/// The update style the admin chose for a channel (Admin → Settings → App updates): "quiet", "popup" or "force".
+/// Settings saved before styles existed only had force (and, for Play, prompt, which was on unless switched off).
+String updateMode(Map<String, dynamic> u, {required bool legacyPopup}) {
+  final m = u['mode'];
+  if (m == 'quiet' || m == 'popup' || m == 'force') return m as String;
+  if (u['force'] == true) return 'force';
+  if (legacyPopup && u['prompt'] != false) return 'popup';
+  return 'quiet';
+}
+
 /// This app's build number (versionCode: minutes since 1970, set when GitHub builds it). 0 if unknown.
 final myBuildProvider = FutureProvider<int>((ref) => Updater.myCode());
 
@@ -133,10 +143,11 @@ class _AppGateState extends ConsumerState<AppGate> with WidgetsBindingObserver {
     final isPlay = appFlavor == 'play';
     // A developer build (versionCode 1) is never blocked.
     final tooOld = build >= 1000000 && minBuild > build;
-    if (isPlay && (tooOld || (play != null && pu['force'] == true))) {
+    final playMode = updateMode(pu, legacyPopup: true);
+    if (isPlay && (tooOld || (play != null && playMode == 'force'))) {
       return PlayUpdateScreen(notes: '${pu['notes'] ?? ''}');
     }
-    if (isPlay && play != null && pu['prompt'] != false) {
+    if (isPlay && play != null && playMode == 'popup') {
       WidgetsBinding.instance.addPostFrameCallback((_) => _maybePopup(play));
     }
 
@@ -562,13 +573,13 @@ class UpdatePopup extends ConsumerWidget {
             Text('This is an important update. Update now to get the newest features, faster tests and a smoother experience.', style: body),
             if (notes.trim().isNotEmpty) ...[const SizedBox(height: Space.s3), _Notes(notes, dark: false)],
             const SizedBox(height: 10),
-            Text('Tap Update now to get it from Google Play.', style: body),
+            Text(version == null ? 'Tap Update now to get it from Google Play.' : 'Tap Update now. It downloads and installs inside the app.', style: body),
             const SizedBox(height: Space.s5),
             Row(
               children: [
                 Expanded(
                   child: _PopupButton(
-                    'Ignore',
+                    'Later',
                     bg: dark ? Palette.blue600.withValues(alpha: .22) : Palette.blue50,
                     fg: dark ? Palette.blue300 : Palette.blue700,
                     onTap: onLater,
@@ -591,14 +602,18 @@ class UpdatePopup extends ConsumerWidget {
     return Stack(
       children: [
         rm ? barrier : barrier.animate().fadeIn(duration: 260.ms),
+        // Scrolls on short screens (small laptop windows, phones on their side) instead of cutting the buttons off.
         Center(
-          child: rm
-              ? card
-              : card
-                    .animate()
-                    .fadeIn(duration: 260.ms)
-                    .slideY(begin: .12, end: 0, duration: 460.ms, curve: Curves.easeOutCubic)
-                    .scaleXY(begin: .94, end: 1, duration: 460.ms, curve: Curves.easeOutBack),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(vertical: Space.s5),
+            child: rm
+                ? card
+                : card
+                      .animate()
+                      .fadeIn(duration: 260.ms)
+                      .slideY(begin: .12, end: 0, duration: 460.ms, curve: Curves.easeOutCubic)
+                      .scaleXY(begin: .94, end: 1, duration: 460.ms, curve: Curves.easeOutBack),
+          ),
         ),
       ],
     );

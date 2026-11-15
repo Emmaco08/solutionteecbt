@@ -14,7 +14,8 @@ import '../ui/kit.dart';
 import '../widgets/phosphor.g.dart';
 import 'config.dart';
 import 'platform.dart';
-import 'app_gate.dart' show appGateProvider;
+import 'app_gate.dart' show appGateProvider, UpdatePopup, updateMode;
+import 'house_ads.dart' show rootNavKey;
 
 /// In-app update of the direct (website) app (owner, D-080). The app asks the website for the newest build, compares
 /// it with its own versionCode (minutes since 1970, set by GitHub), downloads it inside the app and opens Android's
@@ -49,9 +50,15 @@ class AppRelease {
 }
 
 class UpdateInfo {
-  const UpdateInfo(this.release, {required this.force});
+  const UpdateInfo(this.release, {required this.force, this.popup = false, this.notes = ''});
   final AppRelease release;
+
+  /// Must update: the app is locked until the new build is installed.
   final bool force;
+
+  /// Pop-up with "Update now" and "Later" (Admin → Settings → App updates → Pop-up).
+  final bool popup;
+  final String notes;
 }
 
 abstract final class Updater {
@@ -224,17 +231,19 @@ final appUpdateProvider = FutureProvider<UpdateInfo?>((ref) async {
   if (r.statusCode != 200) return null;
   final rel = AppRelease.fromJson(Map<String, dynamic>.from(jsonDecode(r.body) as Map));
   if (!rel.newerThan(mine)) return null;
-  // Updating is optional (owner, 2026-11-07): the student updates from Me → App update or the small card.
-  // Only when the admin sets app_update.force = true does the full "Update needed" screen block the app.
-  // It is also a must when this build is older than the admin's minimum build (Admin → Settings, owner 14 Nov 2026).
-  var force = false;
+  // Admin → Settings → App updates (owner, 15 Nov 2026): "quiet" = the small card, "popup" = Update now / Later,
+  // "force" = locked until updated. The admin's minimum build also locks any older app.
+  var mode = 'quiet', notes = '';
   try {
     final g = await ref.read(appGateProvider.future);
     final u = g['app_update'];
-    if (u is Map && u['force'] == true) force = true;
-    if (((g['min_build'] as num?)?.toInt() ?? 0) > mine) force = true;
+    if (u is Map) {
+      mode = updateMode(Map<String, dynamic>.from(u), legacyPopup: false);
+      notes = '${u['notes'] ?? ''}';
+    }
+    if (((g['min_build'] as num?)?.toInt() ?? 0) > mine) mode = 'force';
   } catch (_) {}
-  return UpdateInfo(rel, force: force);
+  return UpdateInfo(rel, force: mode == 'force', popup: mode == 'popup', notes: notes);
 });
 
 /// Wraps the whole app: a forced update replaces every screen; an optional one shows a small card.
@@ -247,6 +256,15 @@ class UpdateGate extends ConsumerStatefulWidget {
 
 class _UpdateGateState extends ConsumerState<UpdateGate> with WidgetsBindingObserver {
   bool _dismissed = false;
+  int? _asked, _popupFor;
+
+  Future<void> _askPopup(UpdateInfo u) async {
+    final b = u.release.build ?? 0;
+    if (_asked == b) return;
+    _asked = b;
+    if (await _UpdateSnooze.recently(b)) return;
+    if (mounted) setState(() => _popupFor = b);
+  }
 
   @override
   void initState() {
@@ -270,6 +288,30 @@ class _UpdateGateState extends ConsumerState<UpdateGate> with WidgetsBindingObse
     final u = ref.watch(appUpdateProvider).value;
     if (u == null) return widget.child;
     if (u.force) return UpdateScreen(info: u);
+    if (u.popup) {
+      // The admin chose the pop-up: offer it once per new build; "Later" hides it for a day.
+      _askPopup(u);
+      return Stack(
+        children: [
+          widget.child,
+          if (_popupFor == u.release.build)
+            Positioned.fill(
+              child: UpdatePopup(
+                version: u.release.version,
+                notes: u.notes,
+                onUpdate: () {
+                  setState(() => _popupFor = null);
+                  rootNavKey.currentState?.push(MaterialPageRoute<void>(builder: (_) => UpdateScreen(info: u, optional: true)));
+                },
+                onLater: () {
+                  setState(() => _popupFor = null);
+                  _UpdateSnooze.save(u.release.build ?? 0);
+                },
+              ),
+            ),
+        ],
+      );
+    }
     if (_dismissed) return widget.child;
     return Stack(
       children: [
@@ -335,8 +377,11 @@ class _UpdateFlow {
 }
 
 class UpdateScreen extends StatefulWidget {
-  const UpdateScreen({super.key, required this.info});
+  const UpdateScreen({super.key, required this.info, this.optional = false});
   final UpdateInfo info;
+
+  /// Opened from the pop-up: the student may close it ("Later") and keep using the app.
+  final bool optional;
   @override
   State<UpdateScreen> createState() => _UpdateScreenState();
 }
@@ -361,10 +406,12 @@ class _UpdateScreenState extends State<UpdateScreen> {
             const Gap(Space.s8),
             Center(child: IconTile(PhosphorIcons.arrowCircleUp(PhosphorIconsStyle.fill), tone: Tone.gold, size: 72, radius: 36, iconSize: 40)),
             const Gap(Space.s4),
-            Text('Update needed', style: context.ty.h1, textAlign: TextAlign.center),
+            Text(widget.optional ? 'Update available' : 'Update needed', style: context.ty.h1, textAlign: TextAlign.center),
             const Gap(Space.s2),
             Text(
-              'A new version of SolutionTee CBT is ready with fixes and new features. Update to keep using the app. Your account and saved tests stay.',
+              widget.optional
+                  ? 'A new version of SolutionTee CBT is ready with fixes and new features. Your account and saved tests stay.'
+                  : 'A new version of SolutionTee CBT is ready with fixes and new features. Update to keep using the app. Your account and saved tests stay.',
               style: context.ty.body.col(c.textMuted),
               textAlign: TextAlign.center,
             ),
@@ -403,6 +450,7 @@ class _UpdateScreenState extends State<UpdateScreen> {
               leading: PhosphorIcons.downloadSimple(PhosphorIconsStyle.fill),
               onPressed: f.busy ? null : () => f.run(r),
             ),
+            if (widget.optional) ...[const Gap(Space.s2), Btn('Later', block: true, kind: BtnKind.ghost, onPressed: () => Navigator.of(context).maybePop())],
             const Gap(Space.s3),
             Text(
               isDesktop
@@ -582,5 +630,26 @@ class _AppUpdateScreenState extends ConsumerState<AppUpdateScreen> {
         ),
       ),
     );
+  }
+}
+
+/// "Later" on the update pop-up hides it for that build for a day.
+abstract final class _UpdateSnooze {
+  static Future<File> _file() async => File('${(await getApplicationSupportDirectory()).path}/app_update_snooze.json');
+
+  static Future<bool> recently(int build) async {
+    try {
+      final j = jsonDecode(await (await _file()).readAsString()) as Map;
+      final at = DateTime.tryParse('${j['at']}');
+      return j['b'] == build && at != null && DateTime.now().difference(at) < const Duration(hours: 24);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<void> save(int build) async {
+    try {
+      await (await _file()).writeAsString(jsonEncode({'b': build, 'at': DateTime.now().toIso8601String()}));
+    } catch (_) {}
   }
 }

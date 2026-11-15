@@ -40,6 +40,31 @@ const get = (v: V, k: string, f: string) => String((v[k] as Record<string, unkno
 /** A stored time → the "yyyy-mm-ddThh:mm" a datetime-local field wants, in Lagos time (UTC+1). */
 const lagos = (iso: string) => { const t = Date.parse(iso); return Number.isFinite(t) ? new Date(t + 3600e3).toISOString().slice(0, 16) : ""; };
 
+type Mode = "quiet" | "popup" | "force";
+/** The update style saved for a channel; older saves only had force / prompt switches. */
+function updateMode(v: V, key: "app_update" | "play_update"): Mode {
+  const m = get(v, key, "mode");
+  if (m === "quiet" || m === "popup" || m === "force") return m;
+  if (get(v, key, "force") === "true") return "force";
+  if (key === "play_update" && get(v, key, "prompt") === "true") return "popup";
+  return "quiet";
+}
+const MODES: { value: Mode; label: string }[] = [
+  { value: "quiet", label: "Quiet: small card only" },
+  { value: "popup", label: "Pop-up: Update now or Later" },
+  { value: "force", label: "Must update: lock the app" },
+];
+function modeSelect(name: string, label: string, def: Mode, hint: string) {
+  return (
+    <div className="space-y-1.5"><Label htmlFor={name}>{label}</Label>
+      <select id={name} name={name} defaultValue={def} className="h-10 w-full rounded-xl border border-input bg-card px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        {MODES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+      </select>
+      <p className="text-xs text-muted-foreground">{hint}</p>
+    </div>
+  );
+}
+
 export function SettingsForm({ values: v, builds = {} }: { values: V; builds?: { play?: number | null; direct?: number | null } }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -60,16 +85,22 @@ export function SettingsForm({ values: v, builds = {} }: { values: V; builds?: {
             <Switch name="maintenance_staff" defaultChecked={get(v, "maintenance", "staff_bypass") !== "false"} /></label>
         </div>
       </Panel>
-      <Panel title="App updates (Play Store app and every app)">
+      <Panel title="App updates">
         <div className="space-y-4">
-          <label className="flex items-center justify-between gap-3 text-sm"><span><b>Show the update pop-up</b><br /><span className="text-muted-foreground">When Google Play has a newer version, students see a pop-up that opens the Play Store. “Later” hides it for a day.</span></span>
-            <Switch name="play_prompt" defaultChecked={get(v, "play_update", "prompt") !== "false"} /></label>
-          <label className="flex items-center justify-between gap-3 text-sm"><span><b>Students must update (Play Store app)</b><br /><span className="text-muted-foreground">When Google Play has a newer version, the app is blocked until they update. Turn on only after the new version is live on Play.</span></span>
-            <Switch name="play_force" defaultChecked={get(v, "play_update", "force") === "true"} /></label>
-          <div className="space-y-1.5"><Label htmlFor="play_notes">What&apos;s new (optional, one point per line)</Label>
-            <textarea id="play_notes" name="play_notes" rows={3} defaultValue={get(v, "play_update", "notes")} placeholder={"New Game Zone games\nFaster question bank"} className="w-full rounded-xl border border-input bg-card px-3 py-2.5 text-sm" /></div>
-          {field("min_build", "Minimum build (every app, 0 = off)", get(v, "min_build", "build") || "0", { type: "number", min: 0, inputMode: "numeric", className: `${input} font-mono` })}
-          <p className="text-xs text-muted-foreground">Any app (Play Store or website) with a lower build number must update before it opens. Newest builds: Play Store {builds.play ? <b className="font-mono">{builds.play}</b> : "not known"} · website app {builds.direct ? <b className="font-mono">{builds.direct}</b> : "not known"}. Use the Play number only after that version is live on Google Play.</p>
+          <p className="text-sm text-muted-foreground">How students hear about a newer app. <b>Quiet</b>: a small card and Me → App update. <b>Pop-up</b>: a pop-up with “Update now” and “Later” (Later hides it for a day). <b>Must update</b>: the app is locked until they update.</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {modeSelect("app_mode", "Website app and Windows app", updateMode(v, "app_update"), builds.direct ? `Newest: build ${builds.direct}` : "Newest build not known yet")}
+            {modeSelect("play_mode", "Play Store app", updateMode(v, "play_update"), builds.play ? `Newest on Play: build ${builds.play}` : "Newest Play build not known yet")}
+          </div>
+          <div className="space-y-1.5"><Label htmlFor="update_notes">What&apos;s new (optional, one point per line, shown in the pop-up)</Label>
+            <textarea id="update_notes" name="update_notes" rows={3} defaultValue={get(v, "app_update", "notes") || get(v, "play_update", "notes")} placeholder={"New Game Zone games\nFaster question bank"} className="w-full rounded-xl border border-input bg-card px-3 py-2.5 text-sm" /></div>
+          <details className="rounded-xl border border-dashed p-3 text-sm">
+            <summary className="cursor-pointer font-semibold">Advanced: minimum build</summary>
+            <div className="mt-3 space-y-2">
+              <p className="rounded-lg bg-warning-soft p-2.5 text-xs text-on-warning-soft"><b>Careful:</b> every app (website, Windows and Play Store) with a lower build number is <b>locked</b> until it updates, whatever you chose above. Leave it at 0 unless an old app must stop working.</p>
+              {field("min_build", "Minimum build (0 = off)", get(v, "min_build", "build") || "0", { type: "number", min: 0, inputMode: "numeric", className: `${input} font-mono` })}
+            </div>
+          </details>
         </div>
       </Panel>
       <Panel title="Support and company">

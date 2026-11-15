@@ -21,9 +21,9 @@ const Settings = z.object({
   maintenance_staff: z.enum(["on"]).optional(),
   maintenance_message: z.string().trim().min(5, "Write a short maintenance message").max(300),
   maintenance_until: z.union([z.literal(""), z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, "Pick a date and time")]).default(""),
-  play_prompt: z.enum(["on"]).optional(),
-  play_force: z.enum(["on"]).optional(),
-  play_notes: z.string().trim().max(500, "What's new: 500 letters at most").default(""),
+  app_mode: z.enum(["quiet", "popup", "force"]).default("quiet"),
+  play_mode: z.enum(["quiet", "popup", "force"]).default("quiet"),
+  update_notes: z.string().trim().max(500, "What's new: 500 letters at most").default(""),
   min_build: z.coerce.number().int("Build number is a whole number").min(0).max(99999999).default(0),
   whatsapp: z.string().trim().regex(/^\+?[0-9 ]{7,20}$/, "WhatsApp number looks wrong"),
   support_email: z.union([z.literal(""), z.string().trim().email("Support email looks wrong")]),
@@ -45,7 +45,9 @@ export async function saveSettings(form: FormData): Promise<ActionResult> {
     // "Back by" is typed in Lagos time (UTC+1, no daylight saving).
     { key: "maintenance", value: { enabled: s.maintenance === "on", message: s.maintenance_message, staff_bypass: s.maintenance_staff === "on",
       until: s.maintenance_until ? new Date(`${s.maintenance_until}:00+01:00`).toISOString() : null } },
-    { key: "play_update", value: { prompt: s.play_prompt === "on", force: s.play_force === "on", notes: s.play_notes } },
+    // mode is the update style; prompt and force stay for apps installed before modes existed.
+    { key: "app_update", value: { mode: s.app_mode, force: s.app_mode === "force", notes: s.update_notes } },
+    { key: "play_update", value: { mode: s.play_mode, prompt: s.play_mode === "popup", force: s.play_mode === "force", notes: s.update_notes } },
     { key: "min_build", value: { build: s.min_build } },
     { key: "support", value: { whatsapp: `+${digits}`, whatsapp_link: `https://wa.me/${digits}`, email: s.support_email || null } },
     { key: "company", value: { name: s.company_name, rc_number: s.rc_number, address: s.address, website: s.website, web_app: s.web_app } },

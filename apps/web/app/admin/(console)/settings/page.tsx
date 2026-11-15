@@ -56,11 +56,6 @@ async function Settings() {
               text="The Windows app signs in with Google in the browser. Turn on only after adding http://localhost:53682/** under Supabase → Authentication → URL Configuration → Redirect URLs (SETUP §17)." />
             <GoogleClientId value={String((v.google_auth as Record<string, unknown> | undefined)?.web_client_id ?? "")} />
           </Panel>
-          <Panel title="App updates (direct app)" bodyClassName="divide-y py-1">
-            <AppSwitch k="app_update" field="force" on={sw("app_update", "force", true)} title="Students must update to the newest app"
-              text="On: when a newer app is built, the app shows “Update needed” and installs it from inside the app. Off: it only offers the update." />
-            <p className="py-3 text-xs text-muted-foreground">Newest app: {apk ? <b className="font-mono">{apk.version}</b> : "not known"}. It is built and published automatically after every app change.</p>
-          </Panel>
           <Panel title="Connections">
             <ul className="space-y-2.5 text-sm">
               <li className="flex items-center justify-between">Database (Supabase)<Pill tone="ok">Connected</Pill></li>

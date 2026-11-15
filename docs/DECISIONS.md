@@ -1938,3 +1938,13 @@ you have done in android", "compare all window features to android features". Fu
 - **Not possible on Windows** (no Windows version exists): Google AdMob (so no ads and no "watch a video to unlock or
   earn"), Google Play Billing / in-app review / Play updates (Paystack + our own updater instead), the camera in
   image_picker (photos come from files), app-icon quick actions (Ctrl+K search instead), vibration.
+
+## D-168 — App update styles: Quiet, Pop-up, Must update (15 Nov 2026)
+Owner: choosing the update pop-up in Flags & settings locked students out. Cause: the website and Windows apps had no
+pop-up at all (the pop-up switch only reached the Play Store app); a lock only comes from "Students must update" or
+the "Minimum build" field that sat next to it, and the admin page showed "must update" as on when never saved.
+Now Admin → Settings → App updates has one style per channel (website + Windows app; Play Store app): **Quiet** (small
+card, Me → App update), **Pop-up** ("Update now" downloads and installs inside the app, "Later" hides it for a day per
+build) or **Must update** (locked). Minimum build moved under "Advanced" with a warning. Saved as `mode` plus the old
+`force` / `prompt` fields so apps installed before this keep working. The pop-up scrolls on short screens and its
+"Ignore" button is now "Later" (owner's wording).
