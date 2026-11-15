@@ -1962,3 +1962,12 @@ build) or **Must update** (locked). Minimum build moved under "Advanced" with a 
   referral code, tests (count, average, best, last), streak, devices and every app used.
 - **Leaderboard page:** live/hidden badge, summary cards, the live top 10 for JAMB this week, this month and Challenges
   this week (as students see them), and the long explanation folded away.
+
+## D-170 — Play bundle (AAB) checked on every release (15 Nov 2026)
+The AAB was built but never checked. Every `[release]`/`[play]` build now: bundletool validate; app id, version code =
+build number, target API ≥ 35 (Play rule); no restricted permissions (REQUEST_INSTALL_PACKAGES stays in the website
+app only, plus QUERY_ALL_PACKAGES, MANAGE_EXTERNAL_STORAGE, SMS, call log, background location, overlay); signature
+verified and the upload key's SHA-256 printed; download size per phone type (fails over 150 MB); 16 KB memory pages
+(zip alignment and ELF LOAD alignment of every arm64/x86_64 library); then the APK Google Play makes from the bundle
+is opened on an emulator for 40 seconds (job `aab-emulator`). The AAB is only uploaded after all of it passes.
+Also: the app no longer asks the server for the plan while signed out (it was refused every time).

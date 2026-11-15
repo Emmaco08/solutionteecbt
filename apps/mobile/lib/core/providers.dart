@@ -228,7 +228,9 @@ final openYearsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) {
   return cached(ref, _mine(ref, 'open_years'), (s) => s.rpc('my_open_years'), rows);
 });
 
-final myPlanProvider = FutureProvider<Map<String, dynamic>>((ref) {
+final myPlanProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+  // Signed out (welcome, sign-in): free, without asking the server (it would refuse).
+  if (currentSession(ref) == null) return const {'tier': 'free'};
   return cached(ref, _mine(ref, 'my_plan'), (s) => s.rpc('my_plan'), (j) => Map<String, dynamic>.from(j as Map));
 });
 

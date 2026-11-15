@@ -273,11 +273,70 @@ jobs:
             --build-number="$APP_BUILD" --dart-define=APP_VERSION="$APP_NAME_VERSION"
           cp build/app/outputs/bundle/playRelease/app-play-release.aab "$RUNNER_TEMP/app-play.aab"
 
+      - name: Check the Play bundle (what Google Play checks)
+        run: |
+          set -euo pipefail
+          fail() { echo "::error::$1"; exit 1; }
+          curl -sSfL -o "$RUNNER_TEMP/bundletool.jar" https://github.com/google/bundletool/releases/download/1.18.1/bundletool-all-1.18.1.jar
+          BT="java -jar $RUNNER_TEMP/bundletool.jar"
+          AAB="$RUNNER_TEMP/app-play.aab"
+          $BT validate --bundle="$AAB" > /dev/null || fail "bundletool says the bundle is not valid"
+          M=$($BT dump manifest --bundle="$AAB")
+          attr() { echo "$M" | grep -o "$1=\"[^\"]*\"" | head -1 | cut -d'"' -f2; }
+          PKG=$(attr package); VC=$(attr android:versionCode); TSDK=$(attr android:targetSdkVersion); MSDK=$(attr android:minSdkVersion)
+          echo "App id $PKG · version code $VC · target Android API $TSDK · minimum API $MSDK"
+          [ "$PKG" = "com.solutiontee.cbt" ] || fail "Wrong app id: $PKG"
+          [ "$VC" = "$APP_BUILD" ] || fail "Version code $VC is not the build number $APP_BUILD"
+          [ "$TSDK" -ge 35 ] || fail "Google Play needs target API 35 or newer (this is $TSDK)"
+          PERMS=$(echo "$M" | grep -o 'uses-permission[^>]*' | grep -o 'android:name="[^"]*"' | cut -d'"' -f2 | sort -u)
+          echo "Permissions:"; echo "$PERMS" | sed 's/^/  /'
+          for bad in REQUEST_INSTALL_PACKAGES QUERY_ALL_PACKAGES MANAGE_EXTERNAL_STORAGE READ_SMS SEND_SMS RECEIVE_SMS READ_CALL_LOG ACCESS_BACKGROUND_LOCATION SYSTEM_ALERT_WINDOW; do
+            if echo "$PERMS" | grep -q "\.$bad\$"; then fail "Google Play rejects or restricts $bad in this app"; fi
+          done
+          jarsigner -verify "$AAB" > "$RUNNER_TEMP/jar.txt" 2>&1 || { cat "$RUNNER_TEMP/jar.txt"; fail "The bundle is not signed"; }
+          grep -q "jar verified" "$RUNNER_TEMP/jar.txt" || { cat "$RUNNER_TEMP/jar.txt"; fail "The bundle signature does not verify"; }
+          echo "Upload key: $(keytool -printcert -jarfile "$AAB" | grep -m1 'SHA256:' | sed 's/^ *//')"
+          # Installable APKs exactly as Play makes them (signed with the same key), for the size and the emulator.
+          KS=(--ks="$ANDROID_KEYSTORE_PATH" --ks-pass="pass:$ANDROID_KEYSTORE_PASSWORD" --ks-key-alias="$ANDROID_KEY_ALIAS" --key-pass="pass:$ANDROID_KEY_PASSWORD")
+          $BT build-apks --bundle="$AAB" --output="$RUNNER_TEMP/play-universal.apks" --mode=universal "${KS[@]}"
+          unzip -o -q "$RUNNER_TEMP/play-universal.apks" universal.apk -d "$RUNNER_TEMP/play"
+          mv "$RUNNER_TEMP/play/universal.apk" "$RUNNER_TEMP/app-play-universal.apk"
+          $BT build-apks --bundle="$AAB" --output="$RUNNER_TEMP/play-split.apks" "${KS[@]}"
+          echo "Download size by phone (bytes):"; $BT get-size total --apks="$RUNNER_TEMP/play-split.apks" --dimensions=ABI | tee "$RUNNER_TEMP/size.csv"
+          MAXB=$(tail -n +2 "$RUNNER_TEMP/size.csv" | cut -d, -f3 | sort -n | tail -1)
+          [ "$MAXB" -lt 157286400 ] || fail "Too big for Google Play (over 150 MB download)"
+          # 16 KB memory pages (Google Play rule for target API 35+): every native library page-aligned in the APK
+          # and its ELF LOAD segments aligned to at least 16 KB.
+          ZA=$(ls "$ANDROID_HOME"/build-tools/*/zipalign | sort -V | tail -1)
+          "$ZA" -c -P 16 4 "$RUNNER_TEMP/app-play-universal.apk" || fail "Native libraries are not 16 KB page-aligned in the APK"
+          mkdir -p "$RUNNER_TEMP/so" && unzip -o -q "$RUNNER_TEMP/app-play-universal.apk" 'lib/arm64-v8a/*.so' 'lib/x86_64/*.so' -d "$RUNNER_TEMP/so"
+          bad=0
+          for so in $(find "$RUNNER_TEMP/so" -name '*.so'); do
+            for a in $(readelf -lW "$so" | awk '$1=="LOAD"{print $NF}'); do
+              if [ $((a)) -lt 16384 ]; then echo "::error::$(basename "$so") LOAD alignment $a (needs 0x4000)"; bad=1; fi
+            done
+          done
+          [ "$bad" = 0 ] || fail "Some native libraries are not 16 KB aligned"
+          echo "16 KB alignment: OK ($(find "$RUNNER_TEMP/so" -name '*.so' | wc -l) libraries)"
+          {
+            echo "### Google Play bundle checked"
+            echo "- App id \`$PKG\`, version code $VC, target API $TSDK, minimum API $MSDK"
+            echo "- Signed, valid, no restricted permissions, 16 KB aligned"
+            echo "- Largest download: $((MAXB / 1048576)) MB"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Keep the Google Play bundle
         uses: actions/upload-artifact@v4
         with:
           name: aab
           path: ${{ runner.temp }}/app-play.aab
+          retention-days: 3
+
+      - name: Keep the APK made from the bundle (for the emulator)
+        uses: actions/upload-artifact@v4
+        with:
+          name: aab-universal
+          path: ${{ runner.temp }}/app-play-universal.apk
           retention-days: 3
 
       - name: Remove the signing key
@@ -492,6 +551,42 @@ jobs:
           path: ${{ runner.temp }}/smoke
           if-no-files-found: ignore
 
+  # The Play bundle opened on an emulator: the APK Google Play would make from it (D-170).
+  aab-emulator:
+    needs: [aab]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: apps/mobile/tool
+      - uses: actions/download-artifact@v4
+        with:
+          name: aab-universal
+          path: ${{ runner.temp }}
+      - name: Let the emulator use the CPU
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Open the Play version on an Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
+          working-directory: apps/mobile
+          script: ./tool/smoke_test.sh "$RUNNER_TEMP/app-play-universal.apk" "$RUNNER_TEMP/smoke-play"
+      - name: Keep the emulator screenshot and log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: emulator-check-play
+          path: ${{ runner.temp }}/smoke-play
+          if-no-files-found: ignore
+
   publish:
     needs: [apk, emulator]
     runs-on: ubuntu-latest
@@ -558,7 +653,7 @@ jobs:
           fi
 
   publish-aab:
-    needs: [apk, aab, publish]
+    needs: [apk, aab, aab-emulator, publish]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
