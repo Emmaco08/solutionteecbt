@@ -65,6 +65,42 @@ final playUpdateProvider = FutureProvider<AppUpdateInfo?>((ref) async {
   }
 });
 
+/// A newer Play Store app for this phone: from Google Play itself when the app came from Google Play ([url] null: open
+/// the Play Store), otherwise (a test copy installed from the website) the newest Play build on our website, opened
+/// in the browser (D-173). Students who installed from Google Play are never sent to the website.
+class PlayOffer {
+  const PlayOffer(this.code, {this.version, this.url});
+  final int code;
+  final String? version;
+  final Uri? url;
+  Future<void> open() async {
+    final u = url;
+    if (u == null) return openPlayStore();
+    await launchUrl(u, mode: LaunchMode.externalApplication);
+  }
+}
+
+final playOfferProvider = FutureProvider<PlayOffer?>((ref) async {
+  if (appFlavor != 'play' || !Platform.isAndroid) return null;
+  final fromPlay = (await Updater.installer()) == 'com.android.vending';
+  if (fromPlay) {
+    final info = await ref.watch(playUpdateProvider.future);
+    return info == null ? null : PlayOffer(info.availableVersionCode ?? 0);
+  }
+  try {
+    final mine = await Updater.myCode();
+    final r = await http
+        .get(Uri.parse('${Config.apiBase}/api/app/latest?channel=play'), headers: {'cache-control': 'no-cache'})
+        .timeout(const Duration(seconds: 10));
+    if (r.statusCode != 200) return null;
+    final rel = AppRelease.fromJson(Map<String, dynamic>.from(jsonDecode(r.body) as Map));
+    if (!rel.newerThan(mine)) return null;
+    return PlayOffer(rel.build ?? 0, version: rel.version, url: Uri.parse(rel.url));
+  } catch (_) {
+    return null;
+  }
+});
+
 Map<String, dynamic> _map(Object? o) => o is Map ? Map<String, dynamic>.from(o) : const {};
 
 /// Opens this app's page on Google Play (the Play Store app, else the website).
@@ -107,11 +143,12 @@ class _AppGateState extends ConsumerState<AppGate> with WidgetsBindingObserver {
     if (s == AppLifecycleState.resumed) {
       ref.invalidate(appGateProvider);
       ref.invalidate(playUpdateProvider);
+      ref.invalidate(playOfferProvider);
     }
   }
 
-  Future<void> _maybePopup(AppUpdateInfo info) async {
-    final v = info.availableVersionCode ?? 0;
+  Future<void> _maybePopup(PlayOffer offer) async {
+    final v = offer.code;
     if (_shownFor == v) return;
     _shownFor = v;
     if (await _Snooze.recently(v)) return;
@@ -122,7 +159,7 @@ class _AppGateState extends ConsumerState<AppGate> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final g = ref.watch(appGateProvider).value ?? const {};
     final build = ref.watch(myBuildProvider).value ?? 0;
-    final play = ref.watch(playUpdateProvider).value;
+    final play = ref.watch(playOfferProvider).value;
     // Back online: fetch the rules again.
     ref.listen(onlineProvider, (prev, next) {
       if (prev?.value == false && next.value == true) ref.invalidate(appGateProvider);
@@ -145,7 +182,7 @@ class _AppGateState extends ConsumerState<AppGate> with WidgetsBindingObserver {
     final tooOld = build >= 1000000 && minBuild > build;
     final playMode = updateMode(pu, legacyPopup: true);
     if (isPlay && (tooOld || (play != null && playMode == 'force'))) {
-      return PlayUpdateScreen(notes: '${pu['notes'] ?? ''}');
+      return PlayUpdateScreen(notes: '${pu['notes'] ?? ''}', onUpdate: play?.open);
     }
     if (isPlay && play != null && playMode == 'popup') {
       WidgetsBinding.instance.addPostFrameCallback((_) => _maybePopup(play));
@@ -159,13 +196,15 @@ class _AppGateState extends ConsumerState<AppGate> with WidgetsBindingObserver {
           Positioned.fill(
             child: UpdatePopup(
               notes: '${pu['notes'] ?? ''}',
+              version: play.version?.split('-').first,
+              fromWebsite: play.url != null,
               onUpdate: () {
                 setState(() => _popup = false);
-                openPlayStore();
+                play.open();
               },
               onLater: () {
                 setState(() => _popup = false);
-                _Snooze.save(play.availableVersionCode ?? 0);
+                _Snooze.save(play.code);
               },
             ),
           ),
@@ -391,8 +430,11 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> with SingleTicker
 
 /// The forced update for the Play Store app: the rocket, why, and one button to Google Play.
 class PlayUpdateScreen extends StatelessWidget {
-  const PlayUpdateScreen({super.key, this.notes = ''});
+  const PlayUpdateScreen({super.key, this.notes = '', this.onUpdate});
   final String notes;
+
+  /// Opens the newer app (a website test copy downloads from our website); null → Google Play.
+  final Future<void> Function()? onUpdate;
   @override
   Widget build(BuildContext context) {
     final rm = context.reduceMotion;
@@ -416,7 +458,7 @@ class PlayUpdateScreen extends StatelessWidget {
               ),
               if (notes.trim().isNotEmpty) ...[const Gap(Space.s4), _Notes(notes)],
               const Gap(Space.s6),
-              _PlayButton(onTap: openPlayStore),
+              _PlayButton(onTap: onUpdate ?? openPlayStore),
               const Gap(Space.s3),
               Text('It takes about a minute.', textAlign: TextAlign.center, style: context.ty.cap.col(const Color(0xFF9FB0CC))),
             ],
@@ -512,9 +554,12 @@ final playVersionProvider = FutureProvider<String?>((ref) async {
 /// the version in gold, a rocket taking off on the right, a short friendly note, and Ignore / Update now side by side.
 /// Update now → Google Play; Ignore → hidden for a day.
 class UpdatePopup extends ConsumerWidget {
-  const UpdatePopup({super.key, required this.onUpdate, required this.onLater, this.notes = '', this.version});
+  const UpdatePopup({super.key, required this.onUpdate, required this.onLater, this.notes = '', this.version, this.fromWebsite = false});
   final VoidCallback onUpdate, onLater;
   final String notes;
+
+  /// A Play test copy installed from the website: the update downloads from our website, not Google Play (D-173).
+  final bool fromWebsite;
 
   /// Shown after the app name; when null the newest Play version is looked up.
   final String? version;
@@ -573,7 +618,14 @@ class UpdatePopup extends ConsumerWidget {
             Text('This is an important update. Update now to get the newest features, faster tests and a smoother experience.', style: body),
             if (notes.trim().isNotEmpty) ...[const SizedBox(height: Space.s3), _Notes(notes, dark: false)],
             const SizedBox(height: 10),
-            Text(version == null ? 'Tap Update now to get it from Google Play.' : 'Tap Update now. It downloads and installs inside the app.', style: body),
+            Text(
+              fromWebsite
+                  ? 'Tap Update now to download it, then open the file to install.'
+                  : version == null
+                  ? 'Tap Update now to get it from Google Play.'
+                  : 'Tap Update now. It downloads and installs inside the app.',
+              style: body,
+            ),
             const SizedBox(height: Space.s5),
             Row(
               children: [

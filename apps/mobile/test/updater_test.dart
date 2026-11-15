@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:solutiontee_cbt/core/app_gate.dart' show updateMode;
+import 'package:solutiontee_cbt/core/app_gate.dart' show PlayOffer, UpdatePopup, updateMode;
 import 'package:solutiontee_cbt/core/house_ads.dart' show rootNavKey;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:solutiontee_cbt/core/secure_screen.dart';
@@ -123,5 +123,25 @@ void main() {
     await t.pump();
     expect(find.text('HOME'), findsOneWidget);
     expect(find.text('Update needed'), findsNothing);
+  });
+
+  testWidgets('Play test copy from the website: the pop-up says it downloads from the website (D-173)', (t) async {
+    Widget pop({required bool web}) => ProviderScope(
+      child: MaterialApp(
+        theme: buildTheme(Brightness.light),
+        home: Scaffold(
+          body: UpdatePopup(version: '0.3.0', fromWebsite: web, onUpdate: () {}, onLater: () {}),
+        ),
+      ),
+    );
+    await t.pumpWidget(pop(web: true));
+    await t.pump(const Duration(milliseconds: 500));
+    expect(find.text('Tap Update now to download it, then open the file to install.'), findsOneWidget);
+    await t.pumpWidget(pop(web: false));
+    await t.pump(const Duration(milliseconds: 500));
+    expect(find.text('Tap Update now. It downloads and installs inside the app.'), findsOneWidget);
+    // An install from Google Play has no website link: Update now opens Google Play.
+    expect(const PlayOffer(5).url, isNull);
+    expect(PlayOffer(5, url: Uri.parse('https://cbt.solutiontee.com/download/apk?channel=play')).url?.query, 'channel=play');
   });
 }

@@ -167,6 +167,14 @@ class MainActivity : FlutterFragmentActivity() {
                     result.success(mapOf("code" to code, "name" to (info.versionName ?: "")))
                 }
                 "canInstall" -> result.success(Build.VERSION.SDK_INT < 26 || packageManager.canRequestPackageInstalls())
+                // Which app installed this one ("com.android.vending" = Google Play), or "" when unknown (D-173).
+                "installer" -> {
+                    val who = try {
+                        if (Build.VERSION.SDK_INT >= 30) packageManager.getInstallSourceInfo(packageName).installingPackageName
+                        else @Suppress("DEPRECATION") packageManager.getInstallerPackageName(packageName)
+                    } catch (e: Exception) { null }
+                    result.success(who ?: "")
+                }
                 "allowInstall" -> {
                     try {
                         startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))

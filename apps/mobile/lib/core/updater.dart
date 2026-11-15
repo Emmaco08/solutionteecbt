@@ -64,6 +64,16 @@ class UpdateInfo {
 abstract final class Updater {
   static const _ch = MethodChannel('solutiontee/update');
 
+  /// The app that installed this one: "com.android.vending" for Google Play, "" when unknown or not Android (D-173).
+  static Future<String> installer() async {
+    if (!Platform.isAndroid) return '';
+    try {
+      return await _ch.invokeMethod<String>('installer') ?? '';
+    } catch (_) {
+      return '';
+    }
+  }
+
   /// This app's versionCode (0 if unknown).
   /// The installed version name, e.g. "0.3.0-202611070721".
   static Future<String> myName() async {

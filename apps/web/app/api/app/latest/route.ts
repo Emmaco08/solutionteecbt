@@ -17,7 +17,7 @@ export async function GET(req: Request) {
   const origin = /(^|\.)solutiontee\.com$/.test(reqUrl.hostname) ? env.publicUrl.replace(/\/+$/, "") : reqUrl.origin;
   const res = NextResponse.json({
     version: info.version, build: info.build ?? null, size: info.size, built_at: info.built_at,
-    url: channel === "windows" ? `${origin}/download/windows` : `${origin}/download/apk${channel === "test" ? "?channel=test" : ""}`,
+    url: channel === "windows" ? `${origin}/download/windows` : `${origin}/download/apk${channel === "test" || channel === "play" ? `?channel=${channel}` : ""}`,
   });
   res.headers.set("Cache-Control", "no-store");
   return res;

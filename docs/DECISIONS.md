@@ -1983,3 +1983,12 @@ templates pass the browser and server checks, and 4-option rows insert into gz_q
 Owner: remove the "Past Question" pill from questions in the app. Tests (CBT, mocks) and AI quiz cards no longer show it;
 SolutionTee's own mock and AI-written questions keep their gold "SolutionTee Mock" pill, so the two kinds stay
 distinguishable (D-120). The question of the day keeps its line "Subject · Past Question, JAMB 2019" (plain text).
+
+## D-173 — Play Store app update pop-up also works for test copies from the website (15 Nov 2026)
+Owner: the update pop-up never showed although Admin → App updates was set to "Pop-up". Cause: the Play Store app only
+asked Google Play for updates, and Google Play answers only for apps it installed itself; the owner's phone runs the
+Play test copy downloaded from the website (`/download?channel=play`), so Google Play said nothing and no pop-up came.
+Now the Play app checks who installed it (Android `getInstallSourceInfo`): installed by Google Play → Google Play's
+update (unchanged); installed any other way → the newest Play build on our website (`/api/app/latest?channel=play`,
+whose link now points to `/download/apk?channel=play`, staff only). The pop-up, "Later" (hidden for a day) and the
+must-update screen all follow the admin's choice the same way. Real Play Store installs are never sent to the website.
