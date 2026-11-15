@@ -9,7 +9,8 @@ import { EmptyState, ErrorState, PageHeader, PageSkeleton, Panel, Pill } from "@
 import { cn } from "@/lib/utils";
 import { YearChip } from "./year-chip";
 import { RulesForm, SubjectRuleRow } from "./forms";
-import { AddExam, BUILT_IN, ExamDetailsForm } from "./exam-forms";
+import { AddExam, ExamDetailsForm } from "./exam-forms";
+import { BUILT_IN_EXAMS as BUILT_IN } from "@/lib/exams";
 
 export const metadata: Metadata = { title: "Exams & years" };
 

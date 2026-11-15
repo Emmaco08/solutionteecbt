@@ -4,7 +4,8 @@ import { requireStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { EmptyState, ErrorState, PageHeader, PageSkeleton, Panel } from "@/components/admin/ui";
 import { RecentList, SettingsForm, type LbSettings, type Recent } from "./lb-ui";
-import { normalise, RewardsForm, WinnersList, type LbRewards, type Winner } from "./rewards-ui";
+import { RewardsForm, WinnersList } from "./rewards-ui";
+import { normalise, type LbRewards, type Winner } from "./lb-shared";
 import { Exam } from "@phosphor-icons/react/dist/ssr";
 
 export const metadata: Metadata = { title: "Leaderboard" };

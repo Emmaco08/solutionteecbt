@@ -8,9 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ImageUpload } from "@/components/admin/image-upload";
 import { createExam, saveExam } from "./actions";
+import { BUILT_IN_EXAMS as BUILT_IN } from "@/lib/exams";
 
 const input = "h-10 w-full rounded-xl border border-input bg-card px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60";
-export const BUILT_IN = ["JAMB", "WAEC", "NECO"];
 
 type Exam = { id: number; code: string; name: string; subtitle: string | null; logo_path: string | null; sort: number; is_active: boolean };
 

@@ -168,7 +168,7 @@ export function ping() {
   } catch {}
 }
 
-export const naira = (k: number) => `₦${Math.round(k / 100).toLocaleString("en-NG")}`;
+export { naira } from "@/lib/money";
 export const initials = (n: string) => n.trim().split(/\s+/).filter(Boolean).map((p) => p[0]).slice(0, 2).join("").toUpperCase() || "?";
 export const timeOf = (iso: string) => new Date(iso).toLocaleTimeString("en-NG", { hour: "numeric", minute: "2-digit" });
 

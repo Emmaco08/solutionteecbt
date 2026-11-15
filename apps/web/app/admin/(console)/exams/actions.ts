@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireStaff, canEditContent, canManage } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { friendlyError, type ActionResult } from "@/lib/result";
+import { BUILT_IN_EXAMS as BUILT_IN } from "@/lib/exams";
 
 export async function setYearStatus(yearId: number, status: "draft" | "published"): Promise<ActionResult> {
   const staff = await requireStaff();
@@ -58,7 +59,6 @@ export async function saveSubjectRule(form: FormData): Promise<ActionResult> {
 }
 
 /** The three exams whose official logos ship with the app (/brand/exam-bodies). Their logo and code never change. */
-const BUILT_IN = ["JAMB", "WAEC", "NECO"];
 
 const NewExam = z.object({
   code: z.string().trim().toUpperCase().regex(/^[A-Z][A-Z0-9]{1,11}$/, "Short name: 2 to 12 letters or numbers, starting with a letter (for example BECE)"),

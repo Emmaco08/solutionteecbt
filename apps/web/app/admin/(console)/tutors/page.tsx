@@ -5,7 +5,8 @@ import { requireStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader, PageSkeleton } from "@/components/admin/ui";
 import { ChatApp } from "@/components/tutor-chat/chat-app";
-import { naira, type Chat, type TutorOpt } from "@/components/tutor-chat/lib";
+import type { Chat, TutorOpt } from "@/components/tutor-chat/lib";
+import { naira } from "@/lib/money";
 import { TutorAdmin } from "./tutors-ui";
 
 export const metadata: Metadata = { title: "Tutor requests" };
