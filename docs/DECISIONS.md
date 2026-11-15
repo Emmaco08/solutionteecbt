@@ -1971,3 +1971,10 @@ verified and the upload key's SHA-256 printed; download size per phone type (fai
 (zip alignment and ELF LOAD alignment of every arm64/x86_64 library); then the APK Google Play makes from the bundle
 is opened on an emulator for 40 seconds (job `aab-emulator`). The AAB is only uploaded after all of it passes.
 Also: the app no longer asks the server for the plan while signed out (it was refused every time).
+
+## D-171 — Game question imports (Duel, Reading) fixed (15 Nov 2026)
+Owner: the JAMB Duel and Comprehension Clash CSV imports refused even the site's own templates ("Invalid input:
+expected string, received undefined"), while Word War and Memory Flash worked. Cause: the server check used
+`z.record(z.enum(["A".."E"]), …)`; in zod 4 a record keyed by an enum needs every key, so any question without an
+option E failed. Now `z.partialRecord` with at least 2 options (as the browser check already allowed). Checked: both
+templates pass the browser and server checks, and 4-option rows insert into gz_questions / gz_passage_questions.

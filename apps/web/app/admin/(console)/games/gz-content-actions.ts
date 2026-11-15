@@ -68,7 +68,8 @@ export async function importGzCards(rows: unknown[]): Promise<ActionResult<{ ins
 const Q = z.object({
   kind: z.enum(["main", "intent", "vocab", "inference", "detail", "other"]),
   body: z.string().trim().min(3).max(1000),
-  options: z.record(z.enum(["A", "B", "C", "D", "E"]), z.string().trim().min(1).max(400)),
+  // partialRecord: A–D or A–E (z.record with an enum key in zod 4 demands every letter, so 4-option rows failed).
+  options: z.partialRecord(z.enum(["A", "B", "C", "D", "E"]), z.string().trim().min(1).max(400)).refine((o) => Object.keys(o).length >= 2, "Give at least 2 options"),
   answer: z.enum(["A", "B", "C", "D", "E"]),
 });
 const Passage = z.object({
