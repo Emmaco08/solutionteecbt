@@ -20,11 +20,11 @@ const EXAMS = [
 export function ExamStrip({ subjects, studyItems, logos = false }: { subjects: number; studyItems: number; logos?: boolean }) {
   return (
     <section className="border-b bg-card py-10">
-      <div className="mx-auto flex max-w-6xl flex-col items-center gap-8 px-4 sm:px-6 lg:flex-row lg:justify-between">
-        <div className="flex flex-wrap justify-center gap-3">
+      <div className="st-wrap flex flex-col items-center gap-8 lg:flex-row lg:justify-between">
+        <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
           {EXAMS.map(([code, exam, bg, fg, file, w, h], i) => (
             <Reveal key={code} delay={0.08 * i}>
-              <div className="flex items-center gap-3 rounded-2xl border bg-background px-4 py-3">
+              <div className="flex items-center gap-2.5 rounded-2xl border bg-background px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3">
                 {logos ? (
                   <span className="grid size-11 place-items-center rounded-xl bg-white p-1 ring-1 ring-black/5">
                     {/* The exam body's own logo file (/brand/exam-bodies), shown as is */}
@@ -32,9 +32,9 @@ export function ExamStrip({ subjects, studyItems, logos = false }: { subjects: n
                     <img src={`/brand/exam-bodies/${file}.png`} alt={`${code} logo`} width={w} height={h} loading="lazy" decoding="async" className="max-h-full max-w-full object-contain" />
                   </span>
                 ) : (
-                  <span className="grid size-11 place-items-center rounded-xl text-xs font-extrabold" style={{ background: bg, color: fg }}>{code}</span>
+                  <span className="grid size-9 place-items-center rounded-xl text-[10px] font-extrabold sm:size-11 sm:text-xs" style={{ background: bg, color: fg }}>{code}</span>
                 )}
-                <span className="text-sm font-bold">{code} <span className="font-medium text-muted-foreground">{exam}</span></span>
+                <span className="text-sm font-bold">{code} <span className="hidden font-medium text-muted-foreground sm:inline">{exam}</span></span>
               </div>
             </Reveal>
           ))}
@@ -60,10 +60,10 @@ const FEATURES = [
 export function Features() {
   return (
     <section className="bg-background pb-20 pt-4 sm:pb-28">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+      <div className="st-wrap">
         <Reveal className="mx-auto max-w-2xl text-center">
           <p className="text-sm font-bold uppercase tracking-wider text-[#2563B3]">And there’s more</p>
-          <h2 className="mt-3 text-[32px] font-bold leading-tight tracking-tight sm:text-[40px]">Made for Nigerian students</h2>
+          <h2 className="mt-3 st-h2 font-bold">Made for Nigerian students</h2>
         </Reveal>
         <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {FEATURES.map(([Icon, title, text], i) => (
@@ -128,11 +128,11 @@ export function AiShowcase() {
   }, [seen, still]);
   return (
     <section id="ai" className="scroll-mt-20 overflow-hidden bg-[#0B1F44] py-20 text-white sm:py-28">
-      <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 sm:px-6 lg:grid-cols-2">
+      <div className="st-wrap grid items-center gap-12 lg:grid-cols-2">
         <Reveal>
           <p className="text-sm font-bold uppercase tracking-wider text-[#F2B233]">SolutionTee AI tutor</p>
-          <h2 className="mt-3 text-[32px] font-bold leading-tight tracking-tight sm:text-[40px]">Like a patient teacher in your pocket</h2>
-          <p className="mt-4 text-[17px] leading-7 text-[#C9D5EA]">Ask anything from your syllabus, any time. It explains step by step, quotes your notes, builds quick quizzes and study plans, and reminds you to practise.</p>
+          <h2 className="mt-3 st-h2 font-bold">Like a patient teacher in your pocket</h2>
+          <p className="mt-4 st-lead text-[#C9D5EA]">Ask anything from your syllabus, any time. It explains step by step, quotes your notes, builds quick quizzes and study plans, and reminds you to practise.</p>
           <ul className="mt-6 space-y-3">
             {["Snap a photo of a question and get the working", "Quizzes and study plans made for your weak topics", "Only helps with schoolwork: safe for students"].map((t) => (
               <li key={t} className="flex items-start gap-3 text-[15px]"><span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-[#F2B233] text-[#0B1F44]"><Check size={14} weight="bold" /></span>{t}</li>
@@ -171,9 +171,9 @@ export function HowItWorks({ title, steps }: { title: string; steps: { title: st
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start 80%", "end 60%"] });
   const width = useTransform(scrollYProgress, [0, 1], ["0%", "100%"]);
   return (
-    <section className="bg-background py-20 sm:py-24">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6">
-        <Reveal className="text-center"><h2 className="text-[32px] font-bold tracking-tight sm:text-[40px]">{title}</h2></Reveal>
+    <section className="bg-background st-sec">
+      <div className="st-wrap">
+        <Reveal className="text-center"><h2 className="st-h2 font-bold">{title}</h2></Reveal>
         <div ref={ref} className="relative mt-14 grid gap-10 md:grid-cols-3">
           <div className="absolute left-[16%] right-[16%] top-7 hidden h-1 rounded-full bg-border md:block" aria-hidden>
             <motion.div style={{ width }} className="h-full rounded-full bg-[#F2B233]" />
@@ -203,11 +203,11 @@ export function Pricing({ plans }: { plans: PricePlan[] }) {
   const best = plans.find((p) => p.code === "three_months")?.code ?? plans[1]?.code;
   return (
     <section id="pricing" className="scroll-mt-20 bg-[#F4F6FA] py-20 dark:bg-[#0A1730] sm:py-28">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+      <div className="st-wrap">
         <Reveal className="mx-auto max-w-2xl text-center">
           <p className="text-sm font-bold uppercase tracking-wider text-[#2563B3]">Premium</p>
-          <h2 className="mt-3 text-[32px] font-bold leading-tight tracking-tight sm:text-[40px]">Free to start. Premium when you’re ready.</h2>
-          <p className="mt-4 text-[17px] leading-7 text-muted-foreground">Practise free every day. Premium opens every year, video solution and lesson. Pay once, no auto-renew.</p>
+          <h2 className="mt-3 st-h2 font-bold">Free to start. Premium when you’re ready.</h2>
+          <p className="mt-4 st-lead text-muted-foreground">Practise free every day. Premium opens every year, video solution and lesson. Pay once, no auto-renew.</p>
         </Reveal>
         {plans.length === 0 ? (
           <p className="mt-10 text-center"><Link href="/pay" className="inline-flex h-12 items-center gap-2 rounded-2xl bg-[#0B1F44] px-6 font-bold text-white dark:bg-white dark:text-[#0B1F44]">See plans and prices <ArrowRight size={16} weight="bold" /></Link></p>
@@ -246,25 +246,24 @@ export function Pricing({ plans }: { plans: PricePlan[] }) {
 /* ------------------------------------------------------------------ download */
 export function Download({ playUrl, title, text }: { playUrl: string; title: string; text: string }) {
   return (
-    <section id="download" className="scroll-mt-20 bg-background py-20 sm:py-24">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+    <section id="download" className="scroll-mt-20 bg-background st-sec">
+      <div className="st-wrap">
         <Reveal>
           <div className="relative overflow-hidden rounded-[36px] bg-[#0B1F44] px-6 py-14 text-center text-white sm:px-12">
             <div className="pointer-events-none absolute -right-20 -top-20 size-72 rounded-full bg-[#F2B233]/25 blur-3xl" aria-hidden />
             <div className="pointer-events-none absolute -bottom-24 -left-16 size-72 rounded-full bg-[#2563B3]/40 blur-3xl" aria-hidden />
-            <h2 className="relative text-[32px] font-bold tracking-tight sm:text-[40px]">{title}</h2>
-            <p className="relative mx-auto mt-4 max-w-xl text-[17px] text-[#C9D5EA]">{text}</p>
+            <h2 className="relative st-h2 font-bold">{title}</h2>
+            <p className="relative mx-auto mt-4 max-w-xl st-lead text-[#C9D5EA]">{text}</p>
             <div className="relative mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+              <a href="/download/apk" className="inline-flex h-14 items-center justify-center gap-2.5 whitespace-nowrap rounded-2xl bg-[#F2B233] px-6 font-bold text-[#0B1F44] transition-transform hover:-translate-y-0.5"><DownloadSimple size={22} weight="bold" /> Download for Android</a>
+              <a href="/download/windows" className="inline-flex h-14 items-center justify-center gap-2.5 whitespace-nowrap rounded-2xl border border-white/25 bg-white/10 px-6 font-bold text-white transition-transform hover:-translate-y-0.5 hover:bg-white/15"><WindowsLogo size={22} weight="fill" /> Download for Windows</a>
+              {/* Google Play only once the admin has added the Play Store link (owner, 16 Nov 2026) */}
               {playUrl ? (
-                <a href={playUrl} className="inline-flex h-14 items-center justify-center gap-2.5 rounded-2xl bg-white px-6 font-bold text-[#0B1F44] transition-transform hover:-translate-y-0.5"><GooglePlayLogo size={24} weight="fill" /> Get it on Google Play</a>
-              ) : (
-                <span className="inline-flex h-14 items-center justify-center gap-2.5 rounded-2xl border border-white/25 px-6 font-bold text-white/80"><GooglePlayLogo size={24} weight="fill" /> Google Play: coming soon</span>
-              )}
-              <a href="/download/apk" className="inline-flex h-14 items-center justify-center gap-2.5 rounded-2xl bg-[#F2B233] px-6 font-bold text-[#0B1F44] transition-transform hover:-translate-y-0.5"><DownloadSimple size={22} weight="bold" /> Download the APK</a>
-              <a href="/download/windows" className="inline-flex h-14 items-center justify-center gap-2.5 rounded-2xl border border-white/25 bg-white/10 px-6 font-bold text-white transition-transform hover:-translate-y-0.5 hover:bg-white/15"><WindowsLogo size={22} weight="fill" /> Download for Windows</a>
+                <a href={playUrl} className="inline-flex h-14 items-center justify-center gap-2.5 whitespace-nowrap rounded-2xl bg-white px-6 font-bold text-[#0B1F44] transition-transform hover:-translate-y-0.5"><GooglePlayLogo size={24} weight="fill" /> Get it on Google Play</a>
+              ) : null}
             </div>
-            <p className="relative mt-4 text-xs text-[#8FA2C4]">The APK is the same app with Paystack inside (card, transfer, USSD, OPay). If Android asks, allow “Install unknown apps” for your browser.</p>
-            <p className="relative mt-2 text-xs text-[#8FA2C4]">Windows app: for Windows 10 or 11 (64-bit), with the same account as your phone. Open the downloaded file to install. If Windows shows “Windows protected your PC”, click <b className="text-white/90">More info</b>, then <b className="text-white/90">Run anyway</b>.</p>
+            <p className="relative mx-auto mt-5 max-w-2xl text-xs leading-5 text-[#8FA2C4]">Android: if your phone asks, allow “Install unknown apps” for your browser. Premium is paid with Paystack inside the app (card, transfer, USSD, OPay).</p>
+            <p className="relative mx-auto mt-2 max-w-2xl text-xs leading-5 text-[#8FA2C4]">Windows app: for Windows 10 or 11 (64-bit), with the same account as your phone. Open the downloaded file to install. If Windows shows “Windows protected your PC”, click <b className="text-white/90">More info</b>, then <b className="text-white/90">Run anyway</b>.</p>
           </div>
         </Reveal>
       </div>
@@ -280,7 +279,7 @@ export function Faq({ title, items }: { title: string; items: FaqItem[] }) {
   return (
     <section id="faq" className="scroll-mt-20 bg-[#F4F6FA] py-20 dark:bg-[#0A1730] sm:py-24">
       <div className="mx-auto max-w-3xl px-4 sm:px-6">
-        <Reveal className="text-center"><h2 className="text-[32px] font-bold tracking-tight sm:text-[40px]">{title}</h2></Reveal>
+        <Reveal className="text-center"><h2 className="st-h2 font-bold">{title}</h2></Reveal>
         <div className="mt-10 space-y-3">
           {items.map(({ q, a }, i) => (
             <Reveal key={q} delay={0.03 * i}>
@@ -306,10 +305,10 @@ export function Faq({ title, items }: { title: string; items: FaqItem[] }) {
 }
 
 /* ------------------------------------------------------------------ footer */
-export function SiteFooter({ tagline = "Learn. Think. Solve." }: { tagline?: string }) {
+export function SiteFooter({ tagline = "Learn. Think. Solve.", channel }: { tagline?: string; channel?: string }) {
   return (
     <footer className="bg-[#06132B] py-12 text-[#8FA2C4]">
-      <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 sm:px-6 md:flex-row md:justify-between">
+      <div className="st-wrap flex flex-col gap-8 md:flex-row md:justify-between">
         <div className="max-w-sm">
           <div className="flex items-center gap-2.5 text-white">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -332,10 +331,11 @@ export function SiteFooter({ tagline = "Learn. Think. Solve." }: { tagline?: str
             <b className="text-white">Help</b>
             <a href="mailto:support@mail.solutiontee.com" className="break-all hover:text-white">support@mail.solutiontee.com</a>
             <a href="https://wa.me/2348122445948" className="hover:text-white">WhatsApp +234 812 244 5948</a>
+            {channel ? <a href={channel} target="_blank" rel="noopener noreferrer" className="hover:text-white">Our WhatsApp channel</a> : null}
           </div>
         </div>
       </div>
-      <p className="mx-auto mt-10 max-w-6xl px-4 text-xs leading-5 sm:px-6">SolutionTee CBT is an independent exam-practice platform and is not affiliated with or endorsed by JAMB, WAEC or NECO. © 2026 SolutionTee.</p>
+      <p className="st-wrap mt-10 text-xs leading-5">SolutionTee CBT is an independent exam-practice platform and is not affiliated with or endorsed by JAMB, WAEC or NECO. © 2026 SolutionTee.</p>
     </footer>
   );
 }

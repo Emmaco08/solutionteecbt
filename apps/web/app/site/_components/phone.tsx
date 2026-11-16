@@ -1,6 +1,6 @@
 "use client";
 import { motion, useMotionValue, useReducedMotion, useSpring, useTransform } from "motion/react";
-import { useRef } from "react";
+import { useRef, useSyncExternalStore } from "react";
 
 /** The app is designed at 390 × 844 (prototype and Flutter). Screens are drawn at that size and scaled into the phone. */
 export const SCREEN_W = 390;
@@ -72,4 +72,28 @@ export function Phone3D({ children, width = 300, tilt = true, float = true, rota
       </motion.div>
     </div>
   );
+}
+
+/** The visitor's window size, live (server: a common laptop). */
+export function useScreen(): { w: number; h: number } {
+  const v = useSyncExternalStore(
+    (cb) => { window.addEventListener("resize", cb); return () => window.removeEventListener("resize", cb); },
+    () => `${window.innerWidth}x${window.innerHeight}`,
+    () => "1440x900",
+  );
+  const [w, h] = v.split("x").map(Number);
+  return { w, h };
+}
+
+/** A phone is about 2.23 times as tall as it is wide (frame included). */
+export const PHONE_RATIO = 2.23;
+
+/**
+ * Phone width that fits the visitor's screen (owner, 16 Nov 2026: mockups too big on some laptops): no taller than the
+ * window minus [reserve] (menu and padding), no wider than [vw] of it, between [min] and [max].
+ */
+export function fitPhone(s: { w: number; h: number }, o: { max: number; min?: number; reserve?: number; vw?: number }) {
+  const byH = (s.h - (o.reserve ?? 0)) / PHONE_RATIO;
+  const byW = s.w * (o.vw ?? 1);
+  return Math.round(Math.max(o.min ?? 200, Math.min(o.max, byH, byW)));
 }

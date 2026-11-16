@@ -19,6 +19,8 @@ export type SiteData = {
   facts: RewardFacts;
   /** Admin → Settings → "Show the JAMB, WAEC and NECO logos" (D-111): the website follows the app (D-131). */
   examLogos: boolean;
+  /** Admin → Flags & settings → WhatsApp channel (D-174): null when off or no link. */
+  channel: { url: string; title: string; text: string } | null;
 };
 
 /** Live numbers and prices for the public website (cbt.solutiontee.com), cached for an hour. Never personal data. */
@@ -29,7 +31,7 @@ export async function siteData(): Promise<SiteData> {
   const facts: RewardFacts = { cash: false, teens: false, pct: 5, maxPct: 100, xp: 50, finishXp: 20, cashEvery: 20, cashNaira: 5000, questions: 30000, firstYear: 1978, lastYear: 2025 };
   const fallback: SiteData = {
     plans: [], questions: 30000, subjects: 15, firstYear: 1978, lastYear: 2025, studyItems: 300,
-    fee: { on: false, pct: 1.5, flat: 100, flat_from: 2500, cap: 2000 }, playUrl: "", cms: mergeCms(null), facts, examLogos: false,
+    fee: { on: false, pct: 1.5, flat: 100, flat_from: 2500, cap: 2000 }, playUrl: "", cms: mergeCms(null), facts, examLogos: false, channel: null,
   };
   if (!env.supabaseSecretKey) return fallback;
   const sb = createClient<Database>(env.supabaseUrl, env.supabaseSecretKey, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -39,7 +41,7 @@ export async function siteData(): Promise<SiteData> {
     sb.from("questions").select("year").eq("status", "published").not("year", "is", null).order("year").limit(1).maybeSingle(),
     sb.from("questions").select("year").eq("status", "published").not("year", "is", null).order("year", { ascending: false }).limit(1).maybeSingle(),
     sb.from("study_items").select("id", { count: "exact", head: true }),
-    sb.from("app_settings").select("key, value").in("key", ["payments", "site", "site_cms", "cash_prizes", "referrals", "xp", "exam_logos"]),
+    sb.from("app_settings").select("key, value").in("key", ["payments", "site", "site_cms", "cash_prizes", "referrals", "xp", "exam_logos", "whatsapp_channel"]),
   ]);
   const s = Object.fromEntries((settings.data ?? []).map((r) => [r.key, r.value as Record<string, unknown>]));
   const fees = (s.payments?.fees ?? {}) as { paystack?: Partial<SiteData["fee"]> };
@@ -47,7 +49,13 @@ export async function siteData(): Promise<SiteData> {
   const cp = s.cash_prizes ?? {}, rf = s.referrals ?? {}, xp = s.xp ?? {};
   const questions = q.count ?? fallback.questions;
   const firstYear = Number(first.data?.year ?? fallback.firstYear), lastYear = Number(last.data?.year ?? fallback.lastYear);
+  const wa = s.whatsapp_channel ?? {};
+  const waUrl = typeof wa.url === "string" ? wa.url.trim() : "";
+  const waText = (k: string, d: string) => (typeof wa[k] === "string" && String(wa[k]).trim() ? String(wa[k]).trim() : d);
   return {
+    channel: wa.enabled !== false && waUrl.startsWith("https://")
+      ? { url: waUrl, title: waText("title", "Join our WhatsApp channel"), text: waText("text", "Exam news, free study tips and class alerts, first. Free to join.") }
+      : null,
     cms: mergeCms(s.site_cms),
     examLogos: s.exam_logos?.on === true,
     facts: {

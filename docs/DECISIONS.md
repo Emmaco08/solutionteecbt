@@ -2048,3 +2048,15 @@ exam) got the layout of the page under it. Fixed (`topPath`), plus:
 Checked with `test_shots/laptop_test.dart` (the real router, sidebar and pages, signed in, sample data, opened from
 the sidebar and from other pages) at 1280×720, 1366×768 and 1920×1080; `test/desktop_routes_test.dart` still opens
 every route at 1366×768 without errors or overflow; `test/mention_desktop_test.dart` clicks a suggestion with a mouse.
+
+## D-179 — Website follows the visitor's screen; WhatsApp channel; Google Play button only with a link (16 Nov 2026)
+Owner: the website looked off on some laptops, the Google Play "coming soon" button should go until the Play link is
+added, and the WhatsApp channel should be on the site. Now: text sizes, section spacing and page width are fluid
+(`.st-wrap`, `.st-sec`, `.st-h1/.st-h2/.st-h3`, `.st-lead` in globals.css), with a smaller hero on short laptop screens
+(≤ 820 px tall). Every phone mockup takes its size from the window (`fitPhone`: never taller than the screen, about
+70% of a phone's width), so a 1366 × 768 laptop shows the whole hero; the laptop mockup follows the column and the
+window height. On phones and tablets the feature tour is a swipeable card carousel instead of five tall phones; the top
+menu turns into the menu button below 1024 px. Google Play buttons show only when Admin → Website has a Play Store
+link. The WhatsApp channel (Admin → Flags & settings, D-174) gets an animated green section after "Get the app" and a
+footer link; changing it refreshes the website at once. Checked with screenshots at 360, 390, 768, 1280 × 720,
+1366 × 768, 1536 × 864 and 1920 × 1080.

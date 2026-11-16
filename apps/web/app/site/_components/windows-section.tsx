@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useInView } from "motion/react";
 import { Check, WindowsLogo } from "@phosphor-icons/react";
 import { DesktopCbtScreen, Laptop3D } from "./laptop";
+import { useScreen } from "./phone";
 import { Reveal } from "./motion";
 
 const POINTS = [
@@ -16,23 +17,26 @@ const POINTS = [
 export function WindowsSection() {
   const box = useRef<HTMLDivElement>(null);
   const live = useInView(box, { margin: "-80px" });
-  const [w, setW] = useState(620);
+  const [boxW, setBoxW] = useState(620);
+  // The laptop follows the column and the window height (owner, 16 Nov 2026), so it is never taller than the screen.
+  const screen = useScreen();
+  const w = Math.max(280, Math.min(boxW, Math.round((screen.h - 160) * 1.35)));
   useEffect(() => {
     const el = box.current;
     if (!el) return;
-    const ro = new ResizeObserver(([e]) => setW(Math.min(760, Math.max(280, Math.round(e.contentRect.width / 1.12)))));
+    const ro = new ResizeObserver(([e]) => setBoxW(Math.min(760, Math.max(280, Math.round(e.contentRect.width / 1.12)))));
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
   return (
     <section id="windows" className="scroll-mt-20 overflow-hidden bg-[#F4F6FA] py-20 dark:bg-[#0A1730] sm:py-24">
-      <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 sm:px-6 lg:grid-cols-[minmax(0,.78fr)_minmax(0,1.22fr)]">
+      <div className="st-wrap grid items-center gap-12 lg:grid-cols-[minmax(0,.78fr)_minmax(0,1.22fr)]">
         <Reveal>
           <span className="inline-flex items-center gap-2 rounded-full bg-[#0B1F44] px-3 py-1 text-xs font-bold uppercase tracking-wider text-white">
             <WindowsLogo size={14} weight="fill" /> New · Windows app
           </span>
-          <h2 className="mt-4 text-[32px] font-bold tracking-tight sm:text-[40px]">Practise on your laptop too</h2>
-          <p className="mt-4 max-w-xl text-[17px] leading-7 text-muted-foreground">
+          <h2 className="mt-4 st-h2 font-bold">Practise on your laptop too</h2>
+          <p className="mt-4 max-w-xl st-lead text-muted-foreground">
             The full SolutionTee CBT app for Windows computers. Sit your mock on a big screen, the way the real JAMB CBT feels.
           </p>
           <ul className="mt-6 space-y-3">

@@ -7,6 +7,7 @@ import { FeatureTour } from "./_components/tour";
 import { Announcement, EarnSection } from "./_components/earn";
 import { fill } from "@/lib/site-cms";
 import { WindowsSection } from "./_components/windows-section";
+import { ChannelBand } from "./_components/channel";
 
 export const metadata: Metadata = {
   title: { absolute: "SolutionTee CBT · JAMB, WAEC and NECO CBT practice" },
@@ -47,9 +48,10 @@ export default async function SitePage() {
         {on.download ? <WindowsSection /> : null}
         {on.pricing ? <Pricing plans={plans} /> : null}
         {on.download ? <Download playUrl={d.playUrl} title={f(cms.download.title)} text={f(cms.download.text)} /> : null}
+        {d.channel ? <ChannelBand url={d.channel.url} title={d.channel.title} text={d.channel.text} /> : null}
         {on.faq ? <Faq title={f(cms.faq.title)} items={cms.faq.items.map((x) => ({ q: f(x.q), a: f(x.a) }))} /> : null}
       </main>
-      <SiteFooter tagline={f(cms.footer.tagline)} />
+      <SiteFooter tagline={f(cms.footer.tagline)} channel={d.channel?.url} />
     </div>
   );
 }
