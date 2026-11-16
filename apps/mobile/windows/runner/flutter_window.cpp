@@ -166,6 +166,14 @@ void FlutterWindow::BringToFront() {
 
 void FlutterWindow::OnDestroy() {
   RemoveTray();
+  // Closing the app (owner, 16 Nov 2026, D-177): destroying the Flutter controller here tears down the engine and
+  // every plugin inside this window message, and one plugin's teardown throws, so Windows showed an "Application
+  // Error" box and the app ended with 0xC000041D (exception in a window callback; GitHub's close check caught it).
+  // By now the student pressed X and the app agreed to close (lib/desktop/desktop_exit.dart stopped sounds and
+  // videos; the database commits each write), so end the process here with success and skip the plugin teardown.
+  // This is the main and only window, so destroying it always means quitting (a window whose engine never started
+  // reports failure, as before).
+  ::TerminateProcess(::GetCurrentProcess(), flutter_controller_ ? EXIT_SUCCESS : EXIT_FAILURE);
   desktop_channel_ = nullptr;
   if (flutter_controller_) {
     flutter_controller_ = nullptr;

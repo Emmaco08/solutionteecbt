@@ -49,14 +49,8 @@ Future<void> _shot(WidgetTester t, Widget w, String name, {Brightness mode = Bri
   await t.pump(const Duration(seconds: 6));
 }
 
-Widget _page(BuildContext? _, {double pad = 20, WaPerks perks = WaPerks.pills}) => Scaffold(
-  body: ListView(
-    padding: EdgeInsets.all(pad),
-    children: [
-      const SizedBox(height: 300),
-      WhatsAppChannelCard(perks: perks),
-    ],
-  ),
+Widget _page(BuildContext? _, {double pad = 20}) => Scaffold(
+  body: ListView(padding: EdgeInsets.all(pad), children: [const SizedBox(height: 300), const WhatsAppChannelCard()]),
 );
 
 void main() {
@@ -70,13 +64,6 @@ void main() {
   testWidgets('card phone dark', (t) => _shot(t, _page(null), 'card_phone_dark', mode: Brightness.dark));
   testWidgets('card joined', (t) => _shot(t, _page(null), 'card_phone_joined', joined: true));
   testWidgets('card laptop', (t) => _shot(t, _page(null, pad: 60), 'card_laptop', size: const Size(1100, 700)));
-  // Owner's choice (16 Nov 2026): A = no perks, B = perks on one straight line.
-  for (final (tag, perks) in [('optA_none', WaPerks.none), ('optB_line', WaPerks.line)]) {
-    for (final m in Brightness.values) {
-      testWidgets('option $tag ${m.name}', (t) => _shot(t, _page(null, perks: perks), 'card_${tag}_${m.name}', mode: m));
-    }
-    testWidgets('option $tag laptop', (t) => _shot(t, _page(null, pad: 60, perks: perks), 'card_${tag}_laptop', size: const Size(1100, 700)));
-  }
   for (final m in Brightness.values) {
     testWidgets(
       'popup ${m.name}',

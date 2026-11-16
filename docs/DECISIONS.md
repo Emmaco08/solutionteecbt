@@ -2027,6 +2027,10 @@ is pressed the app first stops the game music, effects and every open video (lib
 exit request), and the runner ends the process right after the window has closed instead of going through the DLL
 unload step (windows/runner/main.cpp). The database commits each write, so nothing is lost. GitHub's Windows check now
 closes the app with the X (not a forced kill) and fails unless it exits by itself with code 0 and no Windows error box.
+Follow-up (same day): that check caught exit code 0xC000041D (an exception inside a window callback) even with no sound
+or video playing: destroying the Flutter controller in WM_DESTROY tears down the engine and all plugins inside the
+window message, and one plugin's teardown throws. The runner now ends the process in FlutterWindow::OnDestroy, after
+removing the tray icon and before that teardown (the app has already agreed to close by then).
 
 ## D-178 — Windows layout overhaul, checked on laptop sizes (16 Nov 2026)
 Owner's Windows report (news picture filling the screen, Home news cards cut, videos and calculator too big, no photo
@@ -2060,3 +2064,9 @@ menu turns into the menu button below 1024 px. Google Play buttons show only whe
 link. The WhatsApp channel (Admin → Flags & settings, D-174) gets an animated green section after "Get the app" and a
 footer link; changing it refreshes the website at once. Checked with screenshots at 360, 390, 768, 1280 × 720,
 1366 × 768, 1536 × 864 and 1920 × 1080.
+
+## D-180 — WhatsApp channel card: plain (16 Nov 2026)
+Owner chose option A: the app card (Home, News) shows only the title, the words and the button: no perk pills and no
+"Free · WhatsApp" badge. Students who already joined keep the small "You are in" badge. The website's channel band
+matches (no pills, no badge). The option code (WaPerks) was removed.
+

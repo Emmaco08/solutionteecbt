@@ -1,15 +1,10 @@
 "use client";
 import { motion, useReducedMotion } from "motion/react";
-import { ArrowRight, BellRinging, Lightbulb, Megaphone, WhatsappLogo } from "@phosphor-icons/react";
-import { Reveal, ease } from "./motion";
+import { ArrowRight, WhatsappLogo } from "@phosphor-icons/react";
+import { Reveal } from "./motion";
 
-const PERKS = [
-  [Megaphone, "Exam news first"],
-  [Lightbulb, "Free study tips"],
-  [BellRinging, "Class and challenge alerts"],
-] as const;
-
-/** "Join our WhatsApp channel" (owner, 16 Nov 2026, D-174): the link the admin sets in Admin → Flags & settings. */
+/** "Join our WhatsApp channel" (owner, 16 Nov 2026, D-174): the link the admin sets in Admin → Flags & settings.
+ *  Plain like the app card: title, words, button; no perk pills or "Free · WhatsApp" badge (D-180). */
 export function ChannelBand({ url, title, text }: { url: string; title: string; text: string }) {
   const still = useReducedMotion();
   return (
@@ -37,20 +32,8 @@ export function ChannelBand({ url, title, text }: { url: string; title: string; 
                 </motion.span>
               </div>
               <div className="text-center lg:text-left">
-                <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-[11px] font-bold uppercase tracking-[.12em]">
-                  <span className="size-2 animate-pulse rounded-full bg-[#25D366]" /> Free · WhatsApp
-                </span>
-                <h2 className="st-h2 mt-3 font-bold">{title}</h2>
+                <h2 className="st-h2 font-bold">{title}</h2>
                 <p className="st-lead mx-auto mt-2 max-w-xl text-white/85 lg:mx-0">{text}</p>
-                <div className="mt-5 flex flex-wrap justify-center gap-2 lg:justify-start">
-                  {PERKS.map(([Icon, t], i) => (
-                    <motion.span key={t} initial={still ? false : { opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-                      transition={{ delay: 0.15 + i * 0.08, duration: 0.45, ease }}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[13px] font-bold">
-                      <Icon size={15} weight="fill" className="text-[#7CF0A9]" /> {t}
-                    </motion.span>
-                  ))}
-                </div>
               </div>
               <a href={url} target="_blank" rel="noopener noreferrer"
                 className="group inline-flex h-14 items-center justify-center gap-2.5 whitespace-nowrap rounded-2xl bg-white px-7 font-bold text-[#0A3B2C] shadow-[0_18px_40px_-14px_rgba(0,0,0,.45)] transition-transform hover:-translate-y-0.5">
