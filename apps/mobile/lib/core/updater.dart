@@ -22,6 +22,9 @@ import 'house_ads.dart' show rootNavKey;
 /// installer. When the admin's "must update" switch is on, nothing else can be used until it is installed.
 /// The Play Store app is left to Google Play (Play does not allow apps to install themselves).
 
+/// How many update pop-ups are on screen now (other pop-ups wait for them, D-174).
+final updatePopupsOpen = ValueNotifier<int>(0);
+
 class AppRelease {
   const AppRelease({required this.version, required this.build, required this.size, required this.builtAt, required this.url});
   final String version, url;

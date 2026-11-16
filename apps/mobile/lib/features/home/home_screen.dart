@@ -30,6 +30,7 @@ import '../xp/streak_ui.dart';
 import '../xp/xp_screens.dart';
 import '../compete/compete_data.dart';
 import 'countdown.dart';
+import 'whatsapp_channel.dart';
 import 'play_connect_cards.dart';
 import 'qotd_card.dart';
 import 'top_card.dart';
@@ -301,6 +302,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ],
         ),
       if (!premium) UpgradeBanner(key: _upgradeKey),
+      const WhatsAppChannelCard(), // last on Home (owner, 16 Nov 2026, D-174)
     ];
     // Card ads spread through Home's feed (the level says how many), never above the top card.
     for (var k = 0, at = 4; k < homeCards && at <= sections.length; k++, at += 3) {

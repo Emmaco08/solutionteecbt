@@ -25,7 +25,7 @@ function seasonNow() {
 async function Leaderboard() {
   await requireStaff(["super_admin", "admin"]);
   const supabase = await createClient();
-  const [set, recent, flag, winners, jWeek, jMonth, cWeek] = await Promise.all([
+  const [set, recent, flag, winners, jWeek, jMonth, cWeek, bodies] = await Promise.all([
     supabase.from("app_settings").select("value").eq("key", "leaderboard").maybeSingle(),
     supabase.rpc("admin_leaderboard_recent", { p_limit: 40 }),
     supabase.from("feature_flags").select("enabled").eq("key", "leaderboard_enabled").maybeSingle(),
@@ -33,6 +33,7 @@ async function Leaderboard() {
     supabase.rpc("leaderboard_for", { p_exam: "JAMB", p_scope: "national", p_period: "week", p_offset: 0 }),
     supabase.rpc("leaderboard_for", { p_exam: "JAMB", p_scope: "national", p_period: "month", p_offset: 0 }),
     supabase.rpc("leaderboard_challenges", { p_period: "week", p_offset: 0 }),
+    supabase.from("exam_bodies").select("id, code, is_active, exam_configs(score_scale)").eq("is_active", true).order("id"),
   ]);
   const won = (winners.data ?? []).map((w) => ({ ...w, name: (w.profiles as { full_name?: string } | null)?.full_name ?? "Student" })) as unknown as Winner[];
   if (recent.error) return <ErrorState message={recent.error.message} />;
@@ -41,17 +42,25 @@ async function Leaderboard() {
   const settings: LbSettings = {
     on: v.on ?? false, past_seasons: v.past_seasons ?? [], min_mocks: v.min_mocks ?? 1, names: v.names ?? "first-initial",
     min_questions: v.min_questions ?? 100, fast_minutes: v.fast_minutes ?? 15, include_staff: v.include_staff ?? false,
-    exams: { JAMB: v.exams?.JAMB ?? true, WAEC: v.exams?.WAEC ?? true, NECO: v.exams?.NECO ?? true },
+    exams: v.exams ?? {},
     subject_min_questions: v.subject_min_questions ?? 40, subject_fast_minutes: v.subject_fast_minutes ?? 5,
     fair_hold: v.fair_hold ?? 50,
   };
+  const order = ["JAMB", "WAEC", "NECO"];
+  const examList = (bodies.data ?? [])
+    .map((b) => {
+      const cfg = b.exam_configs as unknown as { score_scale?: number } | { score_scale?: number }[] | null;
+      const scale = (Array.isArray(cfg) ? cfg[0]?.score_scale : cfg?.score_scale) ?? 100;
+      return { code: b.code as string, scale, rank: order.includes(b.code as string) ? order.indexOf(b.code as string) : 10 + b.id };
+    })
+    .sort((a, b) => a.rank - b.rank);
   const rows = (recent.data ?? []) as unknown as Recent[];
   const counting = rows.filter((r) => !r.reason && !r.held).length;
   const held = rows.filter((r) => r.held).length;
   const live = settings.on && (!flag.data || flag.data.enabled);
   return (
     <>
-      <PageHeader title="Leaderboard" description={`Ranks students by their best test this week, month, year, all time or season (season ${now}): JAMB by the full mock, WAEC and NECO by subject, and a Challenges board by challenge points.`}
+      <PageHeader title="Leaderboard" description={`Ranks students by their best test this week, month, year, all time or season (season ${now}): JAMB by the full mock, WAEC, NECO and your own exams by subject, and a Challenges board by challenge points.`}
         actions={live ? <Pill tone="ok">Live in the app</Pill> : <Pill tone="warn">Hidden from students</Pill>} />
       {!live ? (
         <p className="mb-4 rounded-2xl bg-warning-soft px-4 py-3 text-sm text-on-warning-soft">
@@ -73,7 +82,7 @@ async function Leaderboard() {
 
       <div className="grid gap-4 xl:grid-cols-[1fr_1.3fr]">
         <Panel title="Settings">
-          <SettingsForm settings={settings} seasonNow={now} />
+          <SettingsForm settings={settings} seasonNow={now} exams={examList} />
         </Panel>
         <Panel title="Latest tests that can count" bodyClassName="p-0">
           {rows.length ? <RecentList rows={rows} /> : (

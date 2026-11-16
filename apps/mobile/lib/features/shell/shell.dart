@@ -29,6 +29,7 @@ import '../invite/invite_screens.dart';
 import '../xp/streak_ui.dart';
 import '../notifications/turn_on_sheet.dart';
 import '../home/countdown.dart';
+import '../home/whatsapp_channel.dart';
 import '../premium/payments.dart';
 import '../setup/age_gate.dart';
 import '../profile/badges.dart';
@@ -89,6 +90,7 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
 
   StreamSubscription<MethodCall>? _secure;
   bool _popupsShown = false;
+  DateTime? _pausedAt;
   DateTime? _lastBack;
 
   /// Long-press on the app icon (D-136): Continue test, Practise now, Ask the AI tutor, Search.
@@ -148,6 +150,12 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
     await Engagement.countOpen(ref).catchError((_) {});
     // A new student sees the app tour first: the countdown and the other pop-ups wait for their next open (D-154).
     if (!ref.read(settingsProvider).toured || !mounted) return;
+    await _otherPopups();
+    // Then, every open until they tap Join: our WhatsApp channel (owner, 16 Nov 2026, D-174).
+    if (mounted) await maybeShowWhatsAppPopup(context, ref).catchError((_) => false);
+  }
+
+  Future<void> _otherPopups() async {
     // The exam countdown first (once a day, D-135), then the milestone or daily claim; when none of them showed, maybe
     // the app rating card or a suggestion (owner, 13 Nov 2026). One pop-up an open at most.
     final countdown = await maybeShowDailyCountdown(context, ref);
@@ -264,9 +272,21 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState s) {
-    if (s == AppLifecycleState.paused) Ads.instance.paused();
+    if (s == AppLifecycleState.paused) {
+      Ads.instance.paused();
+      _pausedAt = DateTime.now();
+    }
     if (s == AppLifecycleState.resumed) {
       Ads.instance.resumed();
+      // Back after 30 minutes or more counts as a new app open (owner, 16 Nov 2026): Android keeps the app in memory,
+      // so most students rarely start it from cold. The pop-ups run again with their own once-a-day rules, and the
+      // open is counted for the rating card.
+      final away = _pausedAt == null ? Duration.zero : DateTime.now().difference(_pausedAt!);
+      _pausedAt = null;
+      if (away >= const Duration(minutes: 30)) {
+        _popupsShown = false;
+        newAppOpen();
+      }
       ref.read(testsRepoProvider).syncPending();
       _checkAccount();
       // Back from the phone's settings: notifications may be on now.

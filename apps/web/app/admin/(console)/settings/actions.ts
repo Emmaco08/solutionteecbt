@@ -68,6 +68,7 @@ const SWITCHES: Record<string, string[]> = {
   google_auth: ["enabled", "desktop"], // desktop: the Windows app (D-166)
   cash_prizes: ["on", "teens"], // D-110, D-121
   exam_logos: ["on"], // D-111
+  whatsapp_channel: ["enabled", "popup"], // D-174
 };
 
 /** One switch inside a JSON setting (D-080): screen protection and in-app updates. Logged by the settings trigger. */
@@ -99,4 +100,36 @@ export async function setGoogleClientId(id: string): Promise<ActionResult> {
   if (error) return { ok: false, error: friendlyError(error) };
   revalidatePath("/admin", "layout");
   return { ok: true, message: v ? "Saved." : "Removed." };
+}
+
+/** Accepts WhatsApp channel, group and chat links only (https, whatsapp.com or wa.me). */
+export function isWhatsAppLink(v: string): boolean {
+  try {
+    const u = new URL(v);
+    return u.protocol === "https:" && ["whatsapp.com", "www.whatsapp.com", "chat.whatsapp.com", "wa.me"].includes(u.hostname) && u.pathname.length > 1;
+  } catch {
+    return false;
+  }
+}
+
+const WaChannel = z.object({
+  url: z.string().trim().max(300),
+  title: z.string().trim().max(60),
+  text: z.string().trim().max(160),
+});
+
+/** The WhatsApp channel link and the words on the card and pop-up (D-174). An empty link hides it in the app. */
+export async function setWhatsAppChannel(input: z.input<typeof WaChannel>): Promise<ActionResult> {
+  await requireStaff(["super_admin", "admin"]);
+  const p = WaChannel.safeParse(input);
+  if (!p.success) return { ok: false, error: p.error.issues[0]?.message ?? "Check the fields" };
+  if (p.data.url && !isWhatsAppLink(p.data.url))
+    return { ok: false, error: "Paste the WhatsApp channel link, like https://whatsapp.com/channel/0029Va…" };
+  const supabase = await createClient();
+  const { data } = await supabase.from("app_settings").select("value").eq("key", "whatsapp_channel").maybeSingle();
+  const value = { enabled: true, popup: true, ...((data?.value as Record<string, unknown>) ?? {}), ...p.data };
+  const { error } = await supabase.from("app_settings").upsert({ key: "whatsapp_channel", value, is_public: true });
+  if (error) return { ok: false, error: friendlyError(error) };
+  revalidatePath("/admin", "layout");
+  return { ok: true, message: p.data.url ? "Saved. Students see it the next time the app opens." : "Link removed: the card and pop-up are hidden." };
 }

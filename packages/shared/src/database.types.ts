@@ -1347,6 +1347,12 @@ export type Database = {
         }
         Relationships: []
       }
+      channel_joins: {
+        Row: { joined_at: string; url: string; user_id: string }
+        Insert: { joined_at?: string; url: string; user_id: string }
+        Update: { joined_at?: string; url?: string; user_id?: string }
+        Relationships: []
+      }
       challenge_access: {
         Row: {
           at: string
@@ -5828,6 +5834,7 @@ export type Database = {
         }
         Returns: number
       }
+      channel_joined: { Args: { p_url: string }; Returns: undefined }
       app_seen: { Args: { p_platform: string; p_flavor?: string; p_version?: string; p_build?: number }; Returns: undefined }
       admin_user_detail: { Args: { p_user: string }; Returns: Json }
       admin_users_summary: { Args: never; Returns: Json }

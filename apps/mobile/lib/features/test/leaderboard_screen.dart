@@ -179,10 +179,12 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
 
     final sections = <Widget>[
       if (exams.length > 1)
-        Row(
+        _BoardTabs(
+          many: exams.length > 5, // the admin's own exams (D-175): scroll sideways instead of squeezing
           children: [
             for (final x in exams) ...[
-              Expanded(
+              _BoardTab(
+                many: exams.length > 5,
                 child: Semantics(
                   selected: x == exam,
                   button: true,
@@ -625,4 +627,27 @@ class LeaderboardEntry extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// The board picker row: equal tiles, or a sideways-scrolling row when there are many exams.
+class _BoardTabs extends StatelessWidget {
+  const _BoardTabs({required this.many, required this.children});
+  final bool many;
+  final List<Widget> children;
+  @override
+  Widget build(BuildContext context) => many
+      ? SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          clipBehavior: Clip.none,
+          child: Row(children: children),
+        )
+      : Row(children: children);
+}
+
+class _BoardTab extends StatelessWidget {
+  const _BoardTab({required this.many, required this.child});
+  final bool many;
+  final Widget child;
+  @override
+  Widget build(BuildContext context) => many ? SizedBox(width: 84, child: child) : Expanded(child: child);
 }

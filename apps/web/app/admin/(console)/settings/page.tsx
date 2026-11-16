@@ -4,7 +4,7 @@ import { requireStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { hasBrevo, hasR2 } from "@/lib/env";
 import { ErrorState, PageHeader, PageSkeleton, Panel, Pill } from "@/components/admin/ui";
-import { AppSwitch, FlagRow, GoogleClientId, SettingsForm } from "./forms";
+import { AppSwitch, FlagRow, GoogleClientId, SettingsForm, WhatsAppChannelForm } from "./forms";
 import { readJson } from "@/lib/r2";
 import type { ApkInfo } from "@/app/download/apk/route";
 
@@ -17,9 +17,10 @@ export default function Page() {
 async function Settings() {
   await requireStaff(["super_admin", "admin"]);
   const supabase = await createClient();
-  const [flags, settings] = await Promise.all([
+  const [flags, settings, joins] = await Promise.all([
     supabase.from("feature_flags").select("key, enabled, description, updated_at").order("key"),
     supabase.from("app_settings").select("key, value"),
+    supabase.from("channel_joins").select("user_id", { count: "exact", head: true }),
   ]);
   if (flags.error || settings.error) return <ErrorState message={(flags.error ?? settings.error)!.message} />;
   const v = Object.fromEntries((settings.data ?? []).map((r) => [r.key, r.value])) as Record<string, Record<string, unknown> | string>;
@@ -48,6 +49,17 @@ async function Settings() {
               text="Only works while cash prizes are on. A student aged 13 to 17 can enter and win; within 10 minutes of the win we email their parent or guardian, and the prize can only be claimed after that email has gone out. It is paid to the parent's or guardian's account. The Privacy Policy and Terms change to say this automatically." />
             <AppSwitch k="exam_logos" field="on" on={sw("exam_logos", "on", false)} title="Show the JAMB, WAEC and NECO logos"
               text="Changes the app and the website (cbt.solutiontee.com) together. Off: our own exam badges with the exam name in plain text. Turn on only after each exam body gives written permission to use its logo." />
+          </Panel>
+          <Panel title="WhatsApp channel" bodyClassName="divide-y py-1">
+            <p className="py-3 text-[13px] text-muted-foreground">
+              Students see a “Join our WhatsApp channel” card at the bottom of Home and News, and a pop-up each time they open the app until they tap Join.
+              {" "}<b className="text-foreground">{(joins.count ?? 0).toLocaleString()}</b> student{joins.count === 1 ? " has" : "s have"} tapped Join.
+            </p>
+            <AppSwitch k="whatsapp_channel" field="enabled" on={sw("whatsapp_channel", "enabled", true)} title="Show the channel in the app"
+              text="The card at the bottom of Home and News. Needs a link below." />
+            <AppSwitch k="whatsapp_channel" field="popup" on={sw("whatsapp_channel", "popup", true)} title="Pop-up when the app opens"
+              text="Shows each time the app opens, until the student taps Join (after the exam countdown or daily pop-up, never on top of them)." />
+            <WhatsAppChannelForm value={(v.whatsapp_channel as Record<string, string> | undefined) ?? {}} />
           </Panel>
           <Panel title="Sign in with Google" bodyClassName="divide-y py-1">
             <AppSwitch k="google_auth" field="enabled" on={sw("google_auth", "enabled", false)} title="Show “Continue with Google”"

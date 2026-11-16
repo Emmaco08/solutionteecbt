@@ -1992,3 +1992,29 @@ Now the Play app checks who installed it (Android `getInstallSourceInfo`): insta
 update (unchanged); installed any other way → the newest Play build on our website (`/api/app/latest?channel=play`,
 whose link now points to `/download/apk?channel=play`, staff only). The pop-up, "Later" (hidden for a day) and the
 must-update screen all follow the admin's choice the same way. Real Play Store installs are never sent to the website.
+
+## D-174 — WhatsApp channel: Home and News card, pop-up until joined (16 Nov 2026)
+Owner: students see our WhatsApp channel link at the bottom of Home (and News), set by the admin, with a pop-up every time
+they enter the app until they tap it. Admin → Flags & settings → WhatsApp channel: the link (WhatsApp links only), an
+optional title and message, "Show the channel in the app" and "Pop-up when the app opens", and how many students tapped
+Join. The card (deep green, pulsing WhatsApp badge, rising bubbles) is the last card on Home, after the stories in
+News and after each news article. The pop-up shows after the countdown, daily claim and other pop-ups, never on top of
+the update pop-up, on every app open (and every return after 30+ minutes away) until Join is tapped. A tap is kept on
+the phone and in `channel_joins` (one row per student), so a reinstall or new phone does not ask again; a new channel
+link asks again. The WhatsApp mark is the Phosphor glyph already used for "Share on WhatsApp" (no logo file drawn).
+News articles now show like, comment, save and share once, after the story (the copy above the story is gone).
+
+## D-175 — Leaderboards for the admin's own exams (16 Nov 2026)
+Owner: custom exams (e.g. JUPEB) were missing from the leaderboard. Every active exam now has a board: JAMB by the full
+mock (out of 400); WAEC, NECO and every exam the admin adds by the best single-subject paper, out of that exam's score
+scale (`exam_configs.score_scale`, 100 by default). Order: JAMB, WAEC, NECO, then the admin's exams. Admin → Leaderboard
+lists every exam with its own on/off box; "Recent tests" includes them. With more than four exams the board picker in
+the app scrolls sideways instead of squeezing.
+
+## D-176 — Rating card and pop-ups also on a return to the app (16 Nov 2026)
+Owner had never seen the rating card. A test (`test/engagement_test.dart`) shows the rules work (after 3 days and 6
+opens; "Not now" waits 14 days; the admin switch turns it off), but an "open" was only a cold start, and Android keeps
+the app in memory, so many students almost never reached 6 opens on a day with no other pop-up. Now coming back to
+the app after 30 minutes or more also counts as an open and runs the pop-up sequence again (each keeps its own
+once-a-day rule). Google's own Play review box appears only in copies installed from Google Play (Google's rule): a
+Play test copy installed from our website never shows it.

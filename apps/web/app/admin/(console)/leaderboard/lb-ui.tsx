@@ -12,7 +12,7 @@ import { reviewMock, saveLeaderboard } from "./actions";
 export type LbSettings = {
   on: boolean; past_seasons: number[]; min_mocks: number; names: "first-initial" | "first";
   min_questions: number; fast_minutes: number; include_staff: boolean;
-  exams: { JAMB: boolean; WAEC: boolean; NECO: boolean }; subject_min_questions: number; subject_fast_minutes: number;
+  exams: Record<string, boolean>; subject_min_questions: number; subject_fast_minutes: number;
   fair_hold: number;
 };
 export type Recent = {
@@ -20,7 +20,7 @@ export type Recent = {
   submitted_at: string; season: number; reason: string | null; held: boolean;
 };
 
-export function SettingsForm({ settings, seasonNow }: { settings: LbSettings; seasonNow: number }) {
+export function SettingsForm({ settings, seasonNow, exams }: { settings: LbSettings; seasonNow: number; exams: { code: string; scale: number }[] }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const past = [seasonNow - 1, seasonNow - 2, seasonNow - 3];
@@ -32,9 +32,14 @@ export function SettingsForm({ settings, seasonNow }: { settings: LbSettings; se
       <label className="flex items-start gap-3 text-sm"><input type="checkbox" name="on" defaultChecked={settings.on} className="mt-1" />
         <span><b>Show the leaderboard to students</b><span className="block text-muted-foreground">Off: students see “Leaderboards are switched off”. Scores still count in the background.</span></span></label>
       <div className="space-y-1.5"><Label>Boards</Label>
-        <div className="flex flex-wrap gap-4">{(["JAMB", "WAEC", "NECO"] as const).map((x) => (
-          <label key={x} className="flex items-center gap-2 text-sm"><input type="checkbox" name={`exam_${x}`} defaultChecked={settings.exams[x]} /> {x}{x === "JAMB" ? " (full mock, out of 400)" : " (per subject, out of 100)"}</label>
-        ))}</div></div>
+        <div className="flex flex-wrap gap-4">{exams.map((x) => (
+          <label key={x.code} className="flex items-center gap-2 text-sm">
+            <input type="hidden" name="exam_codes" value={x.code} />
+            <input type="checkbox" name={`exam_${x.code}`} defaultChecked={settings.exams[x.code] ?? true} /> {x.code}
+            <span className="text-muted-foreground">{x.code === "JAMB" ? "(full mock, out of 400)" : `(per subject, out of ${x.scale})`}</span>
+          </label>
+        ))}</div>
+        <span className="text-xs text-muted-foreground">Exams you add in Exams get a board here too, ranked by their best subject paper.</span></div>
       <b className="block text-sm">JAMB</b>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5"><Label htmlFor="lbQ">Questions needed in a full mock</Label>
@@ -44,7 +49,7 @@ export function SettingsForm({ settings, seasonNow }: { settings: LbSettings; se
           <input id="lbFast" name="fast_minutes" type="number" min={0} max={120} defaultValue={settings.fast_minutes} className={inputCls} />
           <span className="text-xs text-muted-foreground">0 = no check. Held mocks wait for you below.</span></div>
       </div>
-      <b className="block text-sm">WAEC and NECO</b>
+      <b className="block text-sm">WAEC, NECO and your own exams</b>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5"><Label htmlFor="lbSQ">Questions needed in a subject paper</Label>
           <input id="lbSQ" name="subject_min_questions" type="number" min={4} max={200} defaultValue={settings.subject_min_questions} className={inputCls} />

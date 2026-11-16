@@ -15,7 +15,7 @@ const Settings = z.object({
   min_questions: z.number().int().min(4).max(400),
   fast_minutes: z.number().int().min(0).max(120),
   include_staff: z.boolean(),
-  exams: z.object({ JAMB: z.boolean(), WAEC: z.boolean(), NECO: z.boolean() }),
+  exams: z.record(z.string().regex(/^[A-Z0-9_-]{2,20}$/), z.boolean()),
   subject_min_questions: z.number().int().min(4).max(200),
   subject_fast_minutes: z.number().int().min(0).max(120),
   fair_hold: z.number().int().min(0).max(100),
@@ -31,7 +31,8 @@ export async function saveLeaderboard(form: FormData): Promise<ActionResult> {
     min_questions: Number(form.get("min_questions")),
     fast_minutes: Number(form.get("fast_minutes")),
     include_staff: form.get("include_staff") === "on",
-    exams: { JAMB: form.get("exam_JAMB") === "on", WAEC: form.get("exam_WAEC") === "on", NECO: form.get("exam_NECO") === "on" },
+    // Every exam listed on the form (JAMB, WAEC, NECO and the admin's own exams, D-175): ticked = board on.
+    exams: Object.fromEntries(form.getAll("exam_codes").map((c) => [String(c), form.get(`exam_${String(c)}`) === "on"])),
     subject_min_questions: Number(form.get("subject_min_questions")),
     subject_fast_minutes: Number(form.get("subject_fast_minutes")),
     fair_hold: Number(form.get("fair_hold") ?? 50),

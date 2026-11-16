@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Panel } from "@/components/admin/ui";
-import { saveSettings, setAppSwitch, setFlag, setGoogleClientId } from "./actions";
+import { saveSettings, setAppSwitch, setFlag, setGoogleClientId, setWhatsAppChannel } from "./actions";
 
 const LABELS: Record<string, string> = {
   challenges_enabled: "Challenges & events", referrals_enabled: "Referral programme", ai_photo_questions: "AI photo questions",
@@ -153,6 +153,39 @@ export function GoogleClientId({ value }: { value: string }) {
           const r = await setGoogleClientId(v);
           if (r.ok) { toast.success(r.message ?? "Saved"); router.refresh(); } else toast.error(r.error);
         })}>Save</Button>
+      </div>
+    </div>
+  );
+}
+
+/** WhatsApp channel link and the words students see on the Home card and the pop-up (D-174). */
+export function WhatsAppChannelForm({ value }: { value: { url?: string; title?: string; text?: string } }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [v, setV] = useState({ url: value.url ?? "", title: value.title ?? "", text: value.text ?? "" });
+  const dirty = v.url !== (value.url ?? "") || v.title !== (value.title ?? "") || v.text !== (value.text ?? "");
+  const field = "h-9 w-full min-w-0 rounded-md border bg-background px-3 text-sm";
+  return (
+    <div className="space-y-3 py-3.5">
+      <div>
+        <label htmlFor="wa-url" className="block text-sm font-bold">Channel link</label>
+        <small className="block text-[13px] text-muted-foreground">In WhatsApp: Updates → your channel → Channel link → Copy link. Leave empty to hide the card and pop-up.</small>
+        <input id="wa-url" className={`${field} mt-2 font-mono text-xs`} value={v.url} onChange={(e) => setV({ ...v, url: e.target.value })} placeholder="https://whatsapp.com/channel/0029Va…" />
+      </div>
+      <div>
+        <label htmlFor="wa-title" className="block text-sm font-bold">Title <span className="font-normal text-muted-foreground">(optional)</span></label>
+        <input id="wa-title" maxLength={60} className={`${field} mt-1`} value={v.title} onChange={(e) => setV({ ...v, title: e.target.value })} placeholder="Join our WhatsApp channel" />
+      </div>
+      <div>
+        <label htmlFor="wa-text" className="block text-sm font-bold">Short message <span className="font-normal text-muted-foreground">(optional)</span></label>
+        <textarea id="wa-text" maxLength={160} rows={2} className="w-full rounded-md border bg-background px-3 py-2 text-sm mt-1" value={v.text} onChange={(e) => setV({ ...v, text: e.target.value })} placeholder="Exam news, free study tips and class alerts, first. Free to join." />
+      </div>
+      <div className="flex items-center gap-2">
+        <Button size="sm" disabled={pending || !dirty} onClick={() => start(async () => {
+          const r = await setWhatsAppChannel(v);
+          if (r.ok) { toast.success(r.message ?? "Saved"); router.refresh(); } else toast.error(r.error);
+        })}>Save</Button>
+        {v.url && <a href={v.url} target="_blank" rel="noreferrer" className="text-sm text-primary underline-offset-4 hover:underline">Test the link</a>}
       </div>
     </div>
   );

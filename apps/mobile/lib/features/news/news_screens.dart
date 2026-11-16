@@ -11,6 +11,7 @@ import '../../ui/kit.dart';
 import '../../widgets/phosphor.g.dart';
 import '../../widgets/r2_image.dart';
 import '../../widgets/states.dart';
+import '../home/whatsapp_channel.dart';
 import 'news_social.dart';
 
 /// Category → cover gradient + icon (prototype `news-cover c-navy|c-blue|c-gold|c-green`).
@@ -253,6 +254,8 @@ class _NewsListScreenState extends ConsumerState<NewsListScreen> {
                   ],
                 ),
               ],
+              const Gap(Space.s6),
+              const WhatsAppChannelCard(), // D-174
             ],
           ),
         );
@@ -337,13 +340,6 @@ class _NewsDetailScreenState extends ConsumerState<NewsDetailScreen> {
                   Text(n['summary'] as String, style: context.ty.lg.col(c.textMuted)),
                 ],
                 const Gap(Space.s4),
-                NewsActions(
-                  n: n,
-                  onComments: () {
-                    final ctx = _commentsKey.currentContext;
-                    if (ctx != null) Scrollable.ensureVisible(ctx, duration: const Duration(milliseconds: 350), curve: Curves.easeOut);
-                  },
-                ),
                 const AdBanner(screen: 'news'),
                 const Gap(Space.s3),
                 for (final para in body.split(RegExp(r'\n\s*\n')))
@@ -362,7 +358,14 @@ class _NewsDetailScreenState extends ConsumerState<NewsDetailScreen> {
                     onPressed: () => launchUrl(Uri.parse(target), mode: LaunchMode.externalApplication),
                   ),
                 const Gap(Space.s4),
-                NewsActions(n: n, onComments: () {}),
+                // Like, comment, save and share once, after the story (owner, 16 Nov 2026).
+                NewsActions(
+                  n: n,
+                  onComments: () {
+                    final ctx = _commentsKey.currentContext;
+                    if (ctx != null) Scrollable.ensureVisible(ctx, duration: const Duration(milliseconds: 350), curve: Curves.easeOut);
+                  },
+                ),
                 const Gap(Space.s5),
                 const AdNativeCard(placement: 'news_article'),
                 if (n['comments_on'] != false) ...[
@@ -378,6 +381,8 @@ class _NewsDetailScreenState extends ConsumerState<NewsDetailScreen> {
                   const Gap(Space.s3),
                   for (final m in more) ...[NewsTile(n: m), const Gap(Space.s3)],
                 ],
+                const Gap(Space.s5),
+                const WhatsAppChannelCard(), // D-174
               ],
             ),
           ),

@@ -565,7 +565,9 @@ class UpdatePopup extends ConsumerWidget {
   final String? version;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context, WidgetRef ref) => _CountWhileShown(child: _build(context, ref));
+
+  Widget _build(BuildContext context, WidgetRef ref) {
     final rm = context.reduceMotion;
     final c = context.c;
     final dark = Theme.of(context).brightness == Brightness.dark;
@@ -916,4 +918,29 @@ class _OfflineBannerState extends ConsumerState<_OfflineBanner> {
       ),
     );
   }
+}
+
+/// Counts an update pop-up while it is on screen ([updatePopupsOpen]).
+class _CountWhileShown extends StatefulWidget {
+  const _CountWhileShown({required this.child});
+  final Widget child;
+  @override
+  State<_CountWhileShown> createState() => _CountWhileShownState();
+}
+
+class _CountWhileShownState extends State<_CountWhileShown> {
+  @override
+  void initState() {
+    super.initState();
+    updatePopupsOpen.value++;
+  }
+
+  @override
+  void dispose() {
+    updatePopupsOpen.value--;
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
