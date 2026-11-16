@@ -67,15 +67,37 @@ void main() {
     expect(desktopModeFor('/splash'), DesktopMode.focus);
   });
 
+  testWidgets('the frame follows the page on top, also pages opened with push (D-178)', (t) async {
+    final router = GoRouter(
+      initialLocation: '/home',
+      routes: [
+        GoRoute(path: '/home', builder: (_, _) => const SizedBox()),
+        GoRoute(path: '/games', builder: (_, _) => const SizedBox()),
+        GoRoute(path: '/cbt/:id', builder: (_, _) => const SizedBox()),
+      ],
+    );
+    await t.pumpWidget(MaterialApp.router(routerConfig: router));
+    await t.pumpAndSettle();
+    expect(topPath(router), '/home');
+    router.push('/games');
+    await t.pumpAndSettle();
+    expect(topPath(router), '/games', reason: 'Game Zone opened from Home gets the Game Zone layout');
+    router.push('/cbt/1');
+    await t.pumpAndSettle();
+    expect(topPath(router), '/cbt/1');
+    expect(desktopModeFor(topPath(router)), DesktopMode.focus, reason: 'an exam opened from a page still takes the whole window');
+  });
+
   test('page widths: dashboards wide, lists medium, reading narrow, games a stage', () {
     expect(desktopWidthFor('/home', DesktopMode.normal), 1280);
     expect(desktopWidthFor('/study/videos', DesktopMode.normal), 1280);
     expect(desktopWidthFor('/leaderboard', DesktopMode.normal), 980);
-    expect(desktopWidthFor('/community', DesktopMode.normal), 820);
+    expect(desktopWidthFor('/community', DesktopMode.normal), 1060); // menu + feed (D-178)
     expect(desktopWidthFor('/news/12', DesktopMode.normal), 860);
     expect(desktopWidthFor('/settings', DesktopMode.normal), 860);
-    expect(desktopWidthFor('/games', DesktopMode.normal), 620);
-    expect(desktopWidthFor('/games/play/1', DesktopMode.focus), 620);
+    expect(desktopWidthFor('/games', DesktopMode.normal), 1000); // the hub uses the laptop's room (D-178)
+    expect(desktopWidthFor('/games/play/1', DesktopMode.focus), 760);
+    expect(desktopWidthFor('/study/video/1', DesktopMode.normal), 1040);
     expect(desktopWidthFor('/cbt/1', DesktopMode.focus), double.infinity);
     expect(desktopWidthFor('/login', DesktopMode.auth), 560);
   });

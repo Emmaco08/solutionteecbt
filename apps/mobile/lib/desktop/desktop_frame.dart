@@ -11,11 +11,13 @@ import '../core/platform.dart';
 import '../core/providers.dart';
 import '../data/notifications_repo.dart';
 import '../features/premium/paywall.dart';
+import '../features/profile/me_extras.dart' show MyAvatar;
 import '../features/xp/streak_ui.dart';
 import '../theme/theme.dart';
 import '../theme/tokens.g.dart';
 import '../ui/kit.dart';
 import '../widgets/phosphor.g.dart';
+import 'desktop_exit.dart';
 
 /// Windows / desktop layout (D-166). One stable tree for every route so pages keep their state:
 ///   [left slot: sidebar | brand panel | nothing] + [content column with a comfortable width].
@@ -84,24 +86,37 @@ bool _isGame(String path) => path == '/games' || path.startsWith('/games/');
 /// Content width for a route: dashboards get room, lists a medium width, reading and form pages stay readable.
 double desktopWidthFor(String path, DesktopMode mode) {
   if (mode == DesktopMode.auth) return 560;
-  if (_isGame(path)) return 620;
+  // Game Zone (owner, 16 Nov 2026: wanted it bigger): the hub uses the room of a laptop; a match plays on a centred
+  // stage wide enough for two columns of answers with the question always in view.
+  if (path == '/games' || path == '/games/classic' || path == '/games/ranks') return 1000;
+  if (_isGame(path)) return 760;
   if (mode == DesktopMode.focus) return double.infinity;
   bool under(String p) => path == p || path.startsWith('$p/');
   if (path.startsWith('/news/') || path.startsWith('/community/post/') || path.startsWith('/study/note/') || path.startsWith('/study/novel/')) return 860;
-  if (under('/community')) return 820; // a readable feed, like other social apps on desktop
+  if (path.startsWith('/study/video/') || path.startsWith('/study/doc/')) return 1040;
+  if (under('/community')) return 1060; // menu on the left + a readable feed, like social sites on a computer (D-178)
   if (path == '/ai' || path == '/ai/history' || under('/tutor')) return 1040;
   if (['/home', '/test', '/study', '/me'].any((p) => path == p) || path.startsWith('/study/')) return 1280;
   if (['/leaderboard', '/classes', '/news', '/careers', '/badges', '/downloads', '/history', '/test/challenges'].any(under)) return 980;
   return 860;
 }
 
-String _path(GoRouter r) {
+/// The page on top, including pages opened with push (owner, 16 Nov 2026, D-178). `currentConfiguration.uri` is the
+/// base location only: a game opened from Home read as "/home", so it got the Home layout (and an exam opened from
+/// Test kept the sidebar), while the same page opened from the sidebar got its own layout.
+String topPath(GoRouter r) {
   try {
-    return r.routerDelegate.currentConfiguration.uri.path;
+    return r.state.uri.path;
   } catch (_) {
-    return '/';
+    try {
+      return r.routerDelegate.currentConfiguration.uri.path;
+    } catch (_) {
+      return '/';
+    }
   }
 }
+
+String _path(GoRouter r) => topPath(r);
 
 class DesktopFrame extends StatefulWidget {
   const DesktopFrame({super.key, required this.router, required this.child});
@@ -113,11 +128,14 @@ class DesktopFrame extends StatefulWidget {
 
 class _DesktopFrameState extends State<DesktopFrame> {
   GoRouter get router => widget.router;
+  AppLifecycleListener? _exit;
 
   @override
   void initState() {
     super.initState();
     router.routerDelegate.addListener(_changed);
+    // Closing the window: stop sounds and videos first (D-177).
+    if (isDesktop) _exit = AppLifecycleListener(onExitRequested: DesktopExit.run);
   }
 
   @override
@@ -132,6 +150,7 @@ class _DesktopFrameState extends State<DesktopFrame> {
   @override
   void dispose() {
     router.routerDelegate.removeListener(_changed);
+    _exit?.dispose();
     super.dispose();
   }
 
@@ -591,17 +610,14 @@ class _ProfileTile extends StatelessWidget {
   final VoidCallback onTap, onBell, onSettings;
   @override
   Widget build(BuildContext context) {
-    final initials = name.isEmpty ? 'ME' : name.split(RegExp(r'\s+')).where((s) => s.isNotEmpty).take(2).map((s) => s[0].toUpperCase()).join();
+    // The student's own photo, as on Home and Me (owner, 16 Nov 2026: "the image of the student is not showing").
     final avatar = Container(
-      width: 40,
-      height: 40,
-      alignment: Alignment.center,
+      padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: Palette.blue600,
-        border: Border.all(color: premium ? Palette.gold400 : Colors.transparent, width: 2),
+        border: Border.all(color: premium ? Palette.gold400 : Colors.white.withValues(alpha: .25), width: 2),
       ),
-      child: Text(initials, style: context.ty.label.bold.col(Colors.white)),
+      child: MyAvatar(name.isEmpty ? 'Me' : name, size: 38),
     );
     return MouseRegion(
       cursor: SystemMouseCursors.click,

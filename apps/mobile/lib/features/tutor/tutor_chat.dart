@@ -25,6 +25,7 @@ import '../../widgets/r2_image.dart';
 import '../study/study_widgets.dart' show studyPath;
 import 'tutor_live.dart';
 import '../../core/platform.dart';
+import '../../desktop/desktop_exit.dart';
 
 // The student's chat with their tutor, v3 (D-152, D-153): live messages that heal themselves (tutor_live.dart), reactions,
 // swipe or tap to reply, a long-press menu (react, reply, copy, star, delete for everyone, report), an emoji panel,
@@ -2729,6 +2730,7 @@ class _VoiceState extends ConsumerState<_Voice> {
 
   @override
   void dispose() {
+    LiveVideos.forget(_vc);
     _vc?.dispose();
     super.dispose();
   }
@@ -2742,7 +2744,7 @@ class _VoiceState extends ConsumerState<_Voice> {
     setState(() => _loading = true);
     try {
       final url = await ref.read(apiProvider).signImage(widget.m.attachment!);
-      final vc = VideoPlayerController.networkUrl(Uri.parse(url));
+      final vc = LiveVideos.track(VideoPlayerController.networkUrl(Uri.parse(url)));
       await vc.initialize();
       vc.addListener(() {
         if (mounted) setState(() {});

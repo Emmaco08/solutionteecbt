@@ -64,6 +64,12 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
     ::DispatchMessage(&msg);
   }
 
+  // Closing the app (owner, 16 Nov 2026): Windows showed "The instruction at ... referenced memory ... could not be
+  // read" after the window closed. The window and the Flutter engine are already shut down here (the app stopped its
+  // sounds and video first, lib/desktop/desktop_exit.dart); what remained was audio and video plugin threads calling
+  // into libraries Windows was unloading at process exit. Ending the process now skips that unload step, so nothing
+  // can run into freed memory. Everything worth keeping is already saved (the database commits each write).
   ::CoUninitialize();
+  ::TerminateProcess(::GetCurrentProcess(), EXIT_SUCCESS);
   return EXIT_SUCCESS;
 }

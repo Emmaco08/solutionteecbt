@@ -66,6 +66,26 @@ class GzSound with WidgetsBindingObserver {
         });
   }
 
+  /// The app is closing (Windows, D-177): stop the music and free every player before the window goes away.
+  Future<void> shutdown() async {
+    _fade?.cancel();
+    final p = _player;
+    _player = null;
+    _track = null;
+    _wanted.clear();
+    try {
+      await p?.stop();
+      await p?.dispose();
+    } catch (_) {}
+    for (final pool in _pools.values) {
+      try {
+        await pool.dispose();
+      } catch (_) {}
+    }
+    _pools.clear();
+    _loading.clear();
+  }
+
   /// Plays an effect at once (it is ignored when effects are off).
   void play(GzSfx s, {double volume = 1}) {
     if (!sounds || !enabled || !_canPlay) return;

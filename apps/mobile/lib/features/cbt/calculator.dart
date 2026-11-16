@@ -1,12 +1,131 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
 
+import '../../core/platform.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
 import '../../ui/kit.dart';
+import '../../widgets/phosphor.g.dart';
 
 /// Calculator sheet (prototype CBT calculator): the sum on top, the answer below (shrinks to fit),
 /// thousands separators and left-to-right chaining like a simple calculator.
-void showCalculator(BuildContext context) => showSheet<void>(context, builder: (_) => const _Calculator());
+/// On Windows (owner, 16 Nov 2026, D-178) it is a small floating panel beside the question instead of a tall sheet over
+/// it, like the calculator window in the real CBT centre: drag it by its top bar, type with the keyboard, close with X
+/// or Esc, and keep answering while it is open.
+void showCalculator(BuildContext context) {
+  if (isDesktop) {
+    _DesktopCalc.toggle(context);
+    return;
+  }
+  showSheet<void>(context, builder: (_) => const _Calculator());
+}
+
+/// Closes the floating calculator (the exam is leaving).
+void closeCalculator() => _DesktopCalc.close();
+
+abstract final class _DesktopCalc {
+  static OverlayEntry? _entry;
+  static Offset _pos = const Offset(-1, -1);
+
+  static void close() {
+    final e = _entry;
+    _entry = null;
+    if (e == null) return;
+    void remove() {
+      try {
+        if (e.mounted) e.remove();
+        e.dispose();
+      } catch (_) {}
+    }
+
+    // Closing while the exam screen is being taken down: remove after this frame.
+    if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.idle) {
+      remove();
+    } else {
+      SchedulerBinding.instance.addPostFrameCallback((_) => remove());
+    }
+  }
+
+  static void toggle(BuildContext context) {
+    if (_entry != null) return close();
+    final overlay = Overlay.of(context, rootOverlay: true);
+    _entry = OverlayEntry(
+      builder: (ctx) {
+        final size = MediaQuery.sizeOf(ctx);
+        const w = 320.0, h = 470.0;
+        if (_pos.dx < 0) _pos = Offset(size.width - w - 340, size.height - h - 96);
+        final pos = Offset(_pos.dx.clamp(8, size.width - w - 8), _pos.dy.clamp(8, size.height - h - 8));
+        return Positioned(
+          left: pos.dx,
+          top: pos.dy,
+          width: w,
+          child: _FloatingCalc(
+            onMove: (d) {
+              _pos = pos + d;
+              _entry?.markNeedsBuild();
+            },
+            onClose: close,
+          ),
+        );
+      },
+    );
+    overlay.insert(_entry!);
+  }
+}
+
+class _FloatingCalc extends StatelessWidget {
+  const _FloatingCalc({required this.onMove, required this.onClose});
+  final ValueChanged<Offset> onMove;
+  final VoidCallback onClose;
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    return Material(
+      color: c.surface,
+      elevation: 0,
+      borderRadius: BorderRadius.circular(Radii.lg),
+      clipBehavior: Clip.antiAlias,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(Radii.lg),
+          border: Border.all(color: c.border),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .18), blurRadius: 28, offset: const Offset(0, 12))],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            MouseRegion(
+              cursor: SystemMouseCursors.move,
+              child: GestureDetector(
+                onPanUpdate: (d) => onMove(d.delta),
+                child: Container(
+                  height: 44,
+                  padding: const EdgeInsets.only(left: Space.s4, right: Space.s1),
+                  color: c.surfaceSunken,
+                  child: Row(
+                    children: [
+                      Icon(PhosphorIcons.calculator(PhosphorIconsStyle.fill), size: 18, color: c.secondary),
+                      const Gap(Space.s2),
+                      Expanded(child: Text('Calculator', style: context.ty.label.bold)),
+                      Text('Drag to move', style: context.ty.cap.col(c.textSubtle)),
+                      IconButton(tooltip: 'Close (Esc)', visualDensity: VisualDensity.compact, onPressed: onClose, icon: Icon(PhosphorIcons.x(), size: 18)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(Space.s3, Space.s3, Space.s3, Space.s3),
+              child: _Calculator(compact: true, onClose: onClose),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 /// Pure calculator logic, kept apart from the UI so it can be unit tested. Mirrors the prototype's `press()`.
 class CalcEngine {
@@ -155,28 +274,74 @@ class CalcEngine {
 }
 
 class _Calculator extends StatefulWidget {
-  const _Calculator();
+  const _Calculator({this.compact = false, this.onClose});
+
+  /// The floating Windows panel: smaller keys, no title (the panel has one), typing on the keyboard.
+  final bool compact;
+  final VoidCallback? onClose;
   @override
   State<_Calculator> createState() => _CalculatorState();
 }
 
 class _CalculatorState extends State<_Calculator> {
   final _e = CalcEngine();
+  final _focus = FocusNode(debugLabel: 'calculator');
+
+  @override
+  void dispose() {
+    _focus.dispose();
+    super.dispose();
+  }
+
+  /// Keyboard on Windows: digits, . , + - * / x, %, Enter or =, Backspace, Delete or C to clear, Esc to close.
+  KeyEventResult _key(FocusNode _, KeyEvent e) {
+    if (e is! KeyDownEvent && e is! KeyRepeatEvent) return KeyEventResult.ignored;
+    final ch = e.character;
+    final k = e.logicalKey;
+    String? press;
+    if (k == LogicalKeyboardKey.enter || k == LogicalKeyboardKey.numpadEnter) {
+      press = '=';
+    } else if (k == LogicalKeyboardKey.backspace) {
+      press = '⌫';
+    } else if (k == LogicalKeyboardKey.delete) {
+      press = 'C';
+    } else if (k == LogicalKeyboardKey.escape) {
+      widget.onClose?.call();
+      return KeyEventResult.handled;
+    } else if (ch != null && ch.isNotEmpty) {
+      press = switch (ch) {
+        '+' => '+',
+        '-' => '−',
+        '*' || 'x' || 'X' => '×',
+        '/' => '÷',
+        '%' => '%',
+        '=' => '=',
+        '.' || ',' => '.',
+        'c' || 'C' => 'C',
+        _ => RegExp(r'^\d$').hasMatch(ch) ? ch : null,
+      };
+    }
+    if (press == null) return KeyEventResult.ignored;
+    setState(() => _e.press(press!));
+    return KeyEventResult.handled;
+  }
+
   static const _keys = ['C', '⌫', '%', '÷', '7', '8', '9', '×', '4', '5', '6', '−', '1', '2', '3', '+', '±', '0', '.', '='];
   static const _names = {'⌫': 'Delete', '±': 'Plus or minus', '÷': 'Divide', '×': 'Times', '−': 'Minus', '%': 'Percent', 'C': 'Clear'};
 
   @override
   Widget build(BuildContext context) {
     final c = context.c;
-    return Column(
+    final small = widget.compact;
+    final body = Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // The sheet has its own close button (one X only).
-        Text('Calculator', style: context.ty.h3),
+        if (!small) Text('Calculator', style: context.ty.h3),
         Container(
-          height: 108,
-          margin: const EdgeInsets.fromLTRB(0, Space.s3, 0, Space.s4),
+          height: small ? 100 : 108,
+          margin: small ? const EdgeInsets.only(bottom: Space.s3) : const EdgeInsets.fromLTRB(0, Space.s3, 0, Space.s4),
           padding: const EdgeInsets.symmetric(horizontal: Space.s4, vertical: Space.s3),
           decoration: BoxDecoration(color: c.surfaceSunken, borderRadius: BorderRadius.circular(Radii.lg)),
           child: Column(
@@ -199,7 +364,7 @@ class _CalculatorState extends State<_Calculator> {
                     maxLines: 1,
                     style: _e.isError
                         ? context.ty.h2.copyWith(fontSize: 22).col(c.error)
-                        : context.ty.display.copyWith(fontSize: 40, height: 1.15, letterSpacing: -.5).tnum,
+                        : context.ty.display.copyWith(fontSize: small ? 32 : 40, height: 1.15, letterSpacing: -.5).tnum,
                   ),
                 ),
               ),
@@ -210,9 +375,9 @@ class _CalculatorState extends State<_Calculator> {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           crossAxisCount: 4,
-          mainAxisSpacing: 8,
-          crossAxisSpacing: 8,
-          childAspectRatio: 1.45,
+          mainAxisSpacing: small ? 6 : 8,
+          crossAxisSpacing: small ? 6 : 8,
+          childAspectRatio: small ? 1.5 : 1.45,
           children: [
             for (final k in _keys)
               Semantics(
@@ -235,7 +400,7 @@ class _CalculatorState extends State<_Calculator> {
                       child: Text(
                         k,
                         style: context.ty.h2
-                            .copyWith(fontSize: 20)
+                            .copyWith(fontSize: small ? 17 : 20)
                             .col(
                               k == '='
                                   ? c.onPrimary
@@ -252,5 +417,7 @@ class _CalculatorState extends State<_Calculator> {
         ),
       ],
     );
+    if (!small) return body;
+    return Focus(focusNode: _focus, autofocus: true, onKeyEvent: _key, child: body);
   }
 }

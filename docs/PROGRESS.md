@@ -145,3 +145,4 @@ Plan: `docs/plans/phase-4.md`.
 
 ## Phase 6 — Legal, release, videos  (approval: `LAUNCH APPROVED`)
 - [ ] Not started
+- [x] 16 Nov 2026: WhatsApp channel (D-174), leaderboards for custom exams (D-175), rating/pop-up opens (D-176), Windows clean close (D-177), Windows layout overhaul checked at 1280×720, 1366×768, 1920×1080 (D-178).

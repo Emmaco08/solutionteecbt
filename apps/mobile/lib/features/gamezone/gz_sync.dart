@@ -549,15 +549,7 @@ class _QuestionArea extends StatelessWidget {
               for (final (i, o) in opts.indexed) Padding(padding: const EdgeInsets.only(bottom: 4), child: _option(context, i, o, picked, key, words, 60)),
             ],
           )
-        : GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 4,
-            crossAxisSpacing: 10,
-            childAspectRatio: words ? 2.5 : 2.05,
-            children: [for (final (i, o) in opts.indexed) _option(context, i, o, picked, key, words, null)],
-          );
+        : GzOptionGrid(ratio: words ? 2.5 : 2.05, children: [for (final (i, o) in opts.indexed) _option(context, i, o, picked, key, words, null)]);
     if (shake > 0 && !context.calm) grid = grid.animate(key: ValueKey('s$shake')).shakeX(hz: 6, amount: 6, duration: 360.ms);
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),

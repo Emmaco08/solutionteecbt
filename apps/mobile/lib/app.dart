@@ -58,9 +58,20 @@ class SolutionTeeApp extends ConsumerWidget {
 
 /// Text size that suits the phone (owner, 12 Nov 2026): the phone's own font size is followed but kept between 90% and
 /// 115% (very large settings broke the layout on some phones), and narrow screens (under 360 dp) scale down a little.
-TextScaler appTextScaler(MediaQueryData mq) {
+TextScaler appTextScaler(MediaQueryData mq, {bool? desktop}) {
   final system = (mq.textScaler.scale(14) / 14).clamp(.9, 1.15);
-  final w = mq.size.width;
+  final w = mq.size.width, h = mq.size.height;
+  if (desktop ?? isDesktop) return TextScaler.linear((system * desktopTextFactor(w, h)).clamp(.85, 1.3));
   final narrow = w > 0 && w < 360 ? (w / 360).clamp(.86, 1.0) : 1.0;
   return TextScaler.linear((system * narrow).clamp(.82, 1.15));
+}
+
+/// Windows (owner, 16 Nov 2026: "make the font change based on the screen of the laptop"): text follows the window,
+/// measured in Windows' own scaled pixels, so a 1366 x 768 laptop gets slightly smaller text that fits, a common
+/// 1536 x 864 or 1440 x 900 screen the normal size, and a big 1920 x 1080 or larger screen bigger, easier text.
+/// The window's shorter side counts most, so a half-height window does not get huge text.
+double desktopTextFactor(double w, double h) {
+  if (w <= 0 || h <= 0) return 1;
+  final f = (w / 1440 + h / 900) / 2;
+  return (f < (h / 900) + .12 ? f : (h / 900) + .12).clamp(.92, 1.12);
 }

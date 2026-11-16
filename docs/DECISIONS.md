@@ -2018,3 +2018,33 @@ the app in memory, so many students almost never reached 6 opens on a day with n
 the app after 30 minutes or more also counts as an open and runs the pop-up sequence again (each keeps its own
 once-a-day rule). Google's own Play review box appears only in copies installed from Google Play (Google's rule): a
 Play test copy installed from our website never shows it.
+
+## D-177 — Windows app closes cleanly (16 Nov 2026)
+Owner: after closing the Windows app, Windows showed "SolutionTeeCBT.exe - Application Error: The instruction at …
+referenced memory at … could not be read". The window and engine closed, then audio and video plugin threads (game
+music, sound effects, video lessons) ran into libraries Windows was unloading at process exit. Now: when the window's X
+is pressed the app first stops the game music, effects and every open video (lib/desktop/desktop_exit.dart, Flutter's
+exit request), and the runner ends the process right after the window has closed instead of going through the DLL
+unload step (windows/runner/main.cpp). The database commits each write, so nothing is lost. GitHub's Windows check now
+closes the app with the X (not a forced kill) and fails unless it exits by itself with code 0 and no Windows error box.
+
+## D-178 — Windows layout overhaul, checked on laptop sizes (16 Nov 2026)
+Owner's Windows report (news picture filling the screen, Home news cards cut, videos and calculator too big, no photo
+in the sidebar, game questions hidden, Game Zone and Community different from Home than from the menu, big pictures in
+notes and Community, @mentions not clickable, text not following the screen). Main cause: the desktop frame read the
+base page, not the page on top, so any page opened from another page (news, videos, notes, games, community, even the
+exam) got the layout of the page under it. Fixed (`topPath`), plus:
+- News article: a framed picture at most 360 px tall with Back above; News list top picture at most 300 px.
+- Home news: card height follows card width (nothing cut); on laptops 2–3 stories side by side.
+- Video lessons: player at most 60% of the window tall, centred; Lesson-note pictures at most 420 px tall; a single
+  Community picture at most 380 px tall.
+- Exam calculator on Windows: a small floating panel (drag to move, type with the keyboard, Esc closes) beside the
+  question instead of a tall sheet over it; Shift+C opens it (C chooses option C).
+- Sidebar shows the student's photo. Community on laptops: a left menu (Home, Explore, Notifications, Profile, New
+  post) and the feed, no phone bottom bar. Game Zone hub uses the laptop's width (1000 px); matches play on a 760 px
+  stage with answer buttons capped at 78 px tall so the question always shows (phones unchanged).
+- @mention suggestions are part of the text box for clicks (a mouse press no longer hides them first).
+- Text follows the window: 0.92× on 1366×768 and smaller, 1.0× at 1440×900, up to 1.12× on 1920×1080 and up.
+Checked with `test_shots/laptop_test.dart` (the real router, sidebar and pages, signed in, sample data, opened from
+the sidebar and from other pages) at 1280×720, 1366×768 and 1920×1080; `test/desktop_routes_test.dart` still opens
+every route at 1366×768 without errors or overflow; `test/mention_desktop_test.dart` clicks a suggestion with a mouse.

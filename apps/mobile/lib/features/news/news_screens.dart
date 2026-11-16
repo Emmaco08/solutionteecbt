@@ -40,10 +40,13 @@ int readMins(Map<String, dynamic> n) => (((n['body'] as String?) ?? '').split(Re
 /// News cover: the admin's picture when there is one (signed link, skipped with data saver), drawn over
 /// the category gradient so the gradient shows while it loads or if it fails.
 class NewsCover extends ConsumerWidget {
-  const NewsCover({super.key, required this.n, this.aspect = 16 / 8, this.iconSize = 64, this.thumb = false});
+  const NewsCover({super.key, required this.n, this.aspect = 16 / 8, this.iconSize = 64, this.thumb = false, this.height});
   final Map<String, dynamic> n;
   final double aspect, iconSize;
   final bool thumb;
+
+  /// A fixed height instead of [aspect] (the article picture on a laptop, D-178).
+  final double? height;
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final look = newsLook(n['category'] as String?);
@@ -76,7 +79,8 @@ class NewsCover extends ConsumerWidget {
         ],
       ),
     );
-    return thumb ? SizedBox(width: 64, height: 64, child: cover) : AspectRatio(aspectRatio: aspect, child: cover);
+    if (thumb) return SizedBox(width: 64, height: 64, child: cover);
+    return height != null ? SizedBox(height: height, width: double.infinity, child: cover) : AspectRatio(aspectRatio: aspect, child: cover);
   }
 }
 
@@ -215,7 +219,11 @@ class _NewsListScreenState extends ConsumerState<NewsListScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    NewsCover(n: top, aspect: 16 / 9, iconSize: 84),
+                    // Laptops: at most 300 px tall (owner, 16 Nov 2026: pictures too big); phones keep 16:9.
+                    if (MediaQuery.sizeOf(context).width >= 700)
+                      NewsCover(n: top, iconSize: 84, height: (MediaQuery.sizeOf(context).width * 9 / 16).clamp(180.0, 300.0))
+                    else
+                      NewsCover(n: top, aspect: 16 / 9, iconSize: 84),
                     Padding(
                       padding: const EdgeInsets.all(Space.s4),
                       child: Column(
@@ -309,16 +317,46 @@ class _NewsDetailScreenState extends ConsumerState<NewsDetailScreen> {
       body: ListView(
         padding: EdgeInsets.only(bottom: Space.s8 + MediaQuery.paddingOf(context).bottom),
         children: [
-          Stack(
-            children: [
-              NewsCover(n: n, aspect: 16 / 10, iconSize: 96),
-              Positioned(
-                left: 8,
-                top: 8 + MediaQuery.paddingOf(context).top,
-                child: IconBtn(PhosphorIcons.arrowLeft(), label: 'Back', glass: true, onPressed: () => context.canPop() ? context.pop() : context.go('/home')),
+          // Laptop (owner, 16 Nov 2026: "the image is too big, it covers the whole screen"): a framed picture at most
+          // 360 px tall with the back button above it, like a news site; phones keep the full-width cover.
+          if (MediaQuery.sizeOf(context).width >= 700)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(Space.s5, Space.s4, Space.s5, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: () => context.canPop() ? context.pop() : context.go('/home'),
+                      icon: Icon(PhosphorIcons.arrowLeft(), size: 18),
+                      label: const Text('Back'),
+                    ),
+                  ),
+                  const Gap(Space.s2),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(Radii.lg),
+                    child: NewsCover(n: n, iconSize: 80, height: (MediaQuery.sizeOf(context).width * 10 / 16).clamp(200.0, 360.0)),
+                  ),
+                ],
               ),
-            ],
-          ),
+            )
+          else
+            Stack(
+              children: [
+                NewsCover(n: n, aspect: 16 / 10, iconSize: 96),
+                Positioned(
+                  left: 8,
+                  top: 8 + MediaQuery.paddingOf(context).top,
+                  child: IconBtn(
+                    PhosphorIcons.arrowLeft(),
+                    label: 'Back',
+                    glass: true,
+                    onPressed: () => context.canPop() ? context.pop() : context.go('/home'),
+                  ),
+                ),
+              ],
+            ),
           Padding(
             padding: const EdgeInsets.fromLTRB(Space.s5, Space.s5, Space.s5, 0),
             child: Column(

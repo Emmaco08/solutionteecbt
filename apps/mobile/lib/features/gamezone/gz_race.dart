@@ -294,13 +294,11 @@ class _GzRacePlayState extends State<GzRacePlay> {
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(14, 0, 14, 20),
-                child: GridView.count(
-                  crossAxisCount: 2,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  mainAxisSpacing: 6,
-                  crossAxisSpacing: 12,
-                  childAspectRatio: 2,
+                child: GzOptionGrid(
+                  mainSpacing: 6,
+                  crossSpacing: 12,
+                  ratio: 2,
+                  maxH: 84,
                   children: [
                     for (final (i, o) in opts.indexed)
                       GameButton(
@@ -399,15 +397,7 @@ class _RaceQuestion extends StatelessWidget {
             children: [for (final (i, o) in opts.indexed) Padding(padding: const EdgeInsets.only(bottom: 2), child: opt(i, o, 54))],
           )
         else
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 2,
-            crossAxisSpacing: 10,
-            childAspectRatio: 2.4,
-            children: [for (final (i, o) in opts.indexed) opt(i, o, null)],
-          ),
+          GzOptionGrid(mainSpacing: 2, ratio: 2.4, children: [for (final (i, o) in opts.indexed) opt(i, o, null)]),
       ],
     );
   }

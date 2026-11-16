@@ -451,3 +451,32 @@ abstract final class GzFeel {
 extension GzMotion on BuildContext {
   bool get calm => reduceMotion;
 }
+
+/// Two columns of answer buttons whose height follows the width like on a phone, but never taller than [maxH]: on a
+/// laptop the phone ratio made each button about 150 px tall and squeezed the question off the screen (owner,
+/// 16 Nov 2026, D-178).
+class GzOptionGrid extends StatelessWidget {
+  const GzOptionGrid({super.key, required this.children, required this.ratio, this.mainSpacing = 4, this.crossSpacing = 10, this.maxH = 78, this.minH = 54});
+  final List<Widget> children;
+  final double ratio, mainSpacing, crossSpacing, maxH, minH;
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, box) {
+      final cell = (box.maxWidth - crossSpacing) / 2;
+      // Phones (cells under about 200 px) keep the exact phone ratio; wider stages are capped.
+      final h = cell <= 200 ? cell / ratio : (cell / ratio).clamp(minH, maxH);
+      return GridView(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        padding: EdgeInsets.zero,
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          mainAxisSpacing: mainSpacing,
+          crossAxisSpacing: crossSpacing,
+          mainAxisExtent: h,
+        ),
+        children: children,
+      );
+    },
+  );
+}

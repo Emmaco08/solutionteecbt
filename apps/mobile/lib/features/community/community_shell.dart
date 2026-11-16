@@ -95,6 +95,48 @@ class _CommunityShellState extends ConsumerState<CommunityShell> {
       _NotesTab(key: _notesKey, active: _tab == 2),
       const ProfileView(inShell: true),
     ];
+    // Laptop (owner, 16 Nov 2026: Community looked like a stretched phone): a menu on the left like social sites on a
+    // computer (Home, Explore, Notifications, Profile and a big New post button) and the feed beside it, no bottom
+    // bar and no floating button.
+    if (MediaQuery.sizeOf(context).width >= 900) {
+      Widget item(int i, IconData icon, IconData on, String label, {int badge = 0}) =>
+          _RailItem(icon: icon, on: on, label: label, selected: _tab == i, badge: badge, onTap: () => _go(i));
+      return PopScope(
+        canPop: _tab == 0,
+        onPopInvokedWithResult: (did, _) {
+          if (!did) _go(0);
+        },
+        child: Scaffold(
+          backgroundColor: c.surface,
+          body: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                width: 232,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(Space.s3, Space.s5, Space.s3, Space.s4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      item(0, PhosphorIcons.house(), PhosphorIcons.house(PhosphorIconsStyle.fill), 'Home'),
+                      item(1, PhosphorIcons.magnifyingGlass(), PhosphorIcons.magnifyingGlass(PhosphorIconsStyle.fill), 'Explore'),
+                      item(2, PhosphorIcons.bell(), PhosphorIcons.bell(PhosphorIconsStyle.fill), 'Notifications', badge: unread),
+                      item(3, PhosphorIcons.user(), PhosphorIcons.user(PhosphorIconsStyle.fill), 'Profile'),
+                      const Gap(Space.s5),
+                      Btn('New post', block: true, kind: BtnKind.accent, leading: PhosphorIcons.plus(), onPressed: () => context.push('/community/compose')),
+                    ],
+                  ),
+                ),
+              ),
+              VerticalDivider(width: 1, color: c.border),
+              Expanded(
+                child: IndexedStack(index: _tab, children: [for (var i = 0; i < pages.length; i++) _seen.contains(i) ? pages[i] : const SizedBox.shrink()]),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     return PopScope(
       canPop: _tab == 0,
       onPopInvokedWithResult: (did, _) {
@@ -1200,6 +1242,64 @@ class AllSubjectsScreen extends ConsumerWidget {
             children: [for (final s in subjects) ListRow(title: '${s['name']}', onTap: () => context.push('/community/subject/${s['id']}'))],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// One line of the laptop menu: icon, label, unread count.
+class _RailItem extends StatefulWidget {
+  const _RailItem({required this.icon, required this.on, required this.label, required this.selected, required this.onTap, this.badge = 0});
+  final IconData icon, on;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final int badge;
+  @override
+  State<_RailItem> createState() => _RailItemState();
+}
+
+class _RailItemState extends State<_RailItem> {
+  bool _hover = false;
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    final sel = widget.selected;
+    return Semantics(
+      button: true,
+      selected: sel,
+      label: widget.badge > 0 ? '${widget.label}, ${widget.badge} new' : widget.label,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hover = true),
+        onExit: (_) => setState(() => _hover = false),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: Motion.fast,
+            height: 48,
+            margin: const EdgeInsets.only(bottom: 2),
+            padding: const EdgeInsets.symmetric(horizontal: Space.s3),
+            decoration: BoxDecoration(
+              color: sel ? c.secondarySoft : (_hover ? c.surfaceSunken : Colors.transparent),
+              borderRadius: BorderRadius.circular(Radii.md),
+            ),
+            child: Row(
+              children: [
+                Icon(sel ? widget.on : widget.icon, size: 22, color: sel ? c.secondary : c.text),
+                const Gap(Space.s3),
+                Expanded(child: Text(widget.label, style: (sel ? context.ty.label.bold : context.ty.label).col(sel ? c.onSecondarySoft : c.text))),
+                if (widget.badge > 0)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    decoration: BoxDecoration(color: c.error, borderRadius: BorderRadius.circular(99)),
+                    child: Text(widget.badge > 99 ? '99+' : '${widget.badge}', style: context.ty.cap.bold.col(Colors.white)),
+                  ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

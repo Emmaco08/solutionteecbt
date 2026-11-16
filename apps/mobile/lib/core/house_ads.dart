@@ -10,6 +10,7 @@ import 'package:video_player/video_player.dart';
 import '../widgets/r2_image.dart';
 import 'ads.dart';
 import 'providers.dart';
+import '../desktop/desktop_exit.dart';
 
 /// Our own ads (house ads / brand campaigns, D-105). A brand campaign takes a share of the ad slots the ads level
 /// already has (it never adds slots): banners, cards, breaks, and video ads before / in the middle of / after our own
@@ -301,7 +302,7 @@ class _HouseFullState extends ConsumerState<_HouseFull> {
   Future<void> _startVideo() async {
     try {
       final url = await ref.read(apiProvider).signImage(widget.fileKey);
-      final v = VideoPlayerController.networkUrl(Uri.parse(url));
+      final v = LiveVideos.track(VideoPlayerController.networkUrl(Uri.parse(url)));
       await v.initialize().timeout(const Duration(seconds: 20));
       if (!mounted) {
         v.dispose();
@@ -332,6 +333,7 @@ class _HouseFullState extends ConsumerState<_HouseFull> {
   @override
   void dispose() {
     _t?.cancel();
+    LiveVideos.forget(_v);
     _v?.dispose();
     super.dispose();
   }

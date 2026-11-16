@@ -419,7 +419,14 @@ jobs:
             $bmp.Save("$env:RUNNER_TEMP\shots\app-running.png")
           } catch { Write-Host "No screenshot: $_" }
           Write-Host "Still running after 30 s (memory $([int]($p.WorkingSet64 / 1MB)) MB)"
-          Stop-Process -Id $p.Id -Force
+          # Close it the way a student does (the window's X), not a forced kill: it must end by itself with exit code 0.
+          # A crash on closing (owner, 16 Nov 2026: "The instruction at ... referenced memory") shows Windows' error box
+          # and a non-zero code such as -1073741819 (access violation) instead (D-177).
+          $null = $p.CloseMainWindow()
+          if (-not $p.WaitForExit(30000)) { Stop-Process -Id $p.Id -Force; throw "The app did not close within 30 s of pressing X" }
+          Write-Host "Closed with exit code $($p.ExitCode)"
+          if ($p.ExitCode -ne 0) { throw "The app crashed while closing (exit code $($p.ExitCode))" }
+          if (Get-Process WerFault -ErrorAction SilentlyContinue) { throw "Windows Error Reporting opened while closing the app" }
 
       - name: Windows check (every plugin inside the real app)
         timeout-minutes: 25
@@ -465,7 +472,9 @@ jobs:
           $p = Start-Process -FilePath "$dir\SolutionTeeCBT.exe" -PassThru
           Start-Sleep -Seconds 20
           if ($p.HasExited) { throw "The installed app closed by itself (exit code $($p.ExitCode))" }
-          Stop-Process -Id $p.Id -Force
+          $null = $p.CloseMainWindow()
+          if (-not $p.WaitForExit(30000)) { Stop-Process -Id $p.Id -Force; throw "The installed app did not close within 30 s of pressing X" }
+          if ($p.ExitCode -ne 0) { throw "The installed app crashed while closing (exit code $($p.ExitCode))" }
           Write-Host "Installed and opened fine: $($setup.Name) ($([int]($setup.Length / 1MB)) MB)"
           Copy-Item $setup.FullName "$env:RUNNER_TEMP\SolutionTee-CBT-Setup.exe"
 

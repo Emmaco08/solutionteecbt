@@ -215,6 +215,7 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
     WidgetsBinding.instance.removeObserver(this);
     _tick?.cancel();
     _secure?.cancel();
+    closeCalculator(); // the floating Windows calculator goes with the exam
     SecureScreen.off();
     AdsGate.leave();
     super.dispose();
@@ -1131,7 +1132,7 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
                 key('A – E', 'Choose an answer'),
                 key('Left / Right', 'Previous / next question'),
                 key('F', 'Flag or unflag'),
-                key('C', 'Calculator'),
+                key('Shift+C', 'Calculator'),
                 key('Ctrl+Enter', 'Submit'),
               ],
             ),
@@ -1141,7 +1142,7 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
     );
   }
 
-  /// Desktop keys while the exam is open: letters choose, arrows move, F flags, C calculator, Ctrl+Enter submits.
+  /// Desktop keys while the exam is open: letters choose, arrows move, F flags, Shift+C calculator, Ctrl+Enter submits.
   Widget _desktopKeys(_Q q, Widget child) {
     if (!isDesktop) return child;
     final keys = q.options.keys.toList()..sort();
@@ -1156,9 +1157,9 @@ class _CbtScreenState extends ConsumerState<CbtScreen> with WidgetsBindingObserv
       bindings: {
         for (final e in letters.entries)
           if (keys.contains(e.value) && e.value != 'C') SingleActivator(e.key): () => _choose(e.value),
-        // C is the calculator unless the question has an option C (then Shift+C opens the calculator).
+        // C chooses option C; Shift+C opens the calculator (one rule for every question, D-178).
         if (keys.contains('C')) const SingleActivator(LogicalKeyboardKey.keyC): () => _choose('C'),
-        SingleActivator(LogicalKeyboardKey.keyC, shift: keys.contains('C')): () => showCalculator(context),
+        const SingleActivator(LogicalKeyboardKey.keyC, shift: true): () => showCalculator(context),
         const SingleActivator(LogicalKeyboardKey.arrowRight): () => _go(_i + 1),
         const SingleActivator(LogicalKeyboardKey.arrowLeft): () => _go(_i - 1),
         const SingleActivator(LogicalKeyboardKey.keyF): _toggleFlag,

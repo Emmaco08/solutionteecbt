@@ -404,21 +404,29 @@ class _NoteImageState extends ConsumerState<NoteImage> {
           label: const Text('Could not load the picture. Tap to retry'),
         ),
       ),
-      data: (url) => ClipRRect(
-        borderRadius: BorderRadius.circular(Radii.md),
-        child: InteractiveViewer(
-          maxScale: 4,
-          child: Image.network(
-            url,
-            width: double.infinity,
-            fit: BoxFit.fitWidth,
-            semanticLabel: widget.alt.isEmpty ? 'Picture' : widget.alt,
-            loadingBuilder: (_, child, p) => p == null ? child : box(const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2.5))),
-            errorBuilder: (_, _, _) => box(
-              TextButton.icon(
-                onPressed: () => ref.invalidate(signedImageProvider(widget.imageKey)),
-                icon: Icon(PhosphorIcons.arrowClockwise()),
-                label: const Text('Could not load the picture. Tap to retry'),
+      // Laptops (owner, 16 Nov 2026: "the images in the lesson notes are too big"): at most 420 px tall, centred,
+      // whole picture shown; phones keep the full width.
+      data: (url) => Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).width >= 700 ? 420 : double.infinity),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(Radii.md),
+            child: InteractiveViewer(
+              maxScale: 4,
+              child: Image.network(
+                url,
+                width: MediaQuery.sizeOf(context).width >= 700 ? null : double.infinity,
+                fit: MediaQuery.sizeOf(context).width >= 700 ? BoxFit.contain : BoxFit.fitWidth,
+                semanticLabel: widget.alt.isEmpty ? 'Picture' : widget.alt,
+                loadingBuilder: (_, child, p) =>
+                    p == null ? child : box(const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2.5))),
+                errorBuilder: (_, _, _) => box(
+                  TextButton.icon(
+                    onPressed: () => ref.invalidate(signedImageProvider(widget.imageKey)),
+                    icon: Icon(PhosphorIcons.arrowClockwise()),
+                    label: const Text('Could not load the picture. Tap to retry'),
+                  ),
+                ),
               ),
             ),
           ),

@@ -647,4 +647,52 @@ void main() {
     expect(top(.5), closeTo((top(0) + top(1)) / 2, .001));
     expect(top(2), top(1));
   });
+  // Laptop (owner, 16 Nov 2026: "I can't see the questions in the game"): a match on the 760 px stage of a 1366 x 768
+  // and a 1280 x 720 window, with a short and a long question.
+  for (final (w, h) in [(1366.0, 768.0), (1280.0, 720.0)]) {
+    for (final long in [false, true]) {
+      testWidgets('laptop duel ${w.toInt()} ${long ? 'long' : 'short'}', (t) async {
+        final item = long
+            ? {
+                ..._q,
+                'body': 'In the passage, the writer suggests that the main reason the villagers moved to the city was because of the long dry season, which destroyed their farms. Which of the following best describes this reason?',
+              }
+            : {
+                ..._q,
+                'body': "Choose the word opposite in meaning to 'love'.",
+                'options': [
+                  {'key': 'A', 'text': 'like'},
+                  {'key': 'B', 'text': 'adore'},
+                  {'key': 'C', 'text': 'care'},
+                  {'key': 'D', 'text': 'hate'},
+                ],
+              };
+        final s = _match('duel', duelPlayers, round: {'idx': 2, 'open_at': _now - 4000, 'close_at': _now + 11000, 'item': item, 'mine': null});
+        t.view.physicalSize = Size(w, h);
+        t.view.devicePixelRatio = 1;
+        await t.pumpWidget(
+          MaterialApp(
+            debugShowCheckedModeBanner: false,
+            theme: buildTheme(Brightness.dark),
+            home: Container(
+              color: const Color(0xFF15124A),
+              alignment: Alignment.center,
+              child: SizedBox(
+                width: 760,
+                child: Scaffold(
+                  body: GzSyncPlay(m: _m(s), onLeave: () {}),
+                ),
+              ),
+            ),
+          ),
+        );
+        for (var i = 0; i < 16; i++) {
+          await t.pump(const Duration(milliseconds: 100));
+        }
+        await expectLater(find.byType(MaterialApp), matchesGoldenFile('shots/laptop/game_duel_${w.toInt()}_${long ? 'long' : 'short'}.png'));
+        await t.pumpWidget(const SizedBox());
+        await t.pump(const Duration(seconds: 3));
+      });
+    }
+  }
 }

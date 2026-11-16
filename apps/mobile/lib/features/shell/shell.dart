@@ -194,7 +194,7 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
     if (!mounted || !SecureScreen.protecting) return; // screenshots allowed right now (admin switch, D-080)
     String path = '';
     try {
-      path = GoRouter.of(context).routerDelegate.currentConfiguration.uri.path;
+      path = GoRouter.of(context).state.uri.path;
     } catch (_) {}
     if (DeviceEvents.ownMessage(path)) return;
     toast(context, 'Screenshots are turned off here to protect our questions.', icon: PhosphorIcons.cameraSlash(PhosphorIconsStyle.fill));

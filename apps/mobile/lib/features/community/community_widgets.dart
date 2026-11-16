@@ -219,7 +219,10 @@ class _ImageGridState extends ConsumerState<ImageGrid> {
     }
     const g = 3.0;
     final Widget grid = switch (k.length) {
-      1 => AspectRatio(aspectRatio: 16 / 11, child: _tile(0)),
+      // One picture: 16:11 like a phone, but never taller than 380 px (owner, 16 Nov 2026: pictures too big on laptops).
+      1 => LayoutBuilder(
+        builder: (context, box) => SizedBox(height: (box.maxWidth * 11 / 16).clamp(120.0, 380.0), width: double.infinity, child: _tile(0)),
+      ),
       2 => SizedBox(
         height: widget.height,
         child: Row(
@@ -1325,6 +1328,10 @@ class MentionSuggestions extends StatefulWidget {
   State<MentionSuggestions> createState() => _MentionSuggestionsState();
 }
 
+/// Tests: answers for a few letters without the server.
+@visibleForTesting
+void seedMentionSuggestions(String q, List<Json> rows) => _MentionSuggestionsState._cache[q] = rows;
+
 class _MentionSuggestionsState extends State<MentionSuggestions> {
   static final _cache = <String, List<Json>>{};
   String? _q; // the letters after "@" at the cursor, or null
@@ -1399,48 +1406,54 @@ class _MentionSuggestionsState extends State<MentionSuggestions> {
       alignment: Alignment.bottomCenter,
       child: !show
           ? const SizedBox(width: double.infinity)
-          : Container(
-              width: double.infinity,
-              constraints: BoxConstraints(maxHeight: 54.0 * widget.maxRows + 8),
-              margin: const EdgeInsets.symmetric(vertical: 6),
-              decoration: BoxDecoration(
-                color: c.surface,
-                borderRadius: BorderRadius.circular(Radii.md),
-                border: Border.all(color: c.borderStrong),
-                boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 12, offset: Offset(0, 4))],
-              ),
-              child: ListView(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                shrinkWrap: true,
-                children: [
-                  for (final r in _rows)
-                    InkWell(
-                      onTap: () => _pick(r),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        child: Row(
-                          children: [
-                            CAvatar(name: '${r['name']}', photo: r['avatar_path'] as String?, size: 36, brand: r['badge'] == 'official'),
-                            const Gap(10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Flexible(child: FitText('${r['name']}', style: context.ty.sm.bold)),
-                                      if (r['badge'] != null) ...[const Gap(4), CBadge('${r['badge']}', size: 14)],
-                                    ],
-                                  ),
-                                  Text('@${r['handle']}', style: context.ty.cap.col(c.textMuted), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                ],
+          // Part of the text box for taps (owner, 16 Nov 2026: suggestions could not be clicked on Windows): with a
+          // mouse, pressing outside a text box takes the focus away, which hid this list before the click ended.
+          : TextFieldTapRegion(
+              child: Container(
+                width: double.infinity,
+                constraints: BoxConstraints(maxHeight: 54.0 * widget.maxRows + 8),
+                margin: const EdgeInsets.symmetric(vertical: 6),
+                decoration: BoxDecoration(
+                  color: c.surface,
+                  borderRadius: BorderRadius.circular(Radii.md),
+                  border: Border.all(color: c.borderStrong),
+                  boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 12, offset: Offset(0, 4))],
+                ),
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  shrinkWrap: true,
+                  children: [
+                    for (final r in _rows)
+                      InkWell(
+                        mouseCursor: SystemMouseCursors.click,
+                        canRequestFocus: false, // the text box keeps the cursor
+                        onTap: () => _pick(r),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          child: Row(
+                            children: [
+                              CAvatar(name: '${r['name']}', photo: r['avatar_path'] as String?, size: 36, brand: r['badge'] == 'official'),
+                              const Gap(10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Flexible(child: FitText('${r['name']}', style: context.ty.sm.bold)),
+                                        if (r['badge'] != null) ...[const Gap(4), CBadge('${r['badge']}', size: 14)],
+                                      ],
+                                    ),
+                                    Text('@${r['handle']}', style: context.ty.cap.col(c.textMuted), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    ).animate().fadeIn(duration: Motion.fast),
-                ],
+                      ).animate().fadeIn(duration: Motion.fast),
+                  ],
+                ),
               ),
             ),
     );

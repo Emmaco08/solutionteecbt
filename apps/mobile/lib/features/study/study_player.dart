@@ -13,6 +13,7 @@ import '../../theme/theme.dart';
 import '../../theme/tokens.g.dart';
 import '../../ui/kit.dart';
 import '../../widgets/phosphor.g.dart';
+import '../../desktop/desktop_exit.dart';
 
 /// Plays one study video (D-057). Owns the controller so the normal and fullscreen views share it.
 /// - Quality: 360p on mobile data or with data saver, 720p (when uploaded) on Wi-Fi. Drops to 360p by itself
@@ -64,6 +65,7 @@ class StudyPlayer extends ChangeNotifier {
       final c = file != null
           ? VideoPlayerController.file(file, videoPlayerOptions: VideoPlayerOptions(mixWithOthers: false))
           : VideoPlayerController.networkUrl(Uri.parse(await repo.fileUrl(itemId, q)), videoPlayerOptions: VideoPlayerOptions(mixWithOthers: false));
+      LiveVideos.track(c);
       await c.initialize().timeout(const Duration(seconds: 40));
       if (disposed) {
         await c.dispose();
@@ -139,6 +141,7 @@ class StudyPlayer extends ChangeNotifier {
   void dispose() {
     disposed = true;
     ctl?.removeListener(_watch);
+    LiveVideos.forget(ctl);
     ctl?.dispose();
     message.dispose();
     WakelockPlus.disable();

@@ -332,8 +332,9 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
           : ListView(
               padding: EdgeInsets.zero,
               children: [
-                AspectRatio(
-                  aspectRatio: 16 / 9,
+                // Laptops (owner, 16 Nov 2026: "the videos are too big"): the player is at most 60% of the window
+                // tall, centred on a dark band, so the title and notes below stay in view.
+                _VideoBox(
                   child: _player == null
                       ? Stack(
                           fit: StackFit.expand,
@@ -408,6 +409,24 @@ class _QuestionCard extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// The 16:9 video area: full width on phones; on wide windows no taller than 60% of the window (max 560 px), centred.
+class _VideoBox extends StatelessWidget {
+  const _VideoBox({required this.child});
+  final Widget child;
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    if (size.width < 700) return AspectRatio(aspectRatio: 16 / 9, child: child);
+    final h = (size.height * .6).clamp(220.0, 560.0);
+    final w = (h * 16 / 9).clamp(0.0, size.width);
+    return Container(
+      color: const Color(0xFF060B18),
+      alignment: Alignment.center,
+      child: SizedBox(width: w, height: w * 9 / 16, child: child),
     );
   }
 }

@@ -31,7 +31,11 @@ Future<void> _shot(WidgetTester t, Widget w, String name, {Brightness mode = Bri
   await t.pumpWidget(
     ProviderScope(
       overrides: [
-        appSettingsProvider.overrideWith((ref) async => {'whatsapp_channel': {'enabled': true, 'url': ch.url}}),
+        appSettingsProvider.overrideWith(
+          (ref) async => {
+            'whatsapp_channel': {'enabled': true, 'url': ch.url},
+          },
+        ),
         waJoinedProvider.overrideWith((ref) async => joined),
       ],
       child: MaterialApp(debugShowCheckedModeBanner: false, theme: buildTheme(mode), home: w),
@@ -61,7 +65,29 @@ void main() {
   testWidgets('card joined', (t) => _shot(t, _page(null), 'card_phone_joined', joined: true));
   testWidgets('card laptop', (t) => _shot(t, _page(null, pad: 60), 'card_laptop', size: const Size(1100, 700)));
   for (final m in Brightness.values) {
-    testWidgets('popup ${m.name}', (t) => _shot(t, const Scaffold(backgroundColor: Colors.black54, body: WhatsAppPopup(ch: ch)), 'popup_${m.name}', mode: m));
+    testWidgets(
+      'popup ${m.name}',
+      (t) => _shot(
+        t,
+        const Scaffold(
+          backgroundColor: Colors.black54,
+          body: WhatsAppPopup(ch: ch),
+        ),
+        'popup_${m.name}',
+        mode: m,
+      ),
+    );
   }
-  testWidgets('popup laptop', (t) => _shot(t, const Scaffold(backgroundColor: Colors.black54, body: WhatsAppPopup(ch: ch)), 'popup_laptop', size: const Size(1366, 768)));
+  testWidgets(
+    'popup laptop',
+    (t) => _shot(
+      t,
+      const Scaffold(
+        backgroundColor: Colors.black54,
+        body: WhatsAppPopup(ch: ch),
+      ),
+      'popup_laptop',
+      size: const Size(1366, 768),
+    ),
+  );
 }

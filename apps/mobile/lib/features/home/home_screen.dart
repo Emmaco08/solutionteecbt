@@ -286,18 +286,42 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             SectTitle('News', action: 'See all', onAction: () => context.push('/news')),
-            SizedBox(
-              height: 272,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                clipBehavior: Clip.none,
-                itemCount: news.length.clamp(0, 4),
-                separatorBuilder: (_, _) => const Gap(Space.s3),
-                itemBuilder: (_, i) => SizedBox(
-                  width: wideLayout(context) ? 330 : MediaQuery.sizeOf(context).width * .82 - Space.s5,
-                  child: NewsTile(n: news[i]),
-                ),
-              ),
+            // The card height follows the card width (picture 2:1 plus the words), so nothing is cut on any screen
+            // (the fixed 272 px cut the date line on laptops, owner 16 Nov 2026). Laptops: the newest stories side by
+            // side; phones: a sideways row.
+            LayoutBuilder(
+              builder: (context, box) {
+                if (wideLayout(context)) {
+                  final cols = (box.maxWidth / 300).floor().clamp(1, 3);
+                  final w = (box.maxWidth - Space.s4 * (cols - 1)) / cols;
+                  return SizedBox(
+                    height: w / 2 + 140,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (var i = 0; i < cols; i++) ...[
+                          if (i > 0) const Gap(Space.s4),
+                          Expanded(child: i < news.length ? NewsTile(n: news[i]) : const SizedBox.shrink()),
+                        ],
+                      ],
+                    ),
+                  );
+                }
+                final w = MediaQuery.sizeOf(context).width * .82 - Space.s5;
+                return SizedBox(
+                  height: w / 2 + 140,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    clipBehavior: Clip.none,
+                    itemCount: news.length.clamp(0, 4),
+                    separatorBuilder: (_, _) => const Gap(Space.s3),
+                    itemBuilder: (_, i) => SizedBox(
+                      width: w,
+                      child: NewsTile(n: news[i]),
+                    ),
+                  ),
+                );
+              },
             ),
           ],
         ),
