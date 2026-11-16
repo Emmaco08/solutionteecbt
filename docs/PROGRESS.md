@@ -146,5 +146,6 @@ Plan: `docs/plans/phase-4.md`.
 ## Phase 6 — Legal, release, videos  (approval: `LAUNCH APPROVED`)
 - [ ] Not started
 - [x] 16 Nov 2026: WhatsApp channel (D-174), leaderboards for custom exams (D-175), rating/pop-up opens (D-176), Windows clean close (D-177), Windows layout overhaul checked at 1280×720, 1366×768, 1920×1080 (D-178).
+- [x] 16 Nov 2026: social ads pack, 3 ads × 9:16 and 4:5, waiting for the owner's review (D-182).
 - [x] 16 Nov 2026: app updates rebuilt for the website app and Windows (D-181).
 - [x] 16 Nov 2026 (later): WhatsApp card plain, option A (D-180); Windows close crash 0xC000041D fixed in the runner (D-177 follow-up).
