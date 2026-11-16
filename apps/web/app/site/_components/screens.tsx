@@ -14,11 +14,16 @@ const NAVY = "#0B1F44", BLUE = "#2563B3", GOLD = "#F2B233", BG = "#F4F6FA", BORD
 function useScript(play: boolean, durations: number[]) {
   const still = useReducedMotion();
   const [i, setI] = useState(0);
+  // Keyed by the values, not the array: screens pass a new array each render and a clock re-renders them every
+  // second, which restarted the timer so steps over 1 s never ended (16 Nov 2026).
+  const key = durations.join(",");
+  const wait = durations[i % durations.length];
   useEffect(() => {
     if (!play || still) return;
-    const t = setTimeout(() => setI((x) => (x + 1) % durations.length), durations[i % durations.length]);
+    const n = key.split(",").length;
+    const t = setTimeout(() => setI((x) => (x + 1) % n), wait);
     return () => clearTimeout(t);
-  }, [play, still, i, durations]);
+  }, [play, still, i, key, wait]);
   return still ? durations.length - 1 : i;
 }
 

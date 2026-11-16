@@ -4,7 +4,7 @@ import { AnimatePresence, motion, useInView, useReducedMotion, useScroll, useTra
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight, Books, CaretDown, Check, CloudArrowDown, Crown, DeviceMobile, DownloadSimple, Exam, GooglePlayLogo,
-  Lightbulb, ShieldCheck, Sparkle, WifiSlash,
+  Lightbulb, ShieldCheck, Sparkle, WifiSlash, WindowsLogo,
 } from "@phosphor-icons/react";
 import { CountUp, Reveal, ease } from "./motion";
 
@@ -261,8 +261,10 @@ export function Download({ playUrl, title, text }: { playUrl: string; title: str
                 <span className="inline-flex h-14 items-center justify-center gap-2.5 rounded-2xl border border-white/25 px-6 font-bold text-white/80"><GooglePlayLogo size={24} weight="fill" /> Google Play: coming soon</span>
               )}
               <a href="/download/apk" className="inline-flex h-14 items-center justify-center gap-2.5 rounded-2xl bg-[#F2B233] px-6 font-bold text-[#0B1F44] transition-transform hover:-translate-y-0.5"><DownloadSimple size={22} weight="bold" /> Download the APK</a>
+              <a href="/download/windows" className="inline-flex h-14 items-center justify-center gap-2.5 rounded-2xl border border-white/25 bg-white/10 px-6 font-bold text-white transition-transform hover:-translate-y-0.5 hover:bg-white/15"><WindowsLogo size={22} weight="fill" /> Download for Windows</a>
             </div>
             <p className="relative mt-4 text-xs text-[#8FA2C4]">The APK is the same app with Paystack inside (card, transfer, USSD, OPay). If Android asks, allow “Install unknown apps” for your browser.</p>
+            <p className="relative mt-2 text-xs text-[#8FA2C4]">Windows app: for Windows 10 or 11 (64-bit), with the same account as your phone. Open the downloaded file to install. If Windows shows “Windows protected your PC”, click <b className="text-white/90">More info</b>, then <b className="text-white/90">Run anyway</b>.</p>
           </div>
         </Reveal>
       </div>
@@ -324,6 +326,7 @@ export function SiteFooter({ tagline = "Learn. Think. Solve." }: { tagline?: str
             <a href="#pricing" className="hover:text-white">Pricing</a>
             <Link href="/pay" className="hover:text-white">Pay for Premium</Link>
             <a href="/download/apk" className="hover:text-white">Download APK</a>
+            <a href="/download/windows" className="hover:text-white">Download for Windows</a>
           </div>
           <div className="flex flex-col gap-2">
             <b className="text-white">Help</b>

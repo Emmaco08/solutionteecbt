@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { motion, useInView, useReducedMotion, useScroll, useTransform } from "motion/react";
 import { useRef } from "react";
-import { ArrowRight, CheckCircle, DownloadSimple, Fire, GooglePlayLogo, Sparkle, TrendUp } from "@phosphor-icons/react";
+import { ArrowRight, CheckCircle, DownloadSimple, Fire, GooglePlayLogo, Sparkle, TrendUp, WindowsLogo } from "@phosphor-icons/react";
 import { ease, useDesktopMotion } from "./motion";
 import { Phone3D } from "./phone";
 import { CbtScreen, ResultScreen } from "./screens";
@@ -58,7 +58,7 @@ export function Hero({ badge, title, highlight, subtitle, playUrl }: { badge: st
             {subtitle}
           </motion.p>
           <motion.div initial={still ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.65, ease }}
-            className="mt-8 flex flex-col gap-3 sm:flex-row">
+            className="mt-8 flex flex-col flex-wrap gap-3 sm:flex-row">
             {playUrl ? (
               <a href={playUrl} className="inline-flex h-14 items-center justify-center gap-2.5 whitespace-nowrap rounded-2xl bg-white px-5 font-bold text-[#0B1F44] transition-transform hover:-translate-y-0.5">
                 <GooglePlayLogo size={24} weight="fill" /> Get it on Google Play
@@ -71,6 +71,9 @@ export function Hero({ badge, title, highlight, subtitle, playUrl }: { badge: st
             <a href="/download/apk" className="group relative inline-flex h-14 items-center justify-center gap-2.5 overflow-hidden whitespace-nowrap rounded-2xl bg-[#F2B233] px-5 font-bold text-[#0B1F44] transition-transform hover:-translate-y-0.5">
               <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/50 to-transparent transition-transform duration-700 group-hover:translate-x-full" aria-hidden />
               <DownloadSimple size={22} weight="bold" /> Download the app (APK)
+            </a>
+            <a href="/download/windows" className="inline-flex h-14 items-center justify-center gap-2.5 whitespace-nowrap rounded-2xl border border-white/25 bg-white/10 px-5 font-bold text-white transition-transform hover:-translate-y-0.5 hover:bg-white/15">
+              <WindowsLogo size={22} weight="fill" /> Download for Windows
             </a>
           </motion.div>
           <motion.p initial={still ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }} className="mt-5 text-sm text-[#8FA2C4]">
