@@ -190,7 +190,8 @@ class MainActivity : FlutterFragmentActivity() {
                         val a = call.arguments as Map<*, *>
                         val name = a["name"] as String
                         val dir = getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS)
-                        java.io.File(dir, name).let { if (it.exists()) it.delete() }
+                        // Only this update's file stays (older updates are about 28 MB each, D-181).
+                        dir?.listFiles()?.forEach { if (it.name.startsWith("solutiontee-")) it.delete() }
                         val req = android.app.DownloadManager.Request(Uri.parse(a["url"] as String))
                             .setTitle(a["title"] as? String ?: "SolutionTee CBT update")
                             .setDescription("Downloading the new version")
@@ -217,7 +218,9 @@ class MainActivity : FlutterFragmentActivity() {
                                 val got = c.getLong(c.getColumnIndexOrThrow(android.app.DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
                                 val total = c.getLong(c.getColumnIndexOrThrow(android.app.DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
                                 val uri = c.getString(c.getColumnIndexOrThrow(android.app.DownloadManager.COLUMN_LOCAL_URI))
-                                result.success(mapOf("status" to status, "got" to got, "total" to total, "path" to (uri?.let { Uri.parse(it).path } ?: "")))
+                                // Why it paused (2 = no internet) or failed (1006 = not enough space), D-181.
+                                val reason = c.getInt(c.getColumnIndexOrThrow(android.app.DownloadManager.COLUMN_REASON))
+                                result.success(mapOf("status" to status, "got" to got, "total" to total, "reason" to reason, "path" to (uri?.let { Uri.parse(it).path } ?: "")))
                             }
                         }
                     } catch (e: Exception) {
@@ -228,6 +231,16 @@ class MainActivity : FlutterFragmentActivity() {
                     try {
                         val dm = getSystemService(Context.DOWNLOAD_SERVICE) as android.app.DownloadManager
                         dm.remove((call.arguments as Number).toLong())
+                    } catch (e: Exception) {
+                    }
+                    result.success(true)
+                }
+                // The app is up to date: downloaded update files are deleted (D-181).
+                "cleanup" -> {
+                    try {
+                        getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS)?.listFiles()?.forEach {
+                            if (it.name.startsWith("solutiontee-")) it.delete()
+                        }
                     } catch (e: Exception) {
                     }
                     result.success(true)

@@ -2070,3 +2070,26 @@ Owner chose option A: the app card (Home, News) shows only the title, the words 
 "Free · WhatsApp" badge. Students who already joined keep the small "You are in" badge. The website's channel band
 matches (no pills, no badge). The option code (WaPerks) was removed.
 
+## D-181 — App updates rebuilt for the website app and Windows (16 Nov 2026)
+Owner: the update screen of the website APK and the Windows app should look better and work better. Problems found:
+the screen and the small card ran two separate downloads; a Windows download that broke started again from 0%; a
+pause for no internet showed as an error and every error said "download stopped"; after "Allow from this source" the
+student had to come back and tap again; Windows ended with exit(0) (the same unclean exit as the close crash, D-177);
+old update files (about 28 MB each) were never deleted; the screen was a plain white page.
+Now (lib/core/updater.dart, lib/core/update_ui.dart):
+- One UpdateController for the whole app: the screen, the pop-up and the small card show the same download. An
+  optional update can carry on in the background ("Keep using the app"); the card then shows its progress and
+  "Update downloaded · Install". The installer only opens on its own while the student is on the update screen,
+  never in the middle of a test.
+- Android: the download manager reports why it paused (waiting for internet is shown as waiting) or failed (no space);
+  back from "Allow from this source", the install carries on by itself. Cancel download removes it. When the app is
+  up to date, old update files are deleted (native "cleanup").
+- Windows: the installer downloads into a ".part" file and continues with an HTTP range request; the website link is
+  resolved again each try (its signed link lasts 10 minutes). The app ends through the runner ("quit" on the
+  solutiontee/desktop channel, TerminateProcess) after starting the installer.
+- The screen: the navy stage of the maintenance and Google Play screens, a ring that fills with the percentage,
+  "MB of MB · speed · time left", the installed and new versions with their dates, the admin's "What's new", three steps
+  (Download, Install, Open) and one clear button per moment; two columns on laptops. Me → App update uses the same
+  screen, or "You are up to date". Tests: test/updater_test.dart (controller, resume, screens); screenshots:
+  test_shots/update_shots_test.dart.
+

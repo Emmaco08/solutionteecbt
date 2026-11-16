@@ -237,8 +237,8 @@ abstract final class _Snooze {
 // ---------------------------------------------------------------------------------------------------- pieces
 
 /// The deep navy-to-blue stage behind the full screens, with two soft glows that drift slowly.
-class _Stage extends StatelessWidget {
-  const _Stage({required this.child});
+class GateStage extends StatelessWidget {
+  const GateStage({super.key, required this.child});
   final Widget child;
   @override
   Widget build(BuildContext context) {
@@ -274,8 +274,8 @@ class _Stage extends StatelessWidget {
 }
 
 /// A round badge with a soft halo that breathes.
-class _Halo extends StatelessWidget {
-  const _Halo({required this.child});
+class GateHalo extends StatelessWidget {
+  const GateHalo({super.key, required this.child});
   final Widget child;
   @override
   Widget build(BuildContext context) {
@@ -355,14 +355,14 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> with SingleTicker
   Widget build(BuildContext context) {
     final msg = (widget.message ?? '').trim();
     final until = widget.until;
-    return _Stage(
+    return GateStage(
       child: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(Space.s6),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _Halo(
+              GateHalo(
                 child: AnimatedBuilder(
                   animation: _spin,
                   builder: (_, _) => SizedBox(
@@ -440,14 +440,14 @@ class PlayUpdateScreen extends StatelessWidget {
     final rm = context.reduceMotion;
     Widget icon = Icon(PhosphorIcons.arrowCircleUp(PhosphorIconsStyle.fill), size: 64, color: Palette.gold400);
     if (!rm) icon = icon.animate(onPlay: (a) => a.repeat(reverse: true)).moveY(begin: 4, end: -6, duration: 1200.ms, curve: Curves.easeInOut);
-    return _Stage(
+    return GateStage(
       child: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(Space.s6),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _Halo(child: icon).animate().fadeIn(duration: 400.ms).scaleXY(begin: .9, end: 1, curve: Curves.easeOutBack),
+              GateHalo(child: icon).animate().fadeIn(duration: 400.ms).scaleXY(begin: .9, end: 1, curve: Curves.easeOutBack),
               const Gap(Space.s5),
               Text('Time to update', textAlign: TextAlign.center, style: context.ty.h1.col(Colors.white)),
               const Gap(Space.s3),
@@ -456,7 +456,7 @@ class PlayUpdateScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: context.ty.body.col(const Color(0xFFC9D6EA)),
               ),
-              if (notes.trim().isNotEmpty) ...[const Gap(Space.s4), _Notes(notes)],
+              if (notes.trim().isNotEmpty) ...[const Gap(Space.s4), WhatsNew(notes)],
               const Gap(Space.s6),
               _PlayButton(onTap: onUpdate ?? openPlayStore),
               const Gap(Space.s3),
@@ -470,8 +470,8 @@ class PlayUpdateScreen extends StatelessWidget {
 }
 
 /// "What's new" lines from the admin, each with a tick.
-class _Notes extends StatelessWidget {
-  const _Notes(this.text, {this.dark = true});
+class WhatsNew extends StatelessWidget {
+  const WhatsNew(this.text, {super.key, this.dark = true});
   final String text;
   final bool dark;
   @override
@@ -618,7 +618,7 @@ class UpdatePopup extends ConsumerWidget {
             Text('Dear student,', style: context.ty.body.col(c.text)),
             const SizedBox(height: 10),
             Text('This is an important update. Update now to get the newest features, faster tests and a smoother experience.', style: body),
-            if (notes.trim().isNotEmpty) ...[const SizedBox(height: Space.s3), _Notes(notes, dark: false)],
+            if (notes.trim().isNotEmpty) ...[const SizedBox(height: Space.s3), WhatsNew(notes, dark: false)],
             const SizedBox(height: 10),
             Text(
               fromWebsite

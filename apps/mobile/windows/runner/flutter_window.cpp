@@ -82,6 +82,12 @@ bool FlutterWindow::OnCreate() {
             ::FlashWindowEx(&flash);
           }
           result->Success(flutter::EncodableValue(behind));
+        } else if (call.method_name() == "quit") {
+          // Updating (lib/core/updater.dart, D-181): the installer is running and replaces the app's files. End the
+          // process the same clean way as closing with X (no plugin shutdown, see OnDestroy, D-177).
+          result->Success();
+          RemoveTray();
+          ::TerminateProcess(::GetCurrentProcess(), EXIT_SUCCESS);
         } else {
           result->NotImplemented();
         }
