@@ -273,8 +273,12 @@ class _JoinButton extends StatelessWidget {
 // ---------------------------------------------------------------------------------------------------- card
 
 /// "Join our WhatsApp channel" at the bottom of Home and News. Nothing when the admin turned it off or set no link.
+/// How the three perks show under the words (owner choosing, 16 Nov 2026): as pills, not at all, or on one plain line.
+enum WaPerks { pills, none, line }
+
 class WhatsAppChannelCard extends ConsumerWidget {
-  const WhatsAppChannelCard({super.key});
+  const WhatsAppChannelCard({super.key, this.perks = WaPerks.pills});
+  final WaPerks perks;
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ch = ref.watch(waChannelProvider);
@@ -311,30 +315,57 @@ class WhatsAppChannelCard extends ConsumerWidget {
               joined ? 'New posts show in WhatsApp under Updates. Tap to open the channel.' : ch.text,
               style: context.ty.sm.col(Colors.white.withValues(alpha: .82)),
             ),
-            const Gap(Space.s3),
-            Wrap(
-              spacing: Space.s2,
-              runSpacing: Space.s2,
-              children: [
-                for (final p in _perks)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: .1),
-                      borderRadius: BorderRadius.circular(99),
-                      border: Border.all(color: Colors.white.withValues(alpha: .14)),
+            if (perks == WaPerks.line) ...[
+              const Gap(Space.s3),
+              // One straight line, shrinking to fit instead of wrapping.
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Row(
+                  children: [
+                    for (final (i, p) in _perks.indexed) ...[
+                      if (i > 0)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          child: Container(
+                            width: 4,
+                            height: 4,
+                            decoration: BoxDecoration(color: Colors.white.withValues(alpha: .45), shape: BoxShape.circle),
+                          ),
+                        ),
+                      Icon(PhosphorIcons.check(PhosphorIconsStyle.bold), size: 14, color: _waBright),
+                      const SizedBox(width: 5),
+                      Text(p.short, style: context.ty.cap.bold.col(Colors.white.withValues(alpha: .9))),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+            if (perks == WaPerks.pills) const Gap(Space.s3),
+            if (perks == WaPerks.pills)
+              Wrap(
+                spacing: Space.s2,
+                runSpacing: Space.s2,
+                children: [
+                  for (final p in _perks)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: .1),
+                        borderRadius: BorderRadius.circular(99),
+                        border: Border.all(color: Colors.white.withValues(alpha: .14)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(p.icon, size: 14, color: _waBright),
+                          const SizedBox(width: 6),
+                          Text(p.short, style: context.ty.cap.col(Colors.white)),
+                        ],
+                      ),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(p.icon, size: 14, color: _waBright),
-                        const SizedBox(width: 6),
-                        Text(p.short, style: context.ty.cap.col(Colors.white)),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
+                ],
+              ),
           ],
         );
         final button = _CardButton(joined: joined, onTap: () => joinWhatsAppChannel(context, ref, ch));
