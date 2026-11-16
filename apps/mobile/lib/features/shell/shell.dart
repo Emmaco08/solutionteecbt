@@ -12,7 +12,6 @@ import '../../core/house_ads.dart';
 import '../../widgets/phosphor.g.dart';
 
 import '../../core/nav.dart';
-import '../../core/engagement.dart';
 import '../../core/providers.dart';
 import '../../core/tab_scroll.dart';
 
@@ -26,13 +25,11 @@ import '../../theme/tokens.g.dart';
 import '../../ui/kit.dart';
 import '../../core/device.dart';
 import '../invite/invite_screens.dart';
-import '../xp/streak_ui.dart';
 import '../notifications/turn_on_sheet.dart';
-import '../home/countdown.dart';
 import '../home/whatsapp_channel.dart';
+import 'open_popups.dart';
 import '../premium/payments.dart';
 import '../setup/age_gate.dart';
-import '../profile/badges.dart';
 import '../../core/platform.dart';
 import '../../core/updater.dart';
 import '../../desktop/desktop_frame.dart';
@@ -143,45 +140,11 @@ class _AppShellState extends ConsumerState<AppShell> with WidgetsBindingObserver
       );
   }
 
-  /// D-082: a milestone celebration (once), else the daily claim pop-up on the first open of the day.
+  /// The pop-ups of this open, one after the other (open_popups.dart).
   Future<void> _dailyPopups() async {
     if (_popupsShown || !mounted) return;
     _popupsShown = true;
-    await Engagement.countOpen(ref).catchError((_) {});
-    // A new student sees the app tour first: the countdown and the other pop-ups wait for their next open (D-154).
-    if (!ref.read(settingsProvider).toured || !mounted) return;
-    await _otherPopups();
-    // Then, every open until they tap Join: our WhatsApp channel (owner, 16 Nov 2026, D-174).
-    if (mounted) await maybeShowWhatsAppPopup(context, ref).catchError((_) => false);
-  }
-
-  Future<void> _otherPopups() async {
-    // The exam countdown first (once a day, D-135), then the milestone or daily claim; when none of them showed, maybe
-    // the app rating card or a suggestion (owner, 13 Nov 2026). One pop-up an open at most.
-    final countdown = await maybeShowDailyCountdown(context, ref);
-    if (!mounted) return;
-    // Badge levels won since the last visit (D-142), celebrated once.
-    await checkBadgeWins(context, ref);
-    if (!mounted) return;
-    try {
-      ref.invalidate(myStreakProvider);
-      final st = await ref.read(myStreakProvider.future).timeout(const Duration(seconds: 10));
-      if (!mounted || st.isEmpty) return;
-      final cel = st['celebrate'];
-      if (cel is Map) {
-        await showMilestone(context, ref, Map<String, dynamic>.from(cel));
-        return;
-      }
-      final xp = st['xp'];
-      final db = ref.read(dbProvider);
-      final now = DateTime.now(), today = '${now.year}-${now.month}-${now.day}';
-      if (xp is Map && xp['enabled'] == true && xp['claimed_today'] != true && await db.kvGet('claim_sheet_day') != today && mounted) {
-        await db.kvSet('claim_sheet_day', today);
-        if (mounted) await showDailyClaim(context, ref, st);
-        return;
-      }
-    } catch (_) {}
-    if (!countdown && mounted) await Engagement.maybeShowOne(context, ref).catchError((_) => false);
+    await runOpenPopups(context, ref);
   }
 
   /// Which app this is, for Admin → Users (owner, 15 Nov 2026): website app, Play Store app or Windows app, and its build.

@@ -103,7 +103,7 @@ export async function setGoogleClientId(id: string): Promise<ActionResult> {
 }
 
 /** Accepts WhatsApp channel, group and chat links only (https, whatsapp.com or wa.me). */
-export function isWhatsAppLink(v: string): boolean {
+function isWhatsAppLink(v: string): boolean {
   try {
     const u = new URL(v);
     return u.protocol === "https:" && ["whatsapp.com", "www.whatsapp.com", "chat.whatsapp.com", "wa.me"].includes(u.hostname) && u.pathname.length > 1;
