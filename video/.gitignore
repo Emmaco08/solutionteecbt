@@ -9,3 +9,5 @@ recordings/raw/
 *.mov
 !public/**/*.mp4
 public/audio/
+.venv/
+__pycache__/

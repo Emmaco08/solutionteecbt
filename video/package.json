@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@fontsource/instrument-serif": "5.1.1",
     "@fontsource/plus-jakarta-sans": "5.1.1",
     "@remotion/cli": "4.0.539",
     "@remotion/lottie": "4.0.539",

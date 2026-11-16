@@ -2093,3 +2093,17 @@ Now (lib/core/updater.dart, lib/core/update_ui.dart):
   screen, or "You are up to date". Tests: test/updater_test.dart (controller, resume, screens); screenshots:
   test_shots/update_shots_test.dart.
 
+## D-182 — Social ads pack: three launch-style ads (16 Nov 2026)
+Owner: very good, very animated ads with strong hooks for TikTok, Facebook, WhatsApp and Instagram, in the style of four
+app launch videos on X. Studied frame by frame (contact sheets): a hook in the first second, words arriving out of a
+blur with one serif italic word, real app UI with taps and typing, flat colour blocks with huge type, a dark gold
+cinematic look with tilted 3D phones and gold stars, a wall of screens, one clean end card.
+Made three ads (plan: docs/plans/advert-pack.md; code: video/src/pack/; sound: video/tools/audio_pack.py):
+A "If JAMB was tomorrow" (21 s, warm glow), B "Stop scrolling" (15.5 s, Swiss colour blocks), C "Turn screen time into
+score time" (30 s, dark gold). Each in 9:16 (TikTok, Reels, Stories, WhatsApp Status) and 4:5 (Facebook and
+Instagram feeds). No voice: most ads are watched muted, so every word is on screen; music and sound effects are
+synthesised (no samples), mastered to -14 LUFS. Accent font Instrument Serif (SIL OFL) for the italic words. Real
+logos only (the official logo Lottie, the wordmark file, the exam-body files); every end card has the disclaimer.
+Honest claims: no promised scores, "free" = free to download with free practice. Captions and post copy:
+docs/marketing/ad-copy.md.
+

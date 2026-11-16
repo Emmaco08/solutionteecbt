@@ -41,3 +41,13 @@ Keep exam-body logos and readable text out of generated clips.
 ## 30 s short (D-165)
 Plan: `docs/plans/advert-short.md`. Voice: `python tools/vo.py af_bella public/vo_short short`. Audio:
 `python tools/audio_short.py` → `public/audio/short.wav`. Video: `npx remotion render src/index.ts Short916 out/solutiontee-short-30s.mp4 --codec h264 --crf 16`.
+
+## Social ads pack (D-182)
+Three ads in the style of launch videos the owner liked, each in 9:16 and 4:5. Plan: `docs/plans/advert-pack.md`.
+Copy for posts: `docs/marketing/ad-copy.md`. Code: `src/pack/` (kit.tsx shared; AdTomorrow, AdStop, AdScreen).
+1. Sound: `.venv/bin/python tools/audio_pack.py` → `public/audio/pack_{A,B,C}.wav` (same Python packages as above).
+2. Video (compositions `AdTomorrow916/45`, `AdStop916/45`, `AdScreen916/45`), e.g.
+   `npx remotion render src/index.ts AdStop916 out/pack/B_stop-scrolling_9x16.mp4 --codec h264 --crf 18`.
+3. Small copies for WhatsApp: `ffmpeg -i in.mp4 -c:v libx264 -crf 24 -preset slow -c:a aac -b:a 160k -movflags +faststart out-share.mp4`.
+Stills for review: `COMP=AdStop916 node tools/stills.mjs 0.2 1.5 5.6` then `python3 tools/sheet.py out/sheet.jpg`.
+
