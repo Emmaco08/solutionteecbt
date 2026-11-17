@@ -4,7 +4,7 @@ import { Phone } from "../components";
 import { EndCard, Flash, KText, useF, useS } from "../pack/kit";
 import { C, FONT, Ico, Pill, ScoreRing, Toggle, easeOut, lerp, p, spr } from "./fkit";
 
-// Feature ad 5: Offline, "Data finished? No wahala." (D-183). 19 s, flat colour blocks, a cut on the beat.
+// Feature ad 5: Offline, "Data finished? No wahala." (D-184). 19 s, flat colour blocks, a cut on the beat.
 export const OFFLINE_SECONDS = 19;
 const RED = "#E5484D";
 const CREAM = "#F7F3EA";

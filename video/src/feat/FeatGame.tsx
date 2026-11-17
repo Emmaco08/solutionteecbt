@@ -4,7 +4,7 @@ import { Phone } from "../components";
 import { Burst, EndCard, Flash, Star4, useF, useS } from "../pack/kit";
 import { ArenaStage, C, FONT, GAME, Ico, Pill, Shot, lerp, p, rnd, spr } from "./fkit";
 
-// Feature ad 3: Game Zone, "Battle your friends instead" (D-183). 19 s, stadium purple, game font, 128 BPM feel.
+// Feature ad 3: Game Zone, "Battle your friends instead" (D-184). 19 s, stadium purple, game font, 128 BPM feel.
 export const GAME_SECONDS = 19;
 
 /** Big game-style word: chunky font, outline and drop shadow, springs in. */

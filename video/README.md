@@ -51,7 +51,7 @@ Copy for posts: `docs/marketing/ad-copy.md`. Code: `src/pack/` (kit.tsx shared; 
 3. Small copies for WhatsApp: `ffmpeg -i in.mp4 -c:v libx264 -crf 24 -preset slow -c:a aac -b:a 160k -movflags +faststart out-share.mp4`.
 Stills for review: `COMP=AdStop916 node tools/stills.mjs 0.2 1.5 5.6` then `python3 tools/sheet.py out/sheet.jpg`.
 
-## Feature ads (D-183)
+## Feature ads (D-184)
 One ad per major feature, each in 9:16 and 4:5: `FeatAI`, `FeatMock`, `FeatGame`, `FeatLive`, `FeatOffline`,
 `FeatBoard` (+ `916` / `45`). Plan: `docs/plans/advert-features.md`; copy: `docs/marketing/ad-copy-features.md`.
 Sound: `.venv/bin/python tools/audio_features.py` → `public/audio/feat_*.wav`. Video, e.g.

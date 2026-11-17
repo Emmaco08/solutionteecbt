@@ -5,7 +5,7 @@ import { EndCard, Flash, KText } from "../pack/kit";
 import { Bubble, C, DeepStage, FONT, Ico, Pill, SERIF, Shot, TypeLine, easeInOut, easeOut, lerp, p, rnd, spr } from "./fkit";
 import { useF, useS } from "../pack/kit";
 
-// Feature ad 1: AI Tutor, "Snap it. Solve it." (D-183). 19 s, deep navy, 120 BPM.
+// Feature ad 1: AI Tutor, "Snap it. Solve it." (D-184). 19 s, deep navy, 120 BPM.
 export const AI_SECONDS = 19;
 const SKY = "#8FB8FF";
 

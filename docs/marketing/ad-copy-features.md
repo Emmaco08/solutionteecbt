@@ -1,4 +1,4 @@
-# Ad copy for the feature ads (D-183)
+# Ad copy for the feature ads (D-184)
 
 One ad, one feature. Videos in `video/out/features/` (`_9x16` for TikTok, Reels, Stories and WhatsApp Status; `_4x5`
 for Facebook and Instagram feeds). Every claim matches the app today. Link: **cbt.solutiontee.com**

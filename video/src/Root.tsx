@@ -5,6 +5,8 @@ import { Short } from "./short/Short";
 import { AdTomorrow, TOMORROW_SECONDS } from "./pack/AdTomorrow";
 import { AdStop, STOP_SECONDS } from "./pack/AdStop";
 import { AdScreen, SCREEN_SECONDS } from "./pack/AdScreen";
+import { AdStruggle, STRUGGLE_SECONDS } from "./major/AdStruggle";
+import { AdOneApp, ONEAPP_SECONDS } from "./major/AdOneApp";
 import { FeatAI, AI_SECONDS } from "./feat/FeatAI";
 import { FeatMock, MOCK_SECONDS } from "./feat/FeatMock";
 import { FeatGame, GAME_SECONDS } from "./feat/FeatGame";
@@ -27,7 +29,10 @@ export const Root: React.FC = () => (
     {both("AdTomorrow", AdTomorrow, TOMORROW_SECONDS)}
     {both("AdStop", AdStop, STOP_SECONDS)}
     {both("AdScreen", AdScreen, SCREEN_SECONDS)}
-    {/* Feature ads (D-183): one ad, one major feature */}
+    {/* Two major adverts (D-183): 9:16 first; 4:5 and 16:9 cuts after the owner approves the vertical one. */}
+    {both("AdStruggle", AdStruggle, STRUGGLE_SECONDS)}
+    {both("AdOneApp", AdOneApp, ONEAPP_SECONDS)}
+    {/* Feature ads (D-184): one ad, one major feature */}
     {both("FeatAI", FeatAI, AI_SECONDS)}
     {both("FeatMock", FeatMock, MOCK_SECONDS)}
     {both("FeatGame", FeatGame, GAME_SECONDS)}

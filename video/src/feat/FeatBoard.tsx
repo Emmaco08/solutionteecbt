@@ -3,7 +3,7 @@ import { AbsoluteFill, Audio, staticFile } from "remotion";
 import { Burst, EndCard, Flash, GoldStage, KText, Star4, useF, useS } from "../pack/kit";
 import { C, FONT, Ico, Pill, Shot, easeInOut, easeOut, lerp, p, rnd, spr } from "./fkit";
 
-// Feature ad 6: Leaderboards and weekly challenges, "Who's the best JAMB student in Nigeria?" (D-183). 19 s, dark gold.
+// Feature ad 6: Leaderboards and weekly challenges, "Who's the best JAMB student in Nigeria?" (D-184). 19 s, dark gold.
 export const BOARD_SECONDS = 19;
 const GOLD = "#F7C65A";
 

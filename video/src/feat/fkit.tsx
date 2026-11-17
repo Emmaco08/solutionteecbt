@@ -2,7 +2,7 @@ import React from "react";
 import { AbsoluteFill, interpolate } from "remotion";
 import { C, FONT, Grain, SERIF, clamp, easeInOut, easeOut, lerp, p, rnd, spr, typed, useF, useS } from "../pack/kit";
 
-// Feature ads kit (D-183): pieces shared by the six one-feature ads, on top of the pack kit (D-182).
+// Feature ads kit (D-184): pieces shared by the six one-feature ads, on top of the pack kit (D-182).
 
 export const GAME = "'Lilita One', 'Plus Jakarta Sans', sans-serif";
 

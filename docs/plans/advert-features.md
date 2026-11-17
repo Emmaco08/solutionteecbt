@@ -1,4 +1,4 @@
-# Feature ads: one ad, one major feature (owner, 17 Nov 2026, D-183)
+# Feature ads: one ad, one major feature (owner, 17 Nov 2026, D-184)
 
 Brief: an ad for each major feature, very hooky, the feature explained well, the best animation. Same production as the
 social ads pack (D-182): Remotion, 30 fps, 9:16 (TikTok, Reels, Stories, WhatsApp Status) and 4:5 (Facebook and

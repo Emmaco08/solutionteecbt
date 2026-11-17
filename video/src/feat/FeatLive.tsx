@@ -4,7 +4,7 @@ import { Phone } from "../components";
 import { EndCard, Flash, KText, useF, useS } from "../pack/kit";
 import { BigTimer, C, DeepStage, FONT, Ico, Notif, Pill, Shot, easeInOut, lerp, p, spr } from "./fkit";
 
-// Feature ad 4: Live classes, "The best JAMB class is in your pocket" (D-183). 19 s, dark with red LIVE accents.
+// Feature ad 4: Live classes, "The best JAMB class is in your pocket" (D-184). 19 s, dark with red LIVE accents.
 export const LIVE_SECONDS = 19;
 const RED = "#FF4D5A";
 

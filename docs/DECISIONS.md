@@ -2107,7 +2107,19 @@ logos only (the official logo Lottie, the wordmark file, the exam-body files); e
 Honest claims: no promised scores, "free" = free to download with free practice. Captions and post copy:
 docs/marketing/ad-copy.md.
 
-## D-183 — Feature ads: one ad, one major feature (17 Nov 2026)
+
+## D-183 — Exam-body logos in adverts; two major adverts planned (17 Nov 2026)
+- **Owner:** "use the jamb, waec, neco and other exams logo in the advert. my lawyer approved it." Adverts may show the
+  exam-body logos, as the unchanged files in `/brand/exam-bodies/` (and, for other exams, the logo uploaded in
+  Admin → Exams). Only exams that are switched on in the app are shown, so an advert never offers an exam students
+  cannot use (JUPEB is off today). The not-affiliated disclaimer stays on every end card.
+- This covers adverts only. The app's own switch (`app_settings.exam_logos`, D-111) is unchanged until the owner
+  turns it on in admin.
+- Two story-led adverts in the style of eight TikTok app ads the owner chose (Bolt, Chowdeck, Pizza Hut, Glovo,
+  Gojek, ClickUp, Uber Eats, Spotify): plan `docs/plans/advert-major.md`. Motion graphics in Remotion with the app's
+  real screens; Google Flow (owner's Pro plan, via flow-mcp) only for real-looking footage and 3D cartoon students.
+
+## D-184 — Feature ads: one ad, one major feature (17 Nov 2026)
 Owner: an ad per major feature, each well explained, very hooky, the best animation. Six 19 s ads, each in 9:16 and
 4:5 (plan: docs/plans/advert-features.md; code: video/src/feat/; sound: video/tools/audio_features.py; post copy:
 docs/marketing/ad-copy-features.md): AI Tutor (snap → step by step → ask again → every subject), full JAMB mock

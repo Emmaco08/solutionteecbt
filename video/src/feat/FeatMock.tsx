@@ -4,7 +4,7 @@ import { Phone } from "../components";
 import { Burst, EndCard, ExamLogos, Flash, KText, WarmStage, useF, useS } from "../pack/kit";
 import { Bars, BigTimer, C, Callout, FONT, Ico, Pill, ScoreRing, Shot, easeOut, lerp, p, spr } from "./fkit";
 
-// Feature ad 2: the full JAMB mock, "Sit JAMB before JAMB" (D-183). 19 s, warm cream, 120 BPM.
+// Feature ad 2: the full JAMB mock, "Sit JAMB before JAMB" (D-184). 19 s, warm cream, 120 BPM.
 export const MOCK_SECONDS = 19;
 
 // ------------------------------------------------------------------ 0–3.2 s: the hook
