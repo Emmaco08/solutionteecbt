@@ -59,7 +59,7 @@ def boom(v=1.0):
     return fx(x, Pedalboard([Reverb(room_size=0.95, wet_level=0.4, dry_level=0.9, width=1.0)]))
 
 
-def master(mix, name, dur):
+def master(mix, name, dur, fname=None):
     mix = mix[:, : int(dur * SR)]
     fade = int(0.9 * SR)
     mix[:, -fade:] *= np.linspace(1, 0, fade) ** 1.6
@@ -74,7 +74,7 @@ def master(mix, name, dur):
     if peak > -1.0:
         mix = mix * 10 ** ((-1.0 - peak) / 20)
     os.makedirs(os.path.join(ROOT, "public", "audio"), exist_ok=True)
-    sf.write(os.path.join(ROOT, "public", "audio", f"pack_{name}.wav"), mix.T, SR, subtype="PCM_24")
+    sf.write(os.path.join(ROOT, "public", "audio", fname or f"pack_{name}.wav"), mix.T, SR, subtype="PCM_24")
     print(name, "loudness", round(meter.integrated_loudness(mix.T), 2), "LUFS, peak", round(20 * np.log10(np.abs(mix).max()), 2), "dBFS")
 
 

@@ -2107,3 +2107,16 @@ logos only (the official logo Lottie, the wordmark file, the exam-body files); e
 Honest claims: no promised scores, "free" = free to download with free practice. Captions and post copy:
 docs/marketing/ad-copy.md.
 
+## D-183 — Feature ads: one ad, one major feature (17 Nov 2026)
+Owner: an ad per major feature, each well explained, very hooky, the best animation. Six 19 s ads, each in 9:16 and
+4:5 (plan: docs/plans/advert-features.md; code: video/src/feat/; sound: video/tools/audio_features.py; post copy:
+docs/marketing/ad-copy-features.md): AI Tutor (snap → step by step → ask again → every subject), full JAMB mock
+(same subjects/timer/screen → every tool labelled on the real CBT screen → auto-submit → score and subject bars →
+topics to fix), Game Zone (match found → how a duel works → six modes → victory → ranks), live classes (one tap to
+join → timetable → reminders 2 h, 1 h, 30, 10, 3 min → recordings → pay once), offline (download once → airplane
+mode → results offline → sync → videos and notes), leaderboards and weekly challenges (climb → Nigeria or your
+state → weekly challenge → badges and streak → fair play). Every claim was checked against the app code; wording that
+went further than the app was cut (no in-class chat, no superlatives, no prize amounts: "Rewards for the top 10*,
+eligibility and terms apply"). Each ad has its own look and music: deep navy, warm cream, stadium purple, dark red,
+colour blocks, dark gold. Same rules as D-182: no voice, real logos and screens, disclaimer on the end card.
+

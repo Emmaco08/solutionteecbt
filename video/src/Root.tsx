@@ -5,6 +5,12 @@ import { Short } from "./short/Short";
 import { AdTomorrow, TOMORROW_SECONDS } from "./pack/AdTomorrow";
 import { AdStop, STOP_SECONDS } from "./pack/AdStop";
 import { AdScreen, SCREEN_SECONDS } from "./pack/AdScreen";
+import { FeatAI, AI_SECONDS } from "./feat/FeatAI";
+import { FeatMock, MOCK_SECONDS } from "./feat/FeatMock";
+import { FeatGame, GAME_SECONDS } from "./feat/FeatGame";
+import { FeatLive, LIVE_SECONDS } from "./feat/FeatLive";
+import { FeatOffline, OFFLINE_SECONDS } from "./feat/FeatOffline";
+import { FeatBoard, BOARD_SECONDS } from "./feat/FeatBoard";
 
 // Social ads pack (D-182): every ad in 9:16 (TikTok, Reels, Stories, WhatsApp Status) and 4:5 (Facebook and Instagram feeds).
 const both = (id: string, C: React.FC, seconds: number) => (
@@ -21,5 +27,12 @@ export const Root: React.FC = () => (
     {both("AdTomorrow", AdTomorrow, TOMORROW_SECONDS)}
     {both("AdStop", AdStop, STOP_SECONDS)}
     {both("AdScreen", AdScreen, SCREEN_SECONDS)}
+    {/* Feature ads (D-183): one ad, one major feature */}
+    {both("FeatAI", FeatAI, AI_SECONDS)}
+    {both("FeatMock", FeatMock, MOCK_SECONDS)}
+    {both("FeatGame", FeatGame, GAME_SECONDS)}
+    {both("FeatLive", FeatLive, LIVE_SECONDS)}
+    {both("FeatOffline", FeatOffline, OFFLINE_SECONDS)}
+    {both("FeatBoard", FeatBoard, BOARD_SECONDS)}
   </>
 );
