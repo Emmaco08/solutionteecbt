@@ -44,7 +44,10 @@ Future<void> _font(String family, List<String> files) async {
 /// The Material icon font from this computer's Flutter SDK (Windows laptop or the Linux cloud machine).
 String get _materialIcons {
   final root = File(Platform.resolvedExecutable).parent.parent.parent.parent.path; // …/flutter/bin/cache/dart-sdk/bin/dart
-  for (final p in ['$root/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf', '$root/bin/cache/artifacts/material_fonts/materialicons-regular.otf']) {
+  for (final p in [
+    '$root/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf',
+    '$root/bin/cache/artifacts/material_fonts/materialicons-regular.otf',
+  ]) {
     if (File(p).existsSync()) return p;
   }
   return '/opt/flutter/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf';
@@ -100,15 +103,36 @@ Future<void> shot(WidgetTester t, String path, String name, {bool dark = false})
       StatefulShellRoute.indexedStack(
         builder: (_, _, shell) => AppShell(shell: shell),
         branches: [
-          StatefulShellBranch(routes: [GoRoute(path: '/home', builder: (_, _) => const HomeScreen())]),
-          StatefulShellBranch(routes: [GoRoute(path: '/study', builder: (_, _) => const StudyScreen())]),
-          StatefulShellBranch(routes: [GoRoute(path: '/test', builder: (_, _) => const TestHubScreen())]),
-          StatefulShellBranch(routes: [GoRoute(path: '/ai', builder: (_, s) => AiScreen(chatId: s.uri.queryParameters['chat']))]),
-          StatefulShellBranch(routes: [GoRoute(path: '/me', builder: (_, _) => const ProfileScreen())]),
+          StatefulShellBranch(
+            routes: [GoRoute(path: '/home', builder: (_, _) => const HomeScreen())],
+          ),
+          StatefulShellBranch(
+            routes: [GoRoute(path: '/study', builder: (_, _) => const StudyScreen())],
+          ),
+          StatefulShellBranch(
+            routes: [GoRoute(path: '/test', builder: (_, _) => const TestHubScreen())],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/ai',
+                builder: (_, s) => AiScreen(chatId: s.uri.queryParameters['chat']),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [GoRoute(path: '/me', builder: (_, _) => const ProfileScreen())],
+          ),
         ],
       ),
-      GoRoute(path: '/cbt/:id', builder: (_, s) => CbtScreen(attemptId: s.pathParameters['id']!)),
-      GoRoute(path: '/results/:id', builder: (_, s) => ResultsScreen(attemptId: s.pathParameters['id']!)),
+      GoRoute(
+        path: '/cbt/:id',
+        builder: (_, s) => CbtScreen(attemptId: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/results/:id',
+        builder: (_, s) => ResultsScreen(attemptId: s.pathParameters['id']!),
+      ),
     ],
   );
   await t.runAsync(() async {
@@ -203,7 +227,9 @@ Future<void> _seedCbt(AppDb db) async {
   for (final (i, id) in ids.indexed) {
     await db
         .into(db.cachedQuestions)
-        .insert(CachedQuestionsCompanion.insert(id: id, examId: 1, subjectId: 10, year: 2020, body: bodies[i], optionsJson: jsonEncode(opts[i]), answer: keys[i]));
+        .insert(
+          CachedQuestionsCompanion.insert(id: id, examId: 1, subjectId: 10, year: 2020, body: bodies[i], optionsJson: jsonEncode(opts[i]), answer: keys[i]),
+        );
   }
   await db
       .into(db.localAttempts)
@@ -232,7 +258,10 @@ Future<void> _seedMock(AppDb db) async {
     (12, 40, 28, ['Motion', 'Waves', 'Electricity']),
     (13, 40, 30, ['Mole concept', 'Organic chemistry', 'Electrolysis']),
   ];
-  final ids = <String>[for (final (sid, n, _, _) in plan) for (var i = 0; i < n; i++) 'm$sid-$i'];
+  final ids = <String>[
+    for (final (sid, n, _, _) in plan)
+      for (var i = 0; i < n; i++) 'm$sid-$i',
+  ];
   final start = DateTime.now().subtract(const Duration(hours: 2));
   await db
       .into(db.localAttempts)

@@ -2,10 +2,10 @@
 // still); `from` is the second of the clip the ad starts on. Characters: 3D students cut out of a green screen
 // (tools/cutout.py). Files live in public/major/.
 export const CLIPS = {
-  lamp: { src: "major/a_lamp.mp4", from: 0.6 }, // the lamp dies at 2.4 s in the clip, 1.8 s into the ad
-  win: { src: "major/a_win.jpg", from: 1.2 },
-  bus: { src: "major/b_bus.jpg", from: 0 },
-  duel: { src: "major/b_duel.jpg", from: 1.0 },
+  lamp: { src: "major/a_lamp.mp4", from: 1.3 }, // the lamp dies at 2.4 s in the clip, 1.1 s into the ad (click in the audio)
+  win: { src: "major/a_win.mp4", from: 3.2 }, // grin, then the fist pump about 2 s into the shot
+  bus: { src: "major/b_bus.mp4", from: 2.6 }, // smile and nod, then a glance out at the street
+  duel: { src: "major/b_duel.mp4", from: 2.8 }, // Chidi wins and laughs, then they laugh together
   tundeBooks: "major/tunde_books.png",
   tundeConfused: "major/tunde_confused.png",
   tundeWin: "major/tunde_win.png",

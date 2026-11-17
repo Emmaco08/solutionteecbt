@@ -127,10 +127,10 @@ def struggle():
     prog_hi = [("F1", ["F3", "A3", "C4", "E4"]), ("D1", ["D3", "F3", "A3", "C4"]), ("A#0", ["A#2", "D3", "F3", "A3"]), ("C1", ["C3", "E3", "G3", "A#3"])]
     hook = [(0, "A5"), (3, "F5"), (6, "C5"), (8, "G5"), (10, "F5"), (12, "E5"), (14, "C5")]
     m = B()
-    # 0–2.3: night. A warm pad under the lamp; after the click (1.85) a low, sad chord.
+    # 0–2.3: night. A warm pad under the lamp; after the click (1.1, when the lamp dies in the clip) a low, sad chord.
     put(m, crickets(2.6, 1.0), 0)
-    put(m, A.pad([hz(n) for n in ["F3", "A3", "C4", "E4"]], 1.9, 0.9, 1500), 0)
-    put(m, A.pad([hz(n) for n in ["D3", "F3", "A3"]], 1.6, 1.0, 700), 1.9)
+    put(m, A.pad([hz(n) for n in ["F3", "A3", "C4", "E4"]], 1.15, 0.9, 1500), 0)
+    put(m, A.pad([hz(n) for n in ["D3", "F3", "A3"]], 2.2, 1.0, 700), 1.15)
     # 3.4–8.2: the problems, a filtered, moody groove (no log drums yet)
     groove(m, 3.4, 8.2, beat, prog_low, 0.75, full=False)
     # 8.2–10.3: lift
@@ -151,8 +151,8 @@ def struggle():
     m[:, pre] = lp[:, pre]
 
     s = B()
-    put(s, click(1.0), 1.85, 1.0)
-    put(s, A.sub(hz("D1"), 0.8, 0.8), 1.9, 0.6)
+    put(s, click(1.0), 1.1, 1.0)
+    put(s, A.sub(hz("D1"), 0.8, 0.8), 1.15, 0.6)
     put(s, A.whoosh(0.4, True, 0.6), 2.2)
     for i in range(4):
         put(s, A.pop(520 + i * 70), 2.4 + i * 0.14, 0.7, (i % 3 - 1) * 0.4)
