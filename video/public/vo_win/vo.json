@@ -19,5 +19,12 @@
   "heard": "Solution T CBT is now on Windows.",
   "take": 0,
   "seconds": 2.628
+ },
+ "w4": {
+  "text": "A real CBT, on a big screen. Timer, calculator, keyboard keys. Just like exam day.",
+  "spoken": "A real C.B.T., on a big screen. Timer, calculator, keyboard keys. Just like exam day.",
+  "heard": "A real CBT on a big screen.  Timer, calculator, keyboard keys.  Just like exam day.",
+  "take": 0,
+  "seconds": 4.984
  }
 }
