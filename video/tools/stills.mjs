@@ -9,7 +9,7 @@ const browserExecutable = process.env.REMOTION_CHROME ?? "/opt/pw-browsers/chrom
 const composition = await selectComposition({ serveUrl, id: process.env.COMP ?? "Intro916", browserExecutable });
 for (const s of secs) {
   const frame = Math.min(composition.durationInFrames - 1, Math.round(s * 30));
-  await renderStill({ composition, serveUrl, frame, output: `out/stills/${String(s).padStart(5, "0")}.jpg`, imageFormat: "jpeg", jpegQuality: 85, scale: 0.5, browserExecutable });
+  await renderStill({ composition, serveUrl, frame, output: `out/stills/${String(s).padStart(5, "0")}.jpg`, imageFormat: "jpeg", jpegQuality: 85, scale: Number(process.env.SCALE ?? 0.5), browserExecutable, chromiumOptions: { gl: process.env.GL ?? null } });
   process.stdout.write(`${s} `);
 }
 console.log("done");

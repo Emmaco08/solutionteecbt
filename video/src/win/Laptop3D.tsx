@@ -19,7 +19,7 @@ export const lidAngle = (open: number) => THREE.MathUtils.degToRad(THREE.MathUti
 
 /** World position of a point on the screen: u, v in 0..1 from the screenshot's top-left. */
 export const screenPoint = (u: number, v: number, open = 1, x0 = 0): THREE.Vector3 => {
-  const local = new THREE.Vector3((u - 0.5) * LAP.SW, LAP.chin + (1 - v) * LAP.SH, 0.03);
+  const local = new THREE.Vector3((u - 0.5) * LAP.SW, LAP.chin + (1 - v) * LAP.SH, 0.2);
   local.applyAxisAngle(new THREE.Vector3(1, 0, 0), lidAngle(open));
   return local.add(new THREE.Vector3(x0, HINGE.y, HINGE.z));
 };
@@ -28,7 +28,7 @@ export type Cam = { pos: [number, number, number]; look: [number, number, number
 
 /** Where a world point lands on the frame (pixels), for laying 2D labels over the 3D picture. */
 export const project = (cam: Cam, W: number, H: number, p: THREE.Vector3): [number, number] => {
-  const c = new THREE.PerspectiveCamera(cam.fov, W / H, 1, 2000);
+  const c = new THREE.PerspectiveCamera(cam.fov, W / H, 5, 800);
   c.position.set(...cam.pos);
   c.lookAt(...cam.look);
   if (cam.shift) c.setViewOffset(W, H, -cam.shift[0], -cam.shift[1], W, H);
@@ -102,8 +102,8 @@ const CamRig: React.FC<{ cam: Cam }> = ({ cam }) => {
   const { camera, size } = useThree();
   const c = camera as THREE.PerspectiveCamera;
   c.fov = cam.fov;
-  c.near = 1;
-  c.far = 2000;
+  c.near = 5;
+  c.far = 800;
   c.position.set(...cam.pos);
   c.lookAt(...cam.look);
   if (cam.shift) c.setViewOffset(size.width, size.height, -cam.shift[0], -cam.shift[1], size.width, size.height);
@@ -214,12 +214,12 @@ export const LaptopModel: React.FC<{ open?: number; on?: number; screens: Screen
       {/* lid, turning about the hinge */}
       <group position={[0, HINGE.y, HINGE.z]} rotation={[lidAngle(open), 0, 0]}>
         <mesh geometry={G.lid} material={M.alu} position={[0, LID_H / 2, -LAP.T / 2]} castShadow receiveShadow />
-        <mesh geometry={G.bezel} material={M.bezel} position={[0, LID_H / 2, 0.006]} />
+        <mesh geometry={G.bezel} material={M.bezel} position={[0, LID_H / 2, 0.03]} />
         <ScreenStack screens={screens} on={on} />
-        <mesh material={M.cam} position={[0, LID_H - LAP.top / 2, 0.012]}>
+        <mesh material={M.cam} position={[0, LID_H - LAP.top / 2, 0.08]}>
           <circleGeometry args={[0.13, 24]} />
         </mesh>
-        <mesh geometry={G.bezel} material={M.glass} position={[0, LID_H / 2, 0.03]} />
+        <mesh geometry={G.bezel} material={M.glass} position={[0, LID_H / 2, 0.45]} />
       </group>
     </group>
   );
@@ -227,7 +227,7 @@ export const LaptopModel: React.FC<{ open?: number; on?: number; screens: Screen
 
 const ScreenLayer: React.FC<{ s: Screen; on: number; i: number }> = ({ s, on, i }) => {
   const tex = useTex(s.src);
-  const mat = useMemo(() => new THREE.MeshBasicMaterial({ toneMapped: false, transparent: true }), []);
+  const mat = useMemo(() => new THREE.MeshBasicMaterial({ toneMapped: false, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }), []);
   const t = useMemo(() => {
     if (!tex) return null;
     const c = tex.clone();
@@ -243,13 +243,13 @@ const ScreenLayer: React.FC<{ s: Screen; on: number; i: number }> = ({ s, on, i 
   mat.opacity = s.opacity ?? 1;
   const flare = on < 1 ? 1 + (1 - on) * 1.6 : 1;
   mat.color.setScalar(Math.min(1, on * 1.4) * flare);
-  return <mesh geometry={G.screen} material={mat} position={[0, LAP.chin + LAP.SH / 2, 0.012 + i * 0.002]} />;
+  return <mesh geometry={G.screen} material={mat} position={[0, LAP.chin + LAP.SH / 2, 0.16 + i * 0.06]} renderOrder={2 + i} />;
 };
 
 const ScreenStack: React.FC<{ screens: Screen[]; on: number }> = ({ screens, on }) => (
   <>
-    <mesh geometry={G.screen} position={[0, LAP.chin + LAP.SH / 2, 0.01]}>
-      <meshBasicMaterial color="#020306" />
+    <mesh geometry={G.screen} position={[0, LAP.chin + LAP.SH / 2, 0.09]}>
+      <meshBasicMaterial color="#020306" polygonOffset polygonOffsetFactor={-1} polygonOffsetUnits={-2} />
     </mesh>
     {on > 0 && screens.map((s, i) => (s.opacity ?? 1) > 0 && <ScreenLayer key={s.src + i} s={s} on={on} i={i} />)}
   </>
@@ -278,12 +278,12 @@ export const MonitorModel: React.FC<{ x: number; z?: number; rotY?: number; src:
           <boxGeometry args={[w + b * 2, h + b * 2, 1.4]} />
         </mesh>
         {tex && (
-          <mesh position={[0, 0, 0.71]}>
+          <mesh position={[0, 0, 0.78]}>
             <planeGeometry args={[w, h]} />
             <meshBasicMaterial map={tex} toneMapped={false} />
           </mesh>
         )}
-        <mesh position={[0, 0, 0.73]} material={M.glass}>
+        <mesh position={[0, 0, 0.95]} material={M.glass}>
           <planeGeometry args={[w + b * 2, h + b * 2]} />
         </mesh>
       </group>
@@ -301,7 +301,7 @@ export const Stage3D: React.FC<{ cam: Cam; children: React.ReactNode; floor?: nu
       style={{ position: "absolute", inset: 0 }}
       gl={{ antialias: true, alpha: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: exposure, preserveDrawingBuffer: true }}
       shadows={{ type: THREE.VSMShadowMap }}
-      camera={{ fov: cam.fov, position: cam.pos, near: 1, far: 2000 }}
+      camera={{ fov: cam.fov, position: cam.pos, near: 5, far: 800 }}
     >
       <Env />
       <CamRig cam={cam} />
