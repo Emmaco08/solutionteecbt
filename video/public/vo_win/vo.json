@@ -12,5 +12,12 @@
   "heard": "So why are you only practicing on your phone?",
   "take": 0,
   "seconds": 2.231
+ },
+ "w3": {
+  "text": "SolutionTee CBT is now on Windows!",
+  "spoken": "Solution Tee, C.B.T., is now on Windows!",
+  "heard": "Solution T CBT is now on Windows.",
+  "take": 0,
+  "seconds": 2.628
  }
 }
