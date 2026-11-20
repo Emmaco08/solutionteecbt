@@ -57,3 +57,8 @@ One ad per major feature, each in 9:16 and 4:5: `FeatAI`, `FeatMock`, `FeatGame`
 Sound: `.venv/bin/python tools/audio_features.py` → `public/audio/feat_*.wav`. Video, e.g.
 `npx remotion render src/index.ts FeatAI916 out/features/1_ai-tutor_9x16.mp4 --codec h264 --crf 18`.
 
+
+## "Now on Windows" (D-186)
+`WinAd916`, `WinAd45`, `WinAd169`. Plan: `docs/plans/advert-windows.md`; copy: `docs/marketing/ad-copy-windows.md`.
+Sound: `.venv/bin/python tools/audio_windows.py` → `public/audio/win_ad.wav`. Laptop screens in `public/screens/win/`
+come from `apps/mobile/test_shots/laptop_test.dart` (SIZES=1920x1080 ... --update-goldens).

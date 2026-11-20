@@ -13,6 +13,7 @@ import { FeatGame, GAME_SECONDS } from "./feat/FeatGame";
 import { FeatLive, LIVE_SECONDS } from "./feat/FeatLive";
 import { FeatOffline, OFFLINE_SECONDS } from "./feat/FeatOffline";
 import { FeatBoard, BOARD_SECONDS } from "./feat/FeatBoard";
+import { WinAd, WIN_SECONDS } from "./win/WinAd";
 
 // Social ads pack (D-182): every ad in 9:16 (TikTok, Reels, Stories, WhatsApp Status) and 4:5 (Facebook and Instagram feeds).
 const both = (id: string, C: React.FC, seconds: number) => (
@@ -39,5 +40,8 @@ export const Root: React.FC = () => (
     {both("FeatLive", FeatLive, LIVE_SECONDS)}
     {both("FeatOffline", FeatOffline, OFFLINE_SECONDS)}
     {both("FeatBoard", FeatBoard, BOARD_SECONDS)}
+    {/* "Now on Windows" (D-186): also 16:9 for YouTube, X and the website */}
+    {both("WinAd", WinAd, WIN_SECONDS)}
+    <Composition id="WinAd169" component={WinAd} durationInFrames={WIN_SECONDS * 30} fps={30} width={1920} height={1080} />
   </>
 );

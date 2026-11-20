@@ -2142,3 +2142,17 @@ as the owner asked. Badges: one BadgeGrid for the Me section and the Badges scre
 a phone, about seven on a 1366-wide laptop) and tiles only as tall as the badge and two lines of its name, scaled with
 the text size. A badges screen was added to the laptop screenshot check (test_shots/laptop_test.dart).
 
+
+## D-186 — "Now on Windows" advert (20 Nov 2026)
+- Owner asked for an advert announcing the Windows app. Built like the feature ads (D-184): Remotion, synthesised sound
+  (`video/tools/audio_windows.py`), real laptop screens. Plan: `docs/plans/advert-windows.md`; copy:
+  `docs/marketing/ad-copy-windows.md`.
+- Hook from a true fact: JAMB UTME is written on a computer, while most students practise only on a phone.
+- Claims are only those on the website's Windows section: real CBT with keyboard keys and calculator, the app's other
+  features, the same account and Premium as the phone, Windows 10 and 11 (64-bit), free to start.
+- No Microsoft or Windows logo is drawn in the video (their trademark); the word "Windows" only. The laptop is a plain,
+  unbranded drawing.
+- Three formats: 9:16, 4:5 and 16:9. In 16:9 the words sit in a left column and the pictures on the right.
+- The laptop screenshot test now loads the KaTeX fonts, so maths in the screens draws like the app (it drew empty boxes),
+  and its first question is written in LaTeX like real questions.
+- The installer is not code-signed yet, so Windows warns on first run. Recommended before paid spend on this ad.

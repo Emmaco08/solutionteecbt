@@ -128,6 +128,22 @@ void main() {
     await _font('PhosphorRegular', ['assets/fonts/Phosphor-Regular.ttf']);
     await _font('PhosphorFill', ['assets/fonts/Phosphor-Fill.ttf']);
     await _font('MaterialIcons', ['/opt/flutter/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf']);
+    // KaTeX fonts, so $...$ maths draws as it does in the real app (not empty boxes)
+    final katex = '${Platform.environment['HOME']}/.pub-cache/hosted/pub.dev/flutter_math_fork-0.7.4/lib/katex_fonts/fonts';
+    for (final f in [
+      'Main-Regular',
+      'Main-Bold',
+      'Main-Italic',
+      'Math-Italic',
+      'AMS-Regular',
+      'Size1-Regular',
+      'Size2-Regular',
+      'Size3-Regular',
+      'Size4-Regular',
+    ]) {
+      final fam = f.split('-').first;
+      if (File('$katex/KaTeX_$f.ttf').existsSync()) await _font('packages/flutter_math_fork/KaTeX_$fam', ['$katex/KaTeX_$f.ttf']);
+    }
     SharedPreferences.setMockInitialValues({});
     await Supabase.initialize(
       url: 'http://127.0.0.1:9',
@@ -220,7 +236,7 @@ void main() {
 Future<void> seedCbt(AppDb db) async {
   const ids = ['q1', 'q2', 'q3'];
   const bodies = [
-    'If log₁₀ 2 = 0.3010 and log₁₀ 3 = 0.4771, find the value of log₁₀ 72 correct to three decimal places.',
+    r'If $\log_{10} 2 = 0.3010$ and $\log_{10} 3 = 0.4771$, find the value of $\log_{10} 72$ correct to three decimal places.',
     'Find the roots of the equation x² − 5x + 6 = 0.',
     'Simplify (2³ × 2⁴) ÷ 2⁵.',
   ];
