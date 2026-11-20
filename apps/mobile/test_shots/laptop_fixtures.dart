@@ -1,6 +1,7 @@
 // Sample data for the laptop check (test_shots/laptop_test.dart). Made up; pictures are test_shots/fixtures/*.jpg.
 import 'package:solutiontee_cbt/core/providers.dart';
 import 'package:solutiontee_cbt/features/gamezone/gz_data.dart';
+import 'package:solutiontee_cbt/features/profile/badges.dart';
 import 'package:solutiontee_cbt/features/xp/streak_ui.dart';
 
 String _ago(int days) => DateTime.now().subtract(Duration(days: days)).toUtc().toIso8601String();
@@ -92,7 +93,43 @@ final gzLeadersFixture = {
   'me': {'rating': 1600, 'played': 20},
 };
 
+/// 16 badges at different levels (the badges screen and the Me section, D-185).
+final badgesFixture = <String, dynamic>{
+  'on': true,
+  'badges': [
+    for (final (i, (name, icon)) in [
+      ('Streak starter', 'fire'),
+      ('Mock master', 'exam'),
+      ('Sharp shooter', 'target'),
+      ('Perfect score', 'checkFat'),
+      ('Champion', 'trophy'),
+      ('Speed demon', 'timer'),
+      ('Verified genius', 'sealCheck'),
+      ('On the rise', 'chartLineUp'),
+      ('Lightning round', 'lightning'),
+      ('Every day', 'calendarCheck'),
+      ('Night owl', 'moonStars'),
+      ('Early bird', 'sunHorizon'),
+      ('Bookworm', 'books'),
+      ('Video learner', 'playCircle'),
+      ('Note taker', 'notePencil'),
+      ('Helping hand', 'users'),
+    ].indexed)
+      {
+        'id': 'b$i',
+        'name': name,
+        'icon': icon,
+        'description': 'A sample badge.',
+        'tier': i < 7 ? (4 - i % 4) : 0,
+        'value': 30 + i * 7,
+        'targets': {'bronze': 10, 'silver': 50, 'gold': 150, 'diamond': 400},
+        'rewards': const {},
+      },
+  ],
+};
+
 List laptopOverrides() => [
+  badgesProvider.overrideWith((_) async => badgesFixture),
   gzHomeProvider.overrideWith((_) async => gzHomeFixture),
   gzLeadersProvider.overrideWith((_, _) async => gzLeadersFixture),
   profileProvider.overrideWith(

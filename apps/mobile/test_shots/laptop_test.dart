@@ -116,6 +116,7 @@ final flows = <Flow>[
   const Flow('ai', '/ai'),
   const Flow('classes', '/classes'),
   const Flow('settings', '/settings'),
+  const Flow('badges', '/badges'),
 ];
 
 late AppDb db;

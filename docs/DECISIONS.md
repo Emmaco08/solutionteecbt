@@ -2132,3 +2132,13 @@ went further than the app was cut (no in-class chat, no superlatives, no prize a
 eligibility and terms apply"). Each ad has its own look and music: deep navy, warm cream, stadium purple, dark red,
 colour blocks, dark gold. Same rules as D-182: no voice, real logos and screens, disclaimer on the end card.
 
+## D-185 — App-icon shortcuts show the logo; badges fit the laptop (20 Nov 2026)
+Owner: the long-press shortcuts on the app icon (Continue my test, Quick practice, Ask the AI tutor, Search) showed
+Android's robot icon, and the badges on the laptop had big gaps. Cause of the robot: the shortcuts name their icons as
+text (quick_actions), so the release resource shrinker could not see them and removed them; the published APK had no
+ic_shortcut_* resources (checked in its resources.arsc). Now: res/raw/keep.xml keeps them, and each shortcut icon is the
+real app logo (the launcher's own artwork, mipmap ic_launcher_foreground from brand/favicon.svg, on the navy circle),
+as the owner asked. Badges: one BadgeGrid for the Me section and the Badges screen, with as many columns as fit (four on
+a phone, about seven on a 1366-wide laptop) and tiles only as tall as the badge and two lines of its name, scaled with
+the text size. A badges screen was added to the laptop screenshot check (test_shots/laptop_test.dart).
+

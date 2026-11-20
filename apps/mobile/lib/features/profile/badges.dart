@@ -198,7 +198,7 @@ class BadgeTile extends StatelessWidget {
       child: Pressable(
         onTap: () => showBadgeSheet(context, b),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox(
               width: size + 8,
@@ -294,6 +294,44 @@ extension on String {
   String ifEmpty(String other) => isEmpty ? other : this;
 }
 
+/// Badges in a grid that fits the width: four across on a phone, more on a laptop, each tile only as tall as the badge
+/// and two lines of its name. A fixed four-column grid left big empty gaps on laptops (owner, 20 Nov 2026).
+class BadgeGrid extends StatelessWidget {
+  const BadgeGrid({super.key, required this.items, this.animate = false});
+  final List<Map<String, dynamic>> items;
+  final bool animate;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, box) {
+        final wide = box.maxWidth >= 600;
+        final size = wide ? 64.0 : 56.0;
+        // Tile height: the ring, a small gap and two lines of the badge name at the reader's text size.
+        final cap = context.ty.cap.fontSize ?? 12;
+        final textH = MediaQuery.textScalerOf(context).scale(cap) * 1.35 * 2;
+        return GridView(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: EdgeInsets.zero,
+          gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent: wide ? 128 : 100,
+            mainAxisExtent: size + 8 + Space.s1 + textH + 6,
+            mainAxisSpacing: wide ? Space.s4 : Space.s3,
+            crossAxisSpacing: Space.s2,
+          ),
+          children: [
+            for (final (i, b) in items.indexed)
+              animate
+                  ? BadgeTile(b: b, size: size).animate().fadeIn(delay: (30 * i).ms, duration: Motion.base).scale(begin: const Offset(.9, .9))
+                  : BadgeTile(b: b, size: size),
+          ],
+        );
+      },
+    );
+  }
+}
+
 /// Me screen: the badges with the most progress first, and a link to all of them.
 class BadgesSection extends ConsumerWidget {
   const BadgesSection({super.key});
@@ -324,18 +362,7 @@ class BadgesSection extends ConsumerWidget {
             ],
           ),
         ),
-        GridView.count(
-          crossAxisCount: 4,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: Space.s2,
-          crossAxisSpacing: Space.s2,
-          childAspectRatio: .72,
-          children: [
-            for (final (i, b) in sorted.take(8).indexed)
-              rm ? BadgeTile(b: b) : BadgeTile(b: b).animate().fadeIn(delay: (30 * i).ms, duration: Motion.base).scale(begin: const Offset(.9, .9)),
-          ],
-        ),
+        BadgeGrid(items: sorted.take(8).toList(), animate: !rm),
       ],
     );
   }
@@ -369,15 +396,7 @@ class BadgesScreen extends ConsumerWidget {
           }
           final won = list.where((b) => ((b['tier'] as num?) ?? 0) > 0).toList();
           final todo = list.where((b) => ((b['tier'] as num?) ?? 0) == 0).toList();
-          Widget grid(List<Map<String, dynamic>> items) => GridView.count(
-            crossAxisCount: 4,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: Space.s3,
-            crossAxisSpacing: Space.s2,
-            childAspectRatio: .72,
-            children: [for (final b in items) BadgeTile(b: b)],
-          );
+          Widget grid(List<Map<String, dynamic>> items) => BadgeGrid(items: items);
           return ListView(
             padding: const EdgeInsets.fromLTRB(Space.s5, Space.s2, Space.s5, Space.s8),
             children: [

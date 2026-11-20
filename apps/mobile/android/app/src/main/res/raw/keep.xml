@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The app-icon shortcuts (lib/features/shell/shell.dart) name their icons as text ("ic_shortcut_ai"), so the release
+     resource shrinker cannot see they are used and removed them: Android then showed its default robot icon
+     (owner, 20 Nov 2026). Keep them, and the logo they are drawn from. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/ic_shortcut_*,@mipmap/ic_launcher_foreground" />
