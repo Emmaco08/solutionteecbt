@@ -8,6 +8,7 @@ Each line is made in several takes; speech recognition (faster-whisper) keeps th
 import json, os, re, sys
 import numpy as np
 import soundfile as sf
+from scipy.signal import resample_poly
 import torch
 from chatterbox.tts import ChatterboxTTS
 
@@ -63,7 +64,8 @@ if __name__ == "__main__":
             a = trim(wav.squeeze(0).numpy(), model.sr)
             tmp = os.path.join(OUT, f"_{key}_{take}.wav")
             sf.write(tmp, a, model.sr)
-            heard = " ".join(seg.text for seg in asr.transcribe(tmp, language="en")[0])
+            a16 = resample_poly(a, 2, 3).astype(np.float32) if model.sr == 24000 else a.astype(np.float32)
+            heard = " ".join(seg.text for seg in asr.transcribe(a16, language="en")[0])
             sc = score(heard, spoken)
             print(key, take, round(len(a) / model.sr, 2), "s", round(sc, 2), "|", heard.strip(), flush=True)
             if best is None or sc > best[0]:
