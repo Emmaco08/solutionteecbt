@@ -54,14 +54,16 @@ anyway). Before spending money on this ad, signing the installer will stop peopl
 - The CBT-centre monitors in the hook are 3D too.
 - **Voice:** Chatterbox TTS (Resemble AI, MIT licence, free for ads), its own voice, read with energy
   (`video/tools/vo_win.py`). Each line is made in three takes; speech recognition keeps the take that says the script.
-  The music dips under the voice. The ad is now 22 s to fit the voice.
+  The music dips under the voice. The ad is now 24.5 s to fit the voice.
 
 | Time | Voice |
 |---|---|
 | 0.15 s | JAMB is written on a computer. |
-| 2.05 s | So why are you only practising on your phone? |
-| 4.55 s | SolutionTee CBT is now on Windows! |
-| 7.1 s | A real CBT, on a big screen. Timer, calculator, keyboard keys. Just like exam day. |
-| 11.7 s | AI tutor, Game Zone, videos and notes. Everything, bigger. |
-| 14.75 s | Same account. Same Premium. |
-| 17.3 s | Download it free at cbt.solutiontee.com |
+| 2.15 s | So why are you only practising on your phone? |
+| 5.0 s | SolutionTee CBT is now on Windows! |
+| 8.0 s | A real CBT, on a big screen. Timer, calculator, keyboard keys. Just like exam day. |
+| 13.3 s | AI tutor, Game Zone, videos and notes. Everything, bigger. |
+| 17.3 s | Same account. Same Premium. |
+| 19.75 s | Download it free at cbt.solutiontee.com |
+
+Checked: speech recognition on the final mix hears every line over the music ("Jam is written on a computer, so why are you only practicing on your phone? Solution T, CBT, is now on Windows. ...").

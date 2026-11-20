@@ -7,12 +7,12 @@ import { C, DeepStage, FONT, Ico, Pill, Shot, easeInOut, easeOut, lerp, p, spr }
 import { Cam, LaptopModel, MonitorModel, Screen, Stage3D, project, screenPoint } from "./Laptop3D";
 
 // Advert: "SolutionTee CBT is now on Windows" (D-186, v2): a photoreal 3D laptop and a voice-over.
-// 22 s, 120 BPM, 9:16, 4:5 and 16:9. Scene times follow the voice lines (public/vo_win/vo.json).
-export const WIN_SECONDS = 22;
+// 24.5 s, 120 BPM, 9:16, 4:5 and 16:9. Scene times follow the voice lines (public/vo_win/vo.json).
+export const WIN_SECONDS = 24.5;
 
 /** When each scene starts and when its voice line is said. */
-export const T = { tiny: 2.0, reveal: 3.9, open: 4.1, cbt: 7.0, all: 11.6, same: 14.6, end: 16.9 };
-export const VO: [string, number][] = [["w1", 0.15], ["w2", 2.05], ["w3", 4.55], ["w4", 7.1], ["w5", 11.7], ["w6", 14.75], ["w7", 17.3]];
+export const T = { tiny: 2.1, reveal: 4.5, open: 4.6, cbt: 7.9, all: 13.2, same: 17.2, end: 19.4 };
+export const VO: [string, number][] = [["w1", 0.15], ["w2", 2.15], ["w3", 5.0], ["w4", 8.0], ["w5", 13.3], ["w6", 17.3], ["w7", 19.75]];
 
 /** The frame plus which of the three formats it is. */
 const useL = () => {
@@ -146,7 +146,7 @@ const BigCbt: React.FC = () => {
   const L = useL();
   const t = useS();
   const a = T.cbt;
-  const push = p(t, a + 0.3, a + 1.4, easeInOut) * (1 - p(t, a + 2.7, a + 3.6, easeInOut));
+  const push = p(t, a + 0.3, a + 1.4, easeInOut) * (1 - p(t, a + 3.4, a + 4.4, easeInOut));
   const at: [number, number] = [L.vx, L.pick(L.cy - 40, L.cy - 20, L.cy - 30)];
   const look = mixV(screenPoint(0.5, 0.55), screenPoint(0.36, 0.16), push);
   const cam = fit(L, look, lerp(36, L.land ? 22 : 15, push), L.pick(0.8, 0.7, 0.48), lerp(-6, 0, push), lerp(14, 4, push), [at[0] + (L.land ? 90 * push : 0), at[1]]);
@@ -184,7 +184,7 @@ const SHOWS: [string, string, string][] = [
 const Everything: React.FC = () => {
   const L = useL();
   const t = useS();
-  const t0 = T.all + 0.35, per = 0.5;
+  const t0 = T.all + 0.35, per = 0.62;
   const idx = Math.max(0, Math.min(SHOWS.length - 1, Math.floor((t - t0) / per)));
   const local = t - t0 - idx * per;
   const at: [number, number] = [L.vx, L.pick(L.cy + 120, L.cy + 110, L.cy - 40)];
@@ -195,7 +195,7 @@ const Everything: React.FC = () => {
     <Shot a={T.all} b={T.same}>
       <DeepStage a="rgba(242,178,51,.30)" b="rgba(37,99,179,.5)" />
       <KText text="Everything you love." at={T.all + 0.05} {...L.ty(L.cy - 640, L.cy - 500, L.cy - 70)} size={L.pick(96, 88, 84)} color="#fff" accent={C.gold} />
-      <KText text="*Bigger.*" at={T.all + 1.9} {...L.ty(L.cy - 500, L.cy - 385, L.cy + 55)} size={L.pick(150, 130, 150)} color="#fff" accent={C.gold} />
+      <KText text="*Bigger.*" at={T.all + 2.7} {...L.ty(L.cy - 500, L.cy - 385, L.cy + 55)} size={L.pick(150, 130, 150)} color="#fff" accent={C.gold} />
       <Stage3D cam={cam} floor={0.5}>
         <LaptopModel screens={screens} shadow={0.7} />
       </Stage3D>

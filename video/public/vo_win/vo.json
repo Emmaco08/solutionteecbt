@@ -2,9 +2,9 @@
  "w1": {
   "text": "JAMB is written on a computer.",
   "spoken": "Jamb is written on a computer.",
-  "heard": "Zame is written on a computer",
-  "take": 0,
-  "seconds": 1.96
+  "heard": "JAM is written on a computer.",
+  "take": 1,
+  "seconds": 1.656
  },
  "w2": {
   "text": "So why are you only practising on your phone?",
@@ -40,5 +40,12 @@
   "heard": "Same account, same premium.",
   "take": 0,
   "seconds": 1.582
+ },
+ "w7": {
+  "text": "Download it free at cbt.solutiontee.com",
+  "spoken": "Download it free, at C.B.T. dot Solution Tee dot com.",
+  "heard": "Download it free at cbt.solutiont.com.",
+  "take": 0,
+  "seconds": 3.633
  }
 }

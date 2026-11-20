@@ -17,9 +17,9 @@ import audio_pack as P  # noqa: E402
 import audio_features as FE  # noqa: E402
 from audio import SR  # noqa: E402
 
-DUR = 22.0
-T = {"tiny": 2.0, "reveal": 3.9, "open": 4.1, "cbt": 7.0, "all": 11.6, "same": 14.6, "end": 16.9}
-VO = [("w1", 0.15), ("w2", 2.05), ("w3", 4.55), ("w4", 7.1), ("w5", 11.7), ("w6", 14.75), ("w7", 17.3)]
+DUR = 24.5
+T = {"tiny": 2.1, "reveal": 4.5, "open": 4.6, "cbt": 7.9, "all": 13.2, "same": 17.2, "end": 19.4}
+VO = [("w1", 0.15), ("w2", 2.15), ("w3", 5.0), ("w4", 8.0), ("w5", 13.3), ("w6", 17.3), ("w7", 19.75)]
 FE.END = T["end"]
 put = P.put
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -78,8 +78,8 @@ def main():
         put(s, A.tap(f), T["cbt"] + 2.2 + i * 0.45, 0.9)
     put(s, A.whoosh(0.5, True, 0.7), T["all"] - 0.05)
     for i in range(5):
-        put(s, A.whoosh(0.18, i % 2 == 0, 0.3), T["all"] + 0.32 + i * 0.5)
-        put(s, A.pop(700 + i * 90), T["all"] + 0.35 + i * 0.5, 0.45)
+        put(s, A.whoosh(0.18, i % 2 == 0, 0.3), T["all"] + 0.32 + i * 0.62)
+        put(s, A.pop(700 + i * 90), T["all"] + 0.35 + i * 0.62, 0.45)
     put(s, A.whoosh(0.5, True, 0.6), T["same"] - 0.05)
     put(s, A.countup(0.6, 600, 1500), T["same"] + 0.6, 0.35)
     put(s, A.chime(("E6", "B6"), 0.06, 0.8), T["same"] + 1.2)
