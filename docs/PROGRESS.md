@@ -146,6 +146,7 @@ Plan: `docs/plans/phase-4.md`.
 ## Phase 6 — Legal, release, videos  (approval: `LAUNCH APPROVED`)
 - [ ] Not started
 - [x] 16 Nov 2026: WhatsApp channel (D-174), leaderboards for custom exams (D-175), rating/pop-up opens (D-176), Windows clean close (D-177), Windows layout overhaul checked at 1280×720, 1366×768, 1920×1080 (D-178).
+- [x] 20 Nov 2026: long-press app shortcuts show the SolutionTee logo (kept through release shrinking), badges grid evenly spaced on laptops (D-185); new version built.
 - [x] 17 Nov 2026: feature ads, 6 ads × 9:16 and 4:5, waiting for the owner's review (D-184).
 - [x] 16 Nov 2026: social ads pack, 3 ads × 9:16 and 4:5, waiting for the owner's review (D-182).
 - [x] 16 Nov 2026: app updates rebuilt for the website app and Windows (D-181).
