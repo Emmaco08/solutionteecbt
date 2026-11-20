@@ -5,5 +5,12 @@
   "heard": "Zame is written on a computer",
   "take": 0,
   "seconds": 1.96
+ },
+ "w2": {
+  "text": "So why are you only practising on your phone?",
+  "spoken": "So why are you only practising on your phone?",
+  "heard": "So why are you only practicing on your phone?",
+  "take": 0,
+  "seconds": 2.231
  }
 }
