@@ -26,5 +26,12 @@
   "heard": "A real CBT on a big screen.  Timer, calculator, keyboard keys.  Just like exam day.",
   "take": 0,
   "seconds": 4.984
+ },
+ "w5": {
+  "text": "AI tutor, Game Zone, videos and notes. Everything, bigger.",
+  "spoken": "A.I. tutor, Game Zone, videos and notes. Everything, bigger!",
+  "heard": "AI Tutor, Game Zone, Videos and Notes, everything bigger.",
+  "take": 0,
+  "seconds": 3.695
  }
 }
