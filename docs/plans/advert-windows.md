@@ -44,3 +44,24 @@ now loads the KaTeX fonts so maths draws as it does in the app (it showed empty 
 
 The Windows installer is not code-signed yet, so Windows shows "Windows protected your PC" on first run (More info → Run
 anyway). Before spending money on this ad, signing the installer will stop people giving up at that warning.
+
+## v2 (owner, 20 Nov 2026: "the laptop is not realistic, I need it super realistic, and a good voice-over")
+
+- **Laptop:** real 3D in three.js (`video/src/win/Laptop3D.tsx`, through @remotion/three): aluminium body with rounded
+  edges, recessed keyboard with 80 keycaps, trackpad, hinge, glossy black bezel, webcam, glass over the screen, lit by a
+  CC0 studio HDRI from Poly Haven (`public/hdri/studio_small_09.hdr`, Sergej Majboroda), soft shadows and a contact
+  shadow. The lid really opens on its hinge; the camera moves around the laptop and into the question.
+- The CBT-centre monitors in the hook are 3D too.
+- **Voice:** Chatterbox TTS (Resemble AI, MIT licence, free for ads), its own voice, read with energy
+  (`video/tools/vo_win.py`). Each line is made in three takes; speech recognition keeps the take that says the script.
+  The music dips under the voice. The ad is now 22 s to fit the voice.
+
+| Time | Voice |
+|---|---|
+| 0.15 s | JAMB is written on a computer. |
+| 2.05 s | So why are you only practising on your phone? |
+| 4.55 s | SolutionTee CBT is now on Windows! |
+| 7.1 s | A real CBT, on a big screen. Timer, calculator, keyboard keys. Just like exam day. |
+| 11.7 s | AI tutor, Game Zone, videos and notes. Everything, bigger. |
+| 14.75 s | Same account. Same Premium. |
+| 17.3 s | Download it free at cbt.solutiontee.com |

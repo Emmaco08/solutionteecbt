@@ -12,14 +12,18 @@
     "@fontsource/instrument-serif": "5.1.1",
     "@fontsource/plus-jakarta-sans": "5.1.1",
     "@phosphor-icons/react": "2.1.10",
+    "@react-three/fiber": "8.17.10",
     "@remotion/cli": "4.0.539",
     "@remotion/lottie": "4.0.539",
     "@remotion/motion-blur": "4.0.539",
     "@remotion/noise": "4.0.539",
+    "@remotion/three": "4.0.539",
+    "@types/three": "0.170.0",
     "lottie-web": "5.12.2",
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "remotion": "4.0.539"
+    "remotion": "4.0.539",
+    "three": "0.170.0"
   },
   "devDependencies": {
     "@types/react": "18.3.12",
