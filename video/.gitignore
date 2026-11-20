@@ -11,3 +11,4 @@ recordings/raw/
 public/audio/
 .venv/
 __pycache__/
+public/vo_win/_*
