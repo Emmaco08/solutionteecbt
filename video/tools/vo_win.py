@@ -29,7 +29,7 @@ TAKES = 3
 
 
 def words(s):
-    s = s.lower().replace("solutiontee", "solution tee").replace("cbt", "c b t").replace("ai ", "a i ")
+    s = s.lower().replace("jamb", "jam").replace("solutiontee", "solution tee").replace("cbt", "c b t").replace("ai ", "a i ")
     return re.findall(r"[a-z]+", s)
 
 
