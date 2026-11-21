@@ -67,8 +67,10 @@ def main():
     # match cut into the phone, the outline draws, the whip
     put(s, A.whoosh(0.4, False, 0.6), T["tiny"] - 0.25)
     put(s, A.pop(900), T["tiny"] + 0.15, 0.5)
-    put(s, A.riser(0.7, 0.35), 3.25)
-    put(s, A.chime(("E6",), 0.0, 0.5), 3.95)
+    put(s, A.whoosh(0.6, True, 0.6), 2.66)   # the laptop-size screen grows out from behind the phone
+    put(s, A.impact(0.35), 3.05)
+    put(s, A.countup(0.45, 700, 1400), 3.25, 0.3)   # measurement lines draw
+    put(s, A.chime(("E6", "B6"), 0.05, 0.55), 3.6)
     put(s, A.whoosh(0.35, True, 0.9), T["reveal"] - 0.3)
     # laptop: lid, light, screen on
     put(s, A.slam(90), T["open"] + 1.0, 0.45)

@@ -159,48 +159,85 @@ const Hook: React.FC = () => {
 
 // ------------------------------------------------------------------ 2.1–4.5 s: match cut into a small phone
 
-const Outline: React.FC<{ L: LT; cx: number; cy: number; pw: number }> = ({ L, cx, cy, pw }) => {
-  const t = useS();
-  const k = ease(t, 3.25, 3.95);
+/** A thin dimension line with end ticks that draws outward from its middle, like a product spec drawing. */
+const Dim: React.FC<{ x1: number; y1: number; x2: number; y2: number; k: number; color?: string }> = ({ x1, y1, x2, y2, k, color = C.blue }) => {
   if (k <= 0) return null;
-  const w = L.pick(900, 820, 860), h = (w * 9) / 16;
-  const ph = pw * 2.17;
+  const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+  const ax = lerp(mx, x1, k), ay = lerp(my, y1, k), bx = lerp(mx, x2, k), by = lerp(my, y2, k);
+  const vert = Math.abs(x2 - x1) < Math.abs(y2 - y1);
+  const tk = 14;
+  const tick = (x: number, y: number) => (vert ? `M${x - tk},${y} L${x + tk},${y}` : `M${x},${y - tk} L${x},${y + tk}`);
   return (
-    <>
-      <svg width={L.W} height={L.H} style={{ position: "absolute", inset: 0 }}>
-        <rect x={cx - w / 2} y={cy - h / 2} width={w} height={h} rx={18} fill="rgba(37,99,179,.04)" stroke={C.blue} strokeWidth={4} pathLength={1} strokeDasharray={`${k} 1`} />
-      </svg>
-      <div style={{ position: "absolute", left: cx, top: cy - h / 2 - 36, transform: "translate(-50%,-50%)", fontFamily: FONT, fontWeight: 700, fontSize: 32 * L.ks, color: C.blue, opacity: p(t, 3.7, 3.95) }}>A laptop screen</div>
-      <div style={{ position: "absolute", left: cx, top: cy + ph / 2 + 44, transform: "translate(-50%,-50%)", fontFamily: FONT, fontWeight: 700, fontSize: 30 * L.ks, color: "#6B7A93", opacity: p(t, 3.8, 4.05) }}>Your phone</div>
-    </>
+    <path d={`M${ax},${ay} L${bx},${by} ${k > 0.98 ? tick(x1, y1) + " " + tick(x2, y2) : ""}`} stroke={color} strokeWidth={3} strokeLinecap="round" fill="none" />
   );
 };
 
+const Label: React.FC<{ x: number; y: number; k: number; text: string; L: LT; strong?: boolean }> = ({ x, y, k, text, L, strong }) => {
+  if (k <= 0.01) return null;
+  return (
+    <div style={{ position: "absolute", left: x, top: y, transform: `translate(-50%,-50%) translateY(${(1 - k) * 14}px)`, opacity: k, padding: `${8 * L.ks}px ${20 * L.ks}px`, borderRadius: 999, background: strong ? C.blue : "#fff", color: strong ? "#fff" : "#4A5A75", border: strong ? "none" : "1px solid #DDE3EC", fontFamily: FONT, fontWeight: 800, fontSize: 30 * L.ks, whiteSpace: "nowrap", boxShadow: strong ? "0 12px 26px -10px rgba(37,99,179,.7)" : "0 8px 20px -12px rgba(11,31,68,.35)" }}>
+      {text}
+    </div>
+  );
+};
+
+/**
+ * "Only on a phone?": the phone lands; a laptop-size screen grows out from behind it (morphing from the phone's
+ * screen into a full app window with the real exam), the phone stays in front of its corner, and measurement lines
+ * draw along both with labels.
+ */
 const Tiny: React.FC = () => {
   const L = useL();
   const t = useS();
-  const R = examRect(L);
-  const pw = L.pick(250, 210, 250);
-  const py = L.pick(L.cy + 220, L.cy + 190, L.cy + 30);
+  const R0 = examRect(L);
+  // the big screen, and the phone standing in front of its lower-left corner
+  const pw = L.pick(230, 190, 210);
+  const ph = pw * 2.085;
+  const bw = L.pick(900, 800, 860);
+  const big = { w: bw, h: bw * (9 / 16) + bw * BAR, cx: L.land ? L.vx + 60 : L.cx + L.pick(40, 30, 0), cy: L.pick(L.cy + 60, L.cy + 70, L.cy + 10) };
+  const B = { x: big.cx - big.w / 2, y: big.cy - big.h / 2, w: big.w, h: big.h, sx: big.w / 1920 };
+  const px = B.x + L.pick(150, 125, 120), py = B.y + B.h - ph * L.pick(0.18, 0.2, 0.3);
+  // phone screen rectangle (the morph starts from here)
+  const ps = { x: px - pw * 0.466, y: py - pw * 1.008, w: pw * 0.932, h: pw * 2.017 };
   const m = ease(t, T.tiny - 0.25, T.tiny + 0.35, easeInOut);
+  const land = spr(t, T.tiny + 0.05, { damping: 14, stiffness: 140 });
+  const grow = spr(t, 2.72, { damping: 15, stiffness: 95 });
+  const fill = p(t, 2.95, 3.3);
+  const dims = ease(t, 3.25, 3.75, easeInOut);
   const whip = ease(t, T.reveal - 0.3, T.reveal, (x) => x * x);
-  const wob = t > 3.0 ? Math.sin((t - 3.0) * 10) * Math.exp(-(t - 3.0) * 3) * 7 : 0;
-  // the window shrinks towards where the phone stands
-  const toY = py - (R.y + R.h / 2);
+  const r = { x: lerp(ps.x, B.x, grow), y: lerp(ps.y, B.y, grow), w: lerp(ps.w, B.w, grow), h: lerp(ps.h, B.h, grow) };
+  const rad = lerp(pw * 0.1, B.w * 0.014, grow);
+  const toY = py - (R0.y + R0.h / 2), toX = px - (R0.x + R0.w / 2);
   return (
     <>
+      {/* match cut: the exam window shrinks into the phone */}
       {t > T.tiny - 0.26 && t < T.tiny + 0.4 && (
-        <AbsoluteFill style={{ opacity: 1 - p(t, T.tiny + 0.2, T.tiny + 0.38), transform: `translateY(${toY * m}px)` }}>
-          <Window R={R} src="screens/win2x/cbt_calculator.jpg" scale={lerp(1, (pw * 0.9) / R.w, m)} />
+        <AbsoluteFill style={{ opacity: 1 - p(t, T.tiny + 0.2, T.tiny + 0.38), transform: `translate(${toX * m}px, ${toY * m}px)` }}>
+          <Window R={R0} src="screens/win2x/cbt_calculator.jpg" scale={lerp(1, (pw * 0.9) / R0.w, m)} />
         </AbsoluteFill>
       )}
       <Layer a={T.tiny} b={T.reveal} style={{ transform: `translateX(${-whip * L.W * 1.1}px)`, filter: whip > 0.02 ? `blur(${whip * 24}px)` : undefined }}>
         <Title text="So why practise" at={T.tiny + 0.05} y={L.ty(L.cy - 640, L.cy - 500, L.cy - 70)} size={L.pick(104, 100, 96)} />
         <Title text="only on a *phone?*" at={T.tiny + 0.85} y={L.ty(L.cy - 500, L.cy - 385, L.cy + 50)} size={L.pick(112, 104, 100)} />
-        <div style={{ opacity: p(t, T.tiny + 0.15, T.tiny + 0.35) }}>
-          <Phone src="screens/cbt.jpg" width={pw * lerp(1.06, 1, ease(t, T.tiny + 0.1, T.tiny + 0.9))} x={L.vx} y={py} rz={wob} />
+        {/* the laptop-size screen growing out from behind the phone */}
+        {grow > 0.002 && (
+          <>
+            <div style={{ position: "absolute", left: r.x, top: r.y, width: r.w, height: r.h, borderRadius: rad, background: `linear-gradient(160deg, rgba(37,99,179,${0.10 * (1 - fill)}), rgba(37,99,179,${0.03 * (1 - fill)}))`, border: `${lerp(2, 1, fill)}px solid rgba(37,99,179,${0.55 * (1 - fill) + 0.08})`, boxShadow: `0 ${40 * grow}px ${80 * grow}px -${30 * grow}px rgba(11,31,68,${0.3 * grow})` }} />
+            {fill > 0 && <Window R={B} src="screens/win2x/cbt_calculator.jpg" o={fill} shadow={fill} />}
+          </>
+        )}
+        {/* the phone, in front */}
+        <div style={{ opacity: Math.min(1, land * 1.5), transform: `translateY(${(1 - land) * 40}px)` }}>
+          <Phone src="screens/cbt.jpg" width={pw} x={px} y={py} ry={lerp(0, -8, grow)} rz={0} />
+          <div style={{ position: "absolute", left: ps.x, top: ps.y, width: ps.w, height: ps.h, borderRadius: pw * 0.1, background: `rgba(11,31,68,${0.18 * fill})` }} />
         </div>
-        <Outline L={L} cx={L.vx} cy={py} pw={pw} />
+        {/* measurements */}
+        <svg width={L.W} height={L.H} style={{ position: "absolute", inset: 0, overflow: "visible" }}>
+          <Dim x1={B.x} y1={B.y - 34} x2={B.x + B.w} y2={B.y - 34} k={dims} />
+          <Dim x1={px - pw * 0.64} y1={py - ph / 2} x2={px - pw * 0.64} y2={py + ph / 2} k={dims} color="#8A97AC" />
+        </svg>
+        <Label x={B.x + B.w / 2} y={B.y - 34} k={p(t, 3.55, 3.8)} text="Laptop screen" L={L} strong />
+        <Label x={px} y={py + ph / 2 + 44 * L.ks} k={p(t, 3.65, 3.9)} text="Your phone" L={L} />
       </Layer>
     </>
   );
