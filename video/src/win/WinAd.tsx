@@ -74,7 +74,7 @@ const Hook: React.FC = () => {
     <Shot a={0} b={T.tiny} first>
       <KText text="JAMB is written" at={0.1} {...L.ty(L.cy - 560, L.cy - 440, L.cy - 70)} size={L.pick(104, 104, 96)} stagger={0.05} dur={0.3} />
       <KText text="*on a computer.*" at={0.45} {...L.ty(L.cy - 410, L.cy - 310, L.cy + 50)} size={L.pick(150, 140, 130)} serifScale={1.1} />
-      <Stage3D cam={cam} floor={0.25}>
+      <Stage3D cam={cam} desk={120}>
         <MonitorModel x={-44} z={-8} rotY={0.32} src="screens/win/cbt_from_test.jpg" drop={drops[0]} />
         <MonitorModel x={44} z={-8} rotY={-0.32} src="screens/win/cbt_from_test.jpg" drop={drops[2]} />
         <MonitorModel x={0} z={4} src="screens/win/cbt_from_test.jpg" drop={drops[1]} />
@@ -127,7 +127,7 @@ const Reveal: React.FC = () => {
       <KText text="SolutionTee CBT" at={T.open + 0.45} {...L.ty(L.cy - 740, L.cy - 540, L.cy - 130)} size={L.pick(92, 84, 84)} color="#fff" accent={C.gold} />
       <KText text="is now on" at={T.open + 0.75} {...L.ty(L.cy - 610, L.cy - 430, L.cy - 30)} size={L.pick(118, 108, 104)} color="#fff" accent={C.gold} />
       <KText text="*Windows.*" at={T.open + 1.0} {...L.ty(L.cy - 480, L.cy - 320, L.cy + 95)} size={L.pick(150, 130, 140)} color="#fff" accent={C.gold} />
-      <Stage3D cam={cam} floor={0.5}>
+      <Stage3D cam={cam} desk={70} deskTone={0.75}>
         <LaptopModel open={open} on={on} screens={[{ src: "screens/win/home.jpg" }]} shadow={0.7} />
       </Stage3D>
       {badge > 0.01 && (
@@ -160,7 +160,7 @@ const BigCbt: React.FC = () => {
     <Shot a={T.cbt} b={T.all}>
       <KText text="A real CBT." at={a + 0.05} {...L.ty(L.cy - 720, L.cy - 560, L.cy - 230)} size={L.pick(104, 96, 96)} />
       <KText text="*On a big screen.*" at={a + 0.4} {...L.ty(L.cy - 590, L.cy - 455, L.cy - 115)} size={L.pick(124, 110, 112)} />
-      <Stage3D cam={cam} floor={0.28}>
+      <Stage3D cam={cam} desk={70}>
         <LaptopModel screens={[{ src: "screens/win/cbt_calculator.jpg" }]} />
       </Stage3D>
       {keys.map(([lab, w, cap], i) => (
@@ -196,7 +196,7 @@ const Everything: React.FC = () => {
       <DeepStage a="rgba(242,178,51,.30)" b="rgba(37,99,179,.5)" />
       <KText text="Everything you love." at={T.all + 0.05} {...L.ty(L.cy - 640, L.cy - 500, L.cy - 70)} size={L.pick(96, 88, 84)} color="#fff" accent={C.gold} />
       <KText text="*Bigger.*" at={T.all + 2.7} {...L.ty(L.cy - 500, L.cy - 385, L.cy + 55)} size={L.pick(150, 130, 150)} color="#fff" accent={C.gold} />
-      <Stage3D cam={cam} floor={0.5}>
+      <Stage3D cam={cam} desk={70} deskTone={0.75}>
         <LaptopModel screens={screens} shadow={0.7} />
       </Stage3D>
       {SHOWS.map(([, label, icon], i) => {
@@ -231,7 +231,7 @@ const Together: React.FC = () => {
       <WarmStage />
       <KText text="Same account." at={a + 0.05} {...L.ty(L.cy - 690, L.cy - 540, L.cy - 130)} size={L.pick(104, 96, 96)} />
       <KText text="*Same Premium.*" at={a + 0.75} {...L.ty(L.cy - 560, L.cy - 425, L.cy - 10)} size={L.pick(124, 112, 116)} />
-      <Stage3D cam={cam} floor={0.3}>
+      <Stage3D cam={cam} desk={70}>
         <LaptopModel screens={[{ src: "screens/win/home.jpg" }]} />
       </Stage3D>
       <Phone src="screens/study.jpg" width={pw} x={px} y={py} ry={-12} />

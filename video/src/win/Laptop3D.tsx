@@ -5,6 +5,7 @@ import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js";
 import { useThree } from "@react-three/fiber";
 import { ThreeCanvas } from "@remotion/three";
 import { continueRender, delayRender, staticFile, useVideoConfig } from "remotion";
+import { brushed, fade, grille, legends } from "./textures";
 
 // A photoreal laptop for the Windows advert (D-186 v2): real 3D in three.js, lit by a CC0 studio HDRI (Poly Haven),
 // aluminium body, recessed keyboard with keycaps, trackpad, hinged lid, glossy bezel, glass reflection, soft shadows.
@@ -115,7 +116,9 @@ const CamRig: React.FC<{ cam: Cam }> = ({ cam }) => {
 // ------------------------------------------------------------------ materials and geometry, made once
 
 const M = {
-  alu: new THREE.MeshPhysicalMaterial({ color: "#c9ced6", metalness: 1, roughness: 0.3, anisotropy: 0.35, clearcoat: 0.15, clearcoatRoughness: 0.4 }),
+  alu: new THREE.MeshPhysicalMaterial({ color: "#c9ced6", metalness: 1, roughness: 0.42, anisotropy: 0.55, clearcoat: 0.12, clearcoatRoughness: 0.35 }),
+  notch: new THREE.MeshStandardMaterial({ color: "#8d94a0", metalness: 1, roughness: 0.5 }),
+  port: new THREE.MeshStandardMaterial({ color: "#07080b", roughness: 0.7, metalness: 0.2 }),
   aluDark: new THREE.MeshPhysicalMaterial({ color: "#aab0b9", metalness: 1, roughness: 0.42 }),
   pad: new THREE.MeshPhysicalMaterial({ color: "#a9afb8", metalness: 0.9, roughness: 0.34, clearcoat: 0.35, clearcoatRoughness: 0.25 }),
   well: new THREE.MeshStandardMaterial({ color: "#2c3036", roughness: 0.6, metalness: 0.7 }),
@@ -136,6 +139,20 @@ const G = {
   bezel: new THREE.PlaneGeometry(LAP.W - 0.36, LID_H - 0.36),
   screen: new THREE.PlaneGeometry(LAP.SW, LAP.SH),
   hinge: new THREE.CylinderGeometry(0.42, 0.42, 26, 32),
+};
+
+/** Puts the procedural textures on the materials (once; needs the browser's canvas). */
+let textured = false;
+const applyTextures = () => {
+  if (textured || typeof document === "undefined") return;
+  const b = brushed();
+  M.alu.roughnessMap = b;
+  M.alu.bumpMap = b;
+  M.alu.bumpScale = 0.6;
+  M.alu.needsUpdate = true;
+  M.aluDark.roughnessMap = b;
+  M.aluDark.needsUpdate = true;
+  textured = true;
 };
 
 /** The keyboard: rows of keycap widths (in key units), the classic laptop layout. */
@@ -171,8 +188,52 @@ const Keyboard: React.FC = () => {
     im.receiveShadow = true;
     return im;
   }, []);
-  return <primitive object={mesh} />;
+  const lg = useMemo(() => (typeof document === "undefined" ? null : legends(ROWS, U)), []);
+  const z0 = -LAP.D / 2 + 2.2;
+  return (
+    <>
+      <primitive object={mesh} />
+      {/* printed labels on the keycap tops */}
+      {lg && (
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, LAP.H + 0.19, z0 + lg.d / 2]} renderOrder={3}>
+          <planeGeometry args={[lg.w, lg.d]} />
+          <meshBasicMaterial map={lg.tex} transparent toneMapped={false} depthWrite={false} polygonOffset polygonOffsetFactor={-2} polygonOffsetUnits={-8} />
+        </mesh>
+      )}
+      {/* speaker grilles either side of the keys */}
+      {[-1, 1].map((sd) => (
+        <mesh key={sd} rotation={[-Math.PI / 2, 0, 0]} position={[sd * 14.55, LAP.H + 0.012, z0 + 5.0]} renderOrder={2}>
+          <planeGeometry args={[1.25, 9.6]} />
+          <meshBasicMaterial map={grille()} transparent depthWrite={false} polygonOffset polygonOffsetFactor={-2} polygonOffsetUnits={-6} />
+        </mesh>
+      ))}
+    </>
+  );
 };
+
+/** Ports on the sides and the finger notch on the front edge. */
+const Details: React.FC = () => (
+  <>
+    <mesh material={M.port} position={[-LAP.W / 2 + 0.04, LAP.H / 2 + 0.02, -4.2]}>
+      <boxGeometry args={[0.12, 0.3, 0.9]} />
+    </mesh>
+    <mesh material={M.port} position={[-LAP.W / 2 + 0.04, LAP.H / 2 + 0.02, -2.6]}>
+      <boxGeometry args={[0.12, 0.3, 0.9]} />
+    </mesh>
+    <mesh material={M.port} position={[-LAP.W / 2 + 0.04, LAP.H / 2, -0.4]}>
+      <boxGeometry args={[0.12, 0.46, 1.3]} />
+    </mesh>
+    <mesh material={M.port} position={[LAP.W / 2 - 0.04, LAP.H / 2 + 0.02, -3.6]} rotation={[0, 0, Math.PI / 2]}>
+      <cylinderGeometry args={[0.17, 0.17, 0.12, 20]} />
+    </mesh>
+    <mesh material={M.port} position={[LAP.W / 2 - 0.04, LAP.H / 2 + 0.02, -1.6]}>
+      <boxGeometry args={[0.12, 0.3, 0.9]} />
+    </mesh>
+    <mesh material={M.notch} position={[0, LAP.H - 0.1, LAP.D / 2 - 0.05]}>
+      <boxGeometry args={[3.8, 0.16, 0.14]} />
+    </mesh>
+  </>
+);
 
 /** A soft dark blot under the laptop (contact shadow), drawn once into a canvas. */
 const blot = (() => {
@@ -196,19 +257,21 @@ export type Screen = { src: string; opacity?: number; y?: number; scale?: number
  * [screens] are stacked screenshots (later ones over earlier ones) with their own opacity, for cross-fades.
  */
 export const LaptopModel: React.FC<{ open?: number; on?: number; screens: Screen[]; x?: number; rotY?: number; shadow?: number }> = ({ open = 1, on = 1, screens, x = 0, rotY = 0, shadow = 0.55 }) => {
+  applyTextures();
   return (
     <group position={[x, 0, 0]} rotation={[0, rotY, 0]}>
       {/* contact shadow */}
       {blot && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0.5]} renderOrder={-1}>
           <planeGeometry args={[LAP.W * 1.35, LAP.D * 1.4]} />
-          <meshBasicMaterial map={blot} transparent opacity={shadow} depthWrite={false} />
+          <meshBasicMaterial map={blot} transparent opacity={shadow} depthWrite={false} polygonOffset polygonOffsetFactor={-1} polygonOffsetUnits={-4} />
         </mesh>
       )}
       {/* base */}
       <mesh geometry={G.base} material={M.alu} position={[0, LAP.H / 2, 0]} castShadow receiveShadow />
       <mesh geometry={G.well} material={M.well} position={[0, LAP.H - 0.02, -LAP.D / 2 + 2.0 + 5.6]} receiveShadow />
       <Keyboard />
+      <Details />
       <mesh geometry={G.pad} material={M.pad} position={[0, LAP.H + 0.005, LAP.D / 2 - 1.3 - 3.9]} receiveShadow />
       <mesh geometry={G.hinge} material={M.hinge} position={[0, HINGE.y + 0.05, HINGE.z - 0.15]} rotation={[0, 0, Math.PI / 2]} castShadow />
       {/* lid, turning about the hinge */}
@@ -291,8 +354,33 @@ export const MonitorModel: React.FC<{ x: number; z?: number; rotY?: number; src:
   );
 };
 
+/** A walnut desk top (CC0 texture, Poly Haven) that fades out at the edge into the page background. */
+const Desk: React.FC<{ radius: number; tone?: number }> = ({ radius, tone = 1 }) => {
+  const map = useTex("tex/walnut_Diffuse.jpg");
+  const rough = useTex("tex/walnut_Rough.jpg", false);
+  const nor = useTex("tex/walnut_nor_gl.jpg", false);
+  const mat = useMemo(() => new THREE.MeshStandardMaterial({ transparent: true, roughness: 1, metalness: 0 }), []);
+  if (!map || !rough || !nor) return null;
+  for (const t of [map, rough, nor]) {
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(radius / 26, radius / 26);
+  }
+  mat.map = map;
+  mat.roughnessMap = rough;
+  mat.normalMap = nor;
+  mat.normalScale.set(0.6, 0.6);
+  mat.alphaMap = fade();
+  mat.color.setRGB(tone, tone * 0.8, tone * 0.6); // a warmer, richer walnut than the grey-brown scan
+  mat.needsUpdate = true;
+  return (
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]} receiveShadow material={mat}>
+      <circleGeometry args={[radius, 96]} />
+    </mesh>
+  );
+};
+
 /** The 3D stage: transparent canvas over the page background, studio light, soft shadows on an invisible floor. */
-export const Stage3D: React.FC<{ cam: Cam; children: React.ReactNode; floor?: number; exposure?: number }> = ({ cam, children, floor = 0.32, exposure = 1.0 }) => {
+export const Stage3D: React.FC<{ cam: Cam; children: React.ReactNode; floor?: number; exposure?: number; desk?: number; deskTone?: number }> = ({ cam, children, floor = 0.32, exposure = 1.0, desk, deskTone }) => {
   const { width, height } = useVideoConfig();
   return (
     <ThreeCanvas
@@ -320,10 +408,14 @@ export const Stage3D: React.FC<{ cam: Cam; children: React.ReactNode; floor?: nu
         shadow-bias={-0.0004}
       />
       <directionalLight position={[40, 30, 60]} intensity={0.5} />
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
-        <planeGeometry args={[600, 600]} />
-        <shadowMaterial opacity={floor} />
-      </mesh>
+      {desk ? (
+        <Desk radius={desk} tone={deskTone} />
+      ) : (
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
+          <planeGeometry args={[600, 600]} />
+          <shadowMaterial opacity={floor} />
+        </mesh>
+      )}
       {children}
     </ThreeCanvas>
   );

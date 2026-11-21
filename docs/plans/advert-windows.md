@@ -67,3 +67,12 @@ anyway). Before spending money on this ad, signing the installer will stop peopl
 | 19.75 s | Download it free at cbt.solutiontee.com |
 
 Checked: speech recognition on the final mix hears every line over the music ("Jam is written on a computer, so why are you only practicing on your phone? Solution T, CBT, is now on Windows. ...").
+
+## v3 (owner, 21 Nov 2026: "continue, use a real 3D laptop with proper textures")
+
+- Brushed aluminium: a procedural streak texture drives roughness and bump on the body and lid (`video/src/win/textures.ts`).
+- Printed keycaps: white labels on every key (esc, F1–F12, QWERTY, shift, ctrl, fn, alt, arrows) laid exactly on the
+  keycap tops; speaker grilles either side of the keyboard; ports on both sides; finger notch on the front edge.
+- A walnut desk (CC0 texture "American Walnut Veneer", Jenelle van Heerden, Poly Haven), warmed in tone, fading into the
+  page background like a product photo; the monitors in the hook stand on it too.
+- No logos on the laptop (unbranded). Flat details sit above the surface with a depth offset so nothing flickers.
