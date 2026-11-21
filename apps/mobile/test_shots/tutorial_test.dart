@@ -8,7 +8,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -114,7 +113,7 @@ class _OfflineRepo extends TestsRepo {
             examId: r.examId,
             examCode: r.examCode,
             mode: r.mode.name,
-            configJson: jsonEncode({'title': r.title ?? 'Practice'}),
+            configJson: jsonEncode({'title': r.title}),
             questionIdsJson: jsonEncode(ids),
             limitSeconds: !r.timed ? 0 : (r.limitMinutes != null ? r.limitMinutes! * 60 : (ids.length * minutesPerQuestion * 60).round()),
             startedAt: DateTime.now(),
@@ -136,7 +135,9 @@ Future<HttpServer> _fakeBackend() async {
     Object? out;
     var status = 200;
     if (path.startsWith('/auth/v1/')) {
-      out = path.endsWith('/user') ? jsonDecode(_SignedIn.session)['user'] : (path.contains('verify') || path.contains('token') ? jsonDecode(_SignedIn.session) : <String, dynamic>{});
+      out = path.endsWith('/user')
+          ? jsonDecode(_SignedIn.session)['user']
+          : (path.contains('verify') || path.contains('token') ? jsonDecode(_SignedIn.session) : <String, dynamic>{});
     } else if (path.startsWith('/rest/v1/rpc/')) {
       final fn = path.substring('/rest/v1/rpc/'.length);
       final args = body.isEmpty ? null : jsonDecode(body);
@@ -259,7 +260,13 @@ class Rec {
 
   void save() {
     final dir = Directory('test_shots/shots/tutorial/$name')..createSync(recursive: true);
-    File('${dir.path}/steps.json').writeAsStringSync(const JsonEncoder.withIndent(' ').convert({'name': name, 'size': [1170, 2532], 'steps': steps}));
+    File('${dir.path}/steps.json').writeAsStringSync(
+      const JsonEncoder.withIndent(' ').convert({
+        'name': name,
+        'size': [1170, 2532],
+        'steps': steps,
+      }),
+    );
   }
 }
 
@@ -289,7 +296,13 @@ Future<(Rec, GoRouter)> _start(WidgetTester t, String name, {GoRouter? router, S
   final old = FlutterError.onError;
   FlutterError.onError = (d) {
     final s = d.exceptionAsString();
-    if (s.contains('SocketException') || s.contains('ClientException') || s.contains('MissingPlugin') || s.contains('WebSocket') || s.contains('RealtimeSubscribe')) return;
+    if (s.contains('SocketException') ||
+        s.contains('ClientException') ||
+        s.contains('MissingPlugin') ||
+        s.contains('WebSocket') ||
+        s.contains('RealtimeSubscribe')) {
+      return;
+    }
     old?.call(d);
   };
   await t.runAsync(() async {
@@ -323,9 +336,17 @@ GoRouter _signUpRouter() => GoRouter(
     GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
     GoRoute(path: '/signup', builder: (_, _) => const SignUpScreen()),
     GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
-    GoRoute(path: '/verify', builder: (_, s) => VerifyCodeScreen(args: s.extra as VerifyArgs? ?? const VerifyArgs(email: 'tolu@example.com', type: OtpType.signup, codeLength: 6))),
+    GoRoute(
+      path: '/verify',
+      builder: (_, s) => VerifyCodeScreen(
+        args: s.extra as VerifyArgs? ?? const VerifyArgs(email: 'tolu@example.com', type: OtpType.signup, codeLength: 6),
+      ),
+    ),
     GoRoute(path: '/setup', builder: (_, _) => const SetupScreen()),
-    GoRoute(path: '/home', builder: (_, _) => const Scaffold(body: SizedBox())),
+    GoRoute(
+      path: '/home',
+      builder: (_, _) => const Scaffold(body: SizedBox()),
+    ),
     GoRoute(path: '/welcome-new', builder: (_, _) => const WelcomeNewScreen()),
   ],
 );
@@ -348,7 +369,10 @@ final tutorials = <String, Future<void> Function(WidgetTester)>{
     await rec.tap(find.byType(Checkbox), note: 'agree');
     await rec.tap(find.text('Create account'), note: 'create account', wait: 20);
     if (find.byType(VerifyCodeScreen).evaluate().isEmpty) {
-      router.push('/verify', extra: const VerifyArgs(email: 'tolu@example.com', type: OtpType.signup, codeLength: 6));
+      router.push(
+        '/verify',
+        extra: const VerifyArgs(email: 'tolu@example.com', type: OtpType.signup, codeLength: 6),
+      );
       await rec.settle();
       rec.steps.removeLast();
       await rec.snap('code screen');

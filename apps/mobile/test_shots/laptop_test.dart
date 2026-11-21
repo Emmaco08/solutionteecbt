@@ -121,7 +121,7 @@ final flows = <Flow>[
 
 late AppDb db;
 
-/// DPR=2 renders sharper pictures (for adverts) into shots/laptop/<size>@2x.
+/// DPR=2 renders sharper pictures (for adverts) into `shots/laptop/<size>@2x`.
 final double _dpr = double.tryParse(Platform.environment['DPR'] ?? '') ?? 1;
 
 void main() {

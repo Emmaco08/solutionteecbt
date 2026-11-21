@@ -145,8 +145,7 @@ class Ads {
       await form.future.timeout(const Duration(minutes: 5));
     } catch (_) {}
     try {
-      privacyOptions.value =
-          await ConsentInformation.instance.getPrivacyOptionsRequirementStatus() == PrivacyOptionsRequirementStatus.required;
+      privacyOptions.value = await ConsentInformation.instance.getPrivacyOptionsRequirementStatus() == PrivacyOptionsRequirementStatus.required;
       return await ConsentInformation.instance.canRequestAds();
     } catch (_) {
       return false;

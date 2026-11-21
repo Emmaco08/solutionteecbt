@@ -27,11 +27,13 @@ final tutSubjects = [
 final tutTables = <String, Object>{
   'subjects': tutSubjects,
   'exam_subjects': [
-    for (final s in tutSubjects) {'exam_id': 1, 'subject_id': s['id'], 'compulsory': s['code'] == 'eng', 'question_count': s['code'] == 'eng' ? 60 : 40, 'minutes': null},
+    for (final s in tutSubjects)
+      {'exam_id': 1, 'subject_id': s['id'], 'compulsory': s['code'] == 'eng', 'question_count': s['code'] == 'eng' ? 60 : 40, 'minutes': null},
     for (final s in tutSubjects) {'exam_id': 2, 'subject_id': s['id'], 'compulsory': false, 'question_count': 50, 'minutes': 60},
   ],
   'topics': [
-    for (final (i, n) in ['Logarithms', 'Quadratic equations', 'Indices', 'Probability', 'Statistics', 'Sets'].indexed) {'id': 100 + i, 'subject_id': 10, 'name': n, 'sort': i},
+    for (final (i, n) in ['Logarithms', 'Quadratic equations', 'Indices', 'Probability', 'Statistics', 'Sets'].indexed)
+      {'id': 100 + i, 'subject_id': 10, 'name': n, 'sort': i},
     for (final (i, n) in ['Motion', 'Waves', 'Electricity', 'Heat'].indexed) {'id': 200 + i, 'subject_id': 12, 'name': n, 'sort': i},
     for (final (i, n) in ['Mole concept', 'Organic chemistry', 'Electrolysis'].indexed) {'id': 300 + i, 'subject_id': 13, 'name': n, 'sort': i},
     for (final (i, n) in ['Comprehension', 'Lexis and structure', 'Oral English'].indexed) {'id': 400 + i, 'subject_id': 11, 'name': n, 'sort': i},
@@ -55,8 +57,32 @@ final tutRpc = <String, Object?>{
   'community_thread': {
     ...tutPosts[0],
     'replies': [
-      {'id': 'r1', 'user_id': 'u-davidokon', 'name': 'David Okon', 'handle': 'davidokon', 'avatar_path': null, 'body': 'Factorise it: (x − 2)(x − 3) = 0, so x = 2 or x = 3.', 'likes': 5, 'liked': false, 'created_at': _ago(12), 'reply_list': const [], 'mine': false},
-      {'id': 'r2', 'user_id': 'u-amaka.eze', 'name': 'Amaka Eze', 'handle': 'amaka.eze', 'avatar_path': null, 'body': 'Find two numbers that multiply to 6 and add up to −5. That is −2 and −3.', 'likes': 3, 'liked': false, 'created_at': _ago(9), 'reply_list': const [], 'mine': false},
+      {
+        'id': 'r1',
+        'user_id': 'u-davidokon',
+        'name': 'David Okon',
+        'handle': 'davidokon',
+        'avatar_path': null,
+        'body': 'Factorise it: (x − 2)(x − 3) = 0, so x = 2 or x = 3.',
+        'likes': 5,
+        'liked': false,
+        'created_at': _ago(12),
+        'reply_list': const [],
+        'mine': false,
+      },
+      {
+        'id': 'r2',
+        'user_id': 'u-amaka.eze',
+        'name': 'Amaka Eze',
+        'handle': 'amaka.eze',
+        'avatar_path': null,
+        'body': 'Find two numbers that multiply to 6 and add up to −5. That is −2 and −3.',
+        'likes': 3,
+        'liked': false,
+        'created_at': _ago(9),
+        'reply_list': const [],
+        'mine': false,
+      },
     ],
   },
   'community_mention_suggest': [
@@ -74,7 +100,18 @@ final tutFunctions = <String, Object?>{};
 
 String _ago(int minutes) => DateTime.now().subtract(Duration(minutes: minutes)).toUtc().toIso8601String();
 
-Map<String, Object?> _post(String id, String name, String handle, String body, {int subject = 10, int likes = 0, int replies = 0, bool following = false, String? ai, int ago = 30}) => {
+Map<String, Object?> _post(
+  String id,
+  String name,
+  String handle,
+  String body, {
+  int subject = 10,
+  int likes = 0,
+  int replies = 0,
+  bool following = false,
+  String? ai,
+  int ago = 30,
+}) => {
   'id': id,
   'user_id': 'u-$handle',
   'name': name,
@@ -102,10 +139,45 @@ Map<String, Object?> _post(String id, String name, String handle, String body, {
 };
 
 final tutPosts = [
-  _post('p1', 'Kemi Bello', 'kemi_b', 'Please how do I solve this? Find the roots of x² − 5x + 6 = 0. I keep getting it wrong.', likes: 12, replies: 3, ago: 18),
-  _post('p2', 'David Okon', 'davidokon', 'Tip: for Use of English, read the passage questions FIRST, then the passage. It saves so much time in the CBT. #JAMB2027', subject: 11, likes: 48, replies: 9, ago: 55),
-  _post('p3', 'Amaka Eze', 'amaka.eze', 'Just scored 78% in my Physics mock! Waves and Electricity are finally making sense. Who else is practising today?', subject: 12, likes: 31, replies: 6, ago: 120),
-  _post('p4', 'Musa Ibrahim', 'musa_i', 'Can someone explain the mole concept in simple terms? Chemistry is giving me headache.', subject: 13, likes: 7, replies: 2, ago: 200),
+  _post(
+    'p1',
+    'Kemi Bello',
+    'kemi_b',
+    'Please how do I solve this? Find the roots of x² − 5x + 6 = 0. I keep getting it wrong.',
+    likes: 12,
+    replies: 3,
+    ago: 18,
+  ),
+  _post(
+    'p2',
+    'David Okon',
+    'davidokon',
+    'Tip: for Use of English, read the passage questions FIRST, then the passage. It saves so much time in the CBT. #JAMB2027',
+    subject: 11,
+    likes: 48,
+    replies: 9,
+    ago: 55,
+  ),
+  _post(
+    'p3',
+    'Amaka Eze',
+    'amaka.eze',
+    'Just scored 78% in my Physics mock! Waves and Electricity are finally making sense. Who else is practising today?',
+    subject: 12,
+    likes: 31,
+    replies: 6,
+    ago: 120,
+  ),
+  _post(
+    'p4',
+    'Musa Ibrahim',
+    'musa_i',
+    'Can someone explain the mole concept in simple terms? Chemistry is giving me headache.',
+    subject: 13,
+    likes: 7,
+    replies: 2,
+    ago: 200,
+  ),
 ];
 
 /// Provider overrides (the laptop check's sample data, with this student's profile and subjects).
@@ -218,7 +290,10 @@ Future<void> finishMostOfPaper(AppDb db, String attemptId) async {
   final a = await (db.select(db.localAttempts)..where((r) => r.id.equals(attemptId))).getSingle();
   final ids = (jsonDecode(a.questionIdsJson) as List).cast<String>();
   final qs = {for (final q in await db.select(db.cachedQuestions).get()) q.id: q};
-  final done = {for (final x in await db.answersFor(attemptId)) if (x.choice != null) x.questionId};
+  final done = {
+    for (final x in await db.answersFor(attemptId))
+      if (x.choice != null) x.questionId,
+  };
   for (var i = 0; i < ids.length; i++) {
     if (i % 23 == 22 || done.contains(ids[i])) continue; // left blank, or answered on screen
     final right = qs[ids[i]]!.answer;
@@ -233,14 +308,33 @@ void tutRemember(String fn, Map<String, dynamic> p) {
   if (fn == 'community_reply') {
     final thread = tutRpc['community_thread']! as Map<String, Object?>;
     (thread['replies']! as List).add({
-      'id': 'r9', 'user_id': tutUid, 'name': 'Tolu Adeyemi', 'handle': 'tolu_a', 'avatar_path': null, 'body': p['p_body'],
-      'likes': 0, 'liked': false, 'created_at': DateTime.now().toUtc().toIso8601String(), 'reply_list': const [], 'mine': true,
+      'id': 'r9',
+      'user_id': tutUid,
+      'name': 'Tolu Adeyemi',
+      'handle': 'tolu_a',
+      'avatar_path': null,
+      'body': p['p_body'],
+      'likes': 0,
+      'liked': false,
+      'created_at': DateTime.now().toUtc().toIso8601String(),
+      'reply_list': const [],
+      'mine': true,
     });
   }
   if (fn == 'community_post_send') {
     tutPosts.insert(0, {
-      ...tutPosts[0], 'id': 'p9', 'user_id': tutUid, 'name': 'Tolu Adeyemi', 'handle': 'tolu_a', 'body': p['p_body'], 'subject_id': p['p_subject'],
-      'likes': 0, 'replies': 0, 'comments': 0, 'created_at': DateTime.now().toUtc().toIso8601String(), 'mine': true,
+      ...tutPosts[0],
+      'id': 'p9',
+      'user_id': tutUid,
+      'name': 'Tolu Adeyemi',
+      'handle': 'tolu_a',
+      'body': p['p_body'],
+      'subject_id': p['p_subject'],
+      'likes': 0,
+      'replies': 0,
+      'comments': 0,
+      'created_at': DateTime.now().toUtc().toIso8601String(),
+      'mine': true,
     });
   }
   if (fn == 'community_follow') {
