@@ -14,6 +14,8 @@ import { FeatLive, LIVE_SECONDS } from "./feat/FeatLive";
 import { FeatOffline, OFFLINE_SECONDS } from "./feat/FeatOffline";
 import { FeatBoard, BOARD_SECONDS } from "./feat/FeatBoard";
 import { WinAd, WIN_SECONDS } from "./win/WinAd";
+import { Tutorial, TutSpec } from "./tut/Tutorial";
+import { SPECS } from "./tut/specs";
 
 // Social ads pack (D-182): every ad in 9:16 (TikTok, Reels, Stories, WhatsApp Status) and 4:5 (Facebook and Instagram feeds).
 const both = (id: string, C: React.FC, seconds: number) => (
@@ -43,5 +45,16 @@ export const Root: React.FC = () => (
     {/* "Now on Windows" (D-186): also 16:9 for YouTube, X and the website */}
     {both("WinAd", WinAd, WIN_SECONDS)}
     <Composition id="WinAd169" component={WinAd} durationInFrames={WIN_SECONDS * 30} fps={30} width={1920} height={1080} />
+    {/* App tutorials (D-187): real app screens, 9:16 and 16:9 */}
+    {Object.entries(SPECS as Record<string, TutSpec>).map(([name, spec]) => {
+      const id = `Tut${name[0].toUpperCase()}${name.slice(1)}`;
+      const frames = Math.round(spec.duration * 30);
+      return (
+        <React.Fragment key={name}>
+          <Composition id={`${id}916`} component={Tutorial} durationInFrames={frames} fps={30} width={1080} height={1920} defaultProps={{ spec }} />
+          <Composition id={`${id}169`} component={Tutorial} durationInFrames={frames} fps={30} width={1920} height={1080} defaultProps={{ spec }} />
+        </React.Fragment>
+      );
+    })}
   </>
 );

@@ -12,3 +12,6 @@ public/audio/
 .venv/
 __pycache__/
 public/vo_win/_*
+
+# tutorial soundtracks are rebuilt by tools/tut_build.py
+public/tut/*/audio.wav

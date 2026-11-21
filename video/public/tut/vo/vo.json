@@ -1,0 +1,206 @@
+{
+ "signup_intro": {
+  "text": "Here's how to create your SolutionTee account. It takes about a minute.",
+  "heard": "Here's how to create your Solution T account.  It takes about a minute.",
+  "score": 0.9,
+  "seconds": 3.724
+ },
+ "signup_c1": {
+  "text": "Open the app and tap Get started.",
+  "heard": "Open the app and tap Get Started.",
+  "score": 1.0,
+  "seconds": 2.269
+ },
+ "signup_c2": {
+  "text": "Type your email address, then choose a password with at least eight characters.",
+  "heard": "Type your email address, then choose a password with at least 8 characters.",
+  "score": 0.92,
+  "seconds": 3.982
+ },
+ "signup_c3": {
+  "text": "Tick the box to agree to the terms, then tap Create account.",
+  "heard": "Tick the box to agree to the terms, then tap Create Account.",
+  "score": 1.0,
+  "seconds": 3.603
+ },
+ "signup_c4": {
+  "text": "We send a six digit code to your email. Type it in, and your email is verified.",
+  "heard": "We send a six digit code to your email,  type it in, and your email is verified.",
+  "score": 1.0,
+  "seconds": 4.142
+ },
+ "signup_c5": {
+  "text": "Now tell us about you. Type your full name, then choose your state and the year you were born.",
+  "heard": "Now tell us about you.  Type your full name, then choose your state  and the year you were born.",
+  "score": 1.0,
+  "seconds": 4.428
+ },
+ "signup_c6": {
+  "text": "When you're done, tap Continue.",
+  "heard": "When you're done, tap Continue.",
+  "score": 1.0,
+  "seconds": 1.914
+ },
+ "signup_c7": {
+  "text": "Pick every exam you're writing. You can choose more than one.",
+  "heard": "Pick every exam you're writing.  You can choose more than one.",
+  "score": 1.0,
+  "seconds": 2.789
+ },
+ "signup_c8": {
+  "text": "Choose your three JAMB subjects. Use of English is already included.",
+  "heard": "Choose your three Jam subjects.  Use of English is already included.",
+  "score": 1.0,
+  "seconds": 3.772
+ },
+ "signup_c9": {
+  "text": "Tap Finish setup, and you're ready to practise.",
+  "heard": "Tap Finish Setup and you're ready to practice.",
+  "score": 0.89,
+  "seconds": 2.307
+ },
+ "signup_outro": {
+  "text": "That's it, you're in! Next, learn how to make your own custom exam.",
+  "heard": "That's it!  You're in!  Next, learn how to make your own custom exam.",
+  "score": 1.0,
+  "seconds": 4.095
+ },
+ "custom_intro": {
+  "text": "Want a test that's just right for you? Here's how to build your own custom exam.",
+  "heard": "Want a test that's just right for you?  Here's how to build your own custom exam.",
+  "score": 1.0,
+  "seconds": 4.082
+ },
+ "custom_c1": {
+  "text": "Go to the Test tab, and tap Custom exam.",
+  "heard": "Go to the test tab and tap custom exam.",
+  "score": 1.0,
+  "seconds": 2.506
+ },
+ "custom_c2": {
+  "text": "Tap a subject to remove it, or tap another subject to add it.",
+  "heard": "tap a subject to remove it, or tap another subject to add it.",
+  "score": 1.0,
+  "seconds": 3.712
+ },
+ "custom_c3": {
+  "text": "Slide to choose how many questions you want from each subject.",
+  "heard": "Slide to choose how many questions you want from each subject.",
+  "score": 1.0,
+  "seconds": 2.9
+ },
+ "custom_c4": {
+  "text": "Want to focus? Tap a topic, and you'll only get questions from that topic.",
+  "heard": "Want to focus? Tap a topic, and you'll only get questions from that topic.",
+  "score": 1.0,
+  "seconds": 3.811
+ },
+ "custom_c5": {
+  "text": "Pick the years you want, or keep all your years.",
+  "heard": "Pick the years you want or keep all your years.",
+  "score": 1.0,
+  "seconds": 2.502
+ },
+ "custom_c6": {
+  "text": "Then slide to set your time. You can also turn the clock off.",
+  "heard": "then slide to set your time.  You can also turn the clock off.",
+  "score": 1.0,
+  "seconds": 3.392
+ },
+ "custom_c7": {
+  "text": "When you're happy, tap Start. Your custom exam opens, just like the real CBT.",
+  "heard": "When you're happy, tap Start.  Your custom exam opens just like the real CBT.",
+  "score": 1.0,
+  "seconds": 4.49
+ },
+ "custom_outro": {
+  "text": "Your custom exam is ready. Good luck! Next, learn how to use Community.",
+  "heard": "Your custom exam is ready.  Good luck.  Next, learn how to use Community.",
+  "score": 1.0,
+  "seconds": 4.449
+ },
+ "community_intro": {
+  "text": "Community is where students ask questions, share tips and help each other. Here's how to use it.",
+  "heard": "Community is where students ask questions,  share tips, and help each other.  Here's how to use it.",
+  "score": 1.0,
+  "seconds": 4.801
+ },
+ "community_c1": {
+  "text": "Go to the Study tab, and tap Community.",
+  "heard": "Go to the Study tab and tap Community.",
+  "score": 1.0,
+  "seconds": 2.385
+ },
+ "community_c2": {
+  "text": "Scroll the feed, and tap any post to open it and see the replies.",
+  "heard": "Scroll the feed and tap any post to open it and see the replies.",
+  "score": 1.0,
+  "seconds": 3.528
+ },
+ "community_c3": {
+  "text": "Like someone's posts? Tap Follow to see more of them in your Following tab.",
+  "heard": "Like someone's posts?  Tap follow to see more of them in your following tab.",
+  "score": 1.0,
+  "seconds": 3.941
+ },
+ "community_c4": {
+  "text": "To answer, tap the reply box. Type the at sign and a name, then pick the person you want to mention.",
+  "heard": "To answer, tap the reply box.  Type the at sign and a name,  then pick the person you want to mention.",
+  "score": 1.0,
+  "seconds": 5.856
+ },
+ "community_c5": {
+  "text": "Write your reply, and tap Reply. It shows up in the thread straight away.",
+  "heard": "Write your reply and tap reply.  It shows up in the thread straight away.",
+  "score": 1.0,
+  "seconds": 3.698
+ },
+ "community_c6": {
+  "text": "To ask your own question, go back to the feed and tap the plus button.",
+  "heard": "To ask your own question, go back to the feed and tap the plus button.",
+  "score": 1.0,
+  "seconds": 3.203
+ },
+ "community_c7": {
+  "text": "Type your question, and add a subject so the right people can find it.",
+  "heard": "Type your question, and add a subject so the right people can find it.",
+  "score": 1.0,
+  "seconds": 3.662
+ },
+ "community_c8": {
+  "text": "Tap Post, and you're done. Your post is now live in the feed.",
+  "heard": "Tap post and you're done.  Your post is now live in the feed.",
+  "score": 1.0,
+  "seconds": 3.199
+ },
+ "community_outro": {
+  "text": "Be kind, help others, and keep learning together. Next, learn how to take a full JAMB mock.",
+  "heard": "be kind, help others, and keep learning together.  Next, learn how to take a full JAM mock.",
+  "score": 1.0,
+  "seconds": 5.718
+ },
+ "mock_intro": {
+  "text": "Ready for the real thing? Here's how to take a full JAMB mock, and check your score.",
+  "heard": "Ready for the real thing?  Here's how to take a full jam mock and check your score.",
+  "score": 1.0,
+  "seconds": 3.722
+ },
+ "mock_c1": {
+  "text": "Go to the Test tab, and tap Start full exam.",
+  "heard": "go to the test tab and tap start full exam.",
+  "score": 1.0,
+  "seconds": 3.175
+ },
+ "mock_c2": {
+  "text": "Your four JAMB subjects are already set. Check them, then tap Start full exam.",
+  "heard": "Your four John subjects are already set.  Check them, then tap Start Full Exam.",
+  "score": 0.93,
+  "seconds": 4.359
+ },
+ "mock_c3": {
+  "text": "The exam screen works like the real CBT. Tap an option to answer, then tap Next.",
+  "heard": "The exam screen works like the real CBT tap an option to answer, then tap Next.",
+  "score": 1.0,
+  "seconds": 4.647
+ }
+}

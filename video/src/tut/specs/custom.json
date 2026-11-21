@@ -1,0 +1,293 @@
+{
+ "name": "custom",
+ "title": "Make a custom exam",
+ "kicker": "Practice",
+ "duration": 40.34,
+ "intro": {
+  "start": 0.0,
+  "say": "Want a test that's just right for you? Here's how to build your own custom exam.",
+  "vo": 0.6,
+  "end": 5.281999999999999
+ },
+ "outro": {
+  "start": 33.495,
+  "say": "Your custom exam is ready. Good luck! Next, learn how to use Community.",
+  "end": 40.044
+ },
+ "chapters": [
+  {
+   "start": 5.282,
+   "end": 8.488,
+   "caption": "**Test** tab, then **Custom exam**",
+   "say": "Go to the Test tab, and tap Custom exam."
+  },
+  {
+   "start": 8.488,
+   "end": 12.9,
+   "caption": "Tap subjects to **add** or **remove** them",
+   "say": "Tap a subject to remove it, or tap another subject to add it."
+  },
+  {
+   "start": 12.9,
+   "end": 16.5,
+   "caption": "Slide to set **how many questions**",
+   "say": "Slide to choose how many questions you want from each subject."
+  },
+  {
+   "start": 16.5,
+   "end": 21.011,
+   "caption": "Tap a **topic** to focus on it",
+   "say": "Want to focus? Tap a topic, and you'll only get questions from that topic."
+  },
+  {
+   "start": 21.011,
+   "end": 24.213,
+   "caption": "Pick the **years**",
+   "say": "Pick the years you want, or keep all your years."
+  },
+  {
+   "start": 24.213,
+   "end": 28.305,
+   "caption": "Set the **time**",
+   "say": "Then slide to set your time. You can also turn the clock off."
+  },
+  {
+   "start": 28.305,
+   "end": 33.495,
+   "caption": "Tap **Start**",
+   "say": "When you're happy, tap Start. Your custom exam opens, just like the real CBT."
+  }
+ ],
+ "frames": [
+  "tut/custom/00.jpg",
+  "tut/custom/01.jpg",
+  "tut/custom/02.jpg",
+  "tut/custom/03.jpg",
+  "tut/custom/04.jpg",
+  "tut/custom/05.jpg",
+  "tut/custom/06.jpg",
+  "tut/custom/07.jpg",
+  "tut/custom/08.jpg"
+ ],
+ "actions": [
+  {
+   "frame": 0,
+   "kind": "tap",
+   "start": 5.732,
+   "end": 6.782,
+   "rect": {
+    "x": 279.0,
+    "y": 693.0,
+    "w": 301.4,
+    "h": 66.0
+   },
+   "next": 1,
+   "nav": false
+  },
+  {
+   "frame": 1,
+   "kind": "tap",
+   "start": 8.938,
+   "end": 9.988,
+   "rect": {
+    "x": 96.0,
+    "y": 264.0,
+    "w": 261.2,
+    "h": 54.0
+   },
+   "next": 2,
+   "nav": false
+  },
+  {
+   "frame": 2,
+   "kind": "tap",
+   "start": 10.888,
+   "end": 11.938,
+   "rect": {
+    "x": 391.6,
+    "y": 264.0,
+    "w": 145.7,
+    "h": 54.0
+   },
+   "next": 3,
+   "nav": false
+  },
+  {
+   "frame": 3,
+   "kind": "drag",
+   "start": 13.35,
+   "end": 14.75,
+   "rect": {
+    "x": 111.0,
+    "y": 264.0,
+    "w": 948.0,
+    "h": 144.0
+   },
+   "dx": -450.0,
+   "next": 4,
+   "nav": false
+  },
+  {
+   "frame": 4,
+   "kind": "tap",
+   "start": 16.95,
+   "end": 18.0,
+   "rect": {
+    "x": 111.0,
+    "y": 264.0,
+    "w": 389.6,
+    "h": 54.0
+   },
+   "next": 5,
+   "nav": false
+  },
+  {
+   "frame": 5,
+   "kind": "tap",
+   "start": 21.461,
+   "end": 22.511,
+   "rect": {
+    "x": 418.3,
+    "y": 1458.0,
+    "w": 98.0,
+    "h": 54.0
+   },
+   "next": 6,
+   "nav": false
+  },
+  {
+   "frame": 6,
+   "kind": "drag",
+   "start": 24.663,
+   "end": 26.063,
+   "rect": {
+    "x": 60.0,
+    "y": 1905.0,
+    "w": 1050.0,
+    "h": 144.0
+   },
+   "dx": -360.0,
+   "next": 7,
+   "nav": false
+  },
+  {
+   "frame": 7,
+   "kind": "tap",
+   "start": 28.755,
+   "end": 29.805,
+   "rect": {
+    "x": 374.1,
+    "y": 2316.0,
+    "w": 421.8,
+    "h": 60.0
+   },
+   "next": 8,
+   "nav": false
+  },
+  {
+   "frame": 8,
+   "kind": "hold",
+   "start": 30.705,
+   "end": 31.505
+  }
+ ],
+ "cam": [
+  {
+   "t": 0.0,
+   "z": 1.0,
+   "x": 585,
+   "y": 1266
+  },
+  {
+   "t": 5.382,
+   "z": 1.55,
+   "x": 429.7,
+   "y": 726.0
+  },
+  {
+   "t": 8.238,
+   "z": 1.0,
+   "x": 585,
+   "y": 1266
+  },
+  {
+   "t": 8.588,
+   "z": 1.55,
+   "x": 226.6,
+   "y": 291.0
+  },
+  {
+   "t": 10.538,
+   "z": 1.55,
+   "x": 464.5,
+   "y": 291.0
+  },
+  {
+   "t": 12.65,
+   "z": 1.0,
+   "x": 585,
+   "y": 1266
+  },
+  {
+   "t": 13.0,
+   "z": 1.0,
+   "x": 360.0,
+   "y": 336.0
+  },
+  {
+   "t": 16.25,
+   "z": 1.0,
+   "x": 585,
+   "y": 1266
+  },
+  {
+   "t": 16.6,
+   "z": 1.437,
+   "x": 305.8,
+   "y": 291.0
+  },
+  {
+   "t": 20.761,
+   "z": 1.0,
+   "x": 585,
+   "y": 1266
+  },
+  {
+   "t": 21.111,
+   "z": 1.55,
+   "x": 467.3,
+   "y": 1485.0
+  },
+  {
+   "t": 23.963,
+   "z": 1.0,
+   "x": 585,
+   "y": 1266
+  },
+  {
+   "t": 24.313,
+   "z": 1.0,
+   "x": 405.0,
+   "y": 1977.0
+  },
+  {
+   "t": 28.055,
+   "z": 1.0,
+   "x": 585,
+   "y": 1266
+  },
+  {
+   "t": 28.405,
+   "z": 1.328,
+   "x": 585.0,
+   "y": 2346.0
+  },
+  {
+   "t": 33.245,
+   "z": 1.0,
+   "x": 585,
+   "y": 1266
+  }
+ ],
+ "audio": "tut/custom/audio.wav"
+}

@@ -1,0 +1,311 @@
+{
+  "signup": {
+    "title": "Create your account",
+    "kicker": "Getting started",
+    "intro": "Here's how to create your SolutionTee account. It takes about a minute.",
+    "outro": "That's it, you're in! Next, learn how to make your own custom exam.",
+    "chapters": [
+      {
+        "say": "Open the app and tap Get started.",
+        "caption": "Tap **Get started**",
+        "frames": [
+          0
+        ]
+      },
+      {
+        "say": "Type your email address, then choose a password with at least eight characters.",
+        "caption": "Type your **email** and a **password**",
+        "frames": [
+          1,
+          2
+        ]
+      },
+      {
+        "say": "Tick the box to agree to the terms, then tap Create account.",
+        "caption": "Tick the box, then tap **Create account**",
+        "frames": [
+          3,
+          4
+        ]
+      },
+      {
+        "say": "We send a six digit code to your email. Type it in, and your email is verified.",
+        "caption": "Type the **6-digit code** from your email",
+        "frames": [
+          5,
+          6
+        ]
+      },
+      {
+        "say": "Now tell us about you. Type your full name, then choose your state and the year you were born.",
+        "caption": "Your **name**, **state** and **year of birth**",
+        "frames": [
+          7,
+          8,
+          9,
+          10,
+          11
+        ]
+      },
+      {
+        "say": "When you're done, tap Continue.",
+        "caption": "Tap **Continue**",
+        "frames": [
+          12
+        ]
+      },
+      {
+        "say": "Pick every exam you're writing. You can choose more than one.",
+        "caption": "Pick **your exams**",
+        "frames": [
+          13,
+          14
+        ]
+      },
+      {
+        "say": "Choose your three JAMB subjects. Use of English is already included.",
+        "caption": "Choose your **3 JAMB subjects**",
+        "frames": [
+          15,
+          16,
+          17
+        ]
+      },
+      {
+        "say": "Tap Finish setup, and you're ready to practise.",
+        "caption": "Tap **Finish setup**",
+        "frames": [
+          18,
+          19
+        ]
+      }
+    ]
+  },
+  "custom": {
+    "title": "Make a custom exam",
+    "kicker": "Practice",
+    "intro": "Want a test that's just right for you? Here's how to build your own custom exam.",
+    "outro": "Your custom exam is ready. Good luck! Next, learn how to use Community.",
+    "chapters": [
+      {
+        "say": "Go to the Test tab, and tap Custom exam.",
+        "caption": "**Test** tab, then **Custom exam**",
+        "frames": [
+          0
+        ]
+      },
+      {
+        "say": "Tap a subject to remove it, or tap another subject to add it.",
+        "caption": "Tap subjects to **add** or **remove** them",
+        "frames": [
+          1,
+          2
+        ]
+      },
+      {
+        "say": "Slide to choose how many questions you want from each subject.",
+        "caption": "Slide to set **how many questions**",
+        "frames": [
+          3
+        ]
+      },
+      {
+        "say": "Want to focus? Tap a topic, and you'll only get questions from that topic.",
+        "caption": "Tap a **topic** to focus on it",
+        "frames": [
+          4
+        ]
+      },
+      {
+        "say": "Pick the years you want, or keep all your years.",
+        "caption": "Pick the **years**",
+        "frames": [
+          5
+        ]
+      },
+      {
+        "say": "Then slide to set your time. You can also turn the clock off.",
+        "caption": "Set the **time**",
+        "frames": [
+          6
+        ]
+      },
+      {
+        "say": "When you're happy, tap Start. Your custom exam opens, just like the real CBT.",
+        "caption": "Tap **Start**",
+        "frames": [
+          7,
+          8
+        ]
+      }
+    ]
+  },
+  "community": {
+    "title": "Use Community",
+    "kicker": "Community",
+    "intro": "Community is where students ask questions, share tips and help each other. Here's how to use it.",
+    "outro": "Be kind, help others, and keep learning together. Next, learn how to take a full JAMB mock.",
+    "chapters": [
+      {
+        "say": "Go to the Study tab, and tap Community.",
+        "caption": "**Study** tab, then **Community**",
+        "frames": [
+          0
+        ]
+      },
+      {
+        "say": "Scroll the feed, and tap any post to open it and see the replies.",
+        "caption": "Tap a **post** to open it",
+        "frames": [
+          1
+        ]
+      },
+      {
+        "say": "Like someone's posts? Tap Follow to see more of them in your Following tab.",
+        "caption": "Tap **Follow**",
+        "frames": [
+          2
+        ]
+      },
+      {
+        "say": "To answer, tap the reply box. Type the at sign and a name, then pick the person you want to mention.",
+        "caption": "Type **@** to mention someone",
+        "frames": [
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "say": "Write your reply, and tap Reply. It shows up in the thread straight away.",
+        "caption": "Write it, then tap **Reply**",
+        "frames": [
+          6,
+          7
+        ]
+      },
+      {
+        "say": "To ask your own question, go back to the feed and tap the plus button.",
+        "caption": "Tap **+** to make a post",
+        "frames": [
+          8,
+          9
+        ]
+      },
+      {
+        "say": "Type your question, and add a subject so the right people can find it.",
+        "caption": "Write it and **add a subject**",
+        "frames": [
+          10,
+          11,
+          12
+        ]
+      },
+      {
+        "say": "Tap Post, and you're done. Your post is now live in the feed.",
+        "caption": "Tap **Post**",
+        "frames": [
+          13,
+          14
+        ]
+      }
+    ]
+  },
+  "mock": {
+    "title": "Take a full JAMB mock",
+    "kicker": "Practice",
+    "intro": "Ready for the real thing? Here's how to take a full JAMB mock, and check your score.",
+    "outro": "Practise like this every week, and watch your score grow. Good luck!",
+    "chapters": [
+      {
+        "say": "Go to the Test tab, and tap Start full exam.",
+        "caption": "**Test** tab, then **Start full exam**",
+        "frames": [
+          0
+        ]
+      },
+      {
+        "say": "Your four JAMB subjects are already set. Check them, then tap Start full exam.",
+        "caption": "Check your subjects, then **Start**",
+        "frames": [
+          1
+        ]
+      },
+      {
+        "say": "The exam screen works like the real CBT. Tap an option to answer, then tap Next.",
+        "caption": "Tap an **option**, then **Next**",
+        "frames": [
+          2,
+          3
+        ]
+      },
+      {
+        "say": "Not sure? Tap the flag, and come back to it later.",
+        "caption": "Tap the **flag** to come back later",
+        "frames": [
+          4,
+          5
+        ]
+      },
+      {
+        "say": "Tap a subject at the top to switch subjects at any time.",
+        "caption": "Tap a **subject** to switch",
+        "frames": [
+          6
+        ]
+      },
+      {
+        "say": "Need to calculate? Tap the calculator icon, work it out, then close it.",
+        "caption": "Use the **calculator**",
+        "frames": [
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13
+        ]
+      },
+      {
+        "say": "Tap the grid icon to see every question. Tap any number to jump straight to it.",
+        "caption": "Tap the **grid** to jump to any question",
+        "frames": [
+          14,
+          15,
+          16
+        ]
+      },
+      {
+        "say": "Your answers save as you go, even if you close the app. When you've finished, tap Submit.",
+        "caption": "Answers save as you go. Tap **Submit**",
+        "frames": [
+          17,
+          18
+        ]
+      },
+      {
+        "say": "Check your summary, then tap Submit now.",
+        "caption": "Check, then **Submit now**",
+        "frames": [
+          19
+        ]
+      },
+      {
+        "say": "You get your score out of four hundred straight away, with a score for each subject.",
+        "caption": "Your **score out of 400**",
+        "frames": [
+          20
+        ]
+      },
+      {
+        "say": "Tap Review answers to see what you got wrong, and ask SolutionTee AI to explain it.",
+        "caption": "**Review answers** and learn",
+        "frames": [
+          21,
+          22
+        ]
+      }
+    ]
+  }
+}
