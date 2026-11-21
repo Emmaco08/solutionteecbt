@@ -1,259 +1,470 @@
 import React from "react";
 import * as THREE from "three";
-import { AbsoluteFill, Audio, Sequence, staticFile } from "remotion";
+import { AbsoluteFill, Audio, Img, staticFile } from "remotion";
 import { Phone } from "../components";
-import { EndCard, Flash, KText, Star4, WarmStage, useF, useS } from "../pack/kit";
-import { C, DeepStage, FONT, Ico, Pill, Shot, easeInOut, easeOut, lerp, p, spr } from "../feat/fkit";
-import { Cam, LaptopModel, MonitorModel, Screen, Stage3D, project, screenPoint } from "./Laptop3D";
+import { ExamLogos, KText, LogoReveal, useF, useS } from "../pack/kit";
+import { C, FONT, Ico, easeInOut, lerp, p, spr } from "../feat/fkit";
+import { Cam, LAP, LaptopModel, Stage3D, project, screenPoint } from "./Laptop3D";
 
-// Advert: "SolutionTee CBT is now on Windows" (D-186, v2): a photoreal 3D laptop and a voice-over.
-// 24.5 s, 120 BPM, 9:16, 4:5 and 16:9. Scene times follow the voice lines (public/vo_win/vo.json).
+// Advert: "SolutionTee CBT is now on Windows" (D-186, v4). White studio look, professional motion: the real exam
+// screen assembling from its parts, a match cut into a phone, a 3D laptop opening under a moving light, a camera dive
+// into the screen, spotlighted tools, screens flying out of the laptop. 24.5 s, voice lines from public/vo_win.
 export const WIN_SECONDS = 24.5;
 
-/** When each scene starts and when its voice line is said. */
+/** Scene starts, and the moments the voice says each key word (public/vo_win/words.json). */
 export const T = { tiny: 2.1, reveal: 4.5, open: 4.6, cbt: 7.9, all: 13.2, same: 17.2, end: 19.4 };
-export const VO: [string, number][] = [["w1", 0.15], ["w2", 2.15], ["w3", 5.0], ["w4", 8.0], ["w5", 13.3], ["w6", 17.3], ["w7", 19.75]];
+const W = {
+  computer: 1.17, phone: 3.99, solution: 5.0, now: 6.68, windows: 7.04, realCbt: 8.0, big: 9.34, timer: 10.24, calc: 10.72, keyboard: 11.3, keys: 11.44, exam: 12.12,
+  ai: 13.3, game: 14.32, videos: 15.28, notes: 15.58, everything: 16.04, account: 17.3, premium: 18.14, download: 19.75, url: 20.79,
+};
 
-/** The frame plus which of the three formats it is. */
+// ------------------------------------------------------------------ layout helpers
+
 const useL = () => {
   const F = useF();
   const land = F.W > F.H;
   const f45 = !F.tall && !land;
-  /** pick a value for 9:16, 4:5, 16:9 */
-  const pick = <T,>(tall: T, four5: T, wide: T): T => (land ? wide : f45 ? four5 : tall);
-  // in 16:9 the words sit in a left column and the pictures on the right; in 9:16 and 4:5 both are centred
-  const vx = land ? F.W * 0.665 : F.cx;
-  /** where a title line goes: centred at y (9:16 / 4:5), or left-aligned in the left column at yl (16:9) */
-  const ty = (yt: number, y45: number, yl: number) => (land ? { y: yl, x: 120, width: 760, align: "left" as const } : { y: f45 ? y45 : yt });
+  const pick = <V,>(tall: V, four5: V, wide: V): V => (land ? wide : f45 ? four5 : tall);
+  const vx = land ? F.W * 0.645 : F.cx;
+  const ty = (yt: number, y45: number, yl: number) => (land ? { y: yl, x: 120, width: 700, align: "left" as const } : { y: f45 ? y45 : yt });
   return { ...F, land, f45, pick, vx, ty };
 };
+type LT = ReturnType<typeof useL>;
 
-const SCR = { w: 1920, h: 1080 };
+const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
+/** Decisive easing for camera moves: fast start, long soft landing. */
+const expo = (x: number) => (x >= 1 ? 1 : 1 - Math.pow(2, -10 * Math.max(0, x)));
+const ease = (t: number, a: number, b: number, f: (x: number) => number = expo) => f(clamp01((t - a) / (b - a)));
+const cubicOut = (x: number) => 1 - Math.pow(1 - x, 3);
 
-/** A camera that fits [width] cm across [frac] of the frame, seen from yaw/pitch (degrees), with [look] drawn at [at] (px). */
-const fit = (L: ReturnType<typeof useL>, look: THREE.Vector3, width: number, frac: number, yaw: number, pitch: number, at: [number, number], fov = 26): Cam => {
-  const aspect = L.W / L.H;
-  const th = Math.tan(THREE.MathUtils.degToRad(fov / 2)) * aspect;
+/** The app window (the real Windows app has a light title bar with its name and the window buttons). */
+const BAR = 0.034; // title bar height as a share of the window width
+const examRect = (L: LT) => {
+  const w = L.pick(1040, 940, 980);
+  const h = w * (9 / 16) + w * BAR;
+  const cx = L.vx + (L.land ? 70 : 0), cy = L.pick(L.cy + 60, L.cy + 70, L.cy + 40);
+  return { x: cx - w / 2, y: cy - h / 2, w, h, sx: w / 1920 };
+};
+type RT = ReturnType<typeof examRect>;
+
+const fit = (L: LT, look: THREE.Vector3, width: number, frac: number, yaw: number, pitch: number, at: [number, number], fov = 26): Cam => {
+  const th = Math.tan(THREE.MathUtils.degToRad(fov / 2)) * (L.W / L.H);
   const d = width / 2 / (frac * th);
   const y = THREE.MathUtils.degToRad(yaw), pt = THREE.MathUtils.degToRad(pitch);
-  const pos: [number, number, number] = [look.x + d * Math.sin(y) * Math.cos(pt), look.y + d * Math.sin(pt), look.z + d * Math.cos(y) * Math.cos(pt)];
-  return { pos, look: [look.x, look.y, look.z], fov, shift: [at[0] - L.W / 2, at[1] - L.H / 2] };
+  return { pos: [look.x + d * Math.sin(y) * Math.cos(pt), look.y + d * Math.sin(pt), look.z + d * Math.cos(y) * Math.cos(pt)], look: [look.x, look.y, look.z], fov, shift: [at[0] - L.W / 2, at[1] - L.H / 2] };
 };
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
-const mixV = (a: THREE.Vector3, b: THREE.Vector3, k: number) => a.clone().lerp(b, k);
 
-/** A keyboard key that presses down at [press] (seconds) and glows gold while held. */
-const Key: React.FC<{ x: number; y: number; at: number; press: number; label: string; w?: number; size: number; caption?: string; dark?: boolean }> = ({ x, y, at, press, label, w = 1, size, caption }) => {
+// ------------------------------------------------------------------ the white studio
+
+const WhiteStage: React.FC = () => {
   const t = useS();
-  const k = spr(t, at, { damping: 12, stiffness: 170 });
-  if (k < 0.002) return null;
-  const d = t >= press ? Math.max(0, 1 - (t - press) / 0.22) : 0;
-  const lit = t >= press ? 1 - p(t, press + 0.9, press + 1.3) * 0.6 : 0;
-  const h = size;
-  const kw = size * w;
-  const depth = size * 0.11;
+  const F = useF();
   return (
-    <div style={{ position: "absolute", left: x, top: y, transform: `translate(-50%,-50%) scale(${k})`, display: "flex", flexDirection: "column", alignItems: "center", gap: size * 0.16 }}>
-      <div style={{ position: "relative", width: kw, height: h + depth }}>
-        <div style={{ position: "absolute", left: 0, top: depth, width: kw, height: h, borderRadius: size * 0.2, background: lit > 0 ? "#B98418" : "#9AA4B5" }} />
-        <div style={{ position: "absolute", left: 0, top: depth * d, width: kw, height: h, borderRadius: size * 0.2, background: lit > 0 ? `linear-gradient(180deg,#FFD978,${C.gold})` : "linear-gradient(180deg,#fff,#E9EDF3)", boxShadow: lit > 0 ? `0 0 ${40 * lit}px rgba(242,178,51,${0.8 * lit})` : "inset 0 -2px 0 rgba(0,0,0,.06)", display: "grid", placeItems: "center", fontFamily: FONT, fontWeight: 800, fontSize: size * (label.length > 3 ? 0.3 : 0.42), color: C.navy, letterSpacing: "-0.02em" }}>{label}</div>
-      </div>
-      {caption && <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: size * 0.27, color: C.navy, whiteSpace: "nowrap", opacity: p(t, at + 0.1, at + 0.4) }}>{caption}</div>}
-    </div>
+    <AbsoluteFill style={{ background: "#FFFFFF" }}>
+      <AbsoluteFill style={{ background: `radial-gradient(ellipse ${F.W * 0.9}px ${F.H * 0.5}px at ${30 + Math.sin(t * 0.3) * 8}% 12%, rgba(37,99,179,.07), transparent 70%)` }} />
+      <AbsoluteFill style={{ background: `radial-gradient(ellipse ${F.W * 0.9}px ${F.H * 0.45}px at ${70 + Math.cos(t * 0.25) * 8}% 92%, rgba(242,178,51,.08), transparent 70%)` }} />
+      <AbsoluteFill style={{ background: "radial-gradient(ellipse at 50% 45%, transparent 60%, rgba(11,31,68,.05))" }} />
+    </AbsoluteFill>
   );
 };
 
-// ------------------------------------------------------------------ the hook: a CBT centre, three monitors drop in
+/** A scene layer: shown between a and b, with optional fades. */
+const Layer: React.FC<{ a: number; b: number; fin?: number; fout?: number; children: React.ReactNode; style?: React.CSSProperties }> = ({ a, b, fin = 0, fout = 0, children, style }) => {
+  const t = useS();
+  if (t < a - 0.01 || t > b + 0.01) return null;
+  const o = (fin > 0 ? p(t, a, a + fin) : 1) * (fout > 0 ? 1 - p(t, b - fout, b) : 1);
+  return <AbsoluteFill style={{ opacity: o, ...style }}>{children}</AbsoluteFill>;
+};
+
+/** Navy title, accent words in blue serif italic, each word sliding up out of a mask. */
+const Title: React.FC<{ text: string; at: number; y: { y: number; x?: number; width?: number; align?: "left" | "center" | "right" }; size: number; out?: number }> = ({ text, at, y, size, out }) => (
+  <KText text={text} at={at} {...y} size={size} mode="mask" stagger={0.055} dur={0.5} color={C.navy} accent={C.blue} out={out} />
+);
+
+// ------------------------------------------------------------------ parts of the real exam screen (2x screenshots)
+
+type Crop = { k: string; x: number; y: number; w: number; h: number };
+// positions in the 1920 × 1080 screen (the crop files are 2x)
+const CROPS: Crop[] = [
+  { k: "head", x: 10, y: 5, w: 200, h: 43 },
+  { k: "timer", x: 1336, y: 7, w: 107, h: 40 },
+  { k: "submit", x: 1450, y: 7, w: 99, h: 40 },
+  { k: "q", x: 330, y: 80, w: 895, h: 70 },
+  { k: "optA", x: 340, y: 169, w: 880, h: 59 },
+  { k: "optB", x: 340, y: 238, w: 880, h: 59 },
+  { k: "optC", x: 340, y: 307, w: 880, h: 59 },
+  { k: "optD", x: 340, y: 376, w: 880, h: 59 },
+  { k: "calc", x: 1261, y: 514, w: 320, h: 435 },
+  { k: "side", x: 1570, y: 20, w: 335, h: 130 },
+  { k: "keys", x: 1575, y: 255, w: 330, h: 200 },
+];
+const crop = (k: string) => CROPS.find((c) => c.k === k)!;
+/** Where a part of the screen lands on the frame, inside window R. */
+const place = (R: RT, c: { x: number; y: number; w: number; h: number }) => ({ x: R.x + c.x * R.sx, y: R.y + R.w * BAR + c.y * R.sx, w: c.w * R.sx, h: c.h * R.sx });
+
+const Window: React.FC<{ R: RT; src?: string; o?: number; children?: React.ReactNode; scale?: number; shadow?: number }> = ({ R, src, o = 1, children, scale = 1, shadow = 1 }) => (
+  <div style={{ position: "absolute", left: R.x, top: R.y, width: R.w, height: R.h, opacity: o, transform: `scale(${scale})`, transformOrigin: "50% 50%", borderRadius: R.w * 0.014, overflow: "hidden", background: "#fff", boxShadow: `0 ${R.w * 0.05}px ${R.w * 0.1}px -${R.w * 0.03}px rgba(11,31,68,${0.32 * shadow}), 0 0 0 1px rgba(11,31,68,.08)` }}>
+    <div style={{ height: R.w * BAR, background: "#F3F5F8", borderBottom: "1px solid #E4E8EE", display: "flex", alignItems: "center", padding: `0 ${R.w * 0.012}px`, fontFamily: FONT, fontWeight: 600, fontSize: R.w * 0.013, color: "#3B4A63" }}>
+      <Img src={staticFile("brand/favicon.svg")} style={{ width: R.w * 0.018, height: R.w * 0.018, objectFit: "contain", marginRight: R.w * 0.008 }} />
+      SolutionTee CBT
+      <div style={{ flex: 1 }} />
+      {["—", "☐", "✕"].map((g) => (
+        <span key={g} style={{ width: R.w * 0.04, textAlign: "center", color: "#59677E", fontWeight: 500 }}>{g}</span>
+      ))}
+    </div>
+    {src && <Img src={staticFile(src)} style={{ position: "absolute", left: 0, top: R.w * BAR, width: R.w, height: (R.w * 9) / 16 }} />}
+    {children}
+  </div>
+);
+
+// ------------------------------------------------------------------ 0–2.1 s: the exam screen assembles from its parts
+
+const SCATTER: Record<string, [number, number, number, number]> = {
+  // dx, dy (window widths), rotation (deg), delay (s)
+  head: [-0.5, -0.55, -14, 0.1], timer: [0.45, -0.6, 18, 0.18], submit: [0.62, -0.42, 22, 0.24], q: [-0.2, -0.9, -6, 0.0],
+  optA: [-0.75, -0.1, -12, 0.14], optB: [0.8, 0.05, 10, 0.2], optC: [-0.8, 0.25, 8, 0.26], optD: [0.75, 0.45, -10, 0.32],
+  calc: [0.55, 0.9, 16, 0.22], side: [0.9, -0.75, 20, 0.3], keys: [1.0, 0.25, -18, 0.36],
+};
 
 const Hook: React.FC = () => {
   const L = useL();
   const t = useS();
-  const drops = [0.45, 0.55, 0.65].map((a) => (1 - spr(t, a, { damping: 12, stiffness: 120 })) * 60);
-  const cam = fit(L, V(0, 24, 0), 126, L.pick(0.98, 0.92, 0.6), lerp(-6, 6, p(t, 0, T.tiny)), 10, [L.land ? L.vx + 40 : L.cx, L.pick(L.cy + 140, L.cy + 150, L.cy + 40)]);
+  const R = examRect(L);
+  const base = p(t, 1.15, 1.45);
+  const push = lerp(1, 1.035, clamp01(t / T.tiny));
   return (
-    <Shot a={0} b={T.tiny} first>
-      <KText text="JAMB is written" at={0.1} {...L.ty(L.cy - 560, L.cy - 440, L.cy - 70)} size={L.pick(104, 104, 96)} stagger={0.05} dur={0.3} />
-      <KText text="*on a computer.*" at={0.45} {...L.ty(L.cy - 410, L.cy - 310, L.cy + 50)} size={L.pick(150, 140, 130)} serifScale={1.1} />
-      <Stage3D cam={cam} desk={120}>
-        <MonitorModel x={-44} z={-8} rotY={0.32} src="screens/win/cbt_from_test.jpg" drop={drops[0]} />
-        <MonitorModel x={44} z={-8} rotY={-0.32} src="screens/win/cbt_from_test.jpg" drop={drops[2]} />
-        <MonitorModel x={0} z={4} src="screens/win/cbt_from_test.jpg" drop={drops[1]} />
-      </Stage3D>
-    </Shot>
+    <Layer a={0} b={T.tiny}>
+      <Title text="JAMB is written" at={0.1} y={L.ty(L.cy - 640, L.cy - 500, L.cy - 70)} size={L.pick(104, 100, 96)} />
+      <Title text="*on a computer.*" at={0.75} y={L.ty(L.cy - 500, L.cy - 385, L.cy + 50)} size={L.pick(150, 136, 130)} />
+      <AbsoluteFill style={{ transform: `scale(${push})` }}>
+        <Window R={R} src="screens/win2x/cbt_calculator.jpg" o={base} shadow={base} />
+        {base < 1 &&
+          CROPS.map((c) => {
+            const [dx, dy, rot, d] = SCATTER[c.k];
+            const k = spr(t, 0.2 + d, { damping: 16, stiffness: 120 });
+            const k1 = spr(t - 1 / 30, 0.2 + d, { damping: 16, stiffness: 120 });
+            const vel = Math.abs(k - k1) * R.w * Math.hypot(dx, dy);
+            const pos = place(R, c);
+            return (
+              <div key={c.k} style={{ position: "absolute", left: pos.x, top: pos.y, width: pos.w, height: pos.h, transform: `translate(${(1 - k) * dx * R.w}px, ${(1 - k) * dy * R.w}px) rotate(${(1 - k) * rot}deg) scale(${lerp(1.6, 1, k)})`, opacity: Math.min(1, k * 4) * (1 - base), filter: vel > 1.5 ? `blur(${Math.min(10, vel * 0.08)}px)` : undefined, boxShadow: `0 ${30 * (1 - k) + 4}px ${60 * (1 - k) + 8}px -10px rgba(11,31,68,${0.38 * (1 - k) + 0.06}), 0 0 0 1px rgba(11,31,68,.08)`, borderRadius: 8, overflow: "hidden", background: "#fff" }}>
+                <Img src={staticFile(`screens/win2x/c_${c.k}.png`)} style={{ width: "100%", height: "100%" }} />
+              </div>
+            );
+          })}
+      </AbsoluteFill>
+    </Layer>
   );
 };
 
-// ------------------------------------------------------------------ only on a phone?
+// ------------------------------------------------------------------ 2.1–4.5 s: match cut into a small phone
+
+const Outline: React.FC<{ L: LT; cx: number; cy: number; pw: number }> = ({ L, cx, cy, pw }) => {
+  const t = useS();
+  const k = ease(t, 3.25, 3.95);
+  if (k <= 0) return null;
+  const w = L.pick(900, 820, 860), h = (w * 9) / 16;
+  const ph = pw * 2.17;
+  return (
+    <>
+      <svg width={L.W} height={L.H} style={{ position: "absolute", inset: 0 }}>
+        <rect x={cx - w / 2} y={cy - h / 2} width={w} height={h} rx={18} fill="rgba(37,99,179,.04)" stroke={C.blue} strokeWidth={4} pathLength={1} strokeDasharray={`${k} 1`} />
+      </svg>
+      <div style={{ position: "absolute", left: cx, top: cy - h / 2 - 36, transform: "translate(-50%,-50%)", fontFamily: FONT, fontWeight: 700, fontSize: 32 * L.ks, color: C.blue, opacity: p(t, 3.7, 3.95) }}>A laptop screen</div>
+      <div style={{ position: "absolute", left: cx, top: cy + ph / 2 + 44, transform: "translate(-50%,-50%)", fontFamily: FONT, fontWeight: 700, fontSize: 30 * L.ks, color: "#6B7A93", opacity: p(t, 3.8, 4.05) }}>Your phone</div>
+    </>
+  );
+};
 
 const Tiny: React.FC = () => {
   const L = useL();
   const t = useS();
-  const a = T.tiny + 0.15;
-  const k = spr(t, a, { damping: 9, stiffness: 160 });
-  const wob = Math.sin((t - a) * 9) * Math.exp(-(t - a) * 2.2) * 9;
+  const R = examRect(L);
   const pw = L.pick(250, 210, 250);
+  const py = L.pick(L.cy + 220, L.cy + 190, L.cy + 30);
+  const m = ease(t, T.tiny - 0.25, T.tiny + 0.35, easeInOut);
+  const whip = ease(t, T.reveal - 0.3, T.reveal, (x) => x * x);
+  const wob = t > 3.0 ? Math.sin((t - 3.0) * 10) * Math.exp(-(t - 3.0) * 3) * 7 : 0;
+  // the window shrinks towards where the phone stands
+  const toY = py - (R.y + R.h / 2);
   return (
-    <Shot a={T.tiny} b={T.reveal}>
-      <KText text="So why practise" at={T.tiny + 0.05} {...L.ty(L.cy - 560, L.cy - 430, L.cy - 70)} size={L.pick(104, 100, 96)} />
-      <KText text="only on a *phone?*" at={T.tiny + 0.4} {...L.ty(L.cy - 430, L.cy - 315, L.cy + 45)} size={L.pick(104, 100, 96)} />
-      <Phone src="screens/cbt.jpg" width={pw * k} x={L.vx} y={L.pick(L.cy + 230, L.cy + 190, L.cy + 30)} rz={wob} />
-      <Pill x={L.vx + pw * 0.9} y={L.pick(L.cy + 40, L.cy + 40, L.cy - 160)} at={T.tiny + 0.9} bg="#fff" fg={C.navy} size={L.pick(36, 32, 34)} icon="sparkle">so small…</Pill>
-    </Shot>
+    <>
+      {t > T.tiny - 0.26 && t < T.tiny + 0.4 && (
+        <AbsoluteFill style={{ opacity: 1 - p(t, T.tiny + 0.2, T.tiny + 0.38), transform: `translateY(${toY * m}px)` }}>
+          <Window R={R} src="screens/win2x/cbt_calculator.jpg" scale={lerp(1, (pw * 0.9) / R.w, m)} />
+        </AbsoluteFill>
+      )}
+      <Layer a={T.tiny} b={T.reveal} style={{ transform: `translateX(${-whip * L.W * 1.1}px)`, filter: whip > 0.02 ? `blur(${whip * 24}px)` : undefined }}>
+        <Title text="So why practise" at={T.tiny + 0.05} y={L.ty(L.cy - 640, L.cy - 500, L.cy - 70)} size={L.pick(104, 100, 96)} />
+        <Title text="only on a *phone?*" at={T.tiny + 0.85} y={L.ty(L.cy - 500, L.cy - 385, L.cy + 50)} size={L.pick(112, 104, 100)} />
+        <div style={{ opacity: p(t, T.tiny + 0.15, T.tiny + 0.35) }}>
+          <Phone src="screens/cbt.jpg" width={pw * lerp(1.06, 1, ease(t, T.tiny + 0.1, T.tiny + 0.9))} x={L.vx} y={py} rz={wob} />
+        </div>
+        <Outline L={L} cx={L.vx} cy={py} pw={pw} />
+      </Layer>
+    </>
   );
 };
 
-// ------------------------------------------------------------------ the reveal: the lid rises, the screen comes on
-
-/** 0 → 1 with a small settle past the end, like a real hinge. */
-const lidOpen = (t: number, a: number) => {
-  const k = p(t, a, a + 0.85);
-  const e = 1 - Math.pow(1 - k, 3);
-  return e + Math.sin(k * Math.PI) * 0.06 * (k > 0.6 ? 1 : 0);
-};
+// ------------------------------------------------------------------ 4.5–7.9 s: the laptop opens under a moving light
 
 const Reveal: React.FC = () => {
   const L = useL();
   const t = useS();
-  const open = lidOpen(t, T.open);
-  const on = p(t, T.open + 0.7, T.open + 1.05);
-  const k = p(t, T.reveal, T.cbt, easeInOut);
-  const at: [number, number] = [L.vx, L.pick(L.cy + 200, L.cy + 170, L.cy + 10)];
-  const cam = fit(L, mixV(V(0, 6, 0), screenPoint(0.5, 0.62), p(t, T.open, T.open + 1.0, easeInOut)), 36, L.pick(lerp(0.66, 0.8, k), lerp(0.58, 0.7, k), lerp(0.4, 0.48, k)), lerp(-38, -10, k), lerp(30, 14, k), at);
-  const nw = project(cam, L.W, L.H, screenPoint(1, 0));
-  const badge = spr(t, T.open + 1.3, { damping: 8, stiffness: 200 });
+  const k = ease(t, T.reveal, T.cbt, cubicOut);
+  const openK = ease(t, T.open + 0.05, T.open + 1.05, cubicOut);
+  const on = p(t, T.open + 0.85, T.open + 1.2);
+  const atp: [number, number] = [L.vx + (L.land ? 90 : 0), L.pick(L.cy + 230, L.cy + 200, L.cy + 40)];
+  const look = V(0, 6, 0).lerp(screenPoint(0.5, 0.6), ease(t, T.open + 0.2, T.open + 1.4, easeInOut));
+  const cam = fit(L, look, 36, L.pick(lerp(0.95, 0.8, k), lerp(0.85, 0.7, k), lerp(0.55, 0.44, k)), lerp(-48, -14, k), lerp(9, 17, k), atp);
+  const corner = project(cam, L.W, L.H, screenPoint(1, 0));
+  const badge = spr(t, W.windows + 0.05, { damping: 9, stiffness: 190 });
   return (
-    <Shot a={T.reveal} b={T.cbt} zin={1.12}>
-      <DeepStage />
-      <KText text="SolutionTee CBT" at={T.open + 0.45} {...L.ty(L.cy - 740, L.cy - 540, L.cy - 130)} size={L.pick(92, 84, 84)} color="#fff" accent={C.gold} />
-      <KText text="is now on" at={T.open + 0.75} {...L.ty(L.cy - 610, L.cy - 430, L.cy - 30)} size={L.pick(118, 108, 104)} color="#fff" accent={C.gold} />
-      <KText text="*Windows.*" at={T.open + 1.0} {...L.ty(L.cy - 480, L.cy - 320, L.cy + 95)} size={L.pick(150, 130, 140)} color="#fff" accent={C.gold} />
-      <Stage3D cam={cam} desk={70} deskTone={0.75}>
-        <LaptopModel open={open} on={on} screens={[{ src: "screens/win/home.jpg" }]} shadow={0.7} />
+    <Layer a={T.reveal} b={T.cbt + 0.02}>
+      <AbsoluteFill style={{ background: `radial-gradient(ellipse ${L.W * 0.7}px ${L.H * 0.3}px at ${(atp[0] / L.W) * 100}% ${(atp[1] / L.H) * 100 - 6}%, rgba(37,99,179,${0.15 * on}), transparent 70%)` }} />
+      <Title text="SolutionTee CBT" at={W.solution} y={L.ty(L.cy - 720, L.cy - 540, L.cy - 140)} size={L.pick(96, 88, 88)} />
+      <Title text="is now on *Windows.*" at={W.now - 0.15} y={L.ty(L.cy - 580, L.cy - 420, L.cy - 30)} size={L.pick(112, 100, 104)} />
+      <Stage3D cam={cam} floor={0.2} lightX={lerp(-70, 50, ease(t, T.reveal, T.open + 1.4, easeInOut))} exposure={1.05}>
+        <LaptopModel open={openK} on={on} screens={[{ src: "screens/win/home.jpg" }]} shadow={0.35} />
       </Stage3D>
       {badge > 0.01 && (
-        <div style={{ position: "absolute", left: nw[0] - 20, top: nw[1] - 10, transform: `translate(-50%,-50%) rotate(${lerp(-40, 10, badge)}deg) scale(${badge})`, padding: `${14 * L.ks}px ${30 * L.ks}px`, borderRadius: 999, background: C.gold, color: C.navy, fontFamily: FONT, fontWeight: 800, fontSize: 44 * L.ks, boxShadow: "0 20px 50px -10px rgba(242,178,51,.8)" }}>NEW</div>
+        <div style={{ position: "absolute", left: Math.min(corner[0], L.W - 90), top: corner[1] - 6, transform: `translate(-50%,-50%) rotate(${lerp(-30, 8, badge)}deg) scale(${badge})`, padding: `${12 * L.ks}px ${28 * L.ks}px`, borderRadius: 999, background: C.gold, color: C.navy, fontFamily: FONT, fontWeight: 800, fontSize: 40 * L.ks, letterSpacing: "0.04em", boxShadow: "0 16px 36px -10px rgba(242,178,51,.7)" }}>NEW</div>
       )}
-      <Star4 x={at[0] - L.pick(400, 360, 420)} y={at[1] - L.pick(220, 200, 200)} size={70} at={T.open + 1.0} />
-      <Star4 x={at[0] + L.pick(420, 380, 450)} y={at[1] + 60} size={50} at={T.open + 1.15} />
-      <Flash at={T.open + 0.75} max={0.45} color="#DDE9FF" />
-    </Shot>
+    </Layer>
   );
 };
 
-// ------------------------------------------------------------------ a real CBT on a big screen: the camera moves into the question
+// ------------------------------------------------------------------ 7.9–13.2 s: dive into the screen; the real tools
+
+const Key: React.FC<{ x: number; y: number; at: number; press: number; label: string; size: number; caption?: string }> = ({ x, y, at: a, press, label, size, caption }) => {
+  const t = useS();
+  const k = spr(t, a, { damping: 13, stiffness: 170 });
+  if (k < 0.002) return null;
+  const d = t >= press ? Math.max(0, 1 - (t - press) / 0.22) : 0;
+  const lit = t >= press;
+  const depth = size * 0.11;
+  return (
+    <div style={{ position: "absolute", left: x, top: y, transform: `translate(-50%,-50%) scale(${k})`, display: "flex", flexDirection: "column", alignItems: "center", gap: size * 0.14 }}>
+      <div style={{ position: "relative", width: size, height: size + depth }}>
+        <div style={{ position: "absolute", left: 0, top: depth, width: size, height: size, borderRadius: size * 0.2, background: lit ? "#1E4F96" : "#C9D0DB" }} />
+        <div style={{ position: "absolute", left: 0, top: depth * d, width: size, height: size, borderRadius: size * 0.2, background: lit ? `linear-gradient(180deg,#3B7BD0,${C.blue})` : "linear-gradient(180deg,#FFFFFF,#EEF1F5)", boxShadow: lit ? "0 10px 26px -8px rgba(37,99,179,.7)" : "0 6px 14px -8px rgba(11,31,68,.4), inset 0 0 0 1px rgba(11,31,68,.06)", display: "grid", placeItems: "center", fontFamily: FONT, fontWeight: 800, fontSize: size * 0.42, color: lit ? "#fff" : C.navy }}>{label}</div>
+      </div>
+      {caption && <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: size * 0.24, color: "#5B6B86", whiteSpace: "nowrap", opacity: p(t, a + 0.1, a + 0.4) }}>{caption}</div>}
+    </div>
+  );
+};
+
+/** A part of the screen lifts out towards the viewer (white veil over the rest), with a label. */
+const Spotlight: React.FC<{ R: RT; k: string; a: number; b: number; scale: number; to: [number, number]; label: string; icon: string; L: LT }> = ({ R, k, a, b, scale, to, label, icon, L }) => {
+  const t = useS();
+  const s = spr(t, a, { damping: 15, stiffness: 150 }) * (1 - spr(t, b, { damping: 16, stiffness: 160 }));
+  if (s < 0.003) return null;
+  const c = place(R, crop(k));
+  const x = lerp(c.x + c.w / 2, to[0], s), y = lerp(c.y + c.h / 2, to[1], s);
+  const sc = lerp(1, scale, s);
+  return (
+    <>
+      <div style={{ position: "absolute", left: R.x, top: R.y, width: R.w, height: R.h, borderRadius: R.w * 0.014, background: `rgba(255,255,255,${0.75 * s})` }} />
+      <div style={{ position: "absolute", left: x - c.w / 2, top: y - c.h / 2, width: c.w, height: c.h, transform: `scale(${sc})`, borderRadius: 8, overflow: "hidden", background: "#fff", boxShadow: `0 ${30 * s}px ${60 * s}px -${12 * s}px rgba(11,31,68,${0.35 * s}), 0 0 0 ${3 * s}px rgba(37,99,179,${0.9 * s})` }}>
+        <Img src={staticFile(`screens/win2x/c_${k}.png`)} style={{ width: "100%", height: "100%" }} />
+      </div>
+      <div style={{ position: "absolute", left: x, top: y + (c.h * sc) / 2 + 48 * L.ks, transform: `translate(-50%,-50%) scale(${s})`, display: "flex", alignItems: "center", gap: 12, padding: `${12 * L.ks}px ${26 * L.ks}px`, borderRadius: 999, background: C.navy, color: "#fff", fontFamily: FONT, fontWeight: 800, fontSize: 36 * L.ks, whiteSpace: "nowrap" }}>
+        <Ico n={icon} size={38 * L.ks} color="#fff" stroke={2.4} />
+        {label}
+      </div>
+    </>
+  );
+};
 
 const BigCbt: React.FC = () => {
   const L = useL();
   const t = useS();
-  const a = T.cbt;
-  const push = p(t, a + 0.3, a + 1.4, easeInOut) * (1 - p(t, a + 3.4, a + 4.4, easeInOut));
-  const at: [number, number] = [L.vx, L.pick(L.cy - 40, L.cy - 20, L.cy - 30)];
-  const look = mixV(screenPoint(0.5, 0.55), screenPoint(0.36, 0.16), push);
-  const cam = fit(L, look, lerp(36, L.land ? 22 : 15, push), L.pick(0.8, 0.7, 0.48), lerp(-6, 0, push), lerp(14, 4, push), [at[0] + (L.land ? 90 * push : 0), at[1]]);
-  const ks = L.pick(124, 92, 88);
-  const keys: [string, number, string][] = [["A", 1, "Choose"], ["→", 1, "Next"], ["F", 1, "Flag"], ["Shift+C", 2.1, "Calculator"]];
-  const step = L.pick(215, 176, 128);
-  const xs = L.land ? [120 + ks / 2, 120 + ks / 2 + step, 120 + ks / 2 + step * 2, 120 + step * 3 + ks * 1.05] : [-1.75, -0.75, 0.25, 1.6].map((m) => L.cx + m * step);
-  const ky = L.pick(L.cy + 560, L.cy + 400, L.cy + 170);
-  const tm = project(cam, L.W, L.H, screenPoint(0.86, 0.0));
+  const R = examRect(L);
+  const scr = { cx: R.x + R.w / 2, cy: R.y + R.w * BAR + (R.w * 9) / 32 };
+  // the camera flies to the screen until it matches the window; then the sharp flat screen takes over
+  const dive = ease(t, T.cbt, T.cbt + 0.85, easeInOut);
+  const out = ease(t, W.exam - 0.05, W.exam + 0.9, easeInOut);
+  const flat = t >= T.cbt + 0.8 && t < W.exam + 0.05;
+  const startAt: [number, number] = [L.vx + (L.land ? 90 : 0), L.pick(L.cy + 230, L.cy + 200, L.cy + 40)];
+  const camIn = fit(L, screenPoint(0.5, 0.5), LAP.SW, lerp(L.pick(0.5, 0.45, 0.28), R.w / L.W, dive), lerp(-14, 0, dive), lerp(17, 0, dive), [lerp(startAt[0], scr.cx, dive), lerp(startAt[1], scr.cy, dive)]);
+  const camOut = fit(L, screenPoint(0.5, 0.55), LAP.SW, lerp(R.w / L.W, L.pick(0.62, 0.55, 0.42), out), lerp(0, 12, out), lerp(0, 14, out), [scr.cx, lerp(scr.cy, L.pick(L.cy + 120, L.cy + 110, L.cy + 40), out)]);
+  const selB = t >= W.keys + 0.02;
+  const ks = L.pick(120, 96, 88);
+  const ky = L.land ? L.cy + 230 : R.y + R.h + L.pick(150, 120, 0);
+  const keyX = (i: number) => (L.land ? 120 + ks / 2 + i * (ks * 1.35) : L.cx + (i - 1) * ks * 1.5);
+  const optB = place(R, crop("optB"));
   return (
-    <Shot a={T.cbt} b={T.all}>
-      <KText text="A real CBT." at={a + 0.05} {...L.ty(L.cy - 720, L.cy - 560, L.cy - 230)} size={L.pick(104, 96, 96)} />
-      <KText text="*On a big screen.*" at={a + 0.4} {...L.ty(L.cy - 590, L.cy - 455, L.cy - 115)} size={L.pick(124, 110, 112)} />
-      <Stage3D cam={cam} desk={70}>
-        <LaptopModel screens={[{ src: "screens/win/cbt_calculator.jpg" }]} />
-      </Stage3D>
-      {keys.map(([lab, w, cap], i) => (
-        <Key key={lab} x={xs[i]} y={ky} at={a + 1.6 + i * 0.12} press={a + 2.2 + i * 0.45} label={lab} w={w} size={ks} caption={cap} />
-      ))}
-      <Pill x={Math.min(tm[0], L.W - 40)} y={tm[1] - 50} at={a + 1.5} out={a + 2.6} bg={C.navy} fg="#fff" icon="timer" size={L.pick(34, 30, 30)} anchor="right">Timer like the real exam</Pill>
-    </Shot>
+    <Layer a={T.cbt} b={T.all + 0.02}>
+      <Title text="A real CBT." at={W.realCbt} out={W.exam - 0.3} y={L.ty(L.cy - 720, L.cy - 560, L.cy - 300)} size={L.pick(104, 96, 96)} />
+      <Title text="*On a big screen.*" at={W.big - 0.45} out={W.exam - 0.3} y={L.ty(L.cy - 590, L.cy - 450, L.cy - 185)} size={L.pick(124, 112, 112)} />
+      <Title text="Just like *exam day.*" at={W.exam} y={L.ty(L.cy - 650, L.cy - 500, L.cy - 120)} size={L.pick(112, 100, 104)} />
+      {!flat && (
+        <Stage3D cam={t < W.exam ? camIn : camOut} floor={0.2} exposure={1.05}>
+          <LaptopModel screens={[{ src: "screens/win/cbt_calculator.jpg" }]} shadow={0.35} />
+        </Stage3D>
+      )}
+      {flat && (
+        <>
+          <Window R={R} src="screens/win2x/cbt_calculator.jpg" o={p(t, T.cbt + 0.8, T.cbt + 0.95)}>
+            {selB && (
+              <div style={{ position: "absolute", left: optB.x - R.x, top: optB.y - R.y, width: optB.w, height: optB.h, borderRadius: 16 * R.sx, border: `3px solid ${C.blue}`, background: "rgba(37,99,179,.10)", transform: `scale(${1 + Math.max(0, 1 - (t - W.keys) / 0.25) * 0.03})` }} />
+            )}
+          </Window>
+          <Spotlight R={R} L={L} k="timer" a={W.timer - 0.08} b={W.calc - 0.12} scale={3.1} to={[scr.cx, R.y + R.h * 0.32]} label="Timer like the real exam" icon="timer" />
+          <Spotlight R={R} L={L} k="calc" a={W.calc - 0.08} b={W.keyboard - 0.12} scale={L.pick(1.15, 1.05, 1.15)} to={[scr.cx, scr.cy - 20]} label="Calculator" icon="calc" />
+        </>
+      )}
+      {t < W.exam + 0.2 && (
+        <AbsoluteFill style={{ opacity: 1 - p(t, W.exam, W.exam + 0.2) }}>
+          <Key x={keyX(0)} y={ky} at={W.keyboard - 0.1} press={W.keys + 0.02} label="B" size={ks} caption="Choose" />
+          <Key x={keyX(1)} y={ky} at={W.keyboard - 0.02} press={W.keys + 0.32} label="→" size={ks} caption="Next" />
+          <Key x={keyX(2)} y={ky} at={W.keyboard + 0.06} press={W.keys + 0.55} label="F" size={ks} caption="Flag" />
+        </AbsoluteFill>
+      )}
+    </Layer>
   );
 };
 
-// ------------------------------------------------------------------ everything, bigger: the laptop turns, the screens change
+// ------------------------------------------------------------------ 13.2–17.2 s: screens fly out of the laptop
 
-const SHOWS: [string, string, string][] = [
-  ["screens/win/ai.jpg", "AI tutor", "sparkle"],
-  ["screens/win/games_from_sidebar.jpg", "Game Zone", "trophy"],
-  ["screens/win/study.jpg", "Videos & notes", "video"],
-  ["screens/win/news.jpg", "Exam news", "bell"],
-  ["screens/win/badges.jpg", "Badges & streaks", "fire"],
+const SHOWS: { src: string; label: string; icon: string; at: number }[] = [
+  { src: "screens/win2x/ai.jpg", label: "AI tutor", icon: "sparkle", at: W.ai },
+  { src: "screens/win2x/games_from_sidebar.jpg", label: "Game Zone", icon: "trophy", at: W.game },
+  { src: "screens/win2x/study.jpg", label: "Videos", icon: "video", at: W.videos },
+  { src: "screens/win2x/news.jpg", label: "Notes & news", icon: "book", at: W.notes },
 ];
 
 const Everything: React.FC = () => {
   const L = useL();
   const t = useS();
-  const t0 = T.all + 0.35, per = 0.62;
-  const idx = Math.max(0, Math.min(SHOWS.length - 1, Math.floor((t - t0) / per)));
-  const local = t - t0 - idx * per;
-  const at: [number, number] = [L.vx, L.pick(L.cy + 120, L.cy + 110, L.cy - 40)];
-  const cam = fit(L, screenPoint(0.5, 0.6), 36, L.pick(0.78, 0.68, 0.46), lerp(-24, 22, p(t, T.all, T.same)), 14, at);
-  const screens: Screen[] = SHOWS.map(([src], i) => ({ src, opacity: i < idx ? 1 : i === idx ? (i === 0 || t < t0 ? 1 : p(local, 0, 0.14)) : 0 }));
-  const below = project(cam, L.W, L.H, V(0, 0, 11));
+  const atp: [number, number] = [L.vx, L.pick(L.cy + 420, L.cy + 330, L.cy + 230)];
+  const cam = fit(L, screenPoint(0.5, 0.6), 36, L.pick(0.66, 0.5, 0.36), lerp(-10, 10, p(t, T.all, T.same)), 14, atp);
+  const tl = project(cam, L.W, L.H, screenPoint(0, 0)), br = project(cam, L.W, L.H, screenPoint(1, 1));
+  const sw = br[0] - tl[0];
+  const sc: [number, number] = [(tl[0] + br[0]) / 2, (tl[1] + br[1]) / 2];
+  const cw = L.pick(430, 345, 290);
+  const slots: [number, number][] = L.land
+    ? [[L.vx - 480, L.cy - 290], [L.vx - 160, L.cy - 320], [L.vx + 160, L.cy - 320], [L.vx + 480, L.cy - 290]]
+    : L.f45
+      ? [[L.cx - 190, L.cy - 410], [L.cx + 190, L.cy - 410], [L.cx - 190, L.cy - 130], [L.cx + 190, L.cy - 130]]
+      : [[L.cx - 232, L.cy - 570], [L.cx + 232, L.cy - 570], [L.cx - 232, L.cy - 205], [L.cx + 232, L.cy - 205]];
+  const big = spr(t, W.everything, { damping: 14, stiffness: 120 });
+  const flash = p(t, T.same - 0.25, T.same - 0.05) * (1 - p(t, T.same - 0.05, T.same + 0.15));
   return (
-    <Shot a={T.all} b={T.same}>
-      <DeepStage a="rgba(242,178,51,.30)" b="rgba(37,99,179,.5)" />
-      <KText text="Everything you love." at={T.all + 0.05} {...L.ty(L.cy - 640, L.cy - 500, L.cy - 70)} size={L.pick(96, 88, 84)} color="#fff" accent={C.gold} />
-      <KText text="*Bigger.*" at={T.all + 2.7} {...L.ty(L.cy - 500, L.cy - 385, L.cy + 55)} size={L.pick(150, 130, 150)} color="#fff" accent={C.gold} />
-      <Stage3D cam={cam} desk={70} deskTone={0.75}>
-        <LaptopModel screens={screens} shadow={0.7} />
+    <Layer a={T.all} b={T.same + 0.15}>
+      <Title text="Everything, *bigger.*" at={W.everything} y={L.ty(L.cy - 840, L.cy - 610, L.cy - 60)} size={L.pick(96, 86, 96)} />
+      <Stage3D cam={cam} floor={0.2} exposure={1.05}>
+        <LaptopModel screens={[{ src: "screens/win/home.jpg" }]} shadow={0.35} />
       </Stage3D>
-      {SHOWS.map(([, label, icon], i) => {
-        const s0 = t0 + i * per;
-        if (t < s0 || (i < SHOWS.length - 1 && t > s0 + per + 0.05)) return null;
-        return <Pill key={label} x={at[0]} y={below[1] + L.pick(110, 90, 70)} at={s0} bg={C.gold} fg={C.navy} size={L.pick(52, 44, 44)} icon={icon} bob={false}>{label}</Pill>;
+      {SHOWS.map((s, i) => {
+        const k = spr(t, s.at - 0.1, { damping: 15, stiffness: 110 });
+        if (k < 0.002) return null;
+        const k1 = spr(t - 1 / 30, s.at - 0.1, { damping: 15, stiffness: 110 });
+        const [tx, ty] = slots[i];
+        const x = lerp(sc[0], tx, k), y = lerp(sc[1], ty, k);
+        const w = lerp(sw, cw, k) * lerp(1, 1.08, big);
+        const vel = Math.abs(k - k1) * Math.hypot(tx - sc[0], ty - sc[1]);
+        const tilt = (i % 2 === 0 ? 1 : -1) * 10 * (1 - big * 0.6);
+        return (
+          <React.Fragment key={s.src}>
+            <div style={{ position: "absolute", left: x - w / 2, top: y - (w * 9) / 32, width: w, height: (w * 9) / 16, transform: `perspective(1400px) rotateY(${tilt * k}deg) rotateX(${(1 - k) * 25}deg)`, borderRadius: 14, overflow: "hidden", background: "#fff", boxShadow: "0 30px 60px -22px rgba(11,31,68,.42), 0 0 0 1px rgba(11,31,68,.08)", filter: vel > 3 ? `blur(${Math.min(8, vel * 0.04)}px)` : undefined, opacity: Math.min(1, k * 3) }}>
+              <Img src={staticFile(s.src)} style={{ width: "100%", height: "100%" }} />
+            </div>
+            <div style={{ position: "absolute", left: x, top: y + (w * 9) / 32 + 34 * L.ks, transform: `translate(-50%,-50%) scale(${p(t, s.at + 0.15, s.at + 0.4)})`, display: "flex", alignItems: "center", gap: 10, padding: `${10 * L.ks}px ${22 * L.ks}px`, borderRadius: 999, background: C.navy, color: "#fff", fontFamily: FONT, fontWeight: 800, fontSize: 30 * L.ks, whiteSpace: "nowrap" }}>
+              <Ico n={s.icon} size={30 * L.ks} color="#fff" stroke={2.4} />
+              {s.label}
+            </div>
+          </React.Fragment>
+        );
       })}
-    </Shot>
+      {flash > 0 && <AbsoluteFill style={{ background: "#fff", opacity: flash }} />}
+    </Layer>
   );
 };
 
-// ------------------------------------------------------------------ same account, same Premium
+// ------------------------------------------------------------------ 17.2–19.4 s: same account, same Premium
+
+const PremiumChip: React.FC<{ x: number; y: number; a: number; L: LT }> = ({ x, y, a, L }) => {
+  const t = useS();
+  const k = spr(t, a, { damping: 9, stiffness: 200 });
+  if (k < 0.01) return null;
+  return (
+    <div style={{ position: "absolute", left: x, top: y, transform: `translate(-50%,-50%) scale(${k})`, display: "flex", alignItems: "center", gap: 10, padding: `${10 * L.ks}px ${22 * L.ks}px`, borderRadius: 999, background: `linear-gradient(180deg,#FFD46B,${C.gold})`, color: C.navy, fontFamily: FONT, fontWeight: 800, fontSize: 30 * L.ks, boxShadow: "0 14px 30px -10px rgba(242,178,51,.8)", whiteSpace: "nowrap" }}>
+      <Ico n="check" size={30 * L.ks} color={C.navy} stroke={3} /> Premium
+    </div>
+  );
+};
 
 const Together: React.FC = () => {
   const L = useL();
   const t = useS();
-  const a = T.same;
-  const pw = L.pick(250, 210, 250);
-  const at: [number, number] = [L.vx - L.pick(110, 100, 120), L.pick(L.cy + 60, L.cy + 50, L.cy + 40)];
-  const cam = fit(L, screenPoint(0.5, 0.6), 36, L.pick(0.62, 0.54, 0.38), lerp(26, 18, p(t, a, T.end)), 12, at);
+  const pw = L.pick(250, 210, 240);
+  const atp: [number, number] = [L.vx - L.pick(120, 110, 130), L.pick(L.cy + 150, L.cy + 140, L.cy + 60)];
+  const cam = fit(L, screenPoint(0.5, 0.6), 36, L.pick(0.62, 0.52, 0.38), lerp(26, 16, p(t, T.same, T.end)), 12, atp);
   const right = project(cam, L.W, L.H, screenPoint(1, 0.55));
-  const top = project(cam, L.W, L.H, screenPoint(0.3, 0));
-  const px = right[0] + pw * 0.2, py = right[1] + L.pick(140, 120, 120);
-  const line = p(t, a + 0.6, a + 1.2, easeOut);
-  const ok = spr(t, a + 1.2, { damping: 9, stiffness: 200 });
-  const ax = top[0], ay = top[1] - 30;
-  const bx = px, by = py - pw * 1.08 - 30;
-  const mx = (ax + bx) / 2, my = Math.min(ay, by) - L.pick(170, 130, 110);
-  const qx = 0.25 * ax + 0.5 * mx + 0.25 * bx, qy = 0.25 * ay + 0.5 * my + 0.25 * by;
+  const top = project(cam, L.W, L.H, screenPoint(0.35, 0));
+  const px = right[0] + pw * 0.15, py = right[1] + L.pick(150, 130, 120);
+  const phoneTop = py - pw * 1.08;
+  const line = ease(t, W.account + 0.3, W.premium - 0.05, easeInOut);
+  const ax = top[0], ay = top[1] - 70, bx = px, by = phoneTop - 70;
+  const mx = (ax + bx) / 2, my = Math.min(ay, by) - L.pick(150, 120, 100);
+  const q = (u: number) => [(1 - u) * (1 - u) * ax + 2 * (1 - u) * u * mx + u * u * bx, (1 - u) * (1 - u) * ay + 2 * (1 - u) * u * my + u * u * by];
+  const [dx, dy] = q(line);
+  const pin = spr(t, T.same, { damping: 14 });
   return (
-    <Shot a={T.same} b={T.end + 0.1} last>
-      <WarmStage />
-      <KText text="Same account." at={a + 0.05} {...L.ty(L.cy - 690, L.cy - 540, L.cy - 130)} size={L.pick(104, 96, 96)} />
-      <KText text="*Same Premium.*" at={a + 0.75} {...L.ty(L.cy - 560, L.cy - 425, L.cy - 10)} size={L.pick(124, 112, 116)} />
-      <Stage3D cam={cam} desk={70}>
-        <LaptopModel screens={[{ src: "screens/win/home.jpg" }]} />
+    <Layer a={T.same} b={T.end + 0.3} fout={0.3}>
+      <Title text="Same account." at={W.account} y={L.ty(L.cy - 700, L.cy - 540, L.cy - 140)} size={L.pick(104, 96, 96)} />
+      <Title text="*Same Premium.*" at={W.premium - 0.1} y={L.ty(L.cy - 570, L.cy - 420, L.cy - 20)} size={L.pick(124, 112, 116)} />
+      <Stage3D cam={cam} floor={0.2} exposure={1.05}>
+        <LaptopModel screens={[{ src: "screens/win/home.jpg" }]} shadow={0.35} />
       </Stage3D>
-      <Phone src="screens/study.jpg" width={pw} x={px} y={py} ry={-12} />
+      <div style={{ opacity: pin, transform: `translateY(${(1 - pin) * 80}px)` }}>
+        <Phone src="screens/study.jpg" width={pw} x={px} y={py} ry={-12} />
+      </div>
       <svg width={L.W} height={L.H} style={{ position: "absolute", inset: 0 }}>
-        <path d={`M${ax},${ay} Q${mx},${my} ${bx},${by}`} stroke={C.gold} strokeWidth={8} fill="none" strokeLinecap="round" strokeDasharray="2000" strokeDashoffset={2000 * (1 - line)} />
+        <path d={`M${ax},${ay} Q${mx},${my} ${bx},${by}`} stroke="rgba(37,99,179,.18)" strokeWidth={6} fill="none" strokeLinecap="round" strokeDasharray="10 12" />
+        <path d={`M${ax},${ay} Q${mx},${my} ${bx},${by}`} stroke={C.blue} strokeWidth={6} fill="none" strokeLinecap="round" pathLength={1} strokeDasharray={`${line} 1`} />
+        {line > 0 && line < 1 && <circle cx={dx} cy={dy} r={12} fill={C.gold} stroke="#fff" strokeWidth={4} />}
       </svg>
-      {ok > 0.01 && (
-        <div style={{ position: "absolute", left: qx, top: qy, transform: `translate(-50%,-50%) scale(${ok})`, width: 96 * L.ks, height: 96 * L.ks, borderRadius: 99, background: "#22C55E", display: "grid", placeItems: "center", boxShadow: "0 16px 40px -10px rgba(34,197,94,.8)" }}>
-          <Ico n="check" size={60 * L.ks} color="#fff" stroke={3} />
-        </div>
-      )}
-      <Pill x={L.land ? 120 : L.cx} y={L.pick(L.cy + 600, L.cy + 470, L.cy + 120)} at={a + 1.4} bg={C.navy} fg="#fff" size={L.pick(36, 32, 30)} icon="download" bob={false} anchor={L.land ? "left" : "center"}>Windows 10 & 11 · 64-bit · Free to start</Pill>
-    </Shot>
+      <PremiumChip x={ax} y={ay} a={W.premium + 0.1} L={L} />
+      <PremiumChip x={bx} y={by} a={W.premium + 0.18} L={L} />
+      <div style={{ position: "absolute", left: L.land ? 120 : L.cx, top: L.pick(L.cy + 640, L.cy + 520, L.cy + 110), transform: L.land ? "translateY(-50%)" : "translate(-50%,-50%)", opacity: p(t, W.premium + 0.4, W.premium + 0.7), display: "flex", alignItems: "center", gap: 12, padding: `${12 * L.ks}px ${26 * L.ks}px`, borderRadius: 999, background: "#F1F4F9", color: C.navy, fontFamily: FONT, fontWeight: 700, fontSize: 30 * L.ks, whiteSpace: "nowrap" }}>
+        <Ico n="download" size={30 * L.ks} color={C.navy} stroke={2.4} /> Windows 10 & 11 · 64-bit · Free to start
+      </div>
+    </Layer>
   );
 };
 
+// ------------------------------------------------------------------ 19.4–24.5 s: white end card
+
 const End: React.FC = () => {
+  const L = useL();
   const t = useS();
-  if (t < T.end - 0.15) return null;
+  const a = T.end;
+  if (t < a - 0.2) return null;
+  const y0 = L.pick(L.cy - 470, L.cy - 380, L.cy - 300);
+  const btn = spr(t, W.download - 0.1, { damping: 12 });
+  const url = "cbt.solutiontee.com";
+  const typedN = Math.max(0, Math.min(url.length, Math.floor((t - (W.url - 0.25)) * 14)));
+  const bx = L.cx, by = L.pick(L.cy + 20, L.cy + 10, L.cy + 40);
   return (
-    <AbsoluteFill style={{ opacity: p(t, T.end - 0.15, T.end + 0.15) }}>
-      <EndCard at={T.end} cta="Download for Windows" />
+    <AbsoluteFill style={{ opacity: p(t, a - 0.2, a + 0.15) }}>
+      <WhiteStage />
+      <LogoReveal at={a} y={y0} size={L.pick(340, 300, 260)} width={L.pick(860, 760, 700)} />
+      <Title text="Learn. Think. *Solve.*" at={a + 1.1} y={{ y: y0 + L.pick(200, 170, 150) }} size={L.pick(72, 64, 60)} />
+      <div style={{ position: "absolute", left: bx, top: by, transform: `translate(-50%,-50%) scale(${btn})`, opacity: Math.min(1, btn * 2), display: "flex", alignItems: "center", gap: 18, padding: `${30 * L.ks}px ${60 * L.ks}px`, borderRadius: 999, background: C.navy, color: "#fff", fontFamily: FONT, fontWeight: 800, fontSize: 52 * L.ks, whiteSpace: "nowrap", boxShadow: "0 30px 60px -22px rgba(11,31,68,.6)" }}>
+        <Ico n="download" size={52 * L.ks} color={C.gold} stroke={2.6} /> Download for Windows
+      </div>
+      <div style={{ position: "absolute", left: bx, top: by + L.pick(170, 150, 130), transform: "translate(-50%,-50%)", opacity: p(t, W.url - 0.4, W.url - 0.2), display: "flex", alignItems: "center", gap: 14, padding: `${16 * L.ks}px ${34 * L.ks}px`, borderRadius: 999, background: "#F1F4F9", border: "1px solid #E1E6EE", fontFamily: FONT, fontWeight: 700, fontSize: 44 * L.ks, color: C.navy, minWidth: 520 * L.ks }}>
+        <Ico n="pin" size={36 * L.ks} color={C.blue} stroke={2.4} />
+        <span>{url.slice(0, typedN)}</span>
+        <span style={{ width: 3, height: 44 * L.ks, background: C.blue, opacity: Math.floor(t * 2.5) % 2 ? 1 : 0.15 }} />
+      </div>
+      <div style={{ position: "absolute", left: 0, right: 0, top: by + L.pick(280, 245, 215), textAlign: "center", fontFamily: FONT, fontWeight: 600, fontSize: 30 * L.ks, color: "#5B6B86", opacity: p(t, W.url + 0.6, W.url + 0.9) }}>Windows · Android · JAMB · WAEC · NECO</div>
+      <ExamLogos y={by + L.pick(430, 370, 330)} at={W.url + 0.8} h={L.pick(90, 80, 70)} gap={34} step={0.12} />
+      <div style={{ position: "absolute", left: 90, right: 90, top: L.H - L.pick(110, 90, 70), textAlign: "center", fontFamily: FONT, fontWeight: 500, fontSize: 22 * L.ks, lineHeight: 1.35, color: "#7A879C", opacity: p(t, W.url + 1.0, W.url + 1.3) }}>
+        SolutionTee CBT is an independent exam-practice platform and is not affiliated with or endorsed by JAMB, WAEC or NECO.
+      </div>
     </AbsoluteFill>
   );
 };
@@ -261,7 +472,7 @@ const End: React.FC = () => {
 export const WinAd: React.FC = () => (
   <AbsoluteFill>
     <Audio src={staticFile("audio/win_ad.wav")} />
-    <WarmStage />
+    <WhiteStage />
     <Hook />
     <Tiny />
     <Reveal />
@@ -271,5 +482,3 @@ export const WinAd: React.FC = () => (
     <End />
   </AbsoluteFill>
 );
-
-void Sequence;

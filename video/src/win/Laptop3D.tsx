@@ -116,7 +116,7 @@ const CamRig: React.FC<{ cam: Cam }> = ({ cam }) => {
 // ------------------------------------------------------------------ materials and geometry, made once
 
 const M = {
-  alu: new THREE.MeshPhysicalMaterial({ color: "#c9ced6", metalness: 1, roughness: 0.42, anisotropy: 0.55, clearcoat: 0.12, clearcoatRoughness: 0.35 }),
+  alu: new THREE.MeshPhysicalMaterial({ color: "#bfc5ce", metalness: 1, roughness: 0.42, anisotropy: 0.55, clearcoat: 0.12, clearcoatRoughness: 0.35 }),
   notch: new THREE.MeshStandardMaterial({ color: "#8d94a0", metalness: 1, roughness: 0.5 }),
   port: new THREE.MeshStandardMaterial({ color: "#07080b", roughness: 0.7, metalness: 0.2 }),
   aluDark: new THREE.MeshPhysicalMaterial({ color: "#aab0b9", metalness: 1, roughness: 0.42 }),
@@ -380,7 +380,7 @@ const Desk: React.FC<{ radius: number; tone?: number }> = ({ radius, tone = 1 })
 };
 
 /** The 3D stage: transparent canvas over the page background, studio light, soft shadows on an invisible floor. */
-export const Stage3D: React.FC<{ cam: Cam; children: React.ReactNode; floor?: number; exposure?: number; desk?: number; deskTone?: number }> = ({ cam, children, floor = 0.32, exposure = 1.0, desk, deskTone }) => {
+export const Stage3D: React.FC<{ cam: Cam; children: React.ReactNode; floor?: number; exposure?: number; desk?: number; deskTone?: number; lightX?: number }> = ({ cam, children, floor = 0.32, exposure = 1.0, desk, deskTone, lightX = -30 }) => {
   const { width, height } = useVideoConfig();
   return (
     <ThreeCanvas
@@ -394,7 +394,7 @@ export const Stage3D: React.FC<{ cam: Cam; children: React.ReactNode; floor?: nu
       <Env />
       <CamRig cam={cam} />
       <directionalLight
-        position={[-30, 70, 40]}
+        position={[lightX, 70, 40]}
         intensity={1.6}
         castShadow
         shadow-mapSize-width={2048}

@@ -59,33 +59,50 @@ def main():
     P.setup(DUR)
     m = FE.bed_afro(T["reveal"] - 0.15)
     s = P.B()
-    put(s, A.impact(0.6), 0.0, 0.6)
-    for a in (0.45, 0.55, 0.65):
-        put(s, A.slam(130 + a * 60), a + 0.25, 0.4)
-    put(s, A.whoosh(0.5, True, 0.6), T["tiny"] - 0.05)
-    put(s, A.pop(900), T["tiny"] + 0.2, 0.6)
-    put(s, A.riser(0.8, 0.5), T["reveal"] - 0.6)
-    put(s, A.whoosh(0.7, True, 0.8), T["reveal"] - 0.05)
-    put(s, A.slam(90), T["open"] + 0.85, 0.5)  # the lid settles
-    put(s, A.impact(0.9), T["open"] + 0.75)
-    put(s, A.chime(("A5", "E6", "A6"), 0.06, 0.8), T["open"] + 0.8)
-    put(s, A.sparkle(1.3, 0.6), T["open"] + 1.0)
-    put(s, A.pop(700), T["open"] + 1.3, 0.8)
-    put(s, A.whoosh(0.5, True, 0.7), T["cbt"] - 0.05)
-    for i in range(4):
-        put(s, A.pop(800 + i * 60), T["cbt"] + 1.6 + i * 0.12, 0.35)
-    for i, f in enumerate((1700, 1500, 1600, 1300)):
-        put(s, A.tap(f), T["cbt"] + 2.2 + i * 0.45, 0.9)
-    put(s, A.whoosh(0.5, True, 0.7), T["all"] - 0.05)
-    for i in range(5):
-        put(s, A.whoosh(0.18, i % 2 == 0, 0.3), T["all"] + 0.32 + i * 0.62)
-        put(s, A.pop(700 + i * 90), T["all"] + 0.35 + i * 0.62, 0.45)
-    put(s, A.whoosh(0.5, True, 0.6), T["same"] - 0.05)
-    put(s, A.countup(0.6, 600, 1500), T["same"] + 0.6, 0.35)
-    put(s, A.chime(("E6", "B6"), 0.06, 0.8), T["same"] + 1.2)
+    # hook: the exam screen's parts fly in and snap together
+    put(s, A.whoosh(0.5, True, 0.5), 0.15)
+    for i, d in enumerate((0.0, 0.1, 0.14, 0.18, 0.2, 0.22, 0.24, 0.26, 0.3, 0.32, 0.36)):
+        put(s, A.tap(1400 + (i % 4) * 150), 0.62 + d, 0.35)
+    put(s, A.pop(650), 1.2, 0.6)
+    # match cut into the phone, the outline draws, the whip
+    put(s, A.whoosh(0.4, False, 0.6), T["tiny"] - 0.25)
+    put(s, A.pop(900), T["tiny"] + 0.15, 0.5)
+    put(s, A.riser(0.7, 0.35), 3.25)
+    put(s, A.chime(("E6",), 0.0, 0.5), 3.95)
+    put(s, A.whoosh(0.35, True, 0.9), T["reveal"] - 0.3)
+    # laptop: lid, light, screen on
+    put(s, A.slam(90), T["open"] + 1.0, 0.45)
+    put(s, A.impact(0.7), T["open"] + 0.9)
+    put(s, A.chime(("A5", "E6", "A6"), 0.06, 0.7), T["open"] + 0.95)
+    put(s, A.pop(700), 7.09, 0.8)
+    # dive into the screen
+    put(s, A.whoosh(0.8, True, 0.8), T["cbt"] - 0.05)
+    put(s, A.impact(0.4), T["cbt"] + 0.8)
+    # spotlights and keys
+    for at in (10.16, 10.64):
+        put(s, A.pop(820), at, 0.7)
+        put(s, A.whoosh(0.25, True, 0.35), at - 0.05)
+    for i, at in enumerate((11.46, 11.76, 11.99)):
+        put(s, A.tap(1700 - i * 150), at, 1.0)
+        put(s, A.tick(True), at, 0.5)
+    put(s, A.whoosh(0.7, False, 0.6), 12.07)
+    # screens fly out of the laptop
+    for i, at in enumerate((13.2, 14.22, 15.18, 15.48)):
+        put(s, A.whoosh(0.35, True, 0.55), at)
+        put(s, A.pop(700 + i * 90), at + 0.25, 0.5)
+    put(s, A.sparkle(1.0, 0.5), 16.04)
+    put(s, A.whoosh(0.4, True, 0.6), T["same"] - 0.3)
+    # same account: the line draws, Premium on both
+    put(s, A.countup(0.6, 600, 1500), 17.6, 0.35)
+    put(s, A.chime(("E6", "B6"), 0.06, 0.8), 18.24)
+    put(s, A.pop(900), 18.32, 0.6)
+    # end card: logo, button, address typed
     put(s, A.whoosh(0.6, False, 0.5), T["end"] - 0.1)
     put(s, A.chime(("A5", "C#6", "E6", "A6"), 0.09, 0.9), T["end"] + 0.1)
-    put(s, A.sparkle(1.5, 0.6), T["end"] + 1.4)
+    put(s, A.pop(750), 19.65, 0.7)
+    for i in range(19):
+        put(s, A.tap(1900 + (i % 3) * 120), 20.54 + i / 14, 0.25)
+    put(s, A.sparkle(1.5, 0.5), 21.9)
     v, spans = voice_bus()
     m = duck(m, spans, -9.0)
     s = duck(s, spans, -4.0)

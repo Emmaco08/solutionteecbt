@@ -121,6 +121,9 @@ final flows = <Flow>[
 
 late AppDb db;
 
+/// DPR=2 renders sharper pictures (for adverts) into shots/laptop/<size>@2x.
+final double _dpr = double.tryParse(Platform.environment['DPR'] ?? '') ?? 1;
+
 void main() {
   setUpAll(() async {
     await _font('LilitaOne', ['assets/fonts/LilitaOne-Regular.ttf']);
@@ -165,8 +168,8 @@ void main() {
           for (final n in ['wide', 'tall', 'diagram']) n: Uint8List.fromList(File('test_shots/fixtures/$n.jpg').readAsBytesSync()),
         };
         debugDefaultTargetPlatformOverride = TargetPlatform.windows;
-        t.view.physicalSize = size;
-        t.view.devicePixelRatio = 1;
+        t.view.physicalSize = size * _dpr;
+        t.view.devicePixelRatio = _dpr;
         final container = ProviderContainer(
           overrides: [
             dbProvider.overrideWithValue(db),
@@ -220,7 +223,7 @@ void main() {
           }
           await settle(6);
         });
-        await expectLater(find.byType(MaterialApp), matchesGoldenFile('shots/laptop/$sizeName/${f.name}.png'));
+        await expectLater(find.byType(MaterialApp), matchesGoldenFile('shots/laptop/$sizeName${_dpr == 1 ? '' : '@${_dpr.round()}x'}/${f.name}.png'));
         FlutterError.onError = old;
         await t.pumpWidget(const SizedBox());
         await t.pump(const Duration(minutes: 2));

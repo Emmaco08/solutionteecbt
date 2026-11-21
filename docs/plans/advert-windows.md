@@ -76,3 +76,18 @@ Checked: speech recognition on the final mix hears every line over the music ("J
 - A walnut desk (CC0 texture "American Walnut Veneer", Jenelle van Heerden, Poly Haven), warmed in tone, fading into the
   page background like a product photo; the monitors in the hook stand on it too.
 - No logos on the laptop (unbranded). Flat details sit above the surface with a depth offset so nothing flickers.
+
+## v4 (owner, 21 Nov 2026: "I don't like these computers... background color is not good, I need white theme... motion graphics very poor... new better video with high professionalism")
+
+Same script and voice; everything visual rebuilt for a white, product-launch look:
+- White studio throughout (no dark scenes, no cream, no desk); navy titles, blue serif accents, each word sliding up out of a mask.
+- Hook: the real exam screen assembles from its parts (header, timer, question, options A–D, calculator, keyboard help)
+  flying in with motion blur and snapping into a Windows app window. No monitors.
+- Match cut: the window shrinks into a phone; a laptop-sized outline draws around it ("A laptop screen" / "Your phone").
+- Whip pan to the 3D laptop opening under a moving key light (highlight sweeps the aluminium), screen powers on, NEW badge.
+- Camera dives into the laptop screen; the sharp screen takes over; Timer and Calculator lift out on the spoken words;
+  keys B, →, F press and option B is selected; pull back out on "Just like exam day".
+- Feature screens fly out of the laptop into a grid on each spoken name (AI tutor, Game Zone, Videos, Notes & news).
+- Same account: a line draws from laptop to phone, "Premium" pops on both. White end card with the address typed.
+- Every visual beat is placed on the voice's word timings (`video/public/vo_win/words.json`, speech recognition).
+- Sharp screens: laptop screenshots re-rendered at 2x (`laptop_test.dart` with DPR=2).
