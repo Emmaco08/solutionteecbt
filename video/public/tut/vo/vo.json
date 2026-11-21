@@ -192,15 +192,69 @@
   "seconds": 3.175
  },
  "mock_c2": {
-  "text": "Your four JAMB subjects are already set. Check them, then tap Start full exam.",
-  "heard": "Your four John subjects are already set.  Check them, then tap Start Full Exam.",
-  "score": 0.93,
-  "seconds": 4.359
+  "text": "Your four exam subjects are already set. Check them, then tap Start full exam.",
+  "heard": "Your four exam subjects are already set.  Check them, then tap Start Full Exam.",
+  "score": 1.0,
+  "seconds": 5.647
  },
  "mock_c3": {
   "text": "The exam screen works like the real CBT. Tap an option to answer, then tap Next.",
   "heard": "The exam screen works like the real CBT tap an option to answer, then tap Next.",
   "score": 1.0,
   "seconds": 4.647
+ },
+ "mock_c4": {
+  "text": "Not sure? Tap the flag, and come back to it later.",
+  "heard": "Not sure? Tap the flag and come back to it later.",
+  "score": 1.0,
+  "seconds": 2.9
+ },
+ "mock_c5": {
+  "text": "Tap a subject at the top to switch subjects at any time.",
+  "heard": "Tap a subject at the top to switch subjects at any time.",
+  "score": 1.0,
+  "seconds": 2.857
+ },
+ "mock_c6": {
+  "text": "Need to calculate? Tap the calculator icon, work it out, then close it.",
+  "heard": "Need to calculate? Tap the calculator icon,  work it out, then close it.",
+  "score": 1.0,
+  "seconds": 4.14
+ },
+ "mock_c7": {
+  "text": "Tap the grid icon to see every question. Tap any number to jump straight to it.",
+  "heard": "Tap the grid icon to see every question.  Tap any number to jump straight to it.",
+  "score": 1.0,
+  "seconds": 4.289
+ },
+ "mock_c8": {
+  "text": "Your answers save as you go, even if you close the app. When you've finished, tap Submit.",
+  "heard": "Your answers save as you go, even if you close the app.  When you've finished, tap Submit.",
+  "score": 1.0,
+  "seconds": 4.697
+ },
+ "mock_c9": {
+  "text": "Check your summary, then tap Submit now.",
+  "heard": "Check your summary, then tap Submit Now.",
+  "score": 1.0,
+  "seconds": 2.587
+ },
+ "mock_c10": {
+  "text": "You get your score out of four hundred straight away, with a score for each subject.",
+  "heard": "You get your score out of 400 straight away  with a score for each subject.",
+  "score": 0.85,
+  "seconds": 3.296
+ },
+ "mock_c11": {
+  "text": "Tap Review answers to see what you got wrong, and ask SolutionTee AI to explain it.",
+  "heard": "Tap Review Answers to see what you got wrong and ask Solution TAI to explain it.",
+  "score": 0.88,
+  "seconds": 4.503
+ },
+ "mock_outro": {
+  "text": "Practise like this every week, and watch your score grow. Good luck!",
+  "heard": "Practice like this every week and watch your score grow.  Good luck!",
+  "score": 0.92,
+  "seconds": 3.783
  }
 }

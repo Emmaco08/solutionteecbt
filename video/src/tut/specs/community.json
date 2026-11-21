@@ -2,7 +2,7 @@
  "name": "community",
  "title": "Use Community",
  "kicker": "Community",
- "duration": 52.96,
+ "duration": 52.56,
  "intro": {
   "start": 0.0,
   "say": "Community is where students ask questions, share tips and help each other. Here's how to use it.",
@@ -12,7 +12,7 @@
  "outro": {
   "start": 44.843,
   "say": "Be kind, help others, and keep learning together. Next, learn how to take a full JAMB mock.",
-  "end": 52.661
+  "end": 52.261
  },
  "chapters": [
   {

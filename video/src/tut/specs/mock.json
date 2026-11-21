@@ -1,0 +1,610 @@
+{
+ "name": "mock",
+ "title": "Take a full JAMB mock",
+ "kicker": "Practice",
+ "duration": 64.15,
+ "intro": {
+  "start": 0.0,
+  "say": "Ready for the real thing? Here's how to take a full JAMB mock, and check your score.",
+  "vo": 0.6,
+  "end": 4.922
+ },
+ "outro": {
+  "start": 58.37,
+  "say": "Practise like this every week, and watch your score grow. Good luck!",
+  "end": 63.853
+ },
+ "chapters": [
+  {
+   "start": 4.922,
+   "end": 8.797,
+   "caption": "**Test** tab, then **Start full exam**",
+   "say": "Go to the Test tab, and tap Start full exam."
+  },
+  {
+   "start": 8.797,
+   "end": 15.144,
+   "caption": "Check your subjects, then **Start**",
+   "say": "Your four exam subjects are already set. Check them, then tap Start full exam."
+  },
+  {
+   "start": 15.144,
+   "end": 20.491,
+   "caption": "Tap an **option**, then **Next**",
+   "say": "The exam screen works like the real CBT. Tap an option to answer, then tap Next."
+  },
+  {
+   "start": 20.491,
+   "end": 24.091,
+   "caption": "Tap the **flag** to come back later",
+   "say": "Not sure? Tap the flag, and come back to it later."
+  },
+  {
+   "start": 24.091,
+   "end": 27.648,
+   "caption": "Tap a **subject** to switch",
+   "say": "Tap a subject at the top to switch subjects at any time."
+  },
+  {
+   "start": 27.648,
+   "end": 35.498,
+   "caption": "Use the **calculator**",
+   "say": "Need to calculate? Tap the calculator icon, work it out, then close it."
+  },
+  {
+   "start": 35.498,
+   "end": 40.487,
+   "caption": "Tap the **grid** to jump to any question",
+   "say": "Tap the grid icon to see every question. Tap any number to jump straight to it."
+  },
+  {
+   "start": 40.487,
+   "end": 45.884,
+   "caption": "Answers save as you go. Tap **Submit**",
+   "say": "Your answers save as you go, even if you close the app. When you've finished, tap Submit."
+  },
+  {
+   "start": 45.884,
+   "end": 49.171,
+   "caption": "Check, then **Submit now**",
+   "say": "Check your summary, then tap Submit now."
+  },
+  {
+   "start": 49.171,
+   "end": 53.167,
+   "caption": "Your **score out of 400**",
+   "say": "You get your score out of four hundred straight away, with a score for each subject."
+  },
+  {
+   "start": 53.167,
+   "end": 58.37,
+   "caption": "**Review answers** and learn",
+   "say": "Tap Review answers to see what you got wrong, and ask SolutionTee AI to explain it."
+  }
+ ],
+ "frames": [
+  "tut/mock/00.jpg",
+  "tut/mock/01.jpg",
+  "tut/mock/02.jpg",
+  "tut/mock/03.jpg",
+  "tut/mock/04.jpg",
+  "tut/mock/05.jpg",
+  "tut/mock/06.jpg",
+  "tut/mock/07.jpg",
+  "tut/mock/08.jpg",
+  "tut/mock/09.jpg",
+  "tut/mock/10.jpg",
+  "tut/mock/11.jpg",
+  "tut/mock/12.jpg",
+  "tut/mock/13.jpg",
+  "tut/mock/14.jpg",
+  "tut/mock/15.jpg",
+  "tut/mock/16.jpg",
+  "tut/mock/17.jpg",
+  "tut/mock/18.jpg",
+  "tut/mock/19.jpg",
+  "tut/mock/20.jpg",
+  "tut/mock/21.jpg",
+  "tut/mock/22.jpg"
+ ],
+ "actions": [
+  {
+   "frame": 0,
+   "kind": "tap",
+   "start": 5.372,
+   "end": 6.422,
+   "rect": {
+    "x": 436.7,
+    "y": 600.0,
+    "w": 296.5,
+    "h": 60.0
+   },
+   "next": 1,
+   "nav": true
+  },
+  {
+   "frame": 1,
+   "kind": "tap",
+   "start": 9.247,
+   "end": 10.297,
+   "rect": {
+    "x": 436.7,
+    "y": 2316.0,
+    "w": 296.5,
+    "h": 60.0
+   },
+   "next": 2,
+   "nav": false
+  },
+  {
+   "frame": 2,
+   "kind": "tap",
+   "start": 15.594,
+   "end": 16.644,
+   "rect": {
+    "x": 48.0,
+    "y": 1071.0,
+    "w": 1074.0,
+    "h": 177.0
+   },
+   "next": 3,
+   "nav": false
+  },
+  {
+   "frame": 3,
+   "kind": "tap",
+   "start": 17.544,
+   "end": 18.594,
+   "rect": {
+    "x": 911.8,
+    "y": 2349.0,
+    "w": 90.2,
+    "h": 54.0
+   },
+   "next": 4,
+   "nav": false
+  },
+  {
+   "frame": 4,
+   "kind": "tap",
+   "start": 20.941,
+   "end": 21.991,
+   "rect": {
+    "x": 48.0,
+    "y": 864.0,
+    "w": 1074.0,
+    "h": 177.0
+   },
+   "next": 5,
+   "nav": false
+  },
+  {
+   "frame": 5,
+   "kind": "tap",
+   "start": 22.491,
+   "end": 23.541,
+   "rect": {
+    "x": 657.0,
+    "y": 2304.0,
+    "w": 144.0,
+    "h": 144.0
+   },
+   "next": 6,
+   "nav": false
+  },
+  {
+   "frame": 6,
+   "kind": "tap",
+   "start": 24.541,
+   "end": 25.591,
+   "rect": {
+    "x": 427.4,
+    "y": 307.5,
+    "w": 248.1,
+    "h": 54.0
+   },
+   "next": 7,
+   "nav": false
+  },
+  {
+   "frame": 7,
+   "kind": "tap",
+   "start": 28.098,
+   "end": 29.148,
+   "rect": {
+    "x": 369.0,
+    "y": 2304.0,
+    "w": 144.0,
+    "h": 144.0
+   },
+   "next": 8,
+   "nav": true
+  },
+  {
+   "frame": 8,
+   "kind": "tap",
+   "start": 29.148,
+   "end": 30.198,
+   "rect": {
+    "x": 170.5,
+    "y": 2046.6,
+    "w": 23.6,
+    "h": 81.0
+   },
+   "next": 9,
+   "nav": false
+  },
+  {
+   "frame": 9,
+   "kind": "tap",
+   "start": 30.198,
+   "end": 31.248,
+   "rect": {
+    "x": 433.1,
+    "y": 2046.6,
+    "w": 35.2,
+    "h": 81.0
+   },
+   "next": 10,
+   "nav": false
+  },
+  {
+   "frame": 10,
+   "kind": "tap",
+   "start": 31.248,
+   "end": 32.298,
+   "rect": {
+    "x": 968.3,
+    "y": 1661.3,
+    "w": 39.0,
+    "h": 81.0
+   },
+   "next": 11,
+   "nav": false
+  },
+  {
+   "frame": 11,
+   "kind": "tap",
+   "start": 32.298,
+   "end": 33.348,
+   "rect": {
+    "x": 432.1,
+    "y": 1661.3,
+    "w": 37.3,
+    "h": 81.0
+   },
+   "next": 12,
+   "nav": false
+  },
+  {
+   "frame": 12,
+   "kind": "tap",
+   "start": 33.348,
+   "end": 34.398,
+   "rect": {
+    "x": 968.3,
+    "y": 2239.2,
+    "w": 39.0,
+    "h": 81.0
+   },
+   "next": 13,
+   "nav": false
+  },
+  {
+   "frame": 13,
+   "kind": "tap",
+   "start": 34.398,
+   "end": 35.448,
+   "rect": {
+    "x": 1044.0,
+    "y": 854.9,
+    "w": 60.0,
+    "h": 60.0
+   },
+   "next": 14,
+   "nav": true
+  },
+  {
+   "frame": 14,
+   "kind": "tap",
+   "start": 35.948,
+   "end": 36.998,
+   "rect": {
+    "x": 513.0,
+    "y": 2304.0,
+    "w": 144.0,
+    "h": 144.0
+   },
+   "next": 15,
+   "nav": true
+  },
+  {
+   "frame": 15,
+   "kind": "tap",
+   "start": 37.444,
+   "end": 38.494,
+   "rect": {
+    "x": 595.5,
+    "y": 1478.6,
+    "w": 112.9,
+    "h": 112.9
+   },
+   "next": 16,
+   "nav": true
+  },
+  {
+   "frame": 16,
+   "kind": "tap",
+   "start": 38.941,
+   "end": 39.991,
+   "rect": {
+    "x": 48.0,
+    "y": 783.0,
+    "w": 1074.0,
+    "h": 177.0
+   },
+   "next": 17,
+   "nav": false
+  },
+  {
+   "frame": 17,
+   "kind": "hold",
+   "start": 40.937,
+   "end": 41.737,
+   "next": 18,
+   "nav": false
+  },
+  {
+   "frame": 18,
+   "kind": "tap",
+   "start": 42.637,
+   "end": 43.687,
+   "rect": {
+    "x": 961.5,
+    "y": 147.0,
+    "w": 136.5,
+    "h": 54.0
+   },
+   "next": 19,
+   "nav": true
+  },
+  {
+   "frame": 19,
+   "kind": "tap",
+   "start": 46.334,
+   "end": 47.384,
+   "rect": {
+    "x": 697.3,
+    "y": 1836.0,
+    "w": 246.5,
+    "h": 60.0
+   },
+   "next": 20,
+   "nav": true
+  },
+  {
+   "frame": 20,
+   "kind": "scroll",
+   "start": 49.621,
+   "end": 50.971,
+   "dy": 1140.0,
+   "next": 21,
+   "nav": false
+  },
+  {
+   "frame": 21,
+   "kind": "tap",
+   "start": 53.617,
+   "end": 54.667,
+   "rect": {
+    "x": 148.1,
+    "y": 2251.5,
+    "w": 330.7,
+    "h": 60.0
+   },
+   "next": 22,
+   "nav": true
+  },
+  {
+   "frame": 22,
+   "kind": "hold",
+   "start": 55.567,
+   "end": 56.367
+  }
+ ],
+ "cam": [
+  {
+   "t": 0.0,
+   "z": 1.0,
+   "x": 585,
+   "y": 1266
+  },
+  {
+   "t": 5.022,
+   "z": 1.55,
+   "x": 585.0,
+   "y": 630.0
+  },
+  {
+   "t": 8.547,
+   "z": 1.0,
+   "x": 585,
+   "y": 1266
+  },
+  {
+   "t": 8.897,
+   "z": 1.55,
+   "x": 585.0,
+   "y": 2346.0
+  },
+  {
+   "t": 14.894,
+   "z": 1.0,
+   "x": 585,
+   "y": 1266
+  },
+  {
+   "t": 15.244,
+   "z": 1.0,
+   "x": 585.0,
+   "y": 1159.5
+  },
+  {
+   "t": 17.194,
+   "z": 1.55,
+   "x": 956.9,
+   "y": 2376.0
+  },
+  {
+   "t": 20.241,
+   "z": 1.0,
+   "x": 585,
+   "y": 1266
+  },
+  {
+   "t": 20.591,
+   "z": 1.0,
+   "x": 585.0,
+   "y": 952.5
+  },
+  {
+   "t": 22.141,
+   "z": 1.55,
+   "x": 729.0,
+   "y": 2376.0
+  },
+  {
+   "t": 23.841,
+   "z": 1.0,
+   "x": 585,
+   "y": 1266
+  },
+  {
+   "t": 24.191,
+   "z": 1.55,
+   "x": 551.5,
+   "y": 334.5
+  },
+  {
+   "t": 27.398,
+   "z": 1.0,
+   "x": 585,
+   "y": 1266
+  },
+  {
+   "t": 27.748,
+   "z": 1.55,
+   "x": 441.0,
+   "y": 2376.0
+  },
+  {
+   "t": 28.798,
+   "z": 1.55,
+   "x": 182.2,
+   "y": 2087.1
+  },
+  {
+   "t": 29.848,
+   "z": 1.55,
+   "x": 450.8,
+   "y": 2087.1
+  },
+  {
+   "t": 30.898,
+   "z": 1.55,
+   "x": 987.8,
+   "y": 1701.8
+  },
+  {
+   "t": 31.948,
+   "z": 1.55,
+   "x": 450.8,
+   "y": 1701.8
+  },
+  {
+   "t": 32.998,
+   "z": 1.55,
+   "x": 987.8,
+   "y": 2279.7
+  },
+  {
+   "t": 34.048,
+   "z": 1.55,
+   "x": 1074.0,
+   "y": 884.9
+  },
+  {
+   "t": 35.248,
+   "z": 1.0,
+   "x": 585,
+   "y": 1266
+  },
+  {
+   "t": 35.598,
+   "z": 1.55,
+   "x": 585.0,
+   "y": 2376.0
+  },
+  {
+   "t": 37.094,
+   "z": 1.55,
+   "x": 651.9,
+   "y": 1535.1
+  },
+  {
+   "t": 38.591,
+   "z": 1.0,
+   "x": 585.0,
+   "y": 871.5
+  },
+  {
+   "t": 40.237,
+   "z": 1.0,
+   "x": 585,
+   "y": 1266
+  },
+  {
+   "t": 42.287,
+   "z": 1.55,
+   "x": 1029.7,
+   "y": 174.0
+  },
+  {
+   "t": 45.634,
+   "z": 1.0,
+   "x": 585,
+   "y": 1266
+  },
+  {
+   "t": 45.984,
+   "z": 1.55,
+   "x": 820.5,
+   "y": 1866.0
+  },
+  {
+   "t": 48.921,
+   "z": 1.0,
+   "x": 585,
+   "y": 1266
+  },
+  {
+   "t": 52.917,
+   "z": 1.0,
+   "x": 585,
+   "y": 1266
+  },
+  {
+   "t": 53.267,
+   "z": 1.55,
+   "x": 313.5,
+   "y": 2281.5
+  },
+  {
+   "t": 58.12,
+   "z": 1.0,
+   "x": 585,
+   "y": 1266
+  }
+ ],
+ "audio": "tut/mock/audio.wav"
+}

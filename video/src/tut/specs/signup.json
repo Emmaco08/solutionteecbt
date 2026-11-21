@@ -1,0 +1,538 @@
+{
+ "name": "signup",
+ "title": "Create your account",
+ "kicker": "Getting started",
+ "duration": 47.76,
+ "intro": {
+  "start": 0.0,
+  "say": "Here's how to create your SolutionTee account. It takes about a minute.",
+  "vo": 0.6,
+  "end": 4.9239999999999995
+ },
+ "outro": {
+  "start": 41.662,
+  "say": "That's it, you're in! Next, learn how to make your own custom exam.",
+  "end": 47.457
+ },
+ "chapters": [
+  {
+   "start": 4.924,
+   "end": 7.893,
+   "caption": "Tap **Get started**",
+   "say": "Open the app and tap Get started."
+  },
+  {
+   "start": 7.893,
+   "end": 12.575,
+   "caption": "Type your **email** and a **password**",
+   "say": "Type your email address, then choose a password with at least eight characters."
+  },
+  {
+   "start": 12.575,
+   "end": 16.878,
+   "caption": "Tick the box, then tap **Create account**",
+   "say": "Tick the box to agree to the terms, then tap Create account."
+  },
+  {
+   "start": 16.878,
+   "end": 21.72,
+   "caption": "Type the **6-digit code** from your email",
+   "say": "We send a six digit code to your email. Type it in, and your email is verified."
+  },
+  {
+   "start": 21.72,
+   "end": 28.08,
+   "caption": "Your **name**, **state** and **year of birth**",
+   "say": "Now tell us about you. Type your full name, then choose your state and the year you were born."
+  },
+  {
+   "start": 28.08,
+   "end": 30.694,
+   "caption": "Tap **Continue**",
+   "say": "When you're done, tap Continue."
+  },
+  {
+   "start": 30.694,
+   "end": 34.183,
+   "caption": "Pick **your exams**",
+   "say": "Pick every exam you're writing. You can choose more than one."
+  },
+  {
+   "start": 34.183,
+   "end": 38.655,
+   "caption": "Choose your **3 JAMB subjects**",
+   "say": "Choose your three JAMB subjects. Use of English is already included."
+  },
+  {
+   "start": 38.655,
+   "end": 41.662,
+   "caption": "Tap **Finish setup**",
+   "say": "Tap Finish setup, and you're ready to practise."
+  }
+ ],
+ "frames": [
+  "tut/signup/00.jpg",
+  "tut/signup/01.jpg",
+  "tut/signup/02.jpg",
+  "tut/signup/03.jpg",
+  "tut/signup/04.jpg",
+  "tut/signup/05.jpg",
+  "tut/signup/06.jpg",
+  "tut/signup/07.jpg",
+  "tut/signup/08.jpg",
+  "tut/signup/09.jpg",
+  "tut/signup/10.jpg",
+  "tut/signup/11.jpg",
+  "tut/signup/12.jpg",
+  "tut/signup/13.jpg",
+  "tut/signup/14.jpg",
+  "tut/signup/15.jpg",
+  "tut/signup/16.jpg",
+  "tut/signup/17.jpg",
+  "tut/signup/18.jpg",
+  "tut/signup/19.jpg"
+ ],
+ "actions": [
+  {
+   "frame": 0,
+   "kind": "tap",
+   "start": 5.374,
+   "end": 6.424,
+   "rect": {
+    "x": 423.8,
+    "y": 1962.0,
+    "w": 238.4,
+    "h": 60.0
+   },
+   "next": 1,
+   "nav": false
+  },
+  {
+   "frame": 1,
+   "kind": "type",
+   "start": 8.343,
+   "end": 10.223,
+   "rect": {
+    "x": 172.5,
+    "y": 682.5,
+    "w": 933.0,
+    "h": 159.0
+   },
+   "text": "tolu@example.com",
+   "next": 2,
+   "nav": false
+  },
+  {
+   "frame": 2,
+   "kind": "type",
+   "start": 10.544,
+   "end": 12.204,
+   "rect": {
+    "x": 172.5,
+    "y": 979.5,
+    "w": 777.0,
+    "h": 159.0
+   },
+   "text": "MySecret2027",
+   "next": 3,
+   "nav": false
+  },
+  {
+   "frame": 3,
+   "kind": "tap",
+   "start": 13.025,
+   "end": 14.075,
+   "rect": {
+    "x": 96.0,
+    "y": 1443.0,
+    "w": 66.0,
+    "h": 66.0
+   },
+   "next": 4,
+   "nav": false
+  },
+  {
+   "frame": 4,
+   "kind": "tap",
+   "start": 14.926,
+   "end": 15.976,
+   "rect": {
+    "x": 423.9,
+    "y": 1683.0,
+    "w": 322.3,
+    "h": 60.0
+   },
+   "next": 5,
+   "nav": false
+  },
+  {
+   "frame": 5,
+   "kind": "type",
+   "start": 17.328,
+   "end": 18.658,
+   "rect": {
+    "x": 60.0,
+    "y": 804.0,
+    "w": 1050.0,
+    "h": 208.0
+   },
+   "text": "482913",
+   "next": 6,
+   "nav": false
+  },
+  {
+   "frame": 6,
+   "kind": "hold",
+   "start": 19.558,
+   "end": 20.358,
+   "next": 7,
+   "nav": false
+  },
+  {
+   "frame": 7,
+   "kind": "type",
+   "start": 22.17,
+   "end": 23.83,
+   "rect": {
+    "x": 172.5,
+    "y": 628.5,
+    "w": 933.0,
+    "h": 159.0
+   },
+   "text": "Tolu Adeyemi",
+   "next": 8,
+   "nav": false
+  },
+  {
+   "frame": 8,
+   "kind": "tap",
+   "start": 23.83,
+   "end": 24.88,
+   "rect": {
+    "x": 112.5,
+    "y": 1330.5,
+    "w": 891.0,
+    "h": 69.0
+   },
+   "next": 9,
+   "nav": false
+  },
+  {
+   "frame": 9,
+   "kind": "tap",
+   "start": 24.88,
+   "end": 25.93,
+   "rect": {
+    "x": 108.0,
+    "y": 1287.0,
+    "w": 930.0,
+    "h": 66.0
+   },
+   "next": 10,
+   "nav": false
+  },
+  {
+   "frame": 10,
+   "kind": "tap",
+   "start": 25.93,
+   "end": 26.98,
+   "rect": {
+    "x": 112.5,
+    "y": 1612.5,
+    "w": 891.0,
+    "h": 69.0
+   },
+   "next": 11,
+   "nav": false
+  },
+  {
+   "frame": 11,
+   "kind": "tap",
+   "start": 26.98,
+   "end": 28.03,
+   "rect": {
+    "x": 108.0,
+    "y": 346.6,
+    "w": 930.0,
+    "h": 66.0
+   },
+   "next": 12,
+   "nav": false
+  },
+  {
+   "frame": 12,
+   "kind": "tap",
+   "start": 28.53,
+   "end": 29.58,
+   "rect": {
+    "x": 489.9,
+    "y": 2316.0,
+    "w": 190.2,
+    "h": 60.0
+   },
+   "next": 13,
+   "nav": false
+  },
+  {
+   "frame": 13,
+   "kind": "tap",
+   "start": 31.144,
+   "end": 32.194,
+   "rect": {
+    "x": 268.5,
+    "y": 948.0,
+    "w": 325.6,
+    "h": 60.0
+   },
+   "next": 14,
+   "nav": false
+  },
+  {
+   "frame": 14,
+   "kind": "tap",
+   "start": 32.639,
+   "end": 33.688,
+   "rect": {
+    "x": 489.9,
+    "y": 2316.0,
+    "w": 190.2,
+    "h": 60.0
+   },
+   "next": 15,
+   "nav": false
+  },
+  {
+   "frame": 15,
+   "kind": "tap",
+   "start": 34.633,
+   "end": 35.683,
+   "rect": {
+    "x": 184.5,
+    "y": 1051.9,
+    "w": 282.0,
+    "h": 51.0
+   },
+   "next": 16,
+   "nav": false
+  },
+  {
+   "frame": 16,
+   "kind": "tap",
+   "start": 35.957,
+   "end": 37.007,
+   "rect": {
+    "x": 727.5,
+    "y": 1051.9,
+    "w": 282.0,
+    "h": 51.0
+   },
+   "next": 17,
+   "nav": false
+  },
+  {
+   "frame": 17,
+   "kind": "tap",
+   "start": 37.281,
+   "end": 38.331,
+   "rect": {
+    "x": 184.5,
+    "y": 1262.7,
+    "w": 282.0,
+    "h": 51.0
+   },
+   "next": 18,
+   "nav": false
+  },
+  {
+   "frame": 18,
+   "kind": "tap",
+   "start": 39.105,
+   "end": 40.155,
+   "rect": {
+    "x": 462.0,
+    "y": 2316.0,
+    "w": 246.0,
+    "h": 60.0
+   },
+   "next": 19,
+   "nav": true
+  },
+  {
+   "frame": 19,
+   "kind": "hold",
+   "start": 40.484,
+   "end": 41.284
+  }
+ ],
+ "cam": [
+  {
+   "t": 0.0,
+   "z": 1.0,
+   "x": 585,
+   "y": 1266
+  },
+  {
+   "t": 5.024,
+   "z": 1.55,
+   "x": 543.0,
+   "y": 1992.0
+  },
+  {
+   "t": 7.643,
+   "z": 1.0,
+   "x": 585,
+   "y": 1266
+  },
+  {
+   "t": 7.993,
+   "z": 1.0,
+   "x": 639.0,
+   "y": 762.0
+  },
+  {
+   "t": 10.194,
+   "z": 1.0,
+   "x": 561.0,
+   "y": 1059.0
+  },
+  {
+   "t": 12.325,
+   "z": 1.0,
+   "x": 585,
+   "y": 1266
+  },
+  {
+   "t": 12.675,
+   "z": 1.55,
+   "x": 129.0,
+   "y": 1476.0
+  },
+  {
+   "t": 14.576,
+   "z": 1.55,
+   "x": 585.0,
+   "y": 1713.0
+  },
+  {
+   "t": 16.628,
+   "z": 1.0,
+   "x": 585,
+   "y": 1266
+  },
+  {
+   "t": 16.978,
+   "z": 1.0,
+   "x": 585.0,
+   "y": 908.0
+  },
+  {
+   "t": 21.47,
+   "z": 1.0,
+   "x": 585,
+   "y": 1266
+  },
+  {
+   "t": 21.82,
+   "z": 1.0,
+   "x": 639.0,
+   "y": 708.0
+  },
+  {
+   "t": 23.48,
+   "z": 1.0,
+   "x": 558.0,
+   "y": 1365.0
+  },
+  {
+   "t": 24.53,
+   "z": 1.0,
+   "x": 573.0,
+   "y": 1320.0
+  },
+  {
+   "t": 25.58,
+   "z": 1.0,
+   "x": 558.0,
+   "y": 1647.0
+  },
+  {
+   "t": 26.63,
+   "z": 1.0,
+   "x": 573.0,
+   "y": 379.6
+  },
+  {
+   "t": 27.83,
+   "z": 1.0,
+   "x": 585,
+   "y": 1266
+  },
+  {
+   "t": 28.18,
+   "z": 1.55,
+   "x": 585.0,
+   "y": 2346.0
+  },
+  {
+   "t": 30.444,
+   "z": 1.0,
+   "x": 585,
+   "y": 1266
+  },
+  {
+   "t": 30.794,
+   "z": 1.55,
+   "x": 431.3,
+   "y": 978.0
+  },
+  {
+   "t": 32.288,
+   "z": 1.55,
+   "x": 585.0,
+   "y": 2346.0
+  },
+  {
+   "t": 33.933,
+   "z": 1.0,
+   "x": 585,
+   "y": 1266
+  },
+  {
+   "t": 34.283,
+   "z": 1.55,
+   "x": 325.5,
+   "y": 1077.4
+  },
+  {
+   "t": 35.607,
+   "z": 1.55,
+   "x": 868.5,
+   "y": 1077.4
+  },
+  {
+   "t": 36.931,
+   "z": 1.55,
+   "x": 325.5,
+   "y": 1288.2
+  },
+  {
+   "t": 38.405,
+   "z": 1.0,
+   "x": 585,
+   "y": 1266
+  },
+  {
+   "t": 38.755,
+   "z": 1.55,
+   "x": 585.0,
+   "y": 2346.0
+  },
+  {
+   "t": 41.412,
+   "z": 1.0,
+   "x": 585,
+   "y": 1266
+  }
+ ],
+ "audio": "tut/signup/audio.wav"
+}

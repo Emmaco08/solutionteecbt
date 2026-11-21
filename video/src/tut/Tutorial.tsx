@@ -283,7 +283,12 @@ export const Tutorial: React.FC<{ spec: TutSpec }> = ({ spec }) => {
   const z = Math.min(cam.z, zMax);
   const m = (z - 1) / (zMax - 1);
   const ox = B.px + (cam.x - SW / 2) * B.k, oy = B.py + (cam.y - SH / 2) * B.k;
-  const sx = (stage.x + stage.w / 2 - ox) * m * (B.land ? 1 : 0.6), sy = (stage.y + stage.h / 2 - oy) * m * 0.6;
+  const sy = (stage.y + stage.h / 2 - oy) * m * 0.6;
+  // sideways: towards the middle, but the whole phone width stays inside the stage
+  const pl = ox + (B.px - B.pw / 2 - ox) * z, pr = ox + (B.px + B.pw / 2 - ox) * z;
+  const sx = B.land
+    ? B.px + (stage.x + stage.w / 2 - B.px) * m - (ox + (B.px - ox) * z) // the zoomed phone fits the stage's width: keep it centred
+    : Math.min(stage.x + stage.w - 24 - pr, Math.max(stage.x + 24 - pl, (stage.x + stage.w / 2 - ox) * m * 0.6));
   return (
     <AbsoluteFill style={{ background: "#F7F9FC" }}>
       <AbsoluteFill style={{ background: "radial-gradient(ellipse at 20% 10%, rgba(37,99,179,.07), transparent 55%), radial-gradient(ellipse at 85% 95%, rgba(242,178,51,.07), transparent 55%)" }} />

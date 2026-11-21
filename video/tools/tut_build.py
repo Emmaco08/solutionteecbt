@@ -166,7 +166,7 @@ def build(name, scripts, vo_meta):
         cam.append({"t": round(t - 0.25, 3), "z": 1.0, "x": 585, "y": 1266})
     outro = {"start": round(t, 3), "say": sc["outro"]}
     vo_at.append((f"{name}_outro", t + 0.9))
-    t += max(OUTRO_MIN, 0.9 + sec(f"{name}_outro") + 1.2)
+    t += max(OUTRO_MIN, 0.9 + sec(f"{name}_outro") + 0.8)
     outro["end"] = round(t, 3)
     duration = round(t + 0.3, 2)
 

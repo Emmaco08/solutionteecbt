@@ -2,7 +2,7 @@
  "name": "custom",
  "title": "Make a custom exam",
  "kicker": "Practice",
- "duration": 40.34,
+ "duration": 39.94,
  "intro": {
   "start": 0.0,
   "say": "Want a test that's just right for you? Here's how to build your own custom exam.",
@@ -12,7 +12,7 @@
  "outro": {
   "start": 33.495,
   "say": "Your custom exam is ready. Good luck! Next, learn how to use Community.",
-  "end": 40.044
+  "end": 39.644
  },
  "chapters": [
   {

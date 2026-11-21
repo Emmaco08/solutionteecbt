@@ -225,7 +225,7 @@
         ]
       },
       {
-        "say": "Your four JAMB subjects are already set. Check them, then tap Start full exam.",
+        "say": "Your four exam subjects are already set. Check them, then tap Start full exam.",
         "caption": "Check your subjects, then **Start**",
         "frames": [
           1
